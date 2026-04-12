@@ -1,0 +1,44 @@
+{
+  "manifest_version": 3,
+  "name": "Window",
+  "version": "0.1.0",
+  "description": "Block websites based on your current Google Calendar time block",
+  "permissions": [
+    "declarativeNetRequest",
+    "declarativeNetRequestWithHostAccess",
+    "storage",
+    "alarms",
+    "identity",
+    "notifications",
+    "tabs",
+    "webNavigation"
+  ],
+  "host_permissions": [
+    "https://www.googleapis.com/*",
+    "<all_urls>"
+  ],
+  "background": {
+    "service_worker": "src/background/index.ts",
+    "type": "module"
+  },
+  "action": {
+    "default_popup": "src/popup/index.html",
+    "default_title": "Window"
+  },
+  "options_page": "src/options/index.html",
+  "oauth2": {
+    "client_id": "729824152278-crfk8lk39irm415add4dc87dd2hiumb5.apps.googleusercontent.com",
+    "scopes": [
+      "openid",
+      "email",
+      "profile",
+      "https://www.googleapis.com/auth/calendar.readonly"
+    ]
+  },
+  "web_accessible_resources": [
+    {
+      "resources": ["src/blocked/index.html"],
+      "matches": ["<all_urls>"]
+    }
+  ]
+}
