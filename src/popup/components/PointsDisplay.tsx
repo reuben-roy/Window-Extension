@@ -14,41 +14,38 @@ export default function PointsDisplay({ stats }: Props): React.JSX.Element {
   const progress = xpNeeded > 0 ? (xpIntoLevel / xpNeeded) * 100 : 100;
 
   return (
-    <div className="rounded-xl bg-gray-50 border border-gray-100 px-3 py-2.5">
-      {/* Level + pts row */}
-      <div className="flex items-center justify-between mb-1.5">
+    <div className="rounded-2xl border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-3 py-3">
+      <div className="mb-2 flex items-center justify-between">
         <div className="flex items-center gap-1.5">
-          <span className="text-xs font-bold text-gray-800">Lv {stats.level}</span>
-          <span className="text-[10px] text-gray-300">·</span>
-          <span className="text-[10px] text-gray-500">{stats.title}</span>
+          <span className="text-xs font-bold text-[var(--fg-text)]">Lv {stats.level}</span>
+          <span className="text-[10px] text-slate-300">·</span>
+          <span className="text-[10px] text-[var(--fg-muted)]">{stats.title}</span>
           {stats.currentWeekStreak > 0 && (
             <>
-              <span className="text-[10px] text-gray-300">·</span>
-              <span className="text-[10px] text-orange-500 font-semibold">
-                🔥 {stats.currentWeekStreak}w
+              <span className="text-[10px] text-slate-300">·</span>
+              <span className="text-[10px] font-semibold text-violet-600">
+                {stats.currentWeekStreak}w streak
               </span>
             </>
           )}
         </div>
-        <span className="text-xs font-bold text-gray-700 tabular-nums">
+        <span className="text-xs font-bold tabular-nums text-[var(--fg-text)]">
           {stats.totalPoints.toLocaleString()} pts
         </span>
       </div>
 
-      {/* XP bar */}
-      <div className="h-1.5 bg-gray-200 rounded-full overflow-hidden">
+      <div className="h-1.5 overflow-hidden rounded-full bg-slate-200">
         <div
-          className="h-full bg-gradient-to-r from-blue-500 to-blue-400 rounded-full transition-all duration-500"
+          className="h-full rounded-full bg-gradient-to-r from-violet-600 to-blue-500 transition-all duration-500"
           style={{ width: `${Math.min(100, progress).toFixed(1)}%` }}
         />
       </div>
 
-      {/* XP sub-label row */}
       <div className="flex items-center justify-between mt-1">
-        <span className="text-[10px] text-gray-400 tabular-nums">
+        <span className="text-[10px] tabular-nums text-[var(--fg-muted)]">
           {xpIntoLevel.toLocaleString()} / {xpNeeded.toLocaleString()} XP
         </span>
-        <span className="text-[10px] text-gray-400">
+        <span className="text-[10px] text-[var(--fg-muted)]">
           → Lv {stats.level + 1}
         </span>
       </div>

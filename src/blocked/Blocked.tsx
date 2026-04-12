@@ -1,6 +1,7 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { TEMP_UNLOCK_DURATION_MINUTES } from '../shared/constants';
 import PointsBubble from '../shared/components/PointsBubble';
+import { buildMockLeaderboard } from '../shared/mockLeaderboard';
 import type {
   BlockedTabState,
   BreakDurationMinutes,
@@ -14,6 +15,21 @@ interface BlockedContextResponse {
   unlock: TemporaryUnlockState | null;
   nextUnlockCost: number;
   canSpend: boolean;
+  error?: string;
+}
+
+interface UnlockSpendResponse {
+  ok: boolean;
+  error?: string;
+  cost?: number;
+  redirectUrl?: string;
+  remainingPoints?: number;
+}
+
+interface UnlockSuccessState {
+  cost: number;
+  redirectUrl: string;
+  remainingPoints?: number;
 }
 
 const BREAK_DURATION_OPTIONS = [5, 10, 15] as const;
@@ -24,24 +40,73 @@ export default function Blocked(): React.JSX.Element {
   const [selectedDuration, setSelectedDuration] = useState<BreakDurationMinutes>(5);
   const [spending, setSpending] = useState(false);
   const [spendError, setSpendError] = useState<string | null>(null);
+  const [stateError, setStateError] = useState<string | null>(null);
+  const [contextError, setContextError] = useState<string | null>(null);
+  const [unlockSuccess, setUnlockSuccess] = useState<UnlockSuccessState | null>(null);
+  const currentTabIdRef = useRef<number | null>(null);
   const [, setTick] = useState(0);
 
-  const loadState = useCallback(() => {
-    chrome.runtime.sendMessage({ type: 'GET_STATE' }, (response: StateResponse) => {
-      if (!chrome.runtime.lastError) setState(response);
+  const loadState = useCallback((tabId: number | null = currentTabIdRef.current) => {
+    chrome.runtime.sendMessage({ type: 'GET_STATE' }, (response: unknown) => {
+      if (chrome.runtime.lastError) {
+        setState(null);
+        setStateError(chrome.runtime.lastError.message ?? 'Window could not load the blocked-page state.');
+        return;
+      }
+
+      if (!isStateResponse(response)) {
+        setState(null);
+        setStateError('Window could not load the blocked-page state.');
+        return;
+      }
+
+      setState(response);
+      setStateError(null);
     });
 
-    chrome.runtime.sendMessage({ type: 'GET_BLOCKED_TAB_CONTEXT' }, (response: BlockedContextResponse) => {
-      if (!chrome.runtime.lastError) setContext(response);
-    });
+    if (tabId === null) {
+      setContext(null);
+      setContextError('Blocked tab context is unavailable for this page.');
+      return;
+    }
+
+    chrome.runtime.sendMessage(
+      { type: 'GET_BLOCKED_TAB_CONTEXT', payload: { tabId } },
+      (response: unknown) => {
+        if (chrome.runtime.lastError) {
+          setContext(null);
+          setContextError(chrome.runtime.lastError.message ?? 'Window could not determine which blocked tab to restore.');
+          return;
+        }
+
+        if (!isBlockedContextResponse(response)) {
+          setContext(null);
+          setContextError('Window could not determine which blocked tab to restore.');
+          return;
+        }
+
+        setContext(response);
+        setContextError(response.ok ? null : response.error ?? 'Blocked tab context is unavailable.');
+      },
+    );
   }, []);
 
   useEffect(() => {
-    loadState();
+    let cancelled = false;
+
+    chrome.tabs.getCurrent((tab) => {
+      if (cancelled) return;
+      const nextTabId = tab?.id ?? null;
+      currentTabIdRef.current = nextTabId;
+      loadState(nextTabId);
+    });
+
     const listener = () => loadState();
     chrome.storage.onChanged.addListener(listener);
     const interval = window.setInterval(() => setTick((value) => value + 1), 1000);
+
     return () => {
+      cancelled = true;
       chrome.storage.onChanged.removeListener(listener);
       window.clearInterval(interval);
     };
@@ -58,8 +123,18 @@ export default function Blocked(): React.JSX.Element {
 
   if (!state) {
     return (
-      <div className="fg-shell min-h-screen flex items-center justify-center">
-        <div className="fg-card px-6 py-5 text-sm text-[var(--fg-muted)]">Loading blocked page…</div>
+      <div className="fg-shell min-h-screen px-4 py-8">
+        <div className="mx-auto max-w-5xl">
+          <StatusCard
+            title={stateError ? 'Blocked page unavailable' : 'Loading your focus dashboard…'}
+            body={
+              stateError
+                ? `${stateError} The page will keep trying as Window reconnects to the background service.`
+                : 'Window is pulling your current event, points, and leaderboard data.'
+            }
+            tone={stateError ? 'error' : 'neutral'}
+          />
+        </div>
       </div>
     );
   }
@@ -74,13 +149,15 @@ export default function Blocked(): React.JSX.Element {
     backendSession?.userId ?? 'You',
     allTimeStats.level,
   );
+  const currentEntry = leaderboard.find((entry) => entry.isCurrentUser) ?? null;
+  const rankLabel = currentEntry ? `#${currentEntry.rank}` : 'Unranked';
 
   return (
     <div className="fg-shell min-h-screen px-4 py-8">
       <div className="mx-auto max-w-6xl space-y-6">
         <header className="flex flex-wrap items-start justify-between gap-4">
           <div className="space-y-2">
-            <div className="inline-flex items-center gap-2 rounded-full border border-[var(--fg-border)] bg-white/80 px-3 py-1 text-[11px] font-medium text-[var(--fg-muted)] shadow-sm">
+            <div className="inline-flex items-center gap-2 rounded-full border border-[var(--fg-border)] bg-white/85 px-3 py-1 text-[11px] font-medium text-[var(--fg-muted)] shadow-sm">
               <span className="h-2 w-2 rounded-full bg-rose-400" />
               Focus checkpoint
             </div>
@@ -89,8 +166,8 @@ export default function Blocked(): React.JSX.Element {
             </h1>
             <p className="max-w-2xl text-sm leading-6 text-[var(--fg-muted)]">
               {blockedHost
-                ? `${blockedHost} is blocked during your current focus session.`
-                : 'This site is blocked during your focus session.'}
+                ? `${blockedHost} is paused while your focus block is active.`
+                : 'This site is paused while your focus block is active.'}
             </p>
           </div>
 
@@ -101,11 +178,11 @@ export default function Blocked(): React.JSX.Element {
           />
         </header>
 
-        <section className="grid gap-4 lg:grid-cols-[minmax(0,1.4fr),minmax(320px,0.8fr)]">
+        <section className="grid gap-4 lg:grid-cols-[minmax(0,1.18fr),360px]">
           <div className="space-y-4">
             <div className="fg-card p-5">
               <div className="flex flex-wrap items-start justify-between gap-3">
-                <div>
+                <div className="max-w-2xl">
                   <p className="text-xs uppercase tracking-[0.18em] text-[var(--fg-muted)]">Current event</p>
                   <p className="mt-1 text-2xl font-semibold tracking-[-0.03em] text-[var(--fg-text)]">
                     {currentEvent?.title ?? 'Focus block active'}
@@ -115,18 +192,42 @@ export default function Blocked(): React.JSX.Element {
                       ? `Ends at ${formatClock(currentEvent.end)}`
                       : 'Blocking is active for your current focus rule.'}
                   </p>
-                  <p className="mt-2 text-sm text-[var(--fg-muted)]">
-                    {describeRuleSource(calendarState.activeRuleSource, calendarState.activeRuleName)}
+                  <p className="mt-3 text-sm text-[var(--fg-muted)]">
+                    You are currently {rankLabel}. Protect your lead, stack completions, and avoid cashing out more points than you need.
                   </p>
                 </div>
 
-                <div className="grid min-w-[220px] grid-cols-2 gap-3">
+                <div className="grid min-w-[240px] grid-cols-2 gap-3">
+                  <StatPill label="Rank" value={rankLabel} />
                   <StatPill label="Tasks done" value={String(allTimeStats.tasksCompleted)} />
                   <StatPill label="Best week" value={`${allTimeStats.bestWeek} pts`} />
                   <StatPill label="Week streak" value={`${allTimeStats.currentWeekStreak}w`} />
-                  <StatPill label="Leaderboard" value={`Lv ${allTimeStats.level}`} />
                 </div>
               </div>
+
+              {(unlockSuccess || contextError) && (
+                <div
+                  className={`mt-4 rounded-2xl border px-4 py-3 ${
+                    unlockSuccess
+                      ? 'border-violet-200 bg-violet-50'
+                      : 'border-amber-200 bg-amber-50'
+                  }`}
+                >
+                  {unlockSuccess ? (
+                    <>
+                      <p className="text-xs uppercase tracking-[0.16em] text-violet-700">Unlock purchased</p>
+                      <p className="mt-1 text-sm text-violet-900">
+                        Spent {unlockSuccess.cost} points. Your total and rank have been updated, and the site will reopen in this tab momentarily.
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-xs uppercase tracking-[0.16em] text-amber-700">Context warning</p>
+                      <p className="mt-1 text-sm text-amber-900">{contextError}</p>
+                    </>
+                  )}
+                </div>
+              )}
             </div>
 
             <div className="grid gap-4 md:grid-cols-2">
@@ -135,7 +236,10 @@ export default function Blocked(): React.JSX.Element {
                 <div className="mt-3 flex flex-wrap gap-2">
                   {calendarState.allowedDomains.length > 0 ? (
                     calendarState.allowedDomains.map((domain) => (
-                      <span key={domain} className="rounded-full border border-[var(--fg-border)] bg-white px-3 py-1.5 text-xs font-medium text-[var(--fg-text)]">
+                      <span
+                        key={domain}
+                        className="rounded-full border border-[var(--fg-border)] bg-white px-3 py-1.5 text-xs font-medium text-[var(--fg-text)]"
+                      >
                         {domain}
                       </span>
                     ))
@@ -173,7 +277,7 @@ export default function Blocked(): React.JSX.Element {
                       onClick={() => {
                         chrome.runtime.sendMessage(
                           { type: 'SNOOZE', payload: { durationMinutes: selectedDuration } },
-                          () => loadState(),
+                          () => loadState(currentTabIdRef.current),
                         );
                       }}
                       className="fg-button-secondary w-full"
@@ -188,68 +292,10 @@ export default function Blocked(): React.JSX.Element {
 
           <div className="space-y-4">
             <div className="fg-card p-5">
-              <p className="text-xs uppercase tracking-[0.18em] text-[var(--fg-muted)]">Temporary unlock</p>
-              <p className="mt-2 text-lg font-semibold tracking-[-0.03em] text-[var(--fg-text)]">
-                Spend points to peek at this site
-              </p>
-              <p className="mt-2 text-sm text-[var(--fg-muted)]">
-                Unlock {blockedHost ?? 'this site'} for {TEMP_UNLOCK_DURATION_MINUTES} minutes in this tab only.
-              </p>
-
-              {context?.unlock && unlockCountdown ? (
-                <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3">
-                  <p className="text-xs uppercase tracking-[0.16em] text-emerald-600">Unlock active</p>
-                  <p className="mt-1 text-3xl font-semibold tracking-[-0.03em] tabular-nums text-emerald-950">
-                    {unlockCountdown}
-                  </p>
-                  <p className="mt-1 text-sm text-emerald-800">
-                    This tab stays open until the timer ends, then blocking resumes automatically.
-                  </p>
-                </div>
-              ) : (
-                <div className="mt-4 space-y-4">
-                  <div className="rounded-2xl border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-4 py-3">
-                    <p className="text-xs uppercase tracking-[0.16em] text-[var(--fg-muted)]">Next unlock cost</p>
-                    <p className="mt-1 text-3xl font-semibold tracking-[-0.03em] text-[var(--fg-text)]">
-                      {context?.nextUnlockCost ?? 25} pts
-                    </p>
-                    <p className="mt-1 text-sm text-[var(--fg-muted)]">
-                      Costs increase each time you unlock another site during the same focus block.
-                    </p>
-                  </div>
-
-                  {spendError && <p className="text-sm text-rose-600">{spendError}</p>}
-
-                  <button
-                    onClick={() => {
-                      setSpending(true);
-                      setSpendError(null);
-                      chrome.runtime.sendMessage({ type: 'SPEND_POINTS_UNLOCK' }, (response: { ok: boolean; error?: string }) => {
-                        setSpending(false);
-                        if (!response?.ok) {
-                          setSpendError(response?.error ?? 'Unable to unlock this site.');
-                          loadState();
-                        }
-                      });
-                    }}
-                    disabled={spending || !context?.canSpend}
-                    className="fg-button-primary w-full disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    {spending
-                      ? 'Unlocking…'
-                      : context?.canSpend
-                        ? `Spend ${context?.nextUnlockCost ?? 25} points`
-                        : 'Not enough points'}
-                  </button>
-                </div>
-              )}
-            </div>
-
-            <div className="fg-card p-5">
               <div className="mb-3">
                 <p className="text-xs uppercase tracking-[0.18em] text-[var(--fg-muted)]">Leaderboard</p>
                 <p className="mt-1 text-sm text-[var(--fg-muted)]">
-                  A little pressure helps. Protect your score and stay ahead of the pack.
+                  Protect your score and stay ahead of the pack. Every unlock spend can move your position.
                 </p>
               </div>
 
@@ -276,9 +322,108 @@ export default function Blocked(): React.JSX.Element {
                 ))}
               </div>
             </div>
+
+            <div className="fg-card p-5">
+              <p className="text-xs uppercase tracking-[0.18em] text-[var(--fg-muted)]">Temporary unlock</p>
+              <p className="mt-2 text-lg font-semibold tracking-[-0.03em] text-[var(--fg-text)]">
+                Spend points to peek at this site
+              </p>
+              <p className="mt-2 text-sm text-[var(--fg-muted)]">
+                Unlock {blockedHost ?? 'this site'} for {TEMP_UNLOCK_DURATION_MINUTES} minutes in this tab only.
+              </p>
+
+              {context?.unlock && unlockCountdown ? (
+                <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3">
+                  <p className="text-xs uppercase tracking-[0.16em] text-emerald-600">Unlock active</p>
+                  <p className="mt-1 text-3xl font-semibold tracking-[-0.03em] tabular-nums text-emerald-950">
+                    {unlockCountdown}
+                  </p>
+                  <p className="mt-1 text-sm text-emerald-800">
+                    This tab can browse freely until the timer ends, then Window will lock back in.
+                  </p>
+                </div>
+              ) : (
+                <div className="mt-4 space-y-4">
+                  <div className="rounded-2xl border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-4 py-3">
+                    <p className="text-xs uppercase tracking-[0.16em] text-[var(--fg-muted)]">Next unlock cost</p>
+                    <p className="mt-1 text-3xl font-semibold tracking-[-0.03em] text-[var(--fg-text)]">
+                      {context?.nextUnlockCost ?? 25} pts
+                    </p>
+                    <p className="mt-1 text-sm text-[var(--fg-muted)]">
+                      Costs rise each time you buy another unlock during the same focus block.
+                    </p>
+                  </div>
+
+                  {spendError && <p className="text-sm text-rose-600">{spendError}</p>}
+
+                  <button
+                    onClick={() => {
+                      if (currentTabIdRef.current === null) {
+                        setSpendError('Window could not resolve the blocked tab to unlock.');
+                        return;
+                      }
+
+                      setSpending(true);
+                      setSpendError(null);
+                      setUnlockSuccess(null);
+                      chrome.runtime.sendMessage(
+                        { type: 'SPEND_POINTS_UNLOCK', payload: { tabId: currentTabIdRef.current } },
+                        (response: UnlockSpendResponse | undefined) => {
+                          setSpending(false);
+
+                          if (!response?.ok || !response.redirectUrl) {
+                            setSpendError(response?.error ?? 'Unable to unlock this site.');
+                            loadState(currentTabIdRef.current);
+                            return;
+                          }
+
+                          setUnlockSuccess({
+                            cost: response.cost ?? context?.nextUnlockCost ?? 25,
+                            redirectUrl: response.redirectUrl,
+                            remainingPoints: response.remainingPoints,
+                          });
+                          loadState(currentTabIdRef.current);
+                          window.setTimeout(() => {
+                            window.location.assign(response.redirectUrl!);
+                          }, 1100);
+                        },
+                      );
+                    }}
+                    disabled={spending || !context?.canSpend}
+                    className="fg-button-primary w-full disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {spending
+                      ? 'Unlocking…'
+                      : context?.canSpend
+                        ? `Spend ${context?.nextUnlockCost ?? 25} points`
+                        : 'Not enough points'}
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </section>
       </div>
+    </div>
+  );
+}
+
+function StatusCard({
+  title,
+  body,
+  tone,
+}: {
+  title: string;
+  body: string;
+  tone: 'neutral' | 'error';
+}): React.JSX.Element {
+  return (
+    <div className="fg-card px-6 py-5">
+      <p className={`text-xs uppercase tracking-[0.16em] ${tone === 'error' ? 'text-rose-600' : 'text-[var(--fg-muted)]'}`}>
+        Window
+      </p>
+      <p className="mt-2 text-xl font-semibold tracking-[-0.03em] text-[var(--fg-text)]">{title}</p>
+      <p className="mt-2 text-sm leading-6 text-[var(--fg-muted)]">{body}</p>
     </div>
   );
 }
@@ -292,15 +437,6 @@ function StatPill({ label, value }: { label: string; value: string }): React.JSX
   );
 }
 
-function describeRuleSource(
-  source: 'event' | 'keyword' | 'none',
-  name: string | null,
-): string {
-  if (source === 'event' && name) return `Using Event Rule "${name}".`;
-  if (source === 'keyword' && name) return `Using keyword fallback "${name}".`;
-  return 'Browsing would normally stay open when no rule matches.';
-}
-
 function formatClock(iso: string): string {
   return new Date(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 }
@@ -312,24 +448,28 @@ function formatCountdown(expiresAt: string): string {
   return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 }
 
-function buildMockLeaderboard(points: number, currentUser: string, level: number): Array<{
-  rank: number;
-  name: string;
-  points: number;
-  level: number;
-  isCurrentUser: boolean;
-}> {
-  const sampleNames = ['Avery', 'Mina', 'Jonah', 'Priya', 'Mateo', 'Sora'];
-  const candidates = [
-    { name: sampleNames[0], points: points + 180, level: level + 2, isCurrentUser: false },
-    { name: sampleNames[1], points: points + 95, level: level + 1, isCurrentUser: false },
-    { name: sampleNames[2], points: points + 25, level, isCurrentUser: false },
-    { name: currentUser, points, level, isCurrentUser: true },
-    { name: sampleNames[3], points: Math.max(0, points - 40), level: Math.max(1, level - 1), isCurrentUser: false },
-    { name: sampleNames[4], points: Math.max(0, points - 110), level: Math.max(1, level - 1), isCurrentUser: false },
-  ];
+function isStateResponse(value: unknown): value is StateResponse {
+  if (!value || typeof value !== 'object') return false;
 
-  return candidates
-    .sort((a, b) => b.points - a.points)
-    .map((entry, index) => ({ ...entry, rank: index + 1 }));
+  const candidate = value as Partial<StateResponse>;
+  return Boolean(
+    candidate.settings &&
+      candidate.allTimeStats &&
+      candidate.calendarState &&
+      candidate.taskQueue &&
+      candidate.assistantOptions &&
+      candidate.ideaState &&
+      candidate.openClawState,
+  );
+}
+
+function isBlockedContextResponse(value: unknown): value is BlockedContextResponse {
+  if (!value || typeof value !== 'object') return false;
+
+  const candidate = value as Partial<BlockedContextResponse>;
+  return (
+    typeof candidate.ok === 'boolean' &&
+    typeof candidate.nextUnlockCost === 'number' &&
+    typeof candidate.canSpend === 'boolean'
+  );
 }

@@ -72,6 +72,7 @@ import {
   updateBlockingRules,
 } from './blocker';
 import { applyPointsToStats } from './levels';
+import { ensureDemoStatsSeeded } from './demoSeed';
 import { calculatePoints } from './points';
 import { activateSnooze, deactivateSnooze, isSnoozeActive } from './snooze';
 import { finalizeTrackedBreakVisits, registerTelemetryListeners } from './telemetry';
@@ -83,6 +84,7 @@ const pendingNavigationByTab = new Map<number, string>();
 
 chrome.runtime.onInstalled.addListener(() => {
   chrome.alarms.create(ALARM_TICK, { periodInMinutes: ALARM_TICK_PERIOD_MINUTES });
+  void ensureDemoStatsSeeded();
   void syncActionSurfaceBehavior();
   console.log('[Window] Installed — tick alarm scheduled.');
 });
@@ -95,6 +97,7 @@ chrome.alarms.get(ALARM_TICK, (alarm) => {
 
 registerTelemetryListeners();
 registerBlockingListeners();
+void ensureDemoStatsSeeded();
 void syncActionSurfaceBehavior();
 
 chrome.storage.onChanged.addListener((changes, areaName) => {
@@ -167,7 +170,7 @@ async function handleMessage(
       return buildStateResponse();
 
     case 'GET_BLOCKED_TAB_CONTEXT':
-      return getBlockedTabContext(sender);
+      return getBlockedTabContext(sender, message);
 
     case 'GET_CALENDAR_EVENTS_RANGE':
       return getCalendarEventsRange(message);
@@ -191,7 +194,7 @@ async function handleMessage(
       return handleSnooze(message);
 
     case 'SPEND_POINTS_UNLOCK':
-      return spendPointsForTemporaryUnlock(sender);
+      return spendPointsForTemporaryUnlock(sender, message);
 
     case 'SUBMIT_IDEA':
       return handleIdeaSubmission(message);
@@ -236,6 +239,8 @@ async function handleMessage(
 // ─── State builder ────────────────────────────────────────────────────────────
 
 async function buildStateResponse(): Promise<StateResponse> {
+  await ensureDemoStatsSeeded();
+
   const [
     settings,
     taskQueue,
@@ -421,23 +426,40 @@ async function applyBlockingState(calendarState: CalendarState): Promise<void> {
 
 // ─── Blocked page + unlock handling ──────────────────────────────────────────
 
-async function getBlockedTabContext(
+export function resolveRequestedTabId(
   sender: chrome.runtime.MessageSender,
+  payload?: { tabId?: number },
+): number | null {
+  if (typeof payload?.tabId === 'number' && payload.tabId >= 0) {
+    return payload.tabId;
+  }
+
+  return sender.tab?.id ?? null;
+}
+
+export async function getBlockedTabContext(
+  sender: chrome.runtime.MessageSender,
+  message?: Message,
 ): Promise<{
   ok: boolean;
   blockedTab: BlockedTabState | null;
   unlock: TemporaryUnlockState | null;
   nextUnlockCost: number;
   canSpend: boolean;
+  error?: string;
 }> {
-  const tabId = sender.tab?.id;
-  if (!tabId) {
+  const tabId = resolveRequestedTabId(
+    sender,
+    (message?.payload as { tabId?: number } | undefined) ?? undefined,
+  );
+  if (tabId === null) {
     return {
       ok: false,
       blockedTab: null,
       unlock: null,
       nextUnlockCost: TEMP_UNLOCK_BASE_COST,
       canSpend: false,
+      error: 'Blocked tab context is unavailable for this page.',
     };
   }
 
@@ -458,11 +480,21 @@ async function getBlockedTabContext(
   };
 }
 
-async function spendPointsForTemporaryUnlock(
+export async function spendPointsForTemporaryUnlock(
   sender: chrome.runtime.MessageSender,
-): Promise<{ ok: boolean; error?: string; cost?: number }> {
-  const tabId = sender.tab?.id;
-  if (!tabId) {
+  message?: Message,
+): Promise<{
+  ok: boolean;
+  error?: string;
+  cost?: number;
+  redirectUrl?: string;
+  remainingPoints?: number;
+}> {
+  const tabId = resolveRequestedTabId(
+    sender,
+    (message?.payload as { tabId?: number } | undefined) ?? undefined,
+  );
+  if (tabId === null) {
     return { ok: false, error: 'Blocked tab not found.' };
   }
 
@@ -483,7 +515,7 @@ async function spendPointsForTemporaryUnlock(
     return { ok: false, error: `You need ${cost} points for a temporary unlock.` };
   }
 
-  await applyPointDelta(-cost, { completedTasksDelta: 0 });
+  const updatedStats = await applyPointDelta(-cost, { completedTasksDelta: 0 });
 
   const activeEventKey = getActiveEventKey(calendarState, blockedTab);
   const spendState = await getUnlockSpendState();
@@ -511,10 +543,14 @@ async function spendPointsForTemporaryUnlock(
     setTemporaryUnlocks(nextUnlocks),
     setBlockedTabs(nextBlockedTabs),
     syncTemporaryUnlockRules(nextUnlocks),
-    chrome.tabs.update(tabId, { url: blockedTab.originalUrl }),
   ]);
 
-  return { ok: true, cost };
+  return {
+    ok: true,
+    cost,
+    redirectUrl: blockedTab.originalUrl,
+    remainingPoints: updatedStats.totalPoints,
+  };
 }
 
 async function cleanupExpiredTemporaryUnlocks(
@@ -778,7 +814,7 @@ function canMarkDone(task: Task): { allowed: boolean; reason?: string } {
 async function applyPointDelta(
   delta: number,
   options: { completedTasksDelta: number },
-): Promise<void> {
+): Promise<Awaited<ReturnType<typeof getAllTimeStats>>> {
   const [allTimeStats, history] = await Promise.all([
     getAllTimeStats(),
     getPointsHistory(),
@@ -826,6 +862,8 @@ async function applyPointDelta(
       message: `You reached Level ${nextStats.level}: ${nextStats.title}`,
     });
   }
+
+  return nextStats;
 }
 
 function countCurrentWeekStreak(

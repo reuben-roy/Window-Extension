@@ -31,60 +31,53 @@ export default function TaskQueue({ tasks }: Props): React.JSX.Element | null {
       : `${active.length} active task${active.length === 1 ? '' : 's'}`;
 
   return (
-    <div className="rounded-xl border border-orange-200 bg-orange-50 overflow-hidden">
-      {/* Header / toggle */}
+    <div className="overflow-hidden rounded-2xl border border-violet-100 bg-violet-50/70">
       <button
-        className="w-full px-3 py-2 flex items-center justify-between text-left"
+        className="flex w-full items-center justify-between px-3 py-2 text-left"
         onClick={() => setExpanded((v) => !v)}
         aria-expanded={expanded}
       >
-        <span className="text-xs font-semibold text-orange-700">{headerText}</span>
-        <span className="text-[10px] font-medium text-orange-400">
+        <span className="text-xs font-semibold text-violet-700">{headerText}</span>
+        <span className="text-[10px] font-medium text-violet-400">
           {expanded ? 'hide ▲' : 'show ▼'}
         </span>
       </button>
 
-      {/* Task list */}
       {expanded && (
-        <ul className="px-3 pb-3 space-y-2.5 border-t border-orange-100 pt-2.5">
+        <ul className="space-y-2.5 border-t border-violet-100 px-3 pb-3 pt-2.5">
           {pending.map((task) => {
             const daysLeft = task.expiresAt ? daysUntilExpiry(task.expiresAt) : null;
             const isUrgent = daysLeft !== null && daysLeft <= 2;
 
             return (
               <li key={task.id}>
-                {/* Title row */}
                 <div className="flex items-start justify-between gap-2">
-                  <p className="text-xs font-semibold text-orange-900 leading-snug truncate">
+                  <p className="truncate text-xs font-semibold leading-snug text-slate-900">
                     {task.eventTitle}
                   </p>
                   {task.status === 'carryover' && (
-                    <span className="flex-shrink-0 text-[10px] px-1.5 py-0.5 bg-orange-200 text-orange-700 rounded font-medium">
+                    <span className="flex-shrink-0 rounded bg-violet-200 px-1.5 py-0.5 text-[10px] font-medium text-violet-700">
                       carryover
                     </span>
                   )}
                 </div>
 
-                {/* Meta row */}
                 <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                  {/* Profile */}
-                  <span className="text-[10px] text-orange-500 bg-orange-100 px-1.5 py-0.5 rounded-full">
+                  <span className="rounded-full bg-white px-1.5 py-0.5 text-[10px] text-violet-600">
                     {task.profile}
                   </span>
 
-                  {/* Scheduled date */}
-                  <span className="text-[10px] text-orange-400">
+                  <span className="text-[10px] text-[var(--fg-muted)]">
                     {formatScheduledDate(task.scheduledStart)}
                   </span>
 
-                  {/* Expiry countdown */}
                   {daysLeft !== null && (
                     <span
                       className={`text-[10px] font-medium ${
-                        isUrgent ? 'text-red-500' : 'text-orange-400'
+                        isUrgent ? 'text-rose-500' : 'text-[var(--fg-muted)]'
                       }`}
                     >
-                      {isUrgent ? `⚠ expires in ${daysLeft}d` : `expires in ${daysLeft}d`}
+                      {isUrgent ? `urgent · ${daysLeft}d left` : `expires in ${daysLeft}d`}
                     </span>
                   )}
                 </div>

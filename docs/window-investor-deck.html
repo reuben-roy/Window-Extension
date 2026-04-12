@@ -1,0 +1,1273 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Window Investor Deck</title>
+    <style>
+      :root {
+        --bg: #f5efe4;
+        --paper: #fbf7ef;
+        --ink: #18222f;
+        --muted: #5a6474;
+        --line: rgba(24, 34, 47, 0.14);
+        --blue: #2a6df4;
+        --amber: #cf7b1f;
+        --green: #177a63;
+        --rose: #c85d64;
+        --shadow: 0 32px 80px rgba(24, 34, 47, 0.12);
+        --serif: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Palatino, Georgia, serif;
+        --sans: "Avenir Next", "Segoe UI", "Helvetica Neue", Helvetica, Arial, sans-serif;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html {
+        scroll-behavior: smooth;
+      }
+
+      body {
+        margin: 0;
+        font-family: var(--sans);
+        color: var(--ink);
+        background:
+          radial-gradient(circle at top left, rgba(42, 109, 244, 0.14), transparent 28%),
+          radial-gradient(circle at top right, rgba(207, 123, 31, 0.14), transparent 24%),
+          linear-gradient(180deg, #f7f0e5 0%, #efe5d3 100%);
+      }
+
+      body::before {
+        content: "";
+        position: fixed;
+        inset: 0;
+        pointer-events: none;
+        background-image:
+          linear-gradient(rgba(24, 34, 47, 0.03) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(24, 34, 47, 0.03) 1px, transparent 1px);
+        background-size: 40px 40px;
+        mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.55), transparent 90%);
+      }
+
+      .deck {
+        width: min(96vw, 1400px);
+        margin: 40px auto 80px;
+        display: grid;
+        gap: 32px;
+      }
+
+      .slide {
+        position: relative;
+        width: 100%;
+        aspect-ratio: 16 / 9;
+        min-height: 720px;
+        padding: 44px;
+        border: 1px solid var(--line);
+        border-radius: 30px;
+        overflow: hidden;
+        background:
+          linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(251, 247, 239, 0.98)),
+          var(--paper);
+        box-shadow: var(--shadow);
+      }
+
+      .slide::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        background:
+          radial-gradient(circle at 85% 12%, rgba(42, 109, 244, 0.08), transparent 18%),
+          radial-gradient(circle at 10% 90%, rgba(23, 122, 99, 0.08), transparent 20%);
+      }
+
+      .slide > * {
+        position: relative;
+        z-index: 1;
+      }
+
+      .eyebrow {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 14px;
+        border-radius: 999px;
+        border: 1px solid var(--line);
+        background: rgba(255, 255, 255, 0.72);
+        font-size: 12px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+
+      .eyebrow::before {
+        content: "";
+        width: 8px;
+        height: 8px;
+        border-radius: 999px;
+        background: var(--blue);
+      }
+
+      h1,
+      h2 {
+        margin: 16px 0 14px;
+        font-family: var(--serif);
+        line-height: 0.96;
+        letter-spacing: -0.04em;
+      }
+
+      h1 {
+        font-size: clamp(64px, 7vw, 108px);
+      }
+
+      h2 {
+        font-size: clamp(40px, 4vw, 64px);
+      }
+
+      p,
+      li,
+      td,
+      th {
+        font-size: 18px;
+        line-height: 1.5;
+      }
+
+      p {
+        margin: 0;
+        color: var(--muted);
+      }
+
+      ul {
+        margin: 0;
+        padding-left: 22px;
+      }
+
+      .lede {
+        max-width: 720px;
+        font-size: 22px;
+        line-height: 1.45;
+        color: var(--ink);
+      }
+
+      .muted {
+        color: var(--muted);
+      }
+
+      .accent {
+        color: var(--blue);
+      }
+
+      .accent-amber {
+        color: var(--amber);
+      }
+
+      .accent-green {
+        color: var(--green);
+      }
+
+      .grid-2,
+      .grid-3,
+      .grid-4 {
+        display: grid;
+        gap: 18px;
+      }
+
+      .grid-2 {
+        grid-template-columns: 1.15fr 0.85fr;
+      }
+
+      .grid-3 {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+
+      .grid-4 {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+      }
+
+      .card,
+      .metric,
+      .quote,
+      .stage,
+      .browser,
+      .pricing-card {
+        border: 1px solid var(--line);
+        border-radius: 24px;
+        background: rgba(255, 255, 255, 0.84);
+        box-shadow: 0 14px 40px rgba(24, 34, 47, 0.06);
+      }
+
+      .card,
+      .metric,
+      .quote,
+      .stage,
+      .pricing-card {
+        padding: 22px;
+      }
+
+      .card h3,
+      .metric h3,
+      .stage h3,
+      .pricing-card h3 {
+        margin: 0 0 10px;
+        font-size: 20px;
+        line-height: 1.25;
+      }
+
+      .metric-value {
+        font-family: var(--serif);
+        font-size: 52px;
+        line-height: 1;
+        margin-bottom: 8px;
+        color: var(--ink);
+      }
+
+      .pill-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+      }
+
+      .pill {
+        padding: 8px 12px;
+        border-radius: 999px;
+        background: rgba(42, 109, 244, 0.08);
+        color: var(--blue);
+        font-size: 14px;
+        font-weight: 600;
+      }
+
+      .browser {
+        padding: 0;
+        overflow: hidden;
+      }
+
+      .browser-bar {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 14px 18px;
+        border-bottom: 1px solid var(--line);
+        background: #fff9f1;
+      }
+
+      .dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: rgba(24, 34, 47, 0.16);
+      }
+
+      .url {
+        margin-left: 8px;
+        padding: 7px 12px;
+        border-radius: 999px;
+        background: rgba(24, 34, 47, 0.06);
+        font-size: 14px;
+        color: var(--muted);
+      }
+
+      .browser-body {
+        padding: 24px;
+        display: grid;
+        gap: 18px;
+      }
+
+      .timeline {
+        display: grid;
+        gap: 14px;
+      }
+
+      .timeline-row {
+        display: grid;
+        grid-template-columns: 124px 1fr;
+        align-items: center;
+        gap: 14px;
+      }
+
+      .timeline-label {
+        font-size: 14px;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+
+      .timeline-bar {
+        position: relative;
+        display: grid;
+        grid-template-columns: repeat(12, 1fr);
+        gap: 6px;
+      }
+
+      .timeline-bar span {
+        height: 22px;
+        border-radius: 999px;
+        background: rgba(24, 34, 47, 0.08);
+      }
+
+      .timeline-bar .blue {
+        background: rgba(42, 109, 244, 0.8);
+      }
+
+      .timeline-bar .amber {
+        background: rgba(207, 123, 31, 0.78);
+      }
+
+      .timeline-bar .green {
+        background: rgba(23, 122, 99, 0.8);
+      }
+
+      .timeline-bar .rose {
+        background: rgba(200, 93, 100, 0.76);
+      }
+
+      .steps {
+        display: grid;
+        gap: 14px;
+      }
+
+      .step {
+        display: grid;
+        grid-template-columns: 44px 1fr;
+        gap: 14px;
+        align-items: start;
+      }
+
+      .step-index {
+        display: grid;
+        place-items: center;
+        width: 44px;
+        height: 44px;
+        border-radius: 16px;
+        background: var(--ink);
+        color: #fff;
+        font-weight: 700;
+      }
+
+      .segment-stack {
+        display: grid;
+        gap: 14px;
+        align-content: start;
+      }
+
+      .segment-tag {
+        display: inline-block;
+        margin-bottom: 10px;
+        padding: 6px 10px;
+        border-radius: 999px;
+        font-size: 13px;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .tag-blue {
+        background: rgba(42, 109, 244, 0.1);
+        color: var(--blue);
+      }
+
+      .tag-amber {
+        background: rgba(207, 123, 31, 0.12);
+        color: var(--amber);
+      }
+
+      .tag-green {
+        background: rgba(23, 122, 99, 0.12);
+        color: var(--green);
+      }
+
+      .tag-rose {
+        background: rgba(200, 93, 100, 0.12);
+        color: var(--rose);
+      }
+
+      .matrix {
+        width: 100%;
+        border-collapse: collapse;
+        overflow: hidden;
+        border-radius: 20px;
+      }
+
+      .matrix th,
+      .matrix td {
+        padding: 14px 16px;
+        text-align: left;
+        border-bottom: 1px solid var(--line);
+        vertical-align: top;
+      }
+
+      .matrix th {
+        font-size: 14px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--muted);
+        background: rgba(24, 34, 47, 0.04);
+      }
+
+      .matrix tr:last-child td {
+        border-bottom: none;
+      }
+
+      .pricing-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 18px;
+      }
+
+      .pricing-card.featured {
+        background:
+          linear-gradient(180deg, rgba(42, 109, 244, 0.11), rgba(255, 255, 255, 0.88));
+        border-color: rgba(42, 109, 244, 0.22);
+      }
+
+      .price {
+        margin: 8px 0 10px;
+        font-family: var(--serif);
+        font-size: 52px;
+        line-height: 1;
+      }
+
+      .price small {
+        font-size: 18px;
+        color: var(--muted);
+      }
+
+      .footer {
+        position: absolute;
+        left: 44px;
+        right: 44px;
+        bottom: 28px;
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+        gap: 12px;
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .footer a {
+        color: inherit;
+      }
+
+      .quote {
+        padding: 28px;
+      }
+
+      .quote-text {
+        font-family: var(--serif);
+        font-size: 34px;
+        line-height: 1.18;
+        letter-spacing: -0.03em;
+        color: var(--ink);
+      }
+
+      .quote-meta {
+        margin-top: 14px;
+        font-size: 14px;
+        color: var(--muted);
+      }
+
+      .stair {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 14px;
+        align-items: end;
+      }
+
+      .stair .stage {
+        min-height: 160px;
+      }
+
+      .stage-1 {
+        min-height: 150px;
+      }
+
+      .stage-2 {
+        min-height: 220px;
+      }
+
+      .stage-3 {
+        min-height: 290px;
+      }
+
+      .stage-4 {
+        min-height: 360px;
+      }
+
+      .small {
+        font-size: 14px;
+      }
+
+      .title-lockup {
+        display: grid;
+        gap: 16px;
+        align-content: start;
+        height: 100%;
+      }
+
+      .cover-grid {
+        display: grid;
+        grid-template-columns: 1.1fr 0.9fr;
+        gap: 22px;
+        height: calc(100% - 72px);
+        align-items: stretch;
+      }
+
+      .focus-shell {
+        position: relative;
+        padding: 30px;
+        border-radius: 28px;
+        border: 1px solid var(--line);
+        background:
+          linear-gradient(160deg, rgba(255, 255, 255, 0.92), rgba(242, 238, 228, 0.96));
+        overflow: hidden;
+      }
+
+      .focus-shell::before {
+        content: "";
+        position: absolute;
+        width: 320px;
+        height: 320px;
+        right: -90px;
+        top: -60px;
+        border-radius: 50%;
+        background: radial-gradient(circle, rgba(42, 109, 244, 0.28), transparent 70%);
+      }
+
+      .focus-shell::after {
+        content: "";
+        position: absolute;
+        width: 240px;
+        height: 240px;
+        left: -40px;
+        bottom: -80px;
+        border-radius: 50%;
+        background: radial-gradient(circle, rgba(207, 123, 31, 0.24), transparent 70%);
+      }
+
+      .focus-panel {
+        position: relative;
+        z-index: 1;
+        display: grid;
+        gap: 16px;
+      }
+
+      .status-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+      }
+
+      .status-pill {
+        padding: 10px 14px;
+        border-radius: 16px;
+        font-size: 14px;
+        font-weight: 700;
+      }
+
+      .status-pill.blue {
+        background: rgba(42, 109, 244, 0.12);
+        color: var(--blue);
+      }
+
+      .status-pill.green {
+        background: rgba(23, 122, 99, 0.12);
+        color: var(--green);
+      }
+
+      .status-pill.amber {
+        background: rgba(207, 123, 31, 0.12);
+        color: var(--amber);
+      }
+
+      .stage-arrow {
+        font-size: 26px;
+        line-height: 1;
+        color: rgba(24, 34, 47, 0.28);
+      }
+
+      a {
+        color: var(--blue);
+      }
+
+      .animate-in {
+        animation: rise 700ms ease both;
+      }
+
+      .animate-in.delay-1 {
+        animation-delay: 80ms;
+      }
+
+      .animate-in.delay-2 {
+        animation-delay: 160ms;
+      }
+
+      .animate-in.delay-3 {
+        animation-delay: 240ms;
+      }
+
+      @keyframes rise {
+        from {
+          transform: translateY(18px);
+          opacity: 0;
+        }
+        to {
+          transform: translateY(0);
+          opacity: 1;
+        }
+      }
+
+      @media (max-width: 1120px) {
+        .slide {
+          aspect-ratio: auto;
+          min-height: 0;
+        }
+
+        .grid-2,
+        .grid-3,
+        .grid-4,
+        .cover-grid,
+        .pricing-grid,
+        .stair {
+          grid-template-columns: 1fr;
+        }
+
+        .timeline-row {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      @media print {
+        body {
+          background: #fff;
+        }
+
+        body::before {
+          display: none;
+        }
+
+        .deck {
+          width: 100%;
+          margin: 0;
+          gap: 0;
+        }
+
+        .slide {
+          border: none;
+          border-radius: 0;
+          box-shadow: none;
+          page-break-after: always;
+          break-after: page;
+          min-height: 0;
+          width: 100%;
+          height: 100vh;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="deck">
+      <section class="slide">
+        <div class="eyebrow animate-in">Investor deck - prototype stage</div>
+        <div class="cover-grid">
+          <div class="title-lockup">
+            <div>
+              <h1 class="animate-in delay-1">Window</h1>
+              <p class="lede animate-in delay-2">
+                Protect deep work without losing ideas.
+              </p>
+            </div>
+            <div class="quote animate-in delay-3">
+              <div class="quote-text">
+                Focus infrastructure for ambitious people working in the browser.
+              </div>
+              <div class="quote-meta">
+                Calendar-aware blocking + async idea capture + a path to a broader productivity OS.
+              </div>
+            </div>
+          </div>
+          <div class="focus-shell animate-in delay-2">
+            <div class="focus-panel">
+              <div class="status-row">
+                <div class="status-pill blue">Google Calendar connected</div>
+                <div class="status-pill green">Blocking active</div>
+              </div>
+              <div class="browser">
+                <div class="browser-bar">
+                  <span class="dot"></span>
+                  <span class="dot"></span>
+                  <span class="dot"></span>
+                  <span class="url">Deep Work - 2:00 PM to 4:00 PM</span>
+                </div>
+                <div class="browser-body">
+                  <div class="metric">
+                    <h3>Allowed now</h3>
+                    <div class="pill-row">
+                      <span class="pill">github.com</span>
+                      <span class="pill">docs.google.com</span>
+                      <span class="pill">linear.app</span>
+                    </div>
+                  </div>
+                  <div class="metric">
+                    <h3>Blocked now</h3>
+                    <div class="pill-row">
+                      <span class="pill">youtube.com</span>
+                      <span class="pill">x.com</span>
+                      <span class="pill">reddit.com</span>
+                    </div>
+                  </div>
+                  <div class="metric">
+                    <h3>Idea queue</h3>
+                    <p>
+                      "Research an AI workflow for customer onboarding" captured and processing in the background.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="footer">
+          <span>1 / 12</span>
+          <span>Window starts where attention is won or lost: inside the browser.</span>
+        </div>
+      </section>
+
+      <section class="slide">
+        <div class="eyebrow">The problem</div>
+        <div class="grid-2" style="margin-top: 16px;">
+          <div style="display: grid; gap: 18px; align-content: start;">
+            <h2>Dreams rarely die in one moment. They erode through tiny context switches.</h2>
+            <p class="lede">
+              The founder tracked his own work patterns for 90 days and found the same pattern most ambitious people feel but cannot measure: attention fragments faster than progress compounds.
+            </p>
+            <div class="grid-3">
+              <div class="card animate-in">
+                <h3>Browser work is interruption-heavy</h3>
+                <p>Work, communication, research, and distraction live in the same interface.</p>
+              </div>
+              <div class="card animate-in delay-1">
+                <h3>Existing tools split the workflow</h3>
+                <p>Blockers stop sites. Note apps store ideas. Planners rearrange calendars. None protect the whole loop.</p>
+              </div>
+              <div class="card animate-in delay-2">
+                <h3>Good ideas become bad interruptions</h3>
+                <p>Users either chase the idea and lose focus, or ignore it and lose the idea.</p>
+              </div>
+            </div>
+          </div>
+          <div class="card">
+            <h3>Illustrative reconstruction from the founder's 90-day self-tracking</h3>
+            <p class="small" style="margin-bottom: 18px;">
+              The point is not exact percentages. The point is how often attention splinters across parallel threads before real work gets finished.
+            </p>
+            <div class="timeline">
+              <div class="timeline-row">
+                <div class="timeline-label">Primary build</div>
+                <div class="timeline-bar">
+                  <span class="blue"></span><span class="blue"></span><span class="amber"></span><span class="blue"></span><span class="rose"></span><span class="green"></span><span class="blue"></span><span class="amber"></span><span class="blue"></span><span class="rose"></span><span class="green"></span><span class="blue"></span>
+                </div>
+              </div>
+              <div class="timeline-row">
+                <div class="timeline-label">Research drift</div>
+                <div class="timeline-bar">
+                  <span></span><span class="amber"></span><span class="amber"></span><span></span><span class="amber"></span><span class="amber"></span><span></span><span class="amber"></span><span class="amber"></span><span></span><span class="amber"></span><span></span>
+                </div>
+              </div>
+              <div class="timeline-row">
+                <div class="timeline-label">New ideas</div>
+                <div class="timeline-bar">
+                  <span></span><span></span><span class="rose"></span><span></span><span class="rose"></span><span></span><span class="rose"></span><span></span><span></span><span class="rose"></span><span></span><span class="rose"></span>
+                </div>
+              </div>
+              <div class="timeline-row">
+                <div class="timeline-label">Admin / context switching</div>
+                <div class="timeline-bar">
+                  <span class="green"></span><span></span><span></span><span class="green"></span><span></span><span></span><span class="green"></span><span></span><span></span><span class="green"></span><span></span><span></span>
+                </div>
+              </div>
+            </div>
+            <div class="quote" style="margin-top: 20px;">
+              <div class="quote-text" style="font-size: 28px;">
+                Attention was not absent. It was over-allocated.
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="footer">
+          <span>2 / 12</span>
+          <span>Founder insight: the real enemy is fragmented attention, not lack of ambition.</span>
+        </div>
+      </section>
+
+      <section class="slide">
+        <div class="eyebrow">Why now</div>
+        <h2>Three shifts make this category newly winnable.</h2>
+        <div class="grid-3" style="margin-top: 20px;">
+          <div class="metric animate-in">
+            <div class="metric-value">01</div>
+            <h3>Work collapsed into the browser</h3>
+            <p>Knowledge work now happens across docs, GitHub, chat, research, and admin in a single tabbed environment.</p>
+          </div>
+          <div class="metric animate-in delay-1">
+            <div class="metric-value">02</div>
+            <h3>AI can process ideas asynchronously</h3>
+            <p>Users no longer need to break focus to evaluate every thought immediately. Good ideas can wait without being lost.</p>
+          </div>
+          <div class="metric animate-in delay-2">
+            <div class="metric-value">03</div>
+            <h3>Mainstream users will not self-host complexity</h3>
+            <p>Automation stacks and local agents are powerful, but setup friction still blocks broad adoption. The browser is a lower-friction wedge.</p>
+          </div>
+        </div>
+        <div class="quote" style="margin-top: 22px;">
+          <div class="quote-text">
+            The gap in the market is between blockers that only say "no" and AI work suites that never touch the moment of distraction.
+          </div>
+          <div class="quote-meta">
+            Window is designed to own that moment.
+          </div>
+        </div>
+        <div class="footer">
+          <span>3 / 12</span>
+          <span>Now is the right moment for a browser-native execution layer.</span>
+        </div>
+      </section>
+
+      <section class="slide">
+        <div class="eyebrow">Product</div>
+        <div class="grid-2" style="margin-top: 16px;">
+          <div style="display: grid; gap: 18px; align-content: start;">
+            <h2>Window turns a calendar block into a protected work environment.</h2>
+            <p class="lede">
+              Connect Google Calendar. When a focus event starts, Window allows only the sites relevant to that event and blocks everything else.
+            </p>
+            <div class="steps">
+              <div class="step">
+                <div class="step-index">1</div>
+                <div class="card">
+                  <h3>Read the current event</h3>
+                  <p>Window syncs with Google Calendar and resolves the active task in real time.</p>
+                </div>
+              </div>
+              <div class="step">
+                <div class="step-index">2</div>
+                <div class="card">
+                  <h3>Apply the right allowlist</h3>
+                  <p>Each event or keyword can map to a specific set of allowed domains, not a single global blocklist.</p>
+                </div>
+              </div>
+              <div class="step">
+                <div class="step-index">3</div>
+                <div class="card">
+                  <h3>Handle breaks intentionally</h3>
+                  <p>Users can take a short 5, 10, or 15 minute break without disabling the whole system.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="browser">
+            <div class="browser-bar">
+              <span class="dot"></span>
+              <span class="dot"></span>
+              <span class="dot"></span>
+              <span class="url">Window dashboard</span>
+            </div>
+            <div class="browser-body">
+              <div class="metric">
+                <h3>Active event</h3>
+                <div class="metric-value" style="font-size: 36px;">Deep Work</div>
+                <p>1h 26m remaining</p>
+              </div>
+              <div class="card">
+                <h3>Allowed domains</h3>
+                <div class="pill-row">
+                  <span class="pill">github.com</span>
+                  <span class="pill">claude.ai</span>
+                  <span class="pill">docs.google.com</span>
+                  <span class="pill">linear.app</span>
+                </div>
+              </div>
+              <div class="grid-2" style="grid-template-columns: 1fr 1fr;">
+                <div class="metric">
+                  <h3>Breaks</h3>
+                  <p>5 / 10 / 15 minute windows</p>
+                </div>
+                <div class="metric">
+                  <h3>Progress loop</h3>
+                  <p>Task completion and points encourage consistency.</p>
+                </div>
+              </div>
+              <div class="card">
+                <h3>Current status</h3>
+                <p>Window is already built as a working browser extension with backend scaffolding for assistant features.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="footer">
+          <span>4 / 12</span>
+          <span>Current product: real extension, prototype stage, clear user value on day one.</span>
+        </div>
+      </section>
+
+      <section class="slide">
+        <div class="eyebrow">Magic moment</div>
+        <div class="grid-2" style="margin-top: 16px; grid-template-columns: 0.95fr 1.05fr;">
+          <div style="display: grid; gap: 18px; align-content: start;">
+            <h2>The breakthrough is not just blocking distraction. It is preserving valuable interruption.</h2>
+            <p class="lede">
+              Mid-session, users often get a genuinely useful idea. Window captures it in one sentence, processes it in the background, and gives the answer back later.
+            </p>
+            <div class="quote">
+              <div class="quote-text" style="font-size: 28px;">
+                "Should we build an AI workflow for onboarding new customers?"
+              </div>
+              <div class="quote-meta">
+                Capture now. Evaluate later. Keep focus intact.
+              </div>
+            </div>
+          </div>
+          <div class="steps">
+            <div class="step animate-in">
+              <div class="step-index">1</div>
+              <div class="card">
+                <h3>User stays in the current work session</h3>
+                <p>The extension popup remains available even while unrelated sites are blocked.</p>
+              </div>
+            </div>
+            <div class="step animate-in delay-1">
+              <div class="step-index">2</div>
+              <div class="card">
+                <h3>Idea is queued immediately</h3>
+                <p>Window stores the prompt, syncs it to the backend, and starts background evaluation.</p>
+              </div>
+            </div>
+            <div class="step animate-in delay-2">
+              <div class="step-index">3</div>
+              <div class="card">
+                <h3>Research happens off the critical path</h3>
+                <p>A worker and assistant layer prepare a later report without hijacking the current task.</p>
+              </div>
+            </div>
+            <div class="step animate-in delay-3">
+              <div class="step-index">4</div>
+              <div class="card">
+                <h3>The answer returns after focus is done</h3>
+                <p>Window can summarize viability, competition, effort, risks, and next steps when the user is ready.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="footer">
+          <span>5 / 12</span>
+          <span>Window solves the core tension: stay focused without letting ideas disappear.</span>
+        </div>
+      </section>
+
+      <section class="slide">
+        <div class="eyebrow">Market</div>
+        <h2>Start with the people who feel this pain most sharply, then expand outward.</h2>
+        <div class="stair" style="margin-top: 22px;">
+          <div class="stage stage-1 animate-in">
+            <span class="segment-tag tag-blue">Beachhead</span>
+            <h3>Solo builders</h3>
+            <p>Founders, indie hackers, creators, and engineers who already schedule deep work and actively want better control over attention.</p>
+          </div>
+          <div class="stage stage-2 animate-in delay-1">
+            <span class="segment-tag tag-amber">Expansion</span>
+            <h3>High-output professionals</h3>
+            <p>Freelancers, consultants, students in serious skill-building phases, and knowledge workers who live in the browser all day.</p>
+          </div>
+          <div class="stage stage-3 animate-in delay-2">
+            <span class="segment-tag tag-green">Team wedge</span>
+            <h3>Startup teams and consultancies</h3>
+            <p>Bottom-up entry through power users, then expansion into shared rules, pooled AI usage, onboarding, and reporting.</p>
+          </div>
+          <div class="stage stage-4 animate-in delay-3">
+            <span class="segment-tag tag-rose">Longer term</span>
+            <h3>Enterprise and privacy-first orgs</h3>
+            <p>Once admin controls and local-model options mature, Window can serve stricter security and compliance environments.</p>
+          </div>
+        </div>
+        <div class="quote" style="margin-top: 22px;">
+          <div class="quote-text" style="font-size: 30px;">
+            This is not a generic "everyone gets distracted" product. The beachhead is ambitious people already trying to protect deep work.
+          </div>
+        </div>
+        <div class="footer">
+          <span>6 / 12</span>
+          <span>Beachhead first: solo builders. Teams come through bottom-up pull, not top-down first.</span>
+        </div>
+      </section>
+
+      <section class="slide">
+        <div class="eyebrow">Competition</div>
+        <div class="grid-2" style="margin-top: 16px; grid-template-columns: 1.06fr 0.94fr;">
+          <div>
+            <h2>Window sits between blockers, trackers, and AI planners.</h2>
+            <table class="matrix card" style="padding: 0;">
+              <thead>
+                <tr>
+                  <th>Category</th>
+                  <th>What they do well</th>
+                  <th>Where Window is different</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><strong>Freedom / Cold Turkey / Opal</strong></td>
+                  <td>Strong enforcement and habit interruption.</td>
+                  <td>Window adds calendar-aware context, event-specific site access, and idea capture inside the same flow.</td>
+                </tr>
+                <tr>
+                  <td><strong>RescueTime / Rize</strong></td>
+                  <td>Strong measurement, reports, and retrospective visibility.</td>
+                  <td>Window is designed to intervene in the moment, not only explain behavior after the fact.</td>
+                </tr>
+                <tr>
+                  <td><strong>Motion</strong></td>
+                  <td>Strong AI planning and scheduling.</td>
+                  <td>Window controls browser behavior during execution and preserves new ideas without breaking the session.</td>
+                </tr>
+                <tr>
+                  <td><strong>Window</strong></td>
+                  <td>Browser-native focus control + async idea preservation.</td>
+                  <td>The execution layer between planning work and actually doing it.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="segment-stack">
+            <div class="card animate-in">
+              <span class="segment-tag tag-blue">Category strategy</span>
+              <h3>Do not compete for "strictest blocker"</h3>
+              <p>That is a feature fight with low pricing power. Window wins by becoming more context-aware and more useful during real work.</p>
+            </div>
+            <div class="card animate-in delay-1">
+              <span class="segment-tag tag-amber">Positioning</span>
+              <h3>Own the browser moment</h3>
+              <p>Window connects schedule, access, idea capture, and later automation in the exact place where context switching happens.</p>
+            </div>
+            <div class="card animate-in delay-2">
+              <span class="segment-tag tag-green">Outcome</span>
+              <h3>Protect output, not just screen time</h3>
+              <p>Investors should read this as a higher-value execution product, not a commodity digital wellbeing app.</p>
+            </div>
+          </div>
+        </div>
+        <div class="footer">
+          <span>7 / 12</span>
+          <span>Window is the bridge between focus enforcement and useful AI assistance.</span>
+        </div>
+      </section>
+
+      <section class="slide">
+        <div class="eyebrow">Competitive strategy</div>
+        <h2>Win with precision, low friction, and a compounding product loop.</h2>
+        <div class="grid-4" style="margin-top: 20px;">
+          <div class="card animate-in">
+            <h3>1. Calendar precision</h3>
+            <p>Let the user's actual schedule define what should be accessible, rather than forcing one static blocklist across every task.</p>
+          </div>
+          <div class="card animate-in delay-1">
+            <h3>2. Browser-native UX</h3>
+            <p>One install in the Chrome Web Store beats provisioning servers, self-hosting agents, and wrangling infrastructure before value appears.</p>
+          </div>
+          <div class="card animate-in delay-2">
+            <h3>3. Assistant wedge</h3>
+            <p>Idea capture creates a second product loop and raises willingness to pay beyond what a blocker alone can command.</p>
+          </div>
+          <div class="card animate-in delay-3">
+            <h3>4. Expansion optionality</h3>
+            <p>Future analytics, automation, privacy-first local models, and team controls deepen the moat without needing them on day one.</p>
+          </div>
+        </div>
+        <div class="quote" style="margin-top: 22px;">
+          <div class="quote-text" style="font-size: 30px;">
+            The defensibility path is not "we block harder." It is "we become the default interface for focused execution in the browser."
+          </div>
+        </div>
+        <div class="footer">
+          <span>8 / 12</span>
+          <span>Compete on workflow ownership and product depth, not on one blocking feature.</span>
+        </div>
+      </section>
+
+      <section class="slide">
+        <div class="eyebrow">Go-to-market</div>
+        <div class="grid-2" style="margin-top: 16px;">
+          <div>
+            <h2>Start bottom-up with one sharp promise: get your first protected focus session in minutes.</h2>
+            <div class="steps" style="margin-top: 18px;">
+              <div class="step">
+                <div class="step-index">1</div>
+                <div class="card">
+                  <h3>Chrome Web Store wedge</h3>
+                  <p>Fast installation, immediate onboarding, and first value in one session by connecting Calendar and selecting allowed domains.</p>
+                </div>
+              </div>
+              <div class="step">
+                <div class="step-index">2</div>
+                <div class="card">
+                  <h3>Founder-led content engine</h3>
+                  <p>Use the founder's 90-day focus dataset, product build story, and before/after workflows as acquisition content.</p>
+                </div>
+              </div>
+              <div class="step">
+                <div class="step-index">3</div>
+                <div class="card">
+                  <h3>Maker and productivity communities</h3>
+                  <p>Product Hunt, indie builder communities, developer audiences, creator workflows, and high-signal focus content.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="segment-stack">
+            <div class="metric animate-in">
+              <div class="metric-value">10 min</div>
+              <h3>Target time to first value</h3>
+              <p>User installs Window, connects Google Calendar, and completes the first protected work block.</p>
+            </div>
+            <div class="card animate-in delay-1">
+              <h3>Why this can scale</h3>
+              <p>Every saved rule, completed session, and returned idea report makes the product harder to churn and easier to recommend.</p>
+            </div>
+            <div class="card animate-in delay-2">
+              <h3>Initial success signal</h3>
+              <p>Activation should measure completed protected sessions, not installs. The product wins when users feel their day became calmer and more directed.</p>
+            </div>
+          </div>
+        </div>
+        <div class="footer">
+          <span>9 / 12</span>
+          <span>GTM starts with a narrow wedge, a short onboarding path, and highly resonant founder storytelling.</span>
+        </div>
+      </section>
+
+      <section class="slide">
+        <div class="eyebrow">Scale plan</div>
+        <h2>Retention deepens first. Expansion follows the users who already trust Window with their work.</h2>
+        <div class="grid-3" style="margin-top: 22px;">
+          <div class="card animate-in">
+            <span class="segment-tag tag-blue">Retention engines</span>
+            <h3>Compounding habits</h3>
+            <p>Saved rules, carryover tasks, points, streaks, and historical idea reports create increasing switching costs over time.</p>
+          </div>
+          <div class="card animate-in delay-1">
+            <span class="segment-tag tag-amber">Growth loops</span>
+            <h3>Shareable progress and accountability</h3>
+            <p>Referral hooks, friend accountability, and visible wins can make a solitary behavior feel communal without losing the individual wedge.</p>
+          </div>
+          <div class="card animate-in delay-2">
+            <span class="segment-tag tag-green">Expansion motion</span>
+            <h3>Bottom-up to team adoption</h3>
+            <p>When multiple employees already use Window personally, team policies and pooled AI usage become a natural paid upgrade.</p>
+          </div>
+        </div>
+        <div class="quote" style="margin-top: 22px;">
+          <div class="quote-text" style="font-size: 30px;">
+            The scaling story is individual pull first, then shared controls and analytics once the product has earned trust.
+          </div>
+        </div>
+        <div class="footer">
+          <span>10 / 12</span>
+          <span>Sequence matters: retain individuals, then expand into teams and privacy-first deployments.</span>
+        </div>
+      </section>
+
+      <section class="slide">
+        <div class="eyebrow">Business model</div>
+        <h2>Price Window above commodity blockers and below full AI work suites.</h2>
+        <div class="pricing-grid" style="margin-top: 22px;">
+          <div class="pricing-card animate-in">
+            <h3>Free</h3>
+            <div class="price">$0 <small>/ month</small></div>
+            <p>Calendar connection, basic blocking, limited rules, standard breaks, and enough value to prove the product quickly.</p>
+          </div>
+          <div class="pricing-card featured animate-in delay-1">
+            <h3>Pro</h3>
+            <div class="price">$12 <small>/ month</small></div>
+            <p><strong>$96 annual</strong> for serious solo users who want unlimited rules, keyword matching, points and streaks, idea capture, and limited monthly AI reports.</p>
+          </div>
+          <div class="pricing-card animate-in delay-2">
+            <h3>Team</h3>
+            <div class="price">$15 <small>/ user / month</small></div>
+            <p>Annual plan after team features mature: shared policies, pooled AI usage, admin reporting, onboarding, and billing controls.</p>
+          </div>
+        </div>
+        <div class="grid-2" style="margin-top: 18px; grid-template-columns: 0.95fr 1.05fr;">
+          <div class="card">
+            <h3>Pricing logic</h3>
+            <ul>
+              <li>Blockers alone are cheap and hard to differentiate.</li>
+              <li>Window earns higher willingness to pay by combining focus control with useful assistant behavior.</li>
+              <li>AI usage is limited in Pro to protect margins while still demonstrating premium value.</li>
+              <li>Team pricing stays in line with productivity SaaS once admin controls exist.</li>
+            </ul>
+          </div>
+          <div class="card">
+            <h3>Official benchmark pricing viewed April 12, 2026</h3>
+            <ul class="small">
+              <li>Freedom Premium: $8.99 / month or $99.50 lifetime.</li>
+              <li>RescueTime Solo: $7 / month annual. Solo+: $12 / month annual.</li>
+              <li>Opal Pro web program: $8.29 / month billed annually.</li>
+              <li>Rize Basic: $9.99 / month billed annually.</li>
+              <li>Motion Pro AI: $19 / seat / month.</li>
+            </ul>
+          </div>
+        </div>
+        <div class="footer">
+          <span>11 / 12</span>
+          <span>
+            Pricing sources:
+            <a href="https://freedom.to/premium">Freedom</a>,
+            <a href="https://www.rescuetime.com/pricing">RescueTime</a>,
+            <a href="https://opalapp.com/opal-program">Opal</a>,
+            <a href="https://rize.io/pricing">Rize</a>,
+            <a href="https://www.usemotion.com/pricing">Motion</a>
+          </span>
+        </div>
+      </section>
+
+      <section class="slide">
+        <div class="eyebrow">Close</div>
+        <div class="grid-2" style="margin-top: 16px;">
+          <div style="display: grid; gap: 18px; align-content: start;">
+            <h2>Window is not another blocker. It is focus infrastructure for ambitious people.</h2>
+            <p class="lede">
+              The wedge is simple and immediate: protect deep work in the browser. The long-term opportunity is larger: become the default operating layer for how people execute, preserve ideas, and automate meaningful work.
+            </p>
+            <div class="quote">
+              <div class="quote-text" style="font-size: 30px;">
+                If we can protect the hour where someone's real work happens, we earn the right to help with everything around it.
+              </div>
+            </div>
+          </div>
+          <div class="segment-stack">
+            <div class="card animate-in">
+              <span class="segment-tag tag-blue">Now</span>
+              <h3>Working prototype</h3>
+              <p>Calendar-aware browser blocking, intentional breaks, task progress, and early assistant queueing already exist.</p>
+            </div>
+            <div class="card animate-in delay-1">
+              <span class="segment-tag tag-amber">Next</span>
+              <h3>Sharpen the wedge</h3>
+              <p>Improve onboarding, prove repeat usage, and refine the idea-report loop around real users.</p>
+            </div>
+            <div class="card animate-in delay-2">
+              <span class="segment-tag tag-green">Later</span>
+              <h3>Expand the surface area</h3>
+              <p>Recommendations, automation, privacy-first local models, and team controls deepen the platform over time.</p>
+            </div>
+          </div>
+        </div>
+        <div class="footer">
+          <span>12 / 12</span>
+          <span>Window: protect focus now, become the browser-native productivity OS over time.</span>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>
