@@ -20,6 +20,7 @@ export const DEFAULT_SETTINGS: Settings = {
   breakDurationMinutes: 5,
   keywordAutoMatchEnabled: false,
   breakTelemetryEnabled: false,
+  persistentPanelEnabled: false,
 };
 
 export const DEFAULT_GLOBAL_ALLOWLIST: string[] = ['accounts.google.com'];
@@ -46,7 +47,7 @@ export const DEFAULT_ALL_TIME_STATS: AllTimeStats = {
 
 export const DEFAULT_ASSISTANT_OPTIONS: AssistantOptions = {
   preferredModel: {
-    value: 'OpenClaw default model',
+    value: 'Minimax-2.7',
     updatedAt: null,
   },
   autoCreateSession: true,
@@ -173,6 +174,19 @@ export const DEFAULT_WINDOW_BACKEND_URL = 'http://localhost:8787';
 // Rule IDs: 1 = block-all, 2+ = per-domain allow rules
 export const BLOCK_ALL_RULE_ID = 1;
 export const ALLOW_RULE_ID_START = 2;
+export const TEMP_UNLOCK_RULE_ID_START = 10_000;
+export const TEMP_UNLOCK_DURATION_MINUTES = 5;
+export const TEMP_UNLOCK_BASE_COST = 25;
+export const TEMP_UNLOCK_INCREMENT = 25;
 
 // Path to the blocked page within the extension (used by declarativeNetRequest redirect)
 export const BLOCKED_PAGE_EXTENSION_PATH = '/src/blocked/index.html';
+export const SIDE_PANEL_EXTENSION_PATH = '/src/sidepanel/index.html';
+
+export const MODEL_PLACEHOLDER_OPTIONS = [
+  'Minimax-2.7',
+  'Deepseek-v3.2',
+  'Kimi-k2.5',
+  'Minimax-2.5',
+  'Nemotron',
+] as const;

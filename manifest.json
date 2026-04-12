@@ -10,6 +10,7 @@
     "alarms",
     "identity",
     "notifications",
+    "sidePanel",
     "tabs",
     "webNavigation"
   ],
@@ -24,6 +25,9 @@
   "action": {
     "default_popup": "src/popup/index.html",
     "default_title": "Window"
+  },
+  "side_panel": {
+    "default_path": "src/sidepanel/index.html"
   },
   "options_page": "src/options/index.html",
   "oauth2": {

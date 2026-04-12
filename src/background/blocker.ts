@@ -2,8 +2,9 @@ import {
   ALLOW_RULE_ID_START,
   BLOCK_ALL_RULE_ID,
   BLOCKED_PAGE_EXTENSION_PATH,
+  TEMP_UNLOCK_RULE_ID_START,
 } from '../shared/constants';
-import type { CarryoverMode, Profiles } from '../shared/types';
+import type { CarryoverMode, Profiles, TemporaryUnlockState } from '../shared/types';
 
 // ─── Public API ───────────────────────────────────────────────────────────────
 
@@ -44,6 +45,17 @@ export async function updateBlockingRules(
 export async function clearAllRules(): Promise<void> {
   const removeRuleIds = await getExistingRuleIds();
   await chrome.declarativeNetRequest.updateDynamicRules({ removeRuleIds, addRules: [] });
+}
+
+export async function syncTemporaryUnlockRules(
+  unlocks: Record<string, TemporaryUnlockState>,
+): Promise<void> {
+  const existing = await chrome.declarativeNetRequest.getSessionRules();
+  const removeRuleIds = existing
+    .map((rule) => rule.id)
+    .filter((id) => id >= TEMP_UNLOCK_RULE_ID_START);
+  const addRules = Object.values(unlocks).map(buildTemporaryUnlockRule);
+  await chrome.declarativeNetRequest.updateSessionRules({ removeRuleIds, addRules });
 }
 
 /**
@@ -129,9 +141,30 @@ function buildAllowRule(domain: string, id: number): chrome.declarativeNetReques
   };
 }
 
+function buildTemporaryUnlockRule(unlock: TemporaryUnlockState): chrome.declarativeNetRequest.Rule {
+  return {
+    id: unlock.ruleId,
+    priority: 3,
+    action: { type: chrome.declarativeNetRequest.RuleActionType.ALLOW },
+    condition: {
+      tabIds: [unlock.tabId],
+      urlFilter: `||${unlock.blockedHost}`,
+      resourceTypes: [chrome.declarativeNetRequest.ResourceType.MAIN_FRAME],
+    },
+  };
+}
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 async function getExistingRuleIds(): Promise<number[]> {
   const rules = await chrome.declarativeNetRequest.getDynamicRules();
   return rules.map((r) => r.id);
+}
+
+export function isDomainAllowed(host: string, allowedDomains: string[]): boolean {
+  const lowerHost = host.toLowerCase();
+  return allowedDomains.some((domain) => {
+    const lowerDomain = domain.toLowerCase();
+    return lowerHost === lowerDomain || lowerHost.endsWith(`.${lowerDomain}`);
+  });
 }

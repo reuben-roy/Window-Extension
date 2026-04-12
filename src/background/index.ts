@@ -2,24 +2,49 @@ import {
   ALARM_SNOOZE_END,
   ALARM_TICK,
   ALARM_TICK_PERIOD_MINUTES,
+  BLOCKED_PAGE_EXTENSION_PATH,
+  SIDE_PANEL_EXTENSION_PATH,
+  TEMP_UNLOCK_BASE_COST,
+  TEMP_UNLOCK_DURATION_MINUTES,
+  TEMP_UNLOCK_INCREMENT,
+  TEMP_UNLOCK_RULE_ID_START,
 } from '../shared/constants';
 import {
   getAssistantOptions,
   getAllTimeStats,
   getBackendSession,
   getBackendSyncState,
+  getBlockedTabs,
   getCalendarState,
   getEventRules,
+  getGlobalAllowlist,
   getIdeaRecords,
   getKeywordRules,
   getOpenClawState,
+  getPointsHistory,
+  getWeekKey,
   getSettings,
   getSnoozeState,
   getTaskQueue,
+  getTemporaryUnlocks,
+  getUnlockSpendState,
+  setAllTimeStats,
+  setBlockedTabs,
   setCalendarState,
+  setPointsHistory,
   setSettings,
+  setTemporaryUnlocks,
+  setUnlockSpendState,
 } from '../shared/storage';
-import type { CalendarEvent, Message, StateResponse } from '../shared/types';
+import type {
+  BlockedTabState,
+  CalendarEvent,
+  CalendarState,
+  Message,
+  StateResponse,
+  Task,
+  TemporaryUnlockState,
+} from '../shared/types';
 import {
   cancelOpenClawJob,
   clearAssistantState,
@@ -34,19 +59,34 @@ import {
   updateAssistantPreference,
   reuseOpenClawSession,
 } from './backend';
-import { fetchCalendarEventsInRange, getAuthToken, revokeAuthToken, syncCalendar } from './calendar';
-import { updateBlockingRules } from './blocker';
+import {
+  fetchCalendarEventsInRange,
+  getAuthToken,
+  resolveActiveState,
+  revokeAuthToken,
+  syncCalendar,
+} from './calendar';
+import {
+  isDomainAllowed,
+  syncTemporaryUnlockRules,
+  updateBlockingRules,
+} from './blocker';
+import { applyPointsToStats } from './levels';
+import { calculatePoints } from './points';
 import { activateSnooze, deactivateSnooze, isSnoozeActive } from './snooze';
 import { finalizeTrackedBreakVisits, registerTelemetryListeners } from './telemetry';
+import { markTaskCompleted, syncTasksFromCalendarState } from './taskQueue';
+
+const pendingNavigationByTab = new Map<number, string>();
 
 // ─── Lifecycle ────────────────────────────────────────────────────────────────
 
 chrome.runtime.onInstalled.addListener(() => {
   chrome.alarms.create(ALARM_TICK, { periodInMinutes: ALARM_TICK_PERIOD_MINUTES });
+  void syncActionSurfaceBehavior();
   console.log('[Window] Installed — tick alarm scheduled.');
 });
 
-// Re-register alarm on service worker wake-up in case it was cleared
 chrome.alarms.get(ALARM_TICK, (alarm) => {
   if (!alarm) {
     chrome.alarms.create(ALARM_TICK, { periodInMinutes: ALARM_TICK_PERIOD_MINUTES });
@@ -54,6 +94,18 @@ chrome.alarms.get(ALARM_TICK, (alarm) => {
 });
 
 registerTelemetryListeners();
+registerBlockingListeners();
+void syncActionSurfaceBehavior();
+
+chrome.storage.onChanged.addListener((changes, areaName) => {
+  if (areaName === 'sync' && ('settings' in changes || 'eventRules' in changes || 'keywordRules' in changes || 'globalAllowlist' in changes)) {
+    void reconcileBlockingState();
+  }
+
+  if (areaName === 'sync' && 'settings' in changes) {
+    void syncActionSurfaceBehavior();
+  }
+});
 
 // ─── Alarm handler ────────────────────────────────────────────────────────────
 
@@ -65,39 +117,25 @@ chrome.alarms.onAlarm.addListener((alarm) => {
   }
 });
 
-/**
- * Main 60-second tick. Steps execute in the order required by CLAUDE.md:
- *   1. Calendar sync → update CalendarState in storage
- *   2. Carryover expiration check   (Phase 2)
- *   3. Monthly reset check          (Phase 2)
- *   4. Snooze expiry check
- *   5. Recalculate declarativeNetRequest rules
- *   6. Point updates on completion  (Phase 2, event-driven not here)
- */
 async function handleTick(): Promise<void> {
-  // ── Step 1: calendar sync ─────────────────────────────────────────────────
   const calendarState = await syncCalendar();
 
   if (calendarState.authError) {
     console.warn('[Window] Calendar sync error:', calendarState.authError);
   }
 
-  // ── Step 2 & 3: carryover expiration + monthly reset ─────────────────────
-  // TODO (Phase 2)
+  await syncTasksFromCalendarState(calendarState);
+  await cleanupExpiredTemporaryUnlocks(calendarState);
 
-  // ── Step 4: snooze expiry ────────────────────────────────────────────────
   const snoozed = await isSnoozeActive();
-
-  // ── Step 5: recalculate blocking rules ────────────────────────────────────
   if (snoozed) {
-    // Snooze is still live — rules were already cleared when snooze activated.
-    // Don't re-apply blocking until snooze expires.
     await Promise.all([syncIdeaOutbox(), syncBreakTelemetryQueue()]);
+    await reconcileBlockedTabs(calendarState);
     return;
   }
 
   await Promise.all([syncIdeaOutbox(), syncBreakTelemetryQueue()]);
-  await applyBlockingRules(calendarState.isRestricted, calendarState.allowedDomains);
+  await applyBlockingState(calendarState);
 }
 
 async function handleSnoozeEnd(): Promise<void> {
@@ -105,29 +143,31 @@ async function handleSnoozeEnd(): Promise<void> {
   await finalizeTrackedBreakVisits();
   await syncBreakTelemetryQueue();
   await deactivateSnooze();
-  // Re-read calendar state (written on the last tick) and restore blocking rules
-  const calendarState = await getCalendarState();
-  await applyBlockingRules(calendarState.isRestricted, calendarState.allowedDomains);
+  await reconcileBlockingState();
 }
 
 // ─── Message handler ──────────────────────────────────────────────────────────
 
-chrome.runtime.onMessage.addListener(
-  (message: Message, _sender, sendResponse) => {
-    handleMessage(message)
-      .then(sendResponse)
-      .catch((err: unknown) => {
-        console.error('[Window] Message error:', err);
-        sendResponse({ error: String(err) });
-      });
-    return true; // keep the message port open for async response
-  },
-);
+chrome.runtime.onMessage.addListener((message: Message, sender, sendResponse) => {
+  handleMessage(message, sender)
+    .then(sendResponse)
+    .catch((err: unknown) => {
+      console.error('[Window] Message error:', err);
+      sendResponse({ error: String(err) });
+    });
+  return true;
+});
 
-async function handleMessage(message: Message): Promise<unknown> {
+async function handleMessage(
+  message: Message,
+  sender: chrome.runtime.MessageSender,
+): Promise<unknown> {
   switch (message.type) {
     case 'GET_STATE':
       return buildStateResponse();
+
+    case 'GET_BLOCKED_TAB_CONTEXT':
+      return getBlockedTabContext(sender);
 
     case 'GET_CALENDAR_EVENTS_RANGE':
       return getCalendarEventsRange(message);
@@ -138,6 +178,9 @@ async function handleMessage(message: Message): Promise<unknown> {
     case 'TOGGLE_BLOCKING':
       return toggleBlocking();
 
+    case 'TOGGLE_PERSISTENT_PANEL':
+      return togglePersistentPanel(message, sender);
+
     case 'CONNECT_CALENDAR':
       return connectCalendar();
 
@@ -146,6 +189,9 @@ async function handleMessage(message: Message): Promise<unknown> {
 
     case 'SNOOZE':
       return handleSnooze(message);
+
+    case 'SPEND_POINTS_UNLOCK':
+      return spendPointsForTemporaryUnlock(sender);
 
     case 'SUBMIT_IDEA':
       return handleIdeaSubmission(message);
@@ -177,11 +223,9 @@ async function handleMessage(message: Message): Promise<unknown> {
       );
 
     case 'MARK_DONE':
-      // TODO (Phase 2)
-      return { ok: true };
+      return handleMarkDone(message);
 
     case 'DISMISS_TASK':
-      // TODO (Phase 2)
       return { ok: true };
 
     default:
@@ -189,29 +233,7 @@ async function handleMessage(message: Message): Promise<unknown> {
   }
 }
 
-// ─── Toggle blocking ──────────────────────────────────────────────────────────
-
-async function toggleBlocking(): Promise<{ enableBlocking: boolean }> {
-  const settings = await getSettings();
-  const enableBlocking = !settings.enableBlocking;
-
-  await setSettings({ ...settings, enableBlocking });
-
-  // Update calendarState.isRestricted to match the new value
-  const calendarState = await getCalendarState();
-  const updated = {
-    ...calendarState,
-    isRestricted: enableBlocking && calendarState.activeRuleSource !== 'none',
-  };
-  await setCalendarState(updated);
-
-  // Apply (or remove) blocking rules immediately without waiting for next tick
-  await applyBlockingRules(updated.isRestricted, updated.allowedDomains);
-
-  return { enableBlocking };
-}
-
-// ─── State builder (for popup / options / blocked page) ───────────────────────
+// ─── State builder ────────────────────────────────────────────────────────────
 
 async function buildStateResponse(): Promise<StateResponse> {
   const [
@@ -227,21 +249,21 @@ async function buildStateResponse(): Promise<StateResponse> {
     assistantOptions,
     ideaRecords,
     openClawState,
-  ] =
-    await Promise.all([
-      getSettings(),
-      getTaskQueue(),
-      getSnoozeState(),
-      getAllTimeStats(),
-      getCalendarState(),
-      getEventRules(),
-      getKeywordRules(),
-      getBackendSession(),
-      getBackendSyncState(),
-      getAssistantOptions(),
-      getIdeaRecords(),
-      getOpenClawState(),
-    ]);
+  ] = await Promise.all([
+    getSettings(),
+    getTaskQueue(),
+    getSnoozeState(),
+    getAllTimeStats(),
+    getCalendarState(),
+    getEventRules(),
+    getKeywordRules(),
+    getBackendSession(),
+    getBackendSyncState(),
+    getAssistantOptions(),
+    getIdeaRecords(),
+    getOpenClawState(),
+  ]);
+
   return {
     settings,
     taskQueue,
@@ -266,51 +288,29 @@ async function buildStateResponse(): Promise<StateResponse> {
 
 // ─── Calendar connect / disconnect ───────────────────────────────────────────
 
-/**
- * Triggers an interactive OAuth flow. Chrome shows the Google consent popup
- * where the user grants Window access to their calendar.
- *
- * Why interactive=true matters:
- *   chrome.identity.getAuthToken({ interactive: true }) tells Chrome
- *   "pop up a consent window if this user hasn't approved the extension yet."
- *   The alarm-based sync always uses interactive=false (silent) because you
- *   can't pop a browser dialog from a background timer. This handler is the
- *   ONLY place interactive=true is used — it's triggered by the user clicking
- *   "Connect Calendar" in the popup or options page.
- */
 async function connectCalendar(): Promise<{ ok: boolean; error?: string }> {
   try {
-    await getAuthToken(true); // ← interactive=true: triggers consent popup
-    // Token granted — run a full sync immediately so the UI updates
+    await getAuthToken(true);
     const calendarState = await syncCalendar();
+    await syncTasksFromCalendarState(calendarState);
     await syncBackendAuthWithGoogleToken();
     await refreshAssistantState();
-    await applyBlockingRules(calendarState.isRestricted, calendarState.allowedDomains);
+    await applyBlockingState(calendarState);
     return { ok: true };
   } catch (err) {
     return { ok: false, error: String(err) };
   }
 }
 
-/**
- * Disconnects the user's calendar:
- *   1. Revokes the cached token (Chrome forgets the grant)
- *   2. Clears calendar state to defaults (no events, no profile, no restriction)
- *   3. Removes all blocking rules
- *
- * After this, the alarm tick will fail silently on each cycle (no auth error
- * shown to the user) until they click "Connect Calendar" again.
- */
 async function disconnectCalendar(): Promise<{ ok: boolean }> {
   try {
     const token = await getAuthToken(false);
     await revokeAuthToken(token);
   } catch {
-    // Token may already be gone — that's fine, keep going
+    // Token may already be gone.
   }
 
-  // Reset calendar state to disconnected defaults
-  const disconnected: import('../shared/types').CalendarState = {
+  const disconnected: CalendarState = {
     currentEvent: null,
     allActiveEvents: [],
     todaysEvents: [],
@@ -323,19 +323,536 @@ async function disconnectCalendar(): Promise<{ ok: boolean }> {
     lastSyncedAt: null,
     authError: null,
   };
-  await setCalendarState(disconnected);
-  await clearAssistantState();
-  await applyBlockingRules(false, []);
+
+  await Promise.all([
+    setCalendarState(disconnected),
+    setBlockedTabs({}),
+    setTemporaryUnlocks({}),
+    clearAssistantState(),
+    updateBlockingRules([], false),
+    syncTemporaryUnlockRules({}),
+  ]);
+
   return { ok: true };
 }
 
-// ─── Snooze handler ──────────────────────────────────────────────────────────
+// ─── Blocking toggles and reconciliation ─────────────────────────────────────
+
+async function toggleBlocking(): Promise<{ enableBlocking: boolean }> {
+  const settings = await getSettings();
+  const enableBlocking = !settings.enableBlocking;
+  await setSettings({ ...settings, enableBlocking });
+  await reconcileBlockingState();
+  return { enableBlocking };
+}
+
+async function togglePersistentPanel(
+  message: Message,
+  sender: chrome.runtime.MessageSender,
+): Promise<{ ok: boolean; enabled: boolean }> {
+  const payload = message.payload as { enabled?: boolean } | undefined;
+  const settings = await getSettings();
+  const enabled = payload?.enabled ?? !settings.persistentPanelEnabled;
+  await setSettings({ ...settings, persistentPanelEnabled: enabled });
+  await syncActionSurfaceBehavior();
+
+  if (enabled && sender.tab?.id) {
+    await chrome.sidePanel.open({ tabId: sender.tab.id });
+  }
+
+  return { ok: true, enabled };
+}
+
+async function reconcileBlockingState(): Promise<void> {
+  const [
+    settings,
+    calendarState,
+    eventRules,
+    keywordRules,
+    globalAllowlist,
+    snoozed,
+  ] = await Promise.all([
+    getSettings(),
+    getCalendarState(),
+    getEventRules(),
+    getKeywordRules(),
+    getGlobalAllowlist(),
+    isSnoozeActive(),
+  ]);
+
+  const recalculated = resolveActiveState(
+    calendarState.todaysEvents,
+    eventRules,
+    keywordRules,
+    globalAllowlist,
+    settings,
+  );
+
+  const nextCalendarState: CalendarState = {
+    ...recalculated,
+    lastSyncedAt: calendarState.lastSyncedAt,
+    authError: calendarState.authError,
+  };
+
+  await setCalendarState(nextCalendarState);
+  await syncTasksFromCalendarState(nextCalendarState);
+  await cleanupExpiredTemporaryUnlocks(nextCalendarState);
+
+  if (!snoozed) {
+    await applyBlockingState(nextCalendarState);
+  } else {
+    await reconcileBlockedTabs(nextCalendarState);
+  }
+}
+
+async function applyBlockingState(calendarState: CalendarState): Promise<void> {
+  const [settings, unlocks] = await Promise.all([
+    getSettings(),
+    getTemporaryUnlocks(),
+  ]);
+
+  await updateBlockingRules(
+    calendarState.allowedDomains,
+    settings.enableBlocking && calendarState.isRestricted,
+  );
+  await syncTemporaryUnlockRules(unlocks);
+  await reconcileBlockedTabs(calendarState, unlocks);
+}
+
+// ─── Blocked page + unlock handling ──────────────────────────────────────────
+
+async function getBlockedTabContext(
+  sender: chrome.runtime.MessageSender,
+): Promise<{
+  ok: boolean;
+  blockedTab: BlockedTabState | null;
+  unlock: TemporaryUnlockState | null;
+  nextUnlockCost: number;
+  canSpend: boolean;
+}> {
+  const tabId = sender.tab?.id;
+  if (!tabId) {
+    return {
+      ok: false,
+      blockedTab: null,
+      unlock: null,
+      nextUnlockCost: TEMP_UNLOCK_BASE_COST,
+      canSpend: false,
+    };
+  }
+
+  const [blockedTabs, unlocks, calendarState, allTimeStats] = await Promise.all([
+    getBlockedTabs(),
+    getTemporaryUnlocks(),
+    getCalendarState(),
+    getAllTimeStats(),
+  ]);
+  const nextUnlockCost = await getNextUnlockCost(calendarState, blockedTabs[String(tabId)] ?? null);
+
+  return {
+    ok: true,
+    blockedTab: blockedTabs[String(tabId)] ?? null,
+    unlock: unlocks[String(tabId)] ?? null,
+    nextUnlockCost,
+    canSpend: allTimeStats.totalPoints >= nextUnlockCost,
+  };
+}
+
+async function spendPointsForTemporaryUnlock(
+  sender: chrome.runtime.MessageSender,
+): Promise<{ ok: boolean; error?: string; cost?: number }> {
+  const tabId = sender.tab?.id;
+  if (!tabId) {
+    return { ok: false, error: 'Blocked tab not found.' };
+  }
+
+  const [blockedTabs, unlocks, calendarState, allTimeStats] = await Promise.all([
+    getBlockedTabs(),
+    getTemporaryUnlocks(),
+    getCalendarState(),
+    getAllTimeStats(),
+  ]);
+
+  const blockedTab = blockedTabs[String(tabId)];
+  if (!blockedTab) {
+    return { ok: false, error: 'There is no blocked site to unlock in this tab.' };
+  }
+
+  const cost = await getNextUnlockCost(calendarState, blockedTab);
+  if (allTimeStats.totalPoints < cost) {
+    return { ok: false, error: `You need ${cost} points for a temporary unlock.` };
+  }
+
+  await applyPointDelta(-cost, { completedTasksDelta: 0 });
+
+  const activeEventKey = getActiveEventKey(calendarState, blockedTab);
+  const spendState = await getUnlockSpendState();
+  const nextSpendCount = spendState.activeEventKey === activeEventKey ? spendState.spendCount + 1 : 1;
+  await setUnlockSpendState({
+    activeEventKey,
+    spendCount: nextSpendCount,
+  });
+
+  const unlock: TemporaryUnlockState = {
+    tabId,
+    blockedHost: blockedTab.blockedHost,
+    originalUrl: blockedTab.originalUrl,
+    expiresAt: new Date(Date.now() + TEMP_UNLOCK_DURATION_MINUTES * 60_000).toISOString(),
+    ruleId: TEMP_UNLOCK_RULE_ID_START + tabId,
+    activeEventId: blockedTab.activeEventId,
+    activeEventTitle: blockedTab.activeEventTitle,
+  };
+
+  const nextUnlocks = { ...unlocks, [String(tabId)]: unlock };
+  const nextBlockedTabs = { ...blockedTabs };
+  delete nextBlockedTabs[String(tabId)];
+
+  await Promise.all([
+    setTemporaryUnlocks(nextUnlocks),
+    setBlockedTabs(nextBlockedTabs),
+    syncTemporaryUnlockRules(nextUnlocks),
+    chrome.tabs.update(tabId, { url: blockedTab.originalUrl }),
+  ]);
+
+  return { ok: true, cost };
+}
+
+async function cleanupExpiredTemporaryUnlocks(
+  calendarState: CalendarState,
+): Promise<void> {
+  const unlocks = await getTemporaryUnlocks();
+  const now = Date.now();
+  const activeUnlocks: Record<string, TemporaryUnlockState> = {};
+  const expiredUnlocks: TemporaryUnlockState[] = [];
+
+  for (const [key, unlock] of Object.entries(unlocks)) {
+    if (new Date(unlock.expiresAt).getTime() > now) {
+      activeUnlocks[key] = unlock;
+    } else {
+      expiredUnlocks.push(unlock);
+    }
+  }
+
+  if (expiredUnlocks.length === 0) return;
+
+  await Promise.all([
+    setTemporaryUnlocks(activeUnlocks),
+    syncTemporaryUnlockRules(activeUnlocks),
+  ]);
+
+  const settings = await getSettings();
+
+  for (const unlock of expiredUnlocks) {
+    try {
+      const tab = await chrome.tabs.get(unlock.tabId);
+      if (!tab.url || !isHttpUrl(tab.url)) continue;
+      const host = new URL(tab.url).hostname;
+      if (
+        host === unlock.blockedHost ||
+        host.endsWith(`.${unlock.blockedHost}`)
+      ) {
+        const stillAllowed =
+          !settings.enableBlocking ||
+          !calendarState.isRestricted ||
+          isDomainAllowed(host, calendarState.allowedDomains);
+        if (!stillAllowed) {
+          await chrome.tabs.reload(unlock.tabId);
+        }
+      }
+    } catch {
+      // Ignore tabs that disappeared.
+    }
+  }
+}
+
+async function reconcileBlockedTabs(
+  calendarState: CalendarState,
+  unlocksInput?: Record<string, TemporaryUnlockState>,
+): Promise<void> {
+  const [settings, blockedTabs, unlocks] = await Promise.all([
+    getSettings(),
+    getBlockedTabs(),
+    unlocksInput ? Promise.resolve(unlocksInput) : getTemporaryUnlocks(),
+  ]);
+
+  const nextBlockedTabs = { ...blockedTabs };
+
+  for (const blockedTab of Object.values(blockedTabs)) {
+    const allowed = isUrlReachableNow(
+      blockedTab.originalUrl,
+      blockedTab.tabId,
+      calendarState,
+      settings,
+      unlocks,
+    );
+
+    if (!allowed) continue;
+
+    try {
+      await chrome.tabs.update(blockedTab.tabId, { url: blockedTab.originalUrl });
+      delete nextBlockedTabs[String(blockedTab.tabId)];
+    } catch {
+      delete nextBlockedTabs[String(blockedTab.tabId)];
+    }
+  }
+
+  await setBlockedTabs(nextBlockedTabs);
+}
+
+function registerBlockingListeners(): void {
+  chrome.webNavigation.onBeforeNavigate.addListener((details) => {
+    if (details.frameId !== 0) return;
+    if (!isHttpUrl(details.url)) return;
+    pendingNavigationByTab.set(details.tabId, details.url);
+  });
+
+  chrome.webNavigation.onCommitted.addListener((details) => {
+    if (details.frameId !== 0) return;
+
+    if (isBlockedPageUrl(details.url)) {
+      const originalUrl = pendingNavigationByTab.get(details.tabId);
+      if (originalUrl) {
+        void rememberBlockedTab(details.tabId, originalUrl);
+      }
+      return;
+    }
+
+    if (isHttpUrl(details.url)) {
+      pendingNavigationByTab.set(details.tabId, details.url);
+      void clearBlockedTab(details.tabId);
+    }
+  });
+
+  chrome.tabs.onRemoved.addListener((tabId) => {
+    pendingNavigationByTab.delete(tabId);
+    void clearBlockedTab(tabId);
+    void clearTemporaryUnlock(tabId);
+  });
+}
+
+async function rememberBlockedTab(tabId: number, originalUrl: string): Promise<void> {
+  if (!isHttpUrl(originalUrl)) return;
+
+  const calendarState = await getCalendarState();
+  const blockedTabs = await getBlockedTabs();
+  const blockedHost = new URL(originalUrl).hostname;
+
+  blockedTabs[String(tabId)] = {
+    tabId,
+    originalUrl,
+    blockedHost,
+    activeEventId: calendarState.currentEvent?.id ?? null,
+    activeEventTitle: calendarState.currentEvent?.title ?? null,
+    blockedAt: new Date().toISOString(),
+  };
+
+  await setBlockedTabs(blockedTabs);
+}
+
+async function clearBlockedTab(tabId: number): Promise<void> {
+  const blockedTabs = await getBlockedTabs();
+  if (!(String(tabId) in blockedTabs)) return;
+  const nextBlockedTabs = { ...blockedTabs };
+  delete nextBlockedTabs[String(tabId)];
+  await setBlockedTabs(nextBlockedTabs);
+}
+
+async function clearTemporaryUnlock(tabId: number): Promise<void> {
+  const unlocks = await getTemporaryUnlocks();
+  if (!(String(tabId) in unlocks)) return;
+  const nextUnlocks = { ...unlocks };
+  delete nextUnlocks[String(tabId)];
+  await Promise.all([
+    setTemporaryUnlocks(nextUnlocks),
+    syncTemporaryUnlockRules(nextUnlocks),
+  ]);
+}
+
+function isBlockedPageUrl(url: string): boolean {
+  return url.startsWith(chrome.runtime.getURL(BLOCKED_PAGE_EXTENSION_PATH));
+}
+
+function isHttpUrl(url: string): boolean {
+  return url.startsWith('http://') || url.startsWith('https://');
+}
+
+function isUrlReachableNow(
+  url: string,
+  tabId: number,
+  calendarState: CalendarState,
+  settings: Awaited<ReturnType<typeof getSettings>>,
+  unlocks: Record<string, TemporaryUnlockState>,
+): boolean {
+  if (!isHttpUrl(url)) return true;
+  if (!settings.enableBlocking || !calendarState.isRestricted) return true;
+
+  const host = new URL(url).hostname;
+  if (isDomainAllowed(host, calendarState.allowedDomains)) return true;
+
+  const unlock = unlocks[String(tabId)];
+  if (!unlock) return false;
+  if (new Date(unlock.expiresAt).getTime() <= Date.now()) return false;
+  return host === unlock.blockedHost || host.endsWith(`.${unlock.blockedHost}`);
+}
+
+async function getNextUnlockCost(
+  calendarState: CalendarState,
+  blockedTab: BlockedTabState | null,
+): Promise<number> {
+  const spendState = await getUnlockSpendState();
+  const activeEventKey = getActiveEventKey(calendarState, blockedTab);
+  const spendCount = spendState.activeEventKey === activeEventKey ? spendState.spendCount : 0;
+  return TEMP_UNLOCK_BASE_COST + TEMP_UNLOCK_INCREMENT * spendCount;
+}
+
+function getActiveEventKey(
+  calendarState: CalendarState,
+  blockedTab: BlockedTabState | null = null,
+): string | null {
+  if (calendarState.currentEvent?.id) return calendarState.currentEvent.id;
+  if (calendarState.currentEvent?.title) return calendarState.currentEvent.title;
+  if (blockedTab?.activeEventId) return blockedTab.activeEventId;
+  return blockedTab?.activeEventTitle ?? null;
+}
+
+// ─── Task completion and points ──────────────────────────────────────────────
+
+async function handleMarkDone(
+  message: Message,
+): Promise<{ ok: boolean; pointsAwarded?: number; error?: string }> {
+  const payload = message.payload as { taskId?: string; note?: string } | undefined;
+  const taskId = payload?.taskId?.trim();
+  const note = payload?.note?.trim();
+
+  if (!taskId || !note) {
+    return { ok: false, error: 'Missing task completion details.' };
+  }
+
+  const taskQueue = await getTaskQueue();
+  const task = taskQueue.find((candidate) => candidate.id === taskId);
+  if (!task) {
+    return { ok: false, error: 'Task not found.' };
+  }
+
+  const eligibility = canMarkDone(task);
+  if (!eligibility.allowed) {
+    return { ok: false, error: eligibility.reason ?? 'Task is not eligible for completion yet.' };
+  }
+
+  const completedTask = await markTaskCompleted(taskId, note);
+  if (!completedTask) {
+    return { ok: false, error: 'Task could not be completed.' };
+  }
+
+  const pointsAwarded = calculatePoints({
+    task: completedTask,
+    consecutiveCompletions: 0,
+    usedSnooze: completedTask.snoozesUsed > 0,
+    completedEarly: Date.now() < new Date(completedTask.scheduledEnd).getTime(),
+    isPerfectDayLastTask: false,
+    completionTime: new Date(),
+  });
+
+  await applyPointDelta(pointsAwarded, { completedTasksDelta: 1 });
+  return { ok: true, pointsAwarded };
+}
+
+function canMarkDone(task: Task): { allowed: boolean; reason?: string } {
+  const scheduledStart = new Date(task.scheduledStart).getTime();
+  const scheduledEnd = new Date(task.scheduledEnd).getTime();
+  const duration = scheduledEnd - scheduledStart;
+  const minElapsed = duration * 0.5;
+  const elapsedSinceStart = Date.now() - scheduledStart;
+
+  if (elapsedSinceStart < minElapsed) {
+    const minsLeft = Math.ceil((minElapsed - elapsedSinceStart) / 60_000);
+    return {
+      allowed: false,
+      reason: `Anti-gaming: wait ${minsLeft} more min (50% of block must elapse first).`,
+    };
+  }
+
+  return { allowed: true };
+}
+
+async function applyPointDelta(
+  delta: number,
+  options: { completedTasksDelta: number },
+): Promise<void> {
+  const [allTimeStats, history] = await Promise.all([
+    getAllTimeStats(),
+    getPointsHistory(),
+  ]);
+
+  const { updated: nextStatsBase, leveledUp } = applyPointsToStats(allTimeStats, delta);
+  const currentWeekKey = getWeekKey();
+  const currentWeek = history[currentWeekKey] ?? {
+    earned: 0,
+    tasksCompleted: 0,
+    tasksDismissed: 0,
+    tasksExpired: 0,
+    snoozesUsed: 0,
+    perfectDays: 0,
+    longestStreak: 0,
+  };
+
+  const nextHistory = {
+    ...history,
+    [currentWeekKey]: {
+      ...currentWeek,
+      earned: Math.max(0, currentWeek.earned + delta),
+      tasksCompleted: currentWeek.tasksCompleted + options.completedTasksDelta,
+    },
+  };
+
+  const weekScores = Object.values(nextHistory).map((week) => week.earned);
+  const nextStats = {
+    ...nextStatsBase,
+    tasksCompleted: Math.max(0, allTimeStats.tasksCompleted + options.completedTasksDelta),
+    bestWeek: weekScores.length > 0 ? Math.max(...weekScores) : 0,
+    currentWeekStreak: countCurrentWeekStreak(nextHistory),
+  };
+
+  await Promise.all([
+    setAllTimeStats(nextStats),
+    setPointsHistory(nextHistory),
+  ]);
+
+  if (leveledUp) {
+    chrome.notifications.create({
+      type: 'basic',
+      iconUrl: 'src/assets/icons/icon48.png',
+      title: 'Level up!',
+      message: `You reached Level ${nextStats.level}: ${nextStats.title}`,
+    });
+  }
+}
+
+function countCurrentWeekStreak(
+  history: Awaited<ReturnType<typeof getPointsHistory>>,
+): number {
+  let streak = 0;
+  let cursor = new Date();
+
+  while (true) {
+    const key = getWeekKey(cursor);
+    const earned = history[key]?.earned ?? 0;
+    if (earned <= 0) break;
+    streak += 1;
+    cursor = new Date(cursor.getTime() - 7 * 24 * 60 * 60 * 1000);
+  }
+
+  return streak;
+}
+
+// ─── Snooze / assistant / calendar range ─────────────────────────────────────
 
 async function handleSnooze(message: Message): Promise<{ ok: boolean; error?: string }> {
   const payload = message.payload as { durationMinutes?: 5 | 10 | 15 } | undefined;
   const settings = await getSettings();
   const durationMinutes = payload?.durationMinutes ?? settings.breakDurationMinutes;
   const result = await activateSnooze(durationMinutes);
+  await reconcileBlockingState();
   return { ok: true, ...result };
 }
 
@@ -404,11 +921,19 @@ async function getCalendarEventsRange(
   }
 }
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+// ─── Side panel behavior ─────────────────────────────────────────────────────
 
-async function applyBlockingRules(
-  isRestricted: boolean,
-  allowedDomains: string[],
-): Promise<void> {
-  await updateBlockingRules(allowedDomains, isRestricted);
+async function syncActionSurfaceBehavior(): Promise<void> {
+  const settings = await getSettings();
+
+  await chrome.sidePanel.setOptions({
+    enabled: settings.persistentPanelEnabled,
+    path: SIDE_PANEL_EXTENSION_PATH,
+  });
+  await chrome.sidePanel.setPanelBehavior({
+    openPanelOnActionClick: settings.persistentPanelEnabled,
+  });
+  await chrome.action.setPopup({
+    popup: settings.persistentPanelEnabled ? '' : 'src/popup/index.html',
+  });
 }

@@ -3,20 +3,29 @@ import type {
   AssistantOptions,
   CalendarEvent,
   IdeaRecord,
-  ModelSelectorState,
   OpenClawSessionSummary,
   StateResponse,
+  Task,
 } from '../shared/types';
+import { MODEL_PLACEHOLDER_OPTIONS } from '../shared/constants';
+import PointsBubble from '../shared/components/PointsBubble';
 import CalendarConnect from './components/CalendarConnect';
+import CompletionModal from './components/CompletionModal';
+import PointsDisplay from './components/PointsDisplay';
+import TaskQueue from './components/TaskQueue';
 
-export default function Popup(): React.JSX.Element {
+export default function Popup({
+  mode = 'popup',
+}: {
+  mode?: 'popup' | 'panel';
+} = {}): React.JSX.Element {
   const [state, setState] = useState<StateResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [toggling, setToggling] = useState(false);
   const [submittingIdea, setSubmittingIdea] = useState(false);
   const [ideaInput, setIdeaInput] = useState('');
   const [ideaError, setIdeaError] = useState<string | null>(null);
-  const [modelDraft, setModelDraft] = useState('OpenClaw default model');
+  const [completionModalOpen, setCompletionModalOpen] = useState(false);
 
   const loadState = useCallback(() => {
     chrome.runtime.sendMessage({ type: 'GET_STATE' }, (response: StateResponse) => {
@@ -37,23 +46,25 @@ export default function Popup(): React.JSX.Element {
     return () => chrome.storage.onChanged.removeListener(listener);
   }, [loadState]);
 
-  useEffect(() => {
-    if (state?.assistantOptions.preferredModel.value) {
-      setModelDraft(state.assistantOptions.preferredModel.value);
-    }
-  }, [state?.assistantOptions.preferredModel.value]);
-
   const updateAssistantOptions = useCallback((patch: Partial<AssistantOptions>) => {
     chrome.runtime.sendMessage({ type: 'UPDATE_ASSISTANT_OPTIONS', payload: patch });
   }, []);
 
   const updateModelSelector = useCallback((value: string) => {
-    const next: ModelSelectorState = {
-      value: value.trim() || 'OpenClaw default model',
+    const next = {
+      value: MODEL_PLACEHOLDER_OPTIONS.includes(value as (typeof MODEL_PLACEHOLDER_OPTIONS)[number])
+        ? value
+        : MODEL_PLACEHOLDER_OPTIONS[0],
       updatedAt: null,
     };
     updateAssistantOptions({ preferredModel: next });
   }, [updateAssistantOptions]);
+
+  const togglePersistentPanel = useCallback((enabled: boolean) => {
+    chrome.runtime.sendMessage({ type: 'TOGGLE_PERSISTENT_PANEL', payload: { enabled } }, () => {
+      loadState();
+    });
+  }, [loadState]);
 
   const updateSettings = useCallback((nextSettings: StateResponse['settings']) => {
     chrome.storage.sync.set({ settings: nextSettings });
@@ -101,7 +112,9 @@ export default function Popup(): React.JSX.Element {
 
   if (loading) {
     return (
-      <div className="flex h-[420px] w-[460px] items-center justify-center bg-[var(--fg-bg)] text-sm text-[var(--fg-muted)]">
+      <div className={`flex items-center justify-center bg-[var(--fg-bg)] text-sm text-[var(--fg-muted)] ${
+        mode === 'panel' ? 'min-h-screen w-full' : 'h-[420px] w-[460px]'
+      }`}>
         Loading Window…
       </div>
     );
@@ -109,7 +122,7 @@ export default function Popup(): React.JSX.Element {
 
   if (!state) {
     return (
-      <div className="w-[460px] p-5 bg-[var(--fg-bg)] text-sm text-rose-600">
+      <div className={`${mode === 'panel' ? 'w-full min-h-screen' : 'w-[460px]'} bg-[var(--fg-bg)] p-5 text-sm text-rose-600`}>
         Failed to load the extension state.
       </div>
     );
@@ -124,6 +137,8 @@ export default function Popup(): React.JSX.Element {
     openClawState,
     settings,
     snoozeState,
+    taskQueue,
+    allTimeStats,
   } = state;
   const calendarConnected = calendarState.lastSyncedAt !== null && calendarState.authError === null;
   const effectivelyBlocking = settings.enableBlocking && calendarState.isRestricted;
@@ -141,9 +156,15 @@ export default function Popup(): React.JSX.Element {
       .filter((event) => new Date(event.start).getTime() > now)
       .sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime())[0] ?? null;
   const inboxIdeas = ideaState.items.filter((item) => !item.archived).slice(0, 4);
+  const actionableTasks = taskQueue.filter((task) => task.status === 'active' || task.status === 'carryover');
+  const selectedModel = MODEL_PLACEHOLDER_OPTIONS.includes(
+    assistantOptions.preferredModel.value as (typeof MODEL_PLACEHOLDER_OPTIONS)[number],
+  )
+    ? assistantOptions.preferredModel.value
+    : MODEL_PLACEHOLDER_OPTIONS[0];
 
   return (
-    <div className="max-h-[760px] w-[460px] overflow-y-auto bg-[var(--fg-bg)] font-sans select-none">
+    <div className={`${mode === 'panel' ? 'min-h-screen w-full' : 'max-h-[760px] w-[460px]'} overflow-y-auto bg-[var(--fg-bg)] font-sans select-none`}>
       <header className="border-b border-[var(--fg-border)] px-5 py-4">
         <div className="flex items-start justify-between gap-4">
           <div className="space-y-1">
@@ -157,17 +178,35 @@ export default function Popup(): React.JSX.Element {
             </p>
           </div>
 
-          <button
-            onClick={handleToggle}
-            disabled={toggling || !calendarConnected}
-            className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${
-              settings.enableBlocking
-                ? 'bg-[var(--fg-accent)] text-white shadow-[0_12px_30px_rgba(0,102,255,0.22)]'
-                : 'border border-[var(--fg-border)] bg-white text-[var(--fg-muted)]'
-            } ${toggling || !calendarConnected ? 'cursor-not-allowed opacity-50' : ''}`}
-          >
-            {settings.enableBlocking ? 'Blocking ON' : 'Blocking OFF'}
-          </button>
+          <div className="flex flex-col items-end gap-2">
+            <PointsBubble
+              points={allTimeStats.totalPoints}
+              level={allTimeStats.level}
+              title={allTimeStats.title}
+              compact
+            />
+            <div className="flex flex-wrap items-center justify-end gap-2">
+              {mode === 'panel' && settings.persistentPanelEnabled && (
+                <button
+                  onClick={() => togglePersistentPanel(false)}
+                  className="rounded-full border border-[var(--fg-border)] bg-white px-3 py-1.5 text-xs font-medium text-[var(--fg-muted)] transition hover:text-[var(--fg-text)]"
+                >
+                  Disable Right Panel
+                </button>
+              )}
+              <button
+                onClick={handleToggle}
+                disabled={toggling || !calendarConnected}
+                className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${
+                  settings.enableBlocking
+                    ? 'bg-[var(--fg-accent)] text-white shadow-[0_12px_30px_rgba(0,102,255,0.22)]'
+                    : 'border border-[var(--fg-border)] bg-white text-[var(--fg-muted)]'
+                } ${toggling || !calendarConnected ? 'cursor-not-allowed opacity-50' : ''}`}
+              >
+                {settings.enableBlocking ? 'Blocking ON' : 'Blocking OFF'}
+              </button>
+            </div>
+          </div>
         </div>
       </header>
 
@@ -177,6 +216,31 @@ export default function Popup(): React.JSX.Element {
         {calendarConnected && (
           <>
             <section className="grid gap-3">
+              <DashboardCard
+                eyebrow="Progress"
+                title={`${allTimeStats.totalPoints.toLocaleString()} points`}
+                caption="Live score, level progress, and completion flow."
+              >
+                <div className="space-y-3">
+                  <PointsDisplay stats={allTimeStats} />
+                  {actionableTasks.length > 0 ? (
+                    <>
+                      <TaskQueue tasks={actionableTasks} />
+                      <button
+                        onClick={() => setCompletionModalOpen(true)}
+                        className="fg-button-primary"
+                      >
+                        Mark Task Done
+                      </button>
+                    </>
+                  ) : (
+                    <p className="text-sm text-[var(--fg-muted)]">
+                      Active focus tasks appear here automatically while a blocked event is live.
+                    </p>
+                  )}
+                </div>
+              </DashboardCard>
+
               <DashboardCard
                 eyebrow="Active event"
                 title={calendarState.currentEvent?.title ?? 'No focus block live'}
@@ -230,7 +294,7 @@ export default function Popup(): React.JSX.Element {
                 </div>
               </DashboardCard>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className={`grid gap-3 ${mode === 'panel' ? 'md:grid-cols-3' : 'grid-cols-2'}`}>
                 <DashboardCard
                   eyebrow="Break duration"
                   title={`${settings.breakDurationMinutes} min`}
@@ -273,6 +337,24 @@ export default function Popup(): React.JSX.Element {
                     />
                   </div>
                 </DashboardCard>
+
+                <DashboardCard
+                  eyebrow="Docked panel"
+                  title={settings.persistentPanelEnabled ? 'Enabled' : 'Disabled'}
+                  caption="Replace the popup with a persistent right-side panel."
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-xs text-[var(--fg-muted)]">
+                      {settings.persistentPanelEnabled
+                        ? 'Action clicks open the right-side panel.'
+                        : 'Keep the classic popup until you enable it.'}
+                    </p>
+                    <Toggle
+                      checked={settings.persistentPanelEnabled}
+                      onChange={(checked) => togglePersistentPanel(checked)}
+                    />
+                  </div>
+                </DashboardCard>
               </div>
 
               <DashboardCard
@@ -282,11 +364,10 @@ export default function Popup(): React.JSX.Element {
               >
                 <AssistantPanel
                   assistantOptions={assistantOptions}
-                  modelDraft={modelDraft}
+                  selectedModel={selectedModel}
                   openClawState={openClawState}
                   breakTelemetryEnabled={settings.breakTelemetryEnabled}
-                  onModelDraftChange={setModelDraft}
-                  onModelCommit={updateModelSelector}
+                  onModelSelect={updateModelSelector}
                   onToggleReuse={(checked) => updateAssistantOptions({ reuseActiveSession: checked })}
                   onToggleAutoCreate={(checked) => updateAssistantOptions({ autoCreateSession: checked })}
                   onNotesChange={(value) => updateAssistantOptions({ notes: value })}
@@ -368,6 +449,17 @@ export default function Popup(): React.JSX.Element {
           </>
         )}
       </div>
+
+      {completionModalOpen && actionableTasks.length > 0 && (
+        <CompletionModal
+          tasks={actionableTasks}
+          onClose={() => setCompletionModalOpen(false)}
+          onDone={() => {
+            setCompletionModalOpen(false);
+            loadState();
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -399,11 +491,10 @@ function DashboardCard({
 
 function AssistantPanel({
   assistantOptions,
-  modelDraft,
+  selectedModel,
   openClawState,
   breakTelemetryEnabled,
-  onModelDraftChange,
-  onModelCommit,
+  onModelSelect,
   onToggleReuse,
   onToggleAutoCreate,
   onNotesChange,
@@ -414,11 +505,10 @@ function AssistantPanel({
   onCancelJob,
 }: {
   assistantOptions: AssistantOptions;
-  modelDraft: string;
+  selectedModel: string;
   openClawState: StateResponse['openClawState'];
   breakTelemetryEnabled: boolean;
-  onModelDraftChange: (value: string) => void;
-  onModelCommit: (value: string) => void;
+  onModelSelect: (value: string) => void;
   onToggleReuse: (checked: boolean) => void;
   onToggleAutoCreate: (checked: boolean) => void;
   onNotesChange: (value: string) => void;
@@ -447,14 +537,17 @@ function AssistantPanel({
 
       <div className="space-y-2">
         <label className="text-xs uppercase tracking-[0.16em] text-[var(--fg-muted)]">Model selector</label>
-        <input
-          type="text"
-          value={modelDraft}
-          onChange={(event) => onModelDraftChange(event.target.value)}
-          onBlur={() => onModelCommit(modelDraft)}
-          placeholder="OpenClaw default model"
-          className="fg-input"
-        />
+        <select
+          value={selectedModel}
+          onChange={(event) => onModelSelect(event.target.value)}
+          className="fg-select"
+        >
+          {MODEL_PLACEHOLDER_OPTIONS.map((option) => (
+            <option key={option} value={option}>
+              {option}
+            </option>
+          ))}
+        </select>
         <p className="text-xs text-[var(--fg-muted)]">
           Placeholder only for now. You can swap this for the real selector later.
         </p>

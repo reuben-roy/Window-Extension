@@ -31,6 +31,7 @@ const DEFAULT_SETTINGS: Settings = {
   breakDurationMinutes: 5,
   keywordAutoMatchEnabled: false,
   breakTelemetryEnabled: false,
+  persistentPanelEnabled: false,
 };
 
 const GLOBAL_ALLOWLIST = ['accounts.google.com'];

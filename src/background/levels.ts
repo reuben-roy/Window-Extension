@@ -33,7 +33,7 @@ export function levelProgress(stats: AllTimeStats): number {
 
 /** Adds points to allTimeStats and recalculates level/title. Returns true if leveled up. */
 export function applyPointsToStats(stats: AllTimeStats, newPoints: number): { updated: AllTimeStats; leveledUp: boolean } {
-  const totalPoints = stats.totalPoints + newPoints;
+  const totalPoints = Math.max(0, stats.totalPoints + newPoints);
   const level = calculateLevel(totalPoints);
   const title = getLevelTitle(level);
   const leveledUp = level > stats.level;
@@ -57,4 +57,11 @@ export async function awardPoints(points: number): Promise<void> {
       message: `You reached Level ${updated.level}: ${updated.title}`,
     });
   }
+}
+
+export async function spendPoints(points: number): Promise<AllTimeStats> {
+  const stats = await getAllTimeStats();
+  const { updated } = applyPointsToStats(stats, -Math.abs(points));
+  await setAllTimeStats(updated);
+  return updated;
 }

@@ -4,6 +4,7 @@ import type {
   AssistantOptions,
   BackendSession,
   BackendSyncState,
+  BlockedTabState,
   BreakVisitEvent,
   CalendarState,
   EventRule,
@@ -16,7 +17,9 @@ import type {
   Settings,
   SnoozeState,
   StorageData,
+  TemporaryUnlockState,
   Task,
+  UnlockSpendState,
   WeeklyStats,
 } from './types';
 import {
@@ -252,6 +255,30 @@ export const getActiveBreakVisits = (): Promise<Record<string, BreakVisitEvent>>
 
 export const setActiveBreakVisits = (events: Record<string, BreakVisitEvent>): Promise<void> =>
   setLocal('activeBreakVisits', events);
+
+export const getBlockedTabs = (): Promise<Record<string, BlockedTabState>> =>
+  getLocal<Record<string, BlockedTabState>>('blockedTabs', {});
+
+export const setBlockedTabs = (tabs: Record<string, BlockedTabState>): Promise<void> =>
+  setLocal('blockedTabs', tabs);
+
+export const getTemporaryUnlocks = (): Promise<Record<string, TemporaryUnlockState>> =>
+  getLocal<Record<string, TemporaryUnlockState>>('temporaryUnlocks', {});
+
+export const setTemporaryUnlocks = (unlocks: Record<string, TemporaryUnlockState>): Promise<void> =>
+  setLocal('temporaryUnlocks', unlocks);
+
+export const getUnlockSpendState = (): Promise<UnlockSpendState> =>
+  getLocal<UnlockSpendState>('unlockSpendState', { activeEventKey: null, spendCount: 0 });
+
+export const setUnlockSpendState = (state: UnlockSpendState): Promise<void> =>
+  setLocal('unlockSpendState', state);
+
+export const getDemoStatsSeedVersion = (): Promise<number> =>
+  getLocal<number>('demoStatsSeedVersion', 0);
+
+export const setDemoStatsSeedVersion = (version: number): Promise<void> =>
+  setLocal('demoStatsSeedVersion', version);
 
 // ─── Bulk read (for service worker rehydration) ───────────────────────────────
 

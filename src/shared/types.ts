@@ -44,6 +44,7 @@ export interface Settings {
   breakDurationMinutes: BreakDurationMinutes;
   keywordAutoMatchEnabled: boolean;
   breakTelemetryEnabled: boolean;
+  persistentPanelEnabled: boolean;
 }
 
 // Profile map: profile name → list of allowed domains
@@ -218,6 +219,30 @@ export interface RecommendationCard {
   createdAt: string;
 }
 
+export interface BlockedTabState {
+  tabId: number;
+  originalUrl: string;
+  blockedHost: string;
+  activeEventId: string | null;
+  activeEventTitle: string | null;
+  blockedAt: string;
+}
+
+export interface TemporaryUnlockState {
+  tabId: number;
+  blockedHost: string;
+  originalUrl: string;
+  expiresAt: string;
+  ruleId: number;
+  activeEventId: string | null;
+  activeEventTitle: string | null;
+}
+
+export interface UnlockSpendState {
+  activeEventKey: string | null;
+  spendCount: number;
+}
+
 // Google Calendar event (normalized from API response)
 export interface CalendarEvent {
   id: string;
@@ -289,12 +314,15 @@ export interface StorageData {
 // Messages passed between service worker and UI pages
 export type MessageType =
   | 'GET_STATE'
+  | 'GET_BLOCKED_TAB_CONTEXT'
   | 'GET_CALENDAR_EVENTS_RANGE'
   | 'REFRESH_ASSISTANT_STATE'
   | 'TOGGLE_BLOCKING'
+  | 'TOGGLE_PERSISTENT_PANEL'
   | 'CONNECT_CALENDAR'
   | 'DISCONNECT_CALENDAR'
   | 'SNOOZE'
+  | 'SPEND_POINTS_UNLOCK'
   | 'SUBMIT_IDEA'
   | 'DECIDE_IDEA'
   | 'RETRY_IDEA'

@@ -66,7 +66,9 @@ const chromeMock = {
   },
   declarativeNetRequest: {
     getDynamicRules: vi.fn(() => Promise.resolve([])),
+    getSessionRules: vi.fn(() => Promise.resolve([])),
     updateDynamicRules: vi.fn(() => Promise.resolve()),
+    updateSessionRules: vi.fn(() => Promise.resolve()),
     RuleActionType: {
       BLOCK: 'block',
       ALLOW: 'allow',
@@ -90,11 +92,22 @@ const chromeMock = {
         url: 'https://example.com',
       }),
     ),
+    update: vi.fn((_tabId: number, _properties: chrome.tabs.UpdateProperties) => Promise.resolve()),
+    reload: vi.fn((_tabId?: number) => Promise.resolve()),
     onUpdated: { addListener: vi.fn() },
     onActivated: { addListener: vi.fn() },
     onRemoved: { addListener: vi.fn() },
   },
+  action: {
+    setPopup: vi.fn(() => Promise.resolve()),
+  },
+  sidePanel: {
+    setOptions: vi.fn(() => Promise.resolve()),
+    setPanelBehavior: vi.fn(() => Promise.resolve()),
+    open: vi.fn(() => Promise.resolve()),
+  },
   webNavigation: {
+    onBeforeNavigate: { addListener: vi.fn() },
     onCommitted: { addListener: vi.fn() },
   },
 };
@@ -103,3 +116,5 @@ Object.defineProperty(globalThis, 'chrome', {
   value: chromeMock,
   writable: true,
 });
+
+export default chromeMock;

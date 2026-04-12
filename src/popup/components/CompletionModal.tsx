@@ -29,6 +29,7 @@ export default function CompletionModal({ tasks, onClose, onDone }: Props): Reac
   const [selectedTaskId, setSelectedTaskId] = useState(tasks[0]?.id ?? '');
   const [note, setNote] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Auto-focus textarea on mount
@@ -43,10 +44,16 @@ export default function CompletionModal({ tasks, onClose, onDone }: Props): Reac
     e.preventDefault();
     if (!note.trim() || !eligibility.allowed || submitting) return;
     setSubmitting(true);
+    setError(null);
     chrome.runtime.sendMessage(
       { type: 'MARK_DONE', payload: { taskId: selectedTaskId, note: note.trim() } },
-      () => {
-        onDone();
+      (response: { ok?: boolean; error?: string }) => {
+        setSubmitting(false);
+        if (response?.ok) {
+          onDone();
+          return;
+        }
+        setError(response?.error ?? 'Task completion failed.');
       },
     );
   };
@@ -113,6 +120,7 @@ export default function CompletionModal({ tasks, onClose, onDone }: Props): Reac
           <p className="text-[10px] text-gray-400 mb-3">
             ⌘ Enter to submit · Esc to cancel
           </p>
+          {error && <p className="mb-3 text-xs text-rose-600">{error}</p>}
 
           {/* Actions */}
           <div className="flex gap-2">

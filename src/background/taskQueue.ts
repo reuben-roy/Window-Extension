@@ -1,6 +1,6 @@
-import { DEFAULT_TASK_TTL_DAYS } from '../shared/constants';
+import { DEFAULT_MAX_SNOOZES_PER_TASK, DEFAULT_TASK_TTL_DAYS } from '../shared/constants';
 import { getSettings, getTaskQueue, setTaskQueue } from '../shared/storage';
-import type { Task, TaskStatus } from '../shared/types';
+import type { CalendarState, Task, TaskStatus } from '../shared/types';
 
 // ─── Queue mutations ──────────────────────────────────────────────────────────
 
@@ -16,6 +16,77 @@ export async function updateTask(id: string, updates: Partial<Task>): Promise<vo
   if (idx !== -1) {
     queue[idx] = { ...queue[idx], ...updates };
     await setTaskQueue(queue);
+  }
+}
+
+export async function markTaskCompleted(
+  id: string,
+  completionNote: string,
+): Promise<Task | null> {
+  const queue = await getTaskQueue();
+  const idx = queue.findIndex((task) => task.id === id);
+  if (idx === -1) return null;
+
+  const completedTask: Task = {
+    ...queue[idx],
+    status: 'completed',
+    completionNote,
+  };
+
+  queue[idx] = completedTask;
+  await setTaskQueue(queue);
+  return completedTask;
+}
+
+export async function syncTasksFromCalendarState(calendarState: CalendarState): Promise<void> {
+  const [queue, settings] = await Promise.all([getTaskQueue(), getSettings()]);
+  const now = Date.now();
+  const nextQueue = [...queue];
+  let changed = false;
+
+  for (const task of queue) {
+    if (task.status === 'active' && new Date(task.scheduledEnd).getTime() <= now) {
+      const idx = nextQueue.findIndex((candidate) => candidate.id === task.id);
+      if (idx !== -1) {
+        const ttlDays = settings.taskTTLDays ?? DEFAULT_TASK_TTL_DAYS;
+        const scheduledEnd = new Date(task.scheduledEnd);
+        nextQueue[idx] = {
+          ...task,
+          status: 'carryover',
+          carriedOverAt: new Date().toISOString(),
+          expiresAt: new Date(
+            scheduledEnd.getTime() + ttlDays * 24 * 60 * 60 * 1000,
+          ).toISOString(),
+        };
+        changed = true;
+      }
+    }
+  }
+
+  if (
+    calendarState.currentEvent &&
+    calendarState.activeRuleSource !== 'none' &&
+    !nextQueue.some((task) => task.calendarEventId === calendarState.currentEvent?.id)
+  ) {
+    nextQueue.push({
+      id: `task-${calendarState.currentEvent.id}`,
+      eventTitle: calendarState.currentEvent.title,
+      calendarEventId: calendarState.currentEvent.id,
+      profile: calendarState.activeProfile ?? calendarState.currentEvent.title,
+      scheduledStart: calendarState.currentEvent.start,
+      scheduledEnd: calendarState.currentEvent.end,
+      status: 'active',
+      carriedOverAt: null,
+      expiresAt: null,
+      completionNote: null,
+      snoozesUsed: 0,
+      maxSnoozes: DEFAULT_MAX_SNOOZES_PER_TASK,
+    });
+    changed = true;
+  }
+
+  if (changed) {
+    await setTaskQueue(nextQueue);
   }
 }
 

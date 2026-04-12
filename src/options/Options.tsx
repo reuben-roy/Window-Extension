@@ -9,9 +9,11 @@ import type {
   EventMountArg,
 } from '@fullcalendar/core';
 import { removeEventRule, removeKeywordRule, upsertEventRule, upsertKeywordRule } from '../shared/eventRules';
+import { addToGlobalAllowlist, removeFromGlobalAllowlist } from '../shared/profiles';
 import {
   getCalendarState,
   getEventRules,
+  getGlobalAllowlist,
   getKeywordRules,
   getSettings,
   setSettings,
@@ -65,6 +67,9 @@ export default function Options(): React.JSX.Element {
   const [keyword, setKeyword] = useState('');
   const [keywordDomains, setKeywordDomains] = useState('');
   const [keywordError, setKeywordError] = useState('');
+  const [globalAllowlist, setGlobalAllowlistState] = useState<string[]>([]);
+  const [globalDomainInput, setGlobalDomainInput] = useState('');
+  const [globalAllowlistError, setGlobalAllowlistError] = useState('');
   const [savingRule, setSavingRule] = useState(false);
 
   const loadVisibleRange = useCallback((start: string, end: string) => {
@@ -92,16 +97,18 @@ export default function Options(): React.JSX.Element {
   }, [calendarState?.todaysEvents]);
 
   const loadData = async () => {
-    const [calendar, nextSettings, nextEventRules, nextKeywordRules] = await Promise.all([
+    const [calendar, nextSettings, nextEventRules, nextKeywordRules, nextGlobalAllowlist] = await Promise.all([
       getCalendarState(),
       getSettings(),
       getEventRules(),
       getKeywordRules(),
+      getGlobalAllowlist(),
     ]);
     setCalendarState(calendar);
     setLocalSettings(nextSettings);
     setLocalEventRules(nextEventRules);
     setLocalKeywordRules(nextKeywordRules);
+    setGlobalAllowlistState(nextGlobalAllowlist);
     setVisibleEvents((prev) => {
       if (!calendar.lastSyncedAt || calendar.authError) {
         return [];
@@ -117,7 +124,8 @@ export default function Options(): React.JSX.Element {
         'calendarState' in changes ||
         'settings' in changes ||
         'eventRules' in changes ||
-        'keywordRules' in changes
+        'keywordRules' in changes ||
+        'globalAllowlist' in changes
       ) {
         loadData();
       }
@@ -314,6 +322,16 @@ export default function Options(): React.JSX.Element {
     await loadData();
   };
 
+  const addGlobalDomain = async () => {
+    setGlobalAllowlistError('');
+    const result = await addToGlobalAllowlist(globalDomainInput);
+    if (!result.ok) {
+      setGlobalAllowlistError(result.error ?? 'Unable to add domain.');
+      return;
+    }
+    setGlobalDomainInput('');
+  };
+
   if (!settings || !calendarState) {
     return (
       <div className="fg-shell min-h-screen flex items-center justify-center">
@@ -500,6 +518,75 @@ export default function Options(): React.JSX.Element {
                 </div>
               )}
             </div>
+          </div>
+        </section>
+
+        <section className="mb-6 grid gap-4 lg:grid-cols-[minmax(0,1fr),320px]">
+          <div className="fg-card p-5">
+            <div className="mb-4">
+              <h2 className="text-sm font-semibold text-[var(--fg-text)]">Global Whitelist</h2>
+              <p className="text-xs text-[var(--fg-muted)]">
+                Domains here are always reachable, even when an event-specific rule is active.
+              </p>
+            </div>
+
+            <div className="mb-4 flex gap-2">
+              <input
+                type="text"
+                value={globalDomainInput}
+                onChange={(event) => {
+                  setGlobalDomainInput(event.target.value);
+                  setGlobalAllowlistError('');
+                }}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') {
+                    void addGlobalDomain();
+                  }
+                }}
+                placeholder="accounts.google.com"
+                className="fg-input"
+              />
+              <button onClick={addGlobalDomain} className="fg-button-primary">
+                Add
+              </button>
+            </div>
+
+            {globalAllowlistError && (
+              <p className="mb-3 text-xs text-rose-600">{globalAllowlistError}</p>
+            )}
+
+            <div className="flex flex-wrap gap-2">
+              {globalAllowlist.length > 0 ? (
+                globalAllowlist.map((domain) => (
+                  <button
+                    key={domain}
+                    onClick={() => {
+                      void removeFromGlobalAllowlist(domain);
+                    }}
+                    className="rounded-full border border-[var(--fg-border)] bg-white px-3 py-1.5 text-xs font-medium text-[var(--fg-text)] transition hover:border-rose-200 hover:text-rose-600"
+                    title={`Remove ${domain}`}
+                  >
+                    {domain} ×
+                  </button>
+                ))
+              ) : (
+                <EmptyCard text="No globally whitelisted domains yet." />
+              )}
+            </div>
+          </div>
+
+          <div className="fg-card p-5">
+            <div className="mb-3">
+              <h2 className="text-sm font-semibold text-[var(--fg-text)]">How It Works</h2>
+              <p className="text-xs text-[var(--fg-muted)]">
+                Use the global whitelist for services that should never be interrupted.
+              </p>
+            </div>
+            <ul className="space-y-2 text-sm text-[var(--fg-muted)]">
+              <li>Global domains override active focus restrictions.</li>
+              <li>Event Rules still control everything outside this list.</li>
+              <li>Changes apply immediately to blocked tabs once saved.</li>
+            </ul>
           </div>
         </section>
 
