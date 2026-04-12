@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Window — Blocked (carryover preview)</title>
+    <script>
+      window.chrome = {
+        runtime: {
+          sendMessage: (_msg, cb) => cb({
+            settings: { enableBlocking: true, carryoverMode: 'union', taskTTLDays: 7,
+                         monthlyResetEnabled: true, minBlockDurationMinutes: 15,
+                         lastMonthlyReset: '2026-04-01T00:00:00', blockPage: 'custom' },
+            taskQueue: [
+              { id: 'task-1', eventTitle: 'Write quarterly report', calendarEventId: 'c1',
+                profile: 'Deep Work', scheduledStart: '2026-04-04T09:00:00', scheduledEnd: '2026-04-04T11:00:00',
+                status: 'carryover', carriedOverAt: '2026-04-04T11:00:00',
+                expiresAt: '2026-04-11T11:00:00', completionNote: null, snoozesUsed: 1, maxSnoozes: 2 },
+              { id: 'task-2', eventTitle: 'Finish API integration', calendarEventId: 'c2',
+                profile: 'Deep Work', scheduledStart: '2026-04-05T14:00:00', scheduledEnd: '2026-04-05T16:00:00',
+                status: 'carryover', carriedOverAt: '2026-04-05T16:00:00',
+                expiresAt: '2026-04-12T16:00:00', completionNote: null, snoozesUsed: 0, maxSnoozes: 2 },
+            ],
+            snoozeState: { active: false, expiresAt: null, taskId: null,
+                           snoozesUsed: 1, maxSnoozes: 2, cooldownSeconds: 0 },
+            allTimeStats: { totalPoints: 1240, level: 5, title: 'Disciplined',
+                            prestigeCount: 0, tasksCompleted: 42, bestWeek: 340, currentWeekStreak: 3 },
+            calendarState: {
+              currentEvent: null, allActiveEvents: [], activeProfile: null,
+              allowedDomains: [], isRestricted: true,
+              lastSyncedAt: new Date().toISOString(), authError: null,
+            },
+          }),
+          lastError: null,
+        },
+      };
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="./main.tsx"></script>
+  </body>
+</html>

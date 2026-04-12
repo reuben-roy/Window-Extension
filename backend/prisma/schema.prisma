@@ -1,0 +1,178 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum IdeaStatus {
+  queued
+  syncing
+  running
+  completed
+  failed
+  kept
+  discarded
+}
+
+enum OpenClawSessionStatus {
+  active
+  idle
+  closed
+}
+
+enum OpenClawJobStatus {
+  queued
+  running
+  completed
+  failed
+  cancelled
+}
+
+enum RecommendationKind {
+  focus
+  calendar
+  interest
+  automation
+}
+
+model User {
+  id              String             @id @default(cuid())
+  googleSub       String             @unique
+  email           String?
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+  backendSessions BackendSession[]
+  ideaCaptures    IdeaCapture[]
+  openClawSessions OpenClawSession[]
+  breakVisitEvents BreakVisitEvent[]
+  interestProfiles InterestProfile[]
+  recommendations Recommendation[]
+}
+
+model BackendSession {
+  id        String   @id @default(cuid())
+  userId    String
+  tokenHash String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model OpenClawConnection {
+  id         String   @id @default(cuid())
+  name       String
+  transport  String
+  host       String?
+  baseUrl    String?
+  enabled    Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model OpenClawSession {
+  id             String                @id @default(cuid())
+  userId         String
+  remoteSessionId String?              @unique
+  title          String
+  status         OpenClawSessionStatus @default(active)
+  modelLabel     String?
+  startedAt      DateTime              @default(now())
+  lastActivityAt DateTime              @default(now())
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
+  user           User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  ideaCaptures   IdeaCapture[]
+}
+
+model IdeaCapture {
+  id            String      @id @default(cuid())
+  userId        String
+  clientLocalId String
+  prompt        String
+  preferredModel String?
+  assistantNotes String?
+  status        IdeaStatus  @default(queued)
+  saved         Boolean     @default(false)
+  archived      Boolean     @default(false)
+  lastError     String?
+  sessionId     String?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  session       OpenClawSession? @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+  researchJob   ResearchJob?
+  report        IdeaReport?
+
+  @@unique([userId, clientLocalId])
+}
+
+model ResearchJob {
+  id          String            @id @default(cuid())
+  ideaId       String            @unique
+  remoteJobId  String?           @unique
+  status       OpenClawJobStatus @default(queued)
+  title        String
+  lastError    String?
+  startedAt    DateTime?
+  completedAt  DateTime?
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+  idea         IdeaCapture       @relation(fields: [ideaId], references: [id], onDelete: Cascade)
+}
+
+model IdeaReport {
+  id                  String      @id @default(cuid())
+  ideaId               String      @unique
+  summary             String
+  viability           String
+  competitionSnapshot String
+  buildEffort         String
+  revenuePotential    String
+  risks               Json
+  nextSteps           Json
+  sourceLinks         Json
+  completedAt         DateTime
+  createdAt           DateTime    @default(now())
+  updatedAt           DateTime    @updatedAt
+  idea                IdeaCapture @relation(fields: [ideaId], references: [id], onDelete: Cascade)
+}
+
+model BreakVisitEvent {
+  id               String   @id @default(cuid())
+  userId           String
+  tabId            Int?
+  domain           String
+  activeEventTitle String?
+  startedAt        DateTime
+  endedAt          DateTime
+  createdAt        DateTime @default(now())
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model InterestProfile {
+  id          String   @id @default(cuid())
+  userId      String
+  key         String
+  label       String
+  proficiency Int      @default(0)
+  minutes     Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, key])
+}
+
+model Recommendation {
+  id        String             @id @default(cuid())
+  userId    String
+  kind      RecommendationKind
+  title     String
+  body      String
+  createdAt DateTime           @default(now())
+  user      User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
