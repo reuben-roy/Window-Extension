@@ -5,13 +5,11 @@
 @layer base {
   :root {
     --fg-bg: #f3f6fb;
-    --fg-panel: rgba(255, 255, 255, 0.94);
     --fg-panel-soft: #f8fafc;
     --fg-border: rgba(15, 23, 42, 0.1);
     --fg-text: #0f172a;
     --fg-muted: #64748b;
     --fg-accent: #2563eb;
-    --fg-accent-soft: rgba(37, 99, 235, 0.12);
     --fg-shadow: 0 16px 44px rgba(15, 23, 42, 0.08);
   }
 

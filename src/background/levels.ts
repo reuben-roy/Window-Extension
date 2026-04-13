@@ -1,5 +1,4 @@
 import { getLevelTitle, xpRequiredForLevel } from '../shared/constants';
-import { getAllTimeStats, setAllTimeStats } from '../shared/storage';
 import type { AllTimeStats } from '../shared/types';
 
 // ─── Level calculation ────────────────────────────────────────────────────────
@@ -41,27 +40,4 @@ export function applyPointsToStats(stats: AllTimeStats, newPoints: number): { up
     updated: { ...stats, totalPoints, level, title },
     leveledUp,
   };
-}
-
-/** Persists a points award and fires a level-up notification if appropriate. */
-export async function awardPoints(points: number): Promise<void> {
-  const stats = await getAllTimeStats();
-  const { updated, leveledUp } = applyPointsToStats(stats, points);
-  await setAllTimeStats(updated);
-
-  if (leveledUp) {
-    chrome.notifications.create({
-      type: 'basic',
-      iconUrl: 'src/assets/icons/icon48.png',
-      title: 'Level up!',
-      message: `You reached Level ${updated.level}: ${updated.title}`,
-    });
-  }
-}
-
-export async function spendPoints(points: number): Promise<AllTimeStats> {
-  const stats = await getAllTimeStats();
-  const { updated } = applyPointsToStats(stats, -Math.abs(points));
-  await setAllTimeStats(updated);
-  return updated;
 }
