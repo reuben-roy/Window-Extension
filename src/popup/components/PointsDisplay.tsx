@@ -14,12 +14,12 @@ export default function PointsDisplay({ stats }: Props): React.JSX.Element {
   const progress = xpNeeded > 0 ? (xpIntoLevel / xpNeeded) * 100 : 100;
 
   return (
-    <div className="rounded-2xl border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-3 py-3">
-      <div className="mb-2 flex items-center justify-between">
-        <div className="flex items-center gap-1.5">
-          <span className="text-xs font-bold text-[var(--fg-text)]">Lv {stats.level}</span>
+    <div className="rounded-[20px] border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-3 py-2.5">
+      <div className="mb-1.5 flex items-center justify-between gap-2">
+        <div className="flex min-w-0 items-center gap-1.5">
+          <span className="text-[11px] font-bold text-[var(--fg-text)]">Lv {stats.level}</span>
           <span className="text-[10px] text-slate-300">·</span>
-          <span className="text-[10px] text-[var(--fg-muted)]">{stats.title}</span>
+          <span className="truncate text-[10px] text-[var(--fg-muted)]">{stats.title}</span>
           {stats.currentWeekStreak > 0 && (
             <>
               <span className="text-[10px] text-slate-300">·</span>
@@ -29,7 +29,7 @@ export default function PointsDisplay({ stats }: Props): React.JSX.Element {
             </>
           )}
         </div>
-        <span className="text-xs font-bold tabular-nums text-[var(--fg-text)]">
+        <span className="text-sm font-bold tabular-nums text-[var(--fg-text)]">
           {stats.totalPoints.toLocaleString()} pts
         </span>
       </div>
@@ -41,7 +41,7 @@ export default function PointsDisplay({ stats }: Props): React.JSX.Element {
         />
       </div>
 
-      <div className="flex items-center justify-between mt-1">
+      <div className="mt-1 flex items-center justify-between">
         <span className="text-[10px] tabular-nums text-[var(--fg-muted)]">
           {xpIntoLevel.toLocaleString()} / {xpNeeded.toLocaleString()} XP
         </span>

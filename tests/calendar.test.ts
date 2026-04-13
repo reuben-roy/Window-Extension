@@ -32,6 +32,8 @@ const DEFAULT_SETTINGS: Settings = {
   keywordAutoMatchEnabled: false,
   breakTelemetryEnabled: false,
   persistentPanelEnabled: false,
+  dailyBlockingPauseEnabled: false,
+  dailyBlockingPauseStartTime: '22:00',
 };
 
 const GLOBAL_ALLOWLIST = ['accounts.google.com'];
@@ -138,6 +140,26 @@ describe('resolveActiveState', () => {
     expect(state.activeRuleName).toBe('Deep Work');
     expect(state.allowedDomains).toContain('github.com');
     expect(state.allowedDomains).toContain('accounts.google.com');
+  });
+
+  it('pauses blocking after the configured daily cutoff time', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-04-12T22:30:00'));
+
+    const state = resolveActiveState(
+      [makeEvent({ title: 'Deep Work' })],
+      eventRules,
+      keywordRules,
+      GLOBAL_ALLOWLIST,
+      {
+        ...DEFAULT_SETTINGS,
+        dailyBlockingPauseEnabled: true,
+        dailyBlockingPauseStartTime: '22:00',
+      },
+    );
+
+    expect(state.activeRuleSource).toBe('event');
+    expect(state.isRestricted).toBe(false);
   });
 
   it('uses keyword fallback for unmatched events when enabled', () => {

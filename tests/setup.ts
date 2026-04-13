@@ -92,6 +92,13 @@ const chromeMock = {
         url: 'https://example.com',
       }),
     ),
+    query: vi.fn(() => Promise.resolve([])),
+    getCurrent: vi.fn((callback: (tab?: chrome.tabs.Tab) => void) => {
+      callback({
+        id: 7,
+        url: 'chrome-extension://fake-id/src/blocked/index.html',
+      });
+    }),
     update: vi.fn((_tabId: number, _properties: chrome.tabs.UpdateProperties) => Promise.resolve()),
     reload: vi.fn((_tabId?: number) => Promise.resolve()),
     onUpdated: { addListener: vi.fn() },

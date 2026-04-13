@@ -45,6 +45,8 @@ export interface Settings {
   keywordAutoMatchEnabled: boolean;
   breakTelemetryEnabled: boolean;
   persistentPanelEnabled: boolean;
+  dailyBlockingPauseEnabled: boolean;
+  dailyBlockingPauseStartTime: string;
 }
 
 // Profile map: profile name → list of allowed domains

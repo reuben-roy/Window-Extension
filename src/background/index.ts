@@ -179,7 +179,7 @@ async function handleMessage(
       return refreshAssistantState();
 
     case 'TOGGLE_BLOCKING':
-      return toggleBlocking();
+      return toggleBlocking(message);
 
     case 'TOGGLE_PERSISTENT_PANEL':
       return togglePersistentPanel(message, sender);
@@ -343,9 +343,12 @@ async function disconnectCalendar(): Promise<{ ok: boolean }> {
 
 // ─── Blocking toggles and reconciliation ─────────────────────────────────────
 
-async function toggleBlocking(): Promise<{ enableBlocking: boolean }> {
+async function toggleBlocking(message?: Message): Promise<{ enableBlocking: boolean }> {
   const settings = await getSettings();
-  const enableBlocking = !settings.enableBlocking;
+  const requested = (message?.payload as { enabled?: boolean } | undefined)?.enabled;
+  const enableBlocking = typeof requested === 'boolean'
+    ? requested
+    : !settings.enableBlocking;
   await setSettings({ ...settings, enableBlocking });
   await reconcileBlockingState();
   return { enableBlocking };
@@ -470,11 +473,15 @@ export async function getBlockedTabContext(
     getAllTimeStats(),
   ]);
   const nextUnlockCost = await getNextUnlockCost(calendarState, blockedTabs[String(tabId)] ?? null);
+  const blockedTab = blockedTabs[String(tabId)] ?? null;
+  const activeUnlock = blockedTab
+    ? findMatchingUnlockForHost(blockedTab.blockedHost, unlocks)
+    : null;
 
   return {
     ok: true,
-    blockedTab: blockedTabs[String(tabId)] ?? null,
-    unlock: unlocks[String(tabId)] ?? null,
+    blockedTab,
+    unlock: activeUnlock,
     nextUnlockCost,
     canSpend: allTimeStats.totalPoints >= nextUnlockCost,
   };
@@ -510,6 +517,16 @@ export async function spendPointsForTemporaryUnlock(
     return { ok: false, error: 'There is no blocked site to unlock in this tab.' };
   }
 
+  const existingUnlock = findMatchingUnlockForHost(blockedTab.blockedHost, unlocks);
+  if (existingUnlock) {
+    return {
+      ok: true,
+      cost: 0,
+      redirectUrl: blockedTab.originalUrl,
+      remainingPoints: allTimeStats.totalPoints,
+    };
+  }
+
   const cost = await getNextUnlockCost(calendarState, blockedTab);
   if (allTimeStats.totalPoints < cost) {
     return { ok: false, error: `You need ${cost} points for a temporary unlock.` };
@@ -530,12 +547,15 @@ export async function spendPointsForTemporaryUnlock(
     blockedHost: blockedTab.blockedHost,
     originalUrl: blockedTab.originalUrl,
     expiresAt: new Date(Date.now() + TEMP_UNLOCK_DURATION_MINUTES * 60_000).toISOString(),
-    ruleId: TEMP_UNLOCK_RULE_ID_START + tabId,
+    ruleId: createTemporaryUnlockRuleId(blockedTab.blockedHost),
     activeEventId: blockedTab.activeEventId,
     activeEventTitle: blockedTab.activeEventTitle,
   };
 
-  const nextUnlocks = { ...unlocks, [String(tabId)]: unlock };
+  const nextUnlocks = {
+    ...unlocks,
+    [normalizeUnlockKey(blockedTab.blockedHost)]: unlock,
+  };
   const nextBlockedTabs = { ...blockedTabs };
   delete nextBlockedTabs[String(tabId)];
 
@@ -577,26 +597,30 @@ async function cleanupExpiredTemporaryUnlocks(
   ]);
 
   const settings = await getSettings();
+  const tabs = await chrome.tabs.query({});
 
   for (const unlock of expiredUnlocks) {
-    try {
-      const tab = await chrome.tabs.get(unlock.tabId);
-      if (!tab.url || !isHttpUrl(tab.url)) continue;
-      const host = new URL(tab.url).hostname;
-      if (
-        host === unlock.blockedHost ||
-        host.endsWith(`.${unlock.blockedHost}`)
-      ) {
+    for (const tab of tabs) {
+      try {
+        if (!tab.id || !tab.url || !isHttpUrl(tab.url)) continue;
+        const host = new URL(tab.url).hostname;
+        if (
+          host !== unlock.blockedHost &&
+          !host.endsWith(`.${unlock.blockedHost}`)
+        ) {
+          continue;
+        }
+
         const stillAllowed =
           !settings.enableBlocking ||
           !calendarState.isRestricted ||
           isDomainAllowed(host, calendarState.allowedDomains);
         if (!stillAllowed) {
-          await chrome.tabs.reload(unlock.tabId);
+          await chrome.tabs.reload(tab.id);
         }
+      } catch {
+        // Ignore tabs that disappeared.
       }
-    } catch {
-      // Ignore tabs that disappeared.
     }
   }
 }
@@ -662,7 +686,6 @@ function registerBlockingListeners(): void {
   chrome.tabs.onRemoved.addListener((tabId) => {
     pendingNavigationByTab.delete(tabId);
     void clearBlockedTab(tabId);
-    void clearTemporaryUnlock(tabId);
   });
 }
 
@@ -693,17 +716,6 @@ async function clearBlockedTab(tabId: number): Promise<void> {
   await setBlockedTabs(nextBlockedTabs);
 }
 
-async function clearTemporaryUnlock(tabId: number): Promise<void> {
-  const unlocks = await getTemporaryUnlocks();
-  if (!(String(tabId) in unlocks)) return;
-  const nextUnlocks = { ...unlocks };
-  delete nextUnlocks[String(tabId)];
-  await Promise.all([
-    setTemporaryUnlocks(nextUnlocks),
-    syncTemporaryUnlockRules(nextUnlocks),
-  ]);
-}
-
 function isBlockedPageUrl(url: string): boolean {
   return url.startsWith(chrome.runtime.getURL(BLOCKED_PAGE_EXTENSION_PATH));
 }
@@ -712,9 +724,42 @@ function isHttpUrl(url: string): boolean {
   return url.startsWith('http://') || url.startsWith('https://');
 }
 
+function normalizeUnlockKey(blockedHost: string): string {
+  return blockedHost.trim().toLowerCase();
+}
+
+function createTemporaryUnlockRuleId(blockedHost: string): number {
+  const key = normalizeUnlockKey(blockedHost);
+  let hash = 0;
+  for (let index = 0; index < key.length; index += 1) {
+    hash = (hash * 31 + key.charCodeAt(index)) | 0;
+  }
+
+  return TEMP_UNLOCK_RULE_ID_START + (Math.abs(hash) % 900_000);
+}
+
+function findMatchingUnlockForHost(
+  host: string,
+  unlocks: Record<string, TemporaryUnlockState>,
+): TemporaryUnlockState | null {
+  const lowerHost = host.toLowerCase();
+
+  const match = Object.values(unlocks)
+    .filter((unlock) => {
+      const unlockHost = unlock.blockedHost.toLowerCase();
+      return (
+        new Date(unlock.expiresAt).getTime() > Date.now() &&
+        (lowerHost === unlockHost || lowerHost.endsWith(`.${unlockHost}`))
+      );
+    })
+    .sort((a, b) => b.blockedHost.length - a.blockedHost.length)[0];
+
+  return match ?? null;
+}
+
 function isUrlReachableNow(
   url: string,
-  tabId: number,
+  _tabId: number,
   calendarState: CalendarState,
   settings: Awaited<ReturnType<typeof getSettings>>,
   unlocks: Record<string, TemporaryUnlockState>,
@@ -725,7 +770,7 @@ function isUrlReachableNow(
   const host = new URL(url).hostname;
   if (isDomainAllowed(host, calendarState.allowedDomains)) return true;
 
-  const unlock = unlocks[String(tabId)];
+  const unlock = findMatchingUnlockForHost(host, unlocks);
   if (!unlock) return false;
   if (new Date(unlock.expiresAt).getTime() <= Date.now()) return false;
   return host === unlock.blockedHost || host.endsWith(`.${unlock.blockedHost}`);

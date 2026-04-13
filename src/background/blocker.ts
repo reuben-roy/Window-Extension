@@ -147,7 +147,6 @@ function buildTemporaryUnlockRule(unlock: TemporaryUnlockState): chrome.declarat
     priority: 3,
     action: { type: chrome.declarativeNetRequest.RuleActionType.ALLOW },
     condition: {
-      tabIds: [unlock.tabId],
       urlFilter: `||${unlock.blockedHost}`,
       resourceTypes: [chrome.declarativeNetRequest.ResourceType.MAIN_FRAME],
     },

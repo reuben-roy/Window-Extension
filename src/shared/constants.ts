@@ -21,6 +21,8 @@ export const DEFAULT_SETTINGS: Settings = {
   keywordAutoMatchEnabled: false,
   breakTelemetryEnabled: false,
   persistentPanelEnabled: false,
+  dailyBlockingPauseEnabled: false,
+  dailyBlockingPauseStartTime: '22:00',
 };
 
 export const DEFAULT_GLOBAL_ALLOWLIST: string[] = ['accounts.google.com'];

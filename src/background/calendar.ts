@@ -10,6 +10,7 @@ import {
   type CalendarColorDefinition,
   resolveCalendarEventColors,
 } from '../shared/calendarColors';
+import { isDailyBlockingPauseActive } from '../shared/blockingSchedule';
 import type {
   ActiveRuleSource,
   CalendarEvent,
@@ -188,7 +189,7 @@ export function resolveActiveState(
     activeRuleName: primary.name,
     allowedDomains,
     recentEventTitles,
-    isRestricted: settings.enableBlocking,
+    isRestricted: settings.enableBlocking && !isDailyBlockingPauseActive(new Date(), settings),
     lastSyncedAt: new Date().toISOString(),
     authError: null,
   };

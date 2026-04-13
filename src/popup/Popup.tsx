@@ -6,6 +6,7 @@ import type {
   OpenClawSessionSummary,
   StateResponse,
 } from '../shared/types';
+import { formatBlockingPauseTimeLabel, isDailyBlockingPauseActive } from '../shared/blockingSchedule';
 import { MODEL_PLACEHOLDER_OPTIONS } from '../shared/constants';
 import PointsBubble from '../shared/components/PointsBubble';
 import CalendarConnect from './components/CalendarConnect';
@@ -84,15 +85,12 @@ export default function Popup({
   const handleToggle = () => {
     if (toggling || !state) return;
     setToggling(true);
+    const nextEnabled = !state.settings.enableBlocking;
     chrome.runtime.sendMessage(
-      { type: 'TOGGLE_BLOCKING' },
-      (response: { enableBlocking: boolean }) => {
-        setState((prev) =>
-          prev
-            ? { ...prev, settings: { ...prev.settings, enableBlocking: response.enableBlocking } }
-            : prev,
-        );
+      { type: 'TOGGLE_BLOCKING', payload: { enabled: nextEnabled } },
+      () => {
         setToggling(false);
+        loadState();
       },
     );
   };
@@ -160,6 +158,7 @@ export default function Popup({
     allTimeStats,
   } = state;
   const calendarConnected = calendarState.lastSyncedAt !== null && calendarState.authError === null;
+  const quietHoursActive = isDailyBlockingPauseActive(new Date(), settings);
   const effectivelyBlocking = settings.enableBlocking && calendarState.isRestricted;
   const now = Date.now();
   const nextEvent =
@@ -176,7 +175,13 @@ export default function Popup({
   const headerTitle = calendarState.currentEvent?.title ?? 'Window';
   const headerCaption = calendarConnected
     ? calendarState.currentEvent
-      ? `${formatEventRange(calendarState.currentEvent)} · ${effectivelyBlocking ? 'Blocking active' : 'Browsing open'}`
+      ? `${formatEventRange(calendarState.currentEvent)} · ${
+          effectivelyBlocking
+            ? 'Blocking active'
+            : quietHoursActive
+              ? `Quiet hours until midnight · resumes tomorrow after ${formatBlockingPauseTimeLabel(settings.dailyBlockingPauseStartTime)}`
+              : 'Browsing open'
+        }`
       : nextEvent
         ? `Next focus block: ${nextEvent.title} · ${formatEventRange(nextEvent)}`
         : 'Calendar connected · no focus block live.'
@@ -187,14 +192,14 @@ export default function Popup({
 
   return (
     <div className={`${mode === 'panel' ? 'min-h-screen w-full' : 'max-h-[760px] w-[460px]'} overflow-y-auto bg-[var(--fg-bg)] font-sans select-none`}>
-      <header className="border-b border-[var(--fg-border)] px-4 py-4">
+      <header className="border-b border-[var(--fg-border)] px-3.5 py-3">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--fg-muted)]">Focus status</p>
-            <h1 className="mt-1 truncate text-xl font-semibold tracking-[-0.03em] text-[var(--fg-text)]">
+            <h1 className="mt-0.5 truncate text-lg font-semibold tracking-[-0.03em] text-[var(--fg-text)]">
               {headerTitle}
             </h1>
-            <p className="mt-1 text-xs leading-5 text-[var(--fg-muted)]">{headerCaption}</p>
+            <p className="mt-0.5 text-[11px] leading-4 text-[var(--fg-muted)]">{headerCaption}</p>
           </div>
 
           <div className="flex flex-wrap items-center justify-end gap-2">
@@ -215,7 +220,11 @@ export default function Popup({
                   : 'border border-[var(--fg-border)] bg-white text-[var(--fg-muted)]'
               } ${toggling || !calendarConnected ? 'cursor-not-allowed opacity-50' : ''}`}
             >
-              {settings.enableBlocking ? 'Blocking ON' : 'Blocking OFF'}
+              {settings.enableBlocking
+                ? quietHoursActive
+                  ? 'Quiet Hours'
+                  : 'Blocking ON'
+                : 'Blocking OFF'}
             </button>
             <PointsBubble
               points={allTimeStats.totalPoints}
@@ -227,17 +236,17 @@ export default function Popup({
         </div>
       </header>
 
-      <div className="space-y-3 px-4 py-4">
+      <div className="space-y-2.5 px-3.5 py-3.5">
         <CalendarConnect calendarState={calendarState} onStateChange={loadState} />
 
-        <section className={`grid gap-3 ${mode === 'panel' ? 'xl:grid-cols-[1.03fr,0.97fr]' : 'grid-cols-1'}`}>
+        <section className={`grid gap-2.5 ${mode === 'panel' ? 'xl:grid-cols-[1.03fr,0.97fr]' : 'grid-cols-1'}`}>
           <div className="space-y-3">
             <DashboardCard
               eyebrow="Focus"
               title={calendarState.currentEvent?.title ?? 'No focus block live'}
               caption={focusCaption}
             >
-              <div className="space-y-3">
+              <div className="space-y-2.5">
                 <PointsDisplay stats={allTimeStats} />
 
                 <div className="grid gap-2 sm:grid-cols-2">
@@ -247,6 +256,8 @@ export default function Popup({
                     body={
                       calendarState.activeRuleSource === 'event' && calendarState.activeRuleName
                         ? `Event rule: ${calendarState.activeRuleName}`
+                        : quietHoursActive
+                          ? `Daily cutoff active after ${formatBlockingPauseTimeLabel(settings.dailyBlockingPauseStartTime)}.`
                         : effectivelyBlocking
                           ? 'Focus restrictions are active for this calendar block.'
                           : 'No active restriction is limiting browsing right now.'
@@ -260,7 +271,7 @@ export default function Popup({
                 </div>
 
                 {snoozeState.active && snoozeState.expiresAt && (
-                  <div className="rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+                  <div className="rounded-[18px] border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs text-amber-800">
                     Break active. Blocking resumes in {formatCountdown(snoozeState.expiresAt)}.
                   </div>
                 )}
@@ -270,7 +281,7 @@ export default function Popup({
                     <TaskQueue tasks={actionableTasks} />
                     <button
                       onClick={() => setCompletionModalOpen(true)}
-                      className="fg-button-primary"
+                      className="fg-button-primary px-4 py-3"
                     >
                       Mark Task Done
                     </button>
@@ -286,9 +297,9 @@ export default function Popup({
             <DashboardCard
               eyebrow="Quick controls"
               title="Essential controls"
-              caption="Keep the surface lean while changing the few things that matter mid-flow."
+              caption=""
             >
-              <div className="grid gap-3 sm:grid-cols-2">
+              <div className="grid gap-2.5 sm:grid-cols-2">
                 <ControlField label="Break length" hint="Default duration used when starting a break from a blocked page.">
                   <select
                     value={settings.breakDurationMinutes}
@@ -299,7 +310,7 @@ export default function Popup({
                       );
                       updateSettings({ ...settings, breakDurationMinutes: next });
                     }}
-                    className="fg-select"
+                    className="fg-select px-3 py-2.5 text-sm"
                   >
                     <option value={5}>5 min</option>
                     <option value={10}>10 min</option>
@@ -317,16 +328,16 @@ export default function Popup({
                 </ControlField>
               </div>
 
-              <div className="mt-3 flex flex-wrap gap-2">
+              <div className="mt-2.5 flex flex-wrap gap-2">
                 <button
                   onClick={() => chrome.runtime.openOptionsPage()}
-                  className="fg-button-secondary"
+                  className="fg-button-secondary px-3 py-2 text-xs"
                 >
                   Open Settings
                 </button>
                 <button
                   onClick={() => chrome.runtime.sendMessage({ type: 'SNOOZE' })}
-                  className="fg-button-secondary"
+                  className="fg-button-secondary px-3 py-2 text-xs"
                 >
                   Start Break
                 </button>
@@ -418,15 +429,15 @@ function DashboardCard({
 }: {
   eyebrow: string;
   title: string;
-  caption: string;
+  caption?: string;
   children?: React.ReactNode;
 }): React.JSX.Element {
   return (
-    <div className="fg-card p-4">
-      <div className="mb-3">
+    <div className="fg-card p-3.5">
+      <div className="mb-2.5">
         <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--fg-muted)]">{eyebrow}</p>
-        <h2 className="mt-1 text-lg font-semibold tracking-[-0.03em] text-[var(--fg-text)]">{title}</h2>
-        <p className="mt-1 text-sm text-[var(--fg-muted)]">{caption}</p>
+        <h2 className="mt-0.5 text-[1.55rem] font-semibold tracking-[-0.03em] text-[var(--fg-text)]">{title}</h2>
+        {caption ? <p className="mt-0.5 text-[11px] leading-4 text-[var(--fg-muted)]">{caption}</p> : null}
       </div>
       {children}
     </div>
@@ -443,10 +454,10 @@ function MiniPanel({
   body: string;
 }): React.JSX.Element {
   return (
-    <div className="rounded-2xl border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-3 py-3">
-      <p className="text-[11px] uppercase tracking-[0.16em] text-[var(--fg-muted)]">{label}</p>
-      <p className="mt-1 text-sm font-semibold text-[var(--fg-text)]">{value}</p>
-      <p className="mt-1 text-xs leading-5 text-[var(--fg-muted)]">{body}</p>
+    <div className="rounded-[20px] border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-3 py-2.5">
+      <p className="text-[10px] uppercase tracking-[0.16em] text-[var(--fg-muted)]">{label}</p>
+      <p className="mt-0.5 text-sm font-semibold leading-5 text-[var(--fg-text)]">{value}</p>
+      <p className="mt-0.5 text-[11px] leading-4 text-[var(--fg-muted)]">{body}</p>
     </div>
   );
 }
@@ -461,9 +472,9 @@ function ControlField({
   children: React.ReactNode;
 }): React.JSX.Element {
   return (
-    <div className="space-y-2">
+    <div className="space-y-1.5">
       <div className="flex items-center gap-2">
-        <p className="text-xs font-medium text-[var(--fg-text)]">{label}</p>
+        <p className="text-[11px] font-medium text-[var(--fg-text)]">{label}</p>
         <InfoTip text={hint} />
       </div>
       {children}
@@ -525,8 +536,8 @@ function AssistantPanel({
   const reusableSession = openClawState.sessions.find((session) => session.status !== 'closed');
 
   return (
-    <div className="space-y-4">
-      <div className="grid grid-cols-2 gap-3">
+    <div className="space-y-3">
+      <div className="grid grid-cols-2 gap-2">
         <MiniPanel
           label="Transport"
           value={openClawState.status.transport.toUpperCase()}
@@ -546,7 +557,7 @@ function AssistantPanel({
         <select
           value={selectedModel}
           onChange={(event) => onModelSelect(event.target.value)}
-          className="fg-select"
+          className="fg-select px-3 py-2.5 text-sm"
         >
           {MODEL_PLACEHOLDER_OPTIONS.map((option) => (
             <option key={option} value={option}>
@@ -556,7 +567,7 @@ function AssistantPanel({
         </select>
       </ControlField>
 
-      <div className="space-y-3">
+      <div className="space-y-2">
         <PreferenceRow
           label="Session behavior"
           hint="Reuse the current thread when you want continuity, or always start fresh."
@@ -585,11 +596,11 @@ function AssistantPanel({
         />
       </div>
 
-      <div className="rounded-2xl border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] p-3">
+      <div className="rounded-[20px] border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] p-2.5">
         <div className="flex items-center justify-between gap-2">
           <div>
             <p className="text-sm font-semibold text-[var(--fg-text)]">Capture idea</p>
-            <p className="text-xs text-[var(--fg-muted)]">
+            <p className="text-[11px] leading-4 text-[var(--fg-muted)]">
               {backendSyncState.connected
                 ? `Synced${backendSession ? ` as ${backendSession.userId}` : ''}.`
                 : backendSyncState.lastError ?? 'Queued locally until the backend reconnects.'}
@@ -598,29 +609,29 @@ function AssistantPanel({
           <button
             onClick={onIdeaSubmit}
             disabled={submittingIdea}
-            className="fg-button-primary"
+            className="fg-button-primary px-3.5 py-2 text-sm"
           >
             {submittingIdea ? 'Submitting…' : 'Capture'}
           </button>
         </div>
 
         <textarea
-          rows={mode === 'panel' ? 4 : 3}
+          rows={mode === 'panel' ? 3 : 2}
           value={ideaInput}
           onChange={(event) => onIdeaInputChange(event.target.value)}
           placeholder="I want to build a marketplace for horse breeders. Is this viable?"
-          className="fg-input mt-3 min-h-[88px] resize-none"
+          className="fg-input mt-2 min-h-[72px] resize-none px-3 py-2.5 text-sm"
         />
         {ideaError && <p className="mt-2 text-xs text-rose-600">{ideaError}</p>}
       </div>
 
       {openClawState.sessions.length > 0 && (
-        <div className="space-y-2">
+        <div className="space-y-1.5">
           <div className="flex items-center justify-between gap-2">
             <p className="text-xs uppercase tracking-[0.16em] text-[var(--fg-muted)]">Recent sessions</p>
             <span className="text-xs text-[var(--fg-muted)]">{openClawState.sessions.length} saved</span>
           </div>
-          <div className="space-y-2">
+          <div className="space-y-1.5">
             {openClawState.sessions.slice(0, mode === 'panel' ? 4 : 3).map((session) => (
               <SessionRow
                 key={session.id}
@@ -644,21 +655,21 @@ function AssistantPanel({
           />
         </div>
       ) : (
-        <div className="rounded-2xl border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-3 py-3 text-sm text-[var(--fg-muted)]">
+        <div className="rounded-[20px] border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-3 py-2.5 text-xs leading-4 text-[var(--fg-muted)]">
           No queued idea reports yet. Capture stays available, but the inbox only expands when something is waiting for you.
         </div>
       )}
 
       <div className="flex flex-wrap gap-2">
-        <button onClick={onRefresh} className="fg-button-secondary">Refresh</button>
-        <button onClick={onStartSession} className="fg-button-secondary">New Session</button>
+        <button onClick={onRefresh} className="fg-button-secondary px-3 py-2 text-xs">Refresh</button>
+        <button onClick={onStartSession} className="fg-button-secondary px-3 py-2 text-xs">New Session</button>
         {reusableSession && (
-          <button onClick={() => onReuseSession(reusableSession.id)} className="fg-button-secondary">
+          <button onClick={() => onReuseSession(reusableSession.id)} className="fg-button-secondary px-3 py-2 text-xs">
             Reuse Session
           </button>
         )}
         {openClawState.currentJob && (
-          <button onClick={() => onCancelJob(openClawState.currentJob!.id)} className="fg-button-secondary">
+          <button onClick={() => onCancelJob(openClawState.currentJob!.id)} className="fg-button-secondary px-3 py-2 text-xs">
             Cancel Job
           </button>
         )}
@@ -683,9 +694,9 @@ function PreferenceRow({
   onSelect: (selection: 'left' | 'right') => void;
 }): React.JSX.Element {
   return (
-    <div className="rounded-2xl border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-3 py-3">
-      <div className="mb-2 flex items-center gap-2">
-        <p className="text-sm font-medium text-[var(--fg-text)]">{label}</p>
+    <div className="rounded-[20px] border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-3 py-2.5">
+      <div className="mb-1.5 flex items-center gap-2">
+        <p className="text-[11px] font-medium text-[var(--fg-text)]">{label}</p>
         <InfoTip text={hint} />
       </div>
       <BinarySelector
@@ -710,10 +721,10 @@ function BinarySelector({
   onSelect: (selection: 'left' | 'right') => void;
 }): React.JSX.Element {
   return (
-    <div className="inline-flex w-full rounded-2xl border border-[var(--fg-border)] bg-white p-1">
+    <div className="inline-flex w-full rounded-[18px] border border-[var(--fg-border)] bg-white p-0.5">
       <button
         onClick={() => onSelect('left')}
-        className={`flex-1 rounded-xl px-3 py-2 text-xs font-medium transition ${
+        className={`flex-1 rounded-[14px] px-2.5 py-1.5 text-[11px] font-medium transition ${
           selected === 'left'
             ? 'bg-[var(--fg-panel-soft)] text-[var(--fg-text)] shadow-[0_8px_16px_rgba(15,23,42,0.08)]'
             : 'text-[var(--fg-muted)]'
@@ -723,7 +734,7 @@ function BinarySelector({
       </button>
       <button
         onClick={() => onSelect('right')}
-        className={`flex-1 rounded-xl px-3 py-2 text-xs font-medium transition ${
+        className={`flex-1 rounded-[14px] px-2.5 py-1.5 text-[11px] font-medium transition ${
           selected === 'right'
             ? 'bg-[var(--fg-panel-soft)] text-[var(--fg-text)] shadow-[0_8px_16px_rgba(15,23,42,0.08)]'
             : 'text-[var(--fg-muted)]'
@@ -762,11 +773,11 @@ function IdeaInbox({
       {ideas.map((idea) => (
         <div
           key={idea.localId}
-          className="rounded-2xl border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-4 py-3"
+          className="rounded-[20px] border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-3 py-2.5"
         >
           <div className="flex items-start justify-between gap-3">
             <div className="space-y-1">
-              <p className="text-sm font-medium text-[var(--fg-text)]">{idea.prompt}</p>
+              <p className="text-[13px] font-medium leading-5 text-[var(--fg-text)]">{idea.prompt}</p>
               <p className="text-xs uppercase tracking-[0.14em] text-[var(--fg-muted)]">{idea.status}</p>
             </div>
             {idea.unread && (
@@ -777,8 +788,8 @@ function IdeaInbox({
           </div>
 
           {idea.report ? (
-            <div className="mt-3 space-y-2">
-              <p className="text-sm text-[var(--fg-muted)]">{idea.report.summary}</p>
+            <div className="mt-2.5 space-y-1.5">
+              <p className="text-xs leading-4 text-[var(--fg-muted)]">{idea.report.summary}</p>
               <div className="grid grid-cols-3 gap-2 text-xs text-[var(--fg-muted)]">
                 <span>Viability: {idea.report.viability}</span>
                 <span>Build: {idea.report.buildEffort}</span>
@@ -786,18 +797,18 @@ function IdeaInbox({
               </div>
               {!idea.saved && !idea.archived && (
                 <div className="flex flex-wrap gap-2 pt-1">
-                  <button onClick={() => onKeep(idea.localId)} className="fg-button-primary">
+                  <button onClick={() => onKeep(idea.localId)} className="fg-button-primary px-3 py-2 text-xs">
                     Keep
                   </button>
-                  <button onClick={() => onDiscard(idea.localId)} className="fg-button-secondary">
+                  <button onClick={() => onDiscard(idea.localId)} className="fg-button-secondary px-3 py-2 text-xs">
                     Discard
                   </button>
                 </div>
               )}
             </div>
           ) : (
-            <div className="mt-3 flex items-center justify-between gap-3">
-              <p className="text-sm text-[var(--fg-muted)]">
+            <div className="mt-2.5 flex items-center justify-between gap-3">
+              <p className="text-xs leading-4 text-[var(--fg-muted)]">
                 {idea.error
                   ? `Last error: ${idea.error}`
                   : idea.status === 'queued' || idea.status === 'syncing'
@@ -805,7 +816,7 @@ function IdeaInbox({
                     : 'OpenClaw is still working on this one.'}
               </p>
               {(idea.status === 'failed' || idea.error) && (
-                <button onClick={() => onRetry(idea.localId)} className="fg-button-secondary">
+                <button onClick={() => onRetry(idea.localId)} className="fg-button-secondary px-3 py-2 text-xs">
                   Retry
                 </button>
               )}
@@ -827,10 +838,10 @@ function SessionRow({
   onReuse: () => void;
 }): React.JSX.Element {
   return (
-    <div className="flex items-center justify-between gap-3 rounded-2xl border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-3 py-2">
+    <div className="flex items-center justify-between gap-3 rounded-[20px] border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-3 py-2">
       <div>
-        <p className="text-sm font-medium text-[var(--fg-text)]">{session.title}</p>
-        <p className="text-xs text-[var(--fg-muted)]">
+        <p className="text-[13px] font-medium leading-5 text-[var(--fg-text)]">{session.title}</p>
+        <p className="text-[11px] leading-4 text-[var(--fg-muted)]">
           {session.status} · {session.modelLabel ?? 'OpenClaw default'}
         </p>
       </div>
@@ -840,7 +851,7 @@ function SessionRow({
             Active
           </span>
         )}
-        <button onClick={onReuse} className="fg-button-ghost">
+        <button onClick={onReuse} className="fg-button-ghost px-2.5 py-1.5 text-xs">
           Use
         </button>
       </div>

@@ -131,6 +131,84 @@ describe('blocked page message handlers', () => {
     expect(response.remainingPoints).toBe(75);
     expect(stats.totalPoints).toBe(75);
     expect(blockedTabs['7']).toBeUndefined();
-    expect(unlocks['7']?.blockedHost).toBe('youtube.com');
+    expect(unlocks['youtube.com']?.blockedHost).toBe('youtube.com');
+  });
+
+  it('does not charge points again when the host is already unlocked', async () => {
+    chrome.storage.sync.set({
+      allTimeStats: {
+        totalPoints: 75,
+        level: 1,
+        title: 'Novice',
+        prestigeCount: 0,
+        tasksCompleted: 0,
+        bestWeek: 0,
+        currentWeekStreak: 0,
+      },
+      pointsHistory: {},
+      calendarState: {
+        currentEvent: {
+          id: 'evt-1',
+          title: 'Deep Work',
+          start: '2026-04-12T18:00:00.000Z',
+          end: '2026-04-12T20:00:00.000Z',
+          isAllDay: false,
+        },
+        allActiveEvents: [],
+        todaysEvents: [],
+        activeProfile: 'Deep Work',
+        activeRuleSource: 'event',
+        activeRuleName: 'Deep Work',
+        allowedDomains: [],
+        recentEventTitles: [],
+        isRestricted: true,
+        lastSyncedAt: '2026-04-12T18:00:00.000Z',
+        authError: null,
+      },
+    });
+    chrome.storage.local.set({
+      blockedTabs: {
+        '8': {
+          tabId: 8,
+          originalUrl: 'https://youtube.com/watch?v=demo-two',
+          blockedHost: 'youtube.com',
+          activeEventId: 'evt-1',
+          activeEventTitle: 'Deep Work',
+          blockedAt: '2026-04-12T18:02:00.000Z',
+        },
+      },
+      temporaryUnlocks: {
+        'youtube.com': {
+          tabId: 7,
+          blockedHost: 'youtube.com',
+          originalUrl: 'https://youtube.com/watch?v=demo',
+          expiresAt: '2099-04-12T18:05:00.000Z',
+          ruleId: 220001,
+          activeEventId: 'evt-1',
+          activeEventTitle: 'Deep Work',
+        },
+      },
+      unlockSpendState: {
+        activeEventKey: 'event:evt-1',
+        spendCount: 1,
+      },
+    });
+
+    const response = await background.spendPointsForTemporaryUnlock(
+      {} as chrome.runtime.MessageSender,
+      { type: 'SPEND_POINTS_UNLOCK', payload: { tabId: 8 } },
+    );
+
+    const [stats, unlocks] = await Promise.all([
+      getAllTimeStats(),
+      getTemporaryUnlocks(),
+    ]);
+
+    expect(response.ok).toBe(true);
+    expect(response.cost).toBe(0);
+    expect(response.redirectUrl).toBe('https://youtube.com/watch?v=demo-two');
+    expect(response.remainingPoints).toBe(75);
+    expect(stats.totalPoints).toBe(75);
+    expect(unlocks['youtube.com']?.blockedHost).toBe('youtube.com');
   });
 });

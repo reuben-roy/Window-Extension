@@ -11,6 +11,10 @@ import type {
 import { removeEventRule, removeKeywordRule, upsertEventRule, upsertKeywordRule } from '../shared/eventRules';
 import { addToGlobalAllowlist, removeFromGlobalAllowlist } from '../shared/profiles';
 import {
+  formatBlockingPauseTimeLabel,
+  isDailyBlockingPauseActive,
+} from '../shared/blockingSchedule';
+import {
   getCalendarState,
   getEventRules,
   getGlobalAllowlist,
@@ -205,6 +209,7 @@ export default function Options(): React.JSX.Element {
   }, [todaysEvents]);
 
   const activeEvent = calendarState?.currentEvent ?? null;
+  const quietHoursActive = settings ? isDailyBlockingPauseActive(new Date(), settings) : false;
 
   useEffect(() => {
     if (!selectedTooltip) return;
@@ -277,6 +282,17 @@ export default function Options(): React.JSX.Element {
     const next = { ...settings, ...patch };
     setLocalSettings(next);
     await setSettings(next);
+  };
+
+  const updateBlockingEnabled = (enabled: boolean) => {
+    if (!settings) return;
+    setLocalSettings({ ...settings, enableBlocking: enabled });
+    chrome.runtime.sendMessage(
+      { type: 'TOGGLE_BLOCKING', payload: { enabled } },
+      () => {
+        loadData();
+      },
+    );
   };
 
   const calendarApi = () => calendarRef.current?.getApi();
@@ -388,15 +404,26 @@ export default function Options(): React.JSX.Element {
         </header>
 
         <section className="mb-6 grid gap-4 xl:grid-cols-[minmax(0,1fr),320px]">
-          <div className="grid gap-4 md:grid-cols-4">
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
             <MetricCard
               label="Blocking"
-              value={settings.enableBlocking ? 'On' : 'Off'}
+              value={
+                !settings.enableBlocking
+                  ? 'Off'
+                  : quietHoursActive
+                    ? 'Paused'
+                    : 'On'
+              }
               accent={settings.enableBlocking ? 'emerald' : 'gray'}
+              subvalue={
+                quietHoursActive
+                  ? `Daily cutoff active after ${formatBlockingPauseTimeLabel(settings.dailyBlockingPauseStartTime)}`
+                  : undefined
+              }
               action={
                 <Toggle
                   checked={settings.enableBlocking}
-                  onChange={(checked) => updateSettings({ enableBlocking: checked })}
+                  onChange={updateBlockingEnabled}
                 />
               }
             />
@@ -425,6 +452,42 @@ export default function Options(): React.JSX.Element {
               value={activeEvent ? truncate(activeEvent.title, 26) : 'None'}
               accent={activeEvent ? 'violet' : 'gray'}
               subvalue={activeEvent ? formatEventRange(activeEvent) : 'No focus block live'}
+            />
+            <MetricCard
+              label="Daily Cutoff"
+              value={
+                settings.dailyBlockingPauseEnabled
+                  ? formatBlockingPauseTimeLabel(settings.dailyBlockingPauseStartTime)
+                  : 'Disabled'
+              }
+              accent={settings.dailyBlockingPauseEnabled ? 'amber' : 'gray'}
+              subvalue="Blocks stay off for the rest of the day after this time."
+              action={
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-xs text-[var(--fg-muted)]">Pause blocking daily</p>
+                    <Toggle
+                      checked={settings.dailyBlockingPauseEnabled}
+                      onChange={(checked) =>
+                        updateSettings({
+                          dailyBlockingPauseEnabled: checked,
+                        })
+                      }
+                    />
+                  </div>
+                  <input
+                    type="time"
+                    value={settings.dailyBlockingPauseStartTime}
+                    disabled={!settings.dailyBlockingPauseEnabled}
+                    onChange={(event) =>
+                      updateSettings({
+                        dailyBlockingPauseStartTime: event.target.value,
+                      })
+                    }
+                    className="fg-input disabled:cursor-not-allowed disabled:opacity-50"
+                  />
+                </div>
+              }
             />
             <MetricCard
               label="Next Event"

@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { TEMP_UNLOCK_DURATION_MINUTES } from '../shared/constants';
+import { TEMP_UNLOCK_DURATION_MINUTES, xpRequiredForLevel } from '../shared/constants';
 import PointsBubble from '../shared/components/PointsBubble';
 import { buildMockLeaderboard } from '../shared/mockLeaderboard';
 import type {
@@ -155,34 +155,41 @@ export default function Blocked(): React.JSX.Element {
   return (
     <div className="fg-shell min-h-screen px-4 py-8">
       <div className="mx-auto max-w-6xl space-y-6">
-        <header className="flex flex-wrap items-start justify-between gap-4">
-          <div className="space-y-2">
-            <div className="inline-flex items-center gap-2 rounded-full border border-[var(--fg-border)] bg-white/85 px-3 py-1 text-[11px] font-medium text-[var(--fg-muted)] shadow-sm">
-              <span className="h-2 w-2 rounded-full bg-rose-400" />
-              Focus checkpoint
-            </div>
-            <h1 className="text-3xl font-semibold tracking-[-0.03em] text-[var(--fg-text)]">
-              Stay in the zone
-            </h1>
-            <p className="max-w-2xl text-sm leading-6 text-[var(--fg-muted)]">
-              {blockedHost
-                ? `${blockedHost} is paused while your focus block is active.`
-                : 'This site is paused while your focus block is active.'}
-            </p>
+        <header className="space-y-2">
+          <div className="inline-flex items-center gap-2 rounded-full border border-[var(--fg-border)] bg-white/85 px-3 py-1 text-[11px] font-medium text-[var(--fg-muted)] shadow-sm">
+            <span className="h-2 w-2 rounded-full bg-rose-400" />
+            Focus checkpoint
           </div>
-
-          <PointsBubble
-            points={allTimeStats.totalPoints}
-            level={allTimeStats.level}
-            title={allTimeStats.title}
-          />
+          <h1 className="text-3xl font-semibold tracking-[-0.03em] text-[var(--fg-text)]">
+            Stay in the zone
+          </h1>
+          <p className="max-w-2xl text-sm leading-6 text-[var(--fg-muted)]">
+            {blockedHost
+              ? `${blockedHost} is paused while your focus block is active.`
+              : 'This site is paused while your focus block is active.'}
+          </p>
         </header>
 
-        <section className="grid gap-4 lg:grid-cols-[minmax(0,1.18fr),360px]">
+        <section className="relative grid items-start gap-4 lg:grid-cols-[minmax(0,1.18fr),360px]">
+          <div className="pointer-events-none absolute right-[calc(360px+1rem)] top-[-5.5rem] z-20 hidden lg:block">
+            <PointsBubble
+              points={allTimeStats.totalPoints}
+              level={allTimeStats.level}
+              title={allTimeStats.title}
+            />
+          </div>
+
           <div className="space-y-4">
-            <div className="fg-card p-5">
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div className="max-w-2xl">
+            <div className="fg-card relative overflow-visible p-5">
+              <div className="mb-4 lg:hidden">
+                <PointsBubble
+                  points={allTimeStats.totalPoints}
+                  level={allTimeStats.level}
+                  title={allTimeStats.title}
+                />
+              </div>
+              <div className="flex flex-wrap items-start justify-between gap-4">
+                <div className="min-w-0 flex-1">
                   <p className="text-xs uppercase tracking-[0.18em] text-[var(--fg-muted)]">Current event</p>
                   <p className="mt-1 text-2xl font-semibold tracking-[-0.03em] text-[var(--fg-text)]">
                     {currentEvent?.title ?? 'Focus block active'}
@@ -197,11 +204,37 @@ export default function Blocked(): React.JSX.Element {
                   </p>
                 </div>
 
-                <div className="grid min-w-[240px] grid-cols-2 gap-3">
-                  <StatPill label="Rank" value={rankLabel} />
-                  <StatPill label="Tasks done" value={String(allTimeStats.tasksCompleted)} />
-                  <StatPill label="Best week" value={`${allTimeStats.bestWeek} pts`} />
-                  <StatPill label="Week streak" value={`${allTimeStats.currentWeekStreak}w`} />
+                <LevelDial points={allTimeStats.totalPoints} level={allTimeStats.level} />
+              </div>
+
+              <div className="mt-4 flex flex-wrap gap-2">
+                <InlineStat label="Rank" value={rankLabel} />
+                <InlineStat label="Tasks done" value={String(allTimeStats.tasksCompleted)} />
+                <InlineStat label="Best week" value={`${allTimeStats.bestWeek} pts`} />
+                <InlineStat label="Week streak" value={`${allTimeStats.currentWeekStreak}w`} />
+              </div>
+
+              <div className="mt-5 border-t border-[var(--fg-border)] pt-4">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="text-xs uppercase tracking-[0.18em] text-[var(--fg-muted)]">Allowed right now</p>
+                  <p className="text-xs text-[var(--fg-muted)]">
+                    {calendarState.allowedDomains.length} domain{calendarState.allowedDomains.length === 1 ? '' : 's'}
+                  </p>
+                </div>
+
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {calendarState.allowedDomains.length > 0 ? (
+                    calendarState.allowedDomains.map((domain) => (
+                      <span
+                        key={domain}
+                        className="rounded-full border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-3 py-1.5 text-xs font-medium text-[var(--fg-text)]"
+                      >
+                        {domain}
+                      </span>
+                    ))
+                  ) : (
+                    <p className="text-sm text-[var(--fg-muted)]">No allowed sites for this focus block.</p>
+                  )}
                 </div>
               </div>
 
@@ -232,21 +265,82 @@ export default function Blocked(): React.JSX.Element {
 
             <div className="grid gap-4 md:grid-cols-2">
               <div className="fg-card p-5">
-                <p className="text-xs uppercase tracking-[0.18em] text-[var(--fg-muted)]">Allowed right now</p>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {calendarState.allowedDomains.length > 0 ? (
-                    calendarState.allowedDomains.map((domain) => (
-                      <span
-                        key={domain}
-                        className="rounded-full border border-[var(--fg-border)] bg-white px-3 py-1.5 text-xs font-medium text-[var(--fg-text)]"
-                      >
-                        {domain}
-                      </span>
-                    ))
-                  ) : (
-                    <p className="text-sm text-[var(--fg-muted)]">No allowed sites for this focus block.</p>
-                  )}
-                </div>
+                <p className="text-xs uppercase tracking-[0.18em] text-[var(--fg-muted)]">Temporary unlock</p>
+                <p className="mt-2 text-lg font-semibold tracking-[-0.03em] text-[var(--fg-text)]">
+                  Spend points to peek at this site
+                </p>
+                <p className="mt-2 text-sm text-[var(--fg-muted)]">
+                  Unlock {blockedHost ?? 'this site'} for {TEMP_UNLOCK_DURATION_MINUTES} minutes, even if you close and reopen it.
+                </p>
+
+                {context?.unlock && unlockCountdown ? (
+                  <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3">
+                    <p className="text-xs uppercase tracking-[0.16em] text-emerald-600">Unlock active</p>
+                    <p className="mt-1 text-3xl font-semibold tracking-[-0.03em] tabular-nums text-emerald-950">
+                      {unlockCountdown}
+                    </p>
+                    <p className="mt-1 text-sm text-emerald-800">
+                      This site stays open until the timer ends, then Window will lock back in.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="mt-4 space-y-4">
+                    <div className="rounded-2xl border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-4 py-3">
+                      <p className="text-xs uppercase tracking-[0.16em] text-[var(--fg-muted)]">Next unlock cost</p>
+                      <p className="mt-1 text-3xl font-semibold tracking-[-0.03em] text-[var(--fg-text)]">
+                        {context?.nextUnlockCost ?? 25} pts
+                      </p>
+                      <p className="mt-1 text-sm text-[var(--fg-muted)]">
+                        Costs rise each time you buy another unlock during the same focus block.
+                      </p>
+                    </div>
+
+                    {spendError && <p className="text-sm text-rose-600">{spendError}</p>}
+
+                    <button
+                      onClick={() => {
+                        if (currentTabIdRef.current === null) {
+                          setSpendError('Window could not resolve the blocked tab to unlock.');
+                          return;
+                        }
+
+                        setSpending(true);
+                        setSpendError(null);
+                        setUnlockSuccess(null);
+                        chrome.runtime.sendMessage(
+                          { type: 'SPEND_POINTS_UNLOCK', payload: { tabId: currentTabIdRef.current } },
+                          (response: UnlockSpendResponse | undefined) => {
+                            setSpending(false);
+
+                            if (!response?.ok || !response.redirectUrl) {
+                              setSpendError(response?.error ?? 'Unable to unlock this site.');
+                              loadState(currentTabIdRef.current);
+                              return;
+                            }
+
+                            setUnlockSuccess({
+                              cost: response.cost ?? context?.nextUnlockCost ?? 25,
+                              redirectUrl: response.redirectUrl,
+                              remainingPoints: response.remainingPoints,
+                            });
+                            loadState(currentTabIdRef.current);
+                            window.setTimeout(() => {
+                              window.location.assign(response.redirectUrl!);
+                            }, 1100);
+                          },
+                        );
+                      }}
+                      disabled={spending || !context?.canSpend}
+                      className="fg-button-primary w-full disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {spending
+                        ? 'Unlocking…'
+                        : context?.canSpend
+                          ? `Spend ${context?.nextUnlockCost ?? 25} points`
+                          : 'Not enough points'}
+                    </button>
+                  </div>
+                )}
               </div>
 
               <div className="fg-card p-5">
@@ -290,8 +384,8 @@ export default function Blocked(): React.JSX.Element {
             </div>
           </div>
 
-          <div className="space-y-4">
-            <div className="fg-card p-5">
+          <div className="flex h-full flex-col lg:-mt-[7.5rem]">
+            <div className="fg-card flex min-h-0 flex-1 flex-col p-5">
               <div className="mb-3">
                 <p className="text-xs uppercase tracking-[0.18em] text-[var(--fg-muted)]">Leaderboard</p>
                 <p className="mt-1 text-sm text-[var(--fg-muted)]">
@@ -299,7 +393,7 @@ export default function Blocked(): React.JSX.Element {
                 </p>
               </div>
 
-              <div className="space-y-2">
+              <div className="flex-1 space-y-2 overflow-y-auto pr-1">
                 {leaderboard.map((entry) => (
                   <div
                     key={entry.name}
@@ -321,85 +415,6 @@ export default function Blocked(): React.JSX.Element {
                   </div>
                 ))}
               </div>
-            </div>
-
-            <div className="fg-card p-5">
-              <p className="text-xs uppercase tracking-[0.18em] text-[var(--fg-muted)]">Temporary unlock</p>
-              <p className="mt-2 text-lg font-semibold tracking-[-0.03em] text-[var(--fg-text)]">
-                Spend points to peek at this site
-              </p>
-              <p className="mt-2 text-sm text-[var(--fg-muted)]">
-                Unlock {blockedHost ?? 'this site'} for {TEMP_UNLOCK_DURATION_MINUTES} minutes in this tab only.
-              </p>
-
-              {context?.unlock && unlockCountdown ? (
-                <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3">
-                  <p className="text-xs uppercase tracking-[0.16em] text-emerald-600">Unlock active</p>
-                  <p className="mt-1 text-3xl font-semibold tracking-[-0.03em] tabular-nums text-emerald-950">
-                    {unlockCountdown}
-                  </p>
-                  <p className="mt-1 text-sm text-emerald-800">
-                    This tab can browse freely until the timer ends, then Window will lock back in.
-                  </p>
-                </div>
-              ) : (
-                <div className="mt-4 space-y-4">
-                  <div className="rounded-2xl border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-4 py-3">
-                    <p className="text-xs uppercase tracking-[0.16em] text-[var(--fg-muted)]">Next unlock cost</p>
-                    <p className="mt-1 text-3xl font-semibold tracking-[-0.03em] text-[var(--fg-text)]">
-                      {context?.nextUnlockCost ?? 25} pts
-                    </p>
-                    <p className="mt-1 text-sm text-[var(--fg-muted)]">
-                      Costs rise each time you buy another unlock during the same focus block.
-                    </p>
-                  </div>
-
-                  {spendError && <p className="text-sm text-rose-600">{spendError}</p>}
-
-                  <button
-                    onClick={() => {
-                      if (currentTabIdRef.current === null) {
-                        setSpendError('Window could not resolve the blocked tab to unlock.');
-                        return;
-                      }
-
-                      setSpending(true);
-                      setSpendError(null);
-                      setUnlockSuccess(null);
-                      chrome.runtime.sendMessage(
-                        { type: 'SPEND_POINTS_UNLOCK', payload: { tabId: currentTabIdRef.current } },
-                        (response: UnlockSpendResponse | undefined) => {
-                          setSpending(false);
-
-                          if (!response?.ok || !response.redirectUrl) {
-                            setSpendError(response?.error ?? 'Unable to unlock this site.');
-                            loadState(currentTabIdRef.current);
-                            return;
-                          }
-
-                          setUnlockSuccess({
-                            cost: response.cost ?? context?.nextUnlockCost ?? 25,
-                            redirectUrl: response.redirectUrl,
-                            remainingPoints: response.remainingPoints,
-                          });
-                          loadState(currentTabIdRef.current);
-                          window.setTimeout(() => {
-                            window.location.assign(response.redirectUrl!);
-                          }, 1100);
-                        },
-                      );
-                    }}
-                    disabled={spending || !context?.canSpend}
-                    className="fg-button-primary w-full disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    {spending
-                      ? 'Unlocking…'
-                      : context?.canSpend
-                        ? `Spend ${context?.nextUnlockCost ?? 25} points`
-                        : 'Not enough points'}
-                  </button>
-                </div>
-              )}
             </div>
           </div>
         </section>
@@ -428,11 +443,76 @@ function StatusCard({
   );
 }
 
-function StatPill({ label, value }: { label: string; value: string }): React.JSX.Element {
+function InlineStat({ label, value }: { label: string; value: string }): React.JSX.Element {
   return (
-    <div className="rounded-2xl border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-3 py-3">
-      <p className="text-[11px] uppercase tracking-[0.16em] text-[var(--fg-muted)]">{label}</p>
-      <p className="mt-1 text-lg font-semibold tracking-[-0.03em] text-[var(--fg-text)]">{value}</p>
+    <div className="inline-flex items-center gap-2 rounded-full border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-3 py-2">
+      <span className="text-[11px] uppercase tracking-[0.16em] text-[var(--fg-muted)]">{label}</span>
+      <span className="text-sm font-semibold text-[var(--fg-text)]">{value}</span>
+    </div>
+  );
+}
+
+function LevelDial({
+  points,
+  level,
+}: {
+  points: number;
+  level: number;
+}): React.JSX.Element {
+  const currentLevelXP = xpRequiredForLevel(level);
+  const nextLevelXP = xpRequiredForLevel(level + 1);
+  const xpIntoLevel = Math.max(0, points - currentLevelXP);
+  const xpNeeded = Math.max(1, nextLevelXP - currentLevelXP);
+  const progress = Math.max(0, Math.min(1, xpIntoLevel / xpNeeded));
+  const radius = 32;
+  const circumference = 2 * Math.PI * radius;
+  const strokeOffset = circumference * (1 - progress);
+
+  return (
+    <div className="flex items-center gap-3 rounded-[26px] border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-4 py-3">
+      <div className="relative h-[84px] w-[84px]">
+        <svg viewBox="0 0 84 84" className="h-full w-full -rotate-90">
+          <circle
+            cx="42"
+            cy="42"
+            r={radius}
+            fill="none"
+            stroke="rgba(148, 163, 184, 0.28)"
+            strokeWidth="8"
+          />
+          <circle
+            cx="42"
+            cy="42"
+            r={radius}
+            fill="none"
+            stroke="url(#window-level-dial)"
+            strokeWidth="8"
+            strokeLinecap="round"
+            strokeDasharray={circumference}
+            strokeDashoffset={strokeOffset}
+          />
+          <defs>
+            <linearGradient id="window-level-dial" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#7c3aed" />
+              <stop offset="100%" stopColor="#2563eb" />
+            </linearGradient>
+          </defs>
+        </svg>
+        <div className="absolute inset-0 flex flex-col items-center justify-center">
+          <span className="text-[11px] uppercase tracking-[0.14em] text-[var(--fg-muted)]">Lv</span>
+          <span className="text-xl font-semibold tracking-[-0.03em] text-[var(--fg-text)]">{level}</span>
+        </div>
+      </div>
+
+      <div className="space-y-1">
+        <p className="text-xs uppercase tracking-[0.16em] text-[var(--fg-muted)]">Next level</p>
+        <p className="text-sm font-semibold text-[var(--fg-text)]">
+          {xpIntoLevel.toLocaleString()} / {xpNeeded.toLocaleString()} XP
+        </p>
+        <p className="text-xs text-[var(--fg-muted)]">
+          {Math.round(progress * 100)}% to Level {level + 1}
+        </p>
+      </div>
     </div>
   );
 }
