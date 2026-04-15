@@ -55,9 +55,77 @@ interface SelectedTooltipState {
   anchorRect: DOMRect;
 }
 
+interface DownloadRescueToggleConfig {
+  key:
+    | 'downloadRedirectProgrammaticDownloadEnabled'
+    | 'downloadRedirectUseDownloadsApi'
+    | 'downloadRedirectFallbackPatternMatchEnabled'
+    | 'downloadRedirectFallbackSameHostEnabled'
+    | 'downloadRedirectFallbackSameSiteEnabled'
+    | 'downloadRedirectFallbackAnyAllowedRedirectEnabled'
+    | 'downloadRedirectAllowAcrossTabsEnabled';
+  title: string;
+  description: string;
+}
+
 const TOOLTIP_WIDTH = 368;
 const TOOLTIP_HEIGHT = 360;
 const TOOLTIP_MARGIN = 20;
+const DOWNLOAD_RESCUE_MAX_PATCH: Partial<Settings> = {
+  downloadRedirectUseDownloadsApi: true,
+  downloadRedirectFallbackPatternMatchEnabled: true,
+  downloadRedirectFallbackSameHostEnabled: true,
+  downloadRedirectFallbackSameSiteEnabled: true,
+  downloadRedirectFallbackAnyAllowedRedirectEnabled: true,
+  downloadRedirectAllowAcrossTabsEnabled: true,
+  downloadRedirectProgrammaticDownloadEnabled: true,
+};
+const DOWNLOAD_RESCUE_BALANCED_PATCH: Partial<Settings> = {
+  downloadRedirectUseDownloadsApi: true,
+  downloadRedirectFallbackPatternMatchEnabled: true,
+  downloadRedirectFallbackSameHostEnabled: true,
+  downloadRedirectFallbackSameSiteEnabled: true,
+  downloadRedirectFallbackAnyAllowedRedirectEnabled: false,
+  downloadRedirectAllowAcrossTabsEnabled: false,
+  downloadRedirectProgrammaticDownloadEnabled: true,
+};
+const DOWNLOAD_RESCUE_TOGGLES: DownloadRescueToggleConfig[] = [
+  {
+    key: 'downloadRedirectProgrammaticDownloadEnabled',
+    title: 'Programmatic download handoff',
+    description: "Start likely downloads through Chrome's downloads API instead of replaying the blocked page navigation.",
+  },
+  {
+    key: 'downloadRedirectUseDownloadsApi',
+    title: 'Use downloads API',
+    description: 'Trust real Chrome download events and keep the host open until the download settles.',
+  },
+  {
+    key: 'downloadRedirectFallbackPatternMatchEnabled',
+    title: 'Pattern match download URLs',
+    description: 'Fallback when the blocked URL looks like a file or download endpoint.',
+  },
+  {
+    key: 'downloadRedirectFallbackSameHostEnabled',
+    title: 'Allow same-host redirects',
+    description: 'Fallback when the blocked redirect stays on the same host family as the source page.',
+  },
+  {
+    key: 'downloadRedirectFallbackSameSiteEnabled',
+    title: 'Allow same-site redirects',
+    description: 'Fallback when the blocked redirect stays on the same site, even across subdomains.',
+  },
+  {
+    key: 'downloadRedirectFallbackAnyAllowedRedirectEnabled',
+    title: 'Allow any redirect from allowed pages',
+    description: 'Most aggressive fallback. Useful for signed CDN links that do not look like downloads.',
+  },
+  {
+    key: 'downloadRedirectAllowAcrossTabsEnabled',
+    title: 'Allow across tabs',
+    description: 'Do not scope the short-lived rescue to a single tab. Helpful when downloads open a new tab or window.',
+  },
+];
 
 export default function Options(): React.JSX.Element {
   const calendarRef = useRef<FullCalendar | null>(null);
@@ -239,6 +307,10 @@ export default function Options(): React.JSX.Element {
 
   const activeEvent = calendarState?.currentEvent ?? null;
   const quietHoursActive = settings ? isDailyBlockingPauseActive(new Date(), settings) : false;
+  const downloadRescueRows = DOWNLOAD_RESCUE_TOGGLES.map((toggle) => ({
+    ...toggle,
+    checked: settings ? settings[toggle.key] : false,
+  }));
 
   useEffect(() => {
     if (!selectedTooltip) return;
@@ -584,33 +656,13 @@ export default function Options(): React.JSX.Element {
                       </div>
                       <div className="flex flex-wrap gap-2">
                         <button
-                          onClick={() =>
-                            updateSettings({
-                              downloadRedirectUseDownloadsApi: true,
-                              downloadRedirectFallbackPatternMatchEnabled: true,
-                              downloadRedirectFallbackSameHostEnabled: true,
-                              downloadRedirectFallbackSameSiteEnabled: true,
-                              downloadRedirectFallbackAnyAllowedRedirectEnabled: true,
-                              downloadRedirectAllowAcrossTabsEnabled: true,
-                              downloadRedirectProgrammaticDownloadEnabled: true,
-                            })
-                          }
+                          onClick={() => updateSettings(DOWNLOAD_RESCUE_MAX_PATCH)}
                           className="fg-button-secondary"
                         >
                           Enable Every Rescue Path
                         </button>
                         <button
-                          onClick={() =>
-                            updateSettings({
-                              downloadRedirectUseDownloadsApi: true,
-                              downloadRedirectFallbackPatternMatchEnabled: true,
-                              downloadRedirectFallbackSameHostEnabled: true,
-                              downloadRedirectFallbackSameSiteEnabled: true,
-                              downloadRedirectFallbackAnyAllowedRedirectEnabled: false,
-                              downloadRedirectAllowAcrossTabsEnabled: false,
-                              downloadRedirectProgrammaticDownloadEnabled: true,
-                            })
-                          }
+                          onClick={() => updateSettings(DOWNLOAD_RESCUE_BALANCED_PATCH)}
                           className="fg-button-ghost"
                         >
                           Reset To Balanced
@@ -619,60 +671,15 @@ export default function Options(): React.JSX.Element {
                     </div>
 
                     <div className="grid gap-3 md:grid-cols-2">
-                      <SettingToggleRow
-                        title="Programmatic download handoff"
-                        description="Start likely downloads through Chrome's downloads API instead of replaying the blocked page navigation."
-                        checked={settings.downloadRedirectProgrammaticDownloadEnabled}
-                        onChange={(checked) =>
-                          updateSettings({ downloadRedirectProgrammaticDownloadEnabled: checked })
-                        }
-                      />
-                      <SettingToggleRow
-                        title="Use downloads API"
-                        description="Trust real Chrome download events and keep the host open until the download settles."
-                        checked={settings.downloadRedirectUseDownloadsApi}
-                        onChange={(checked) => updateSettings({ downloadRedirectUseDownloadsApi: checked })}
-                      />
-                      <SettingToggleRow
-                        title="Pattern match download URLs"
-                        description="Fallback when the blocked URL looks like a file or download endpoint."
-                        checked={settings.downloadRedirectFallbackPatternMatchEnabled}
-                        onChange={(checked) =>
-                          updateSettings({ downloadRedirectFallbackPatternMatchEnabled: checked })
-                        }
-                      />
-                      <SettingToggleRow
-                        title="Allow same-host redirects"
-                        description="Fallback when the blocked redirect stays on the same host family as the source page."
-                        checked={settings.downloadRedirectFallbackSameHostEnabled}
-                        onChange={(checked) =>
-                          updateSettings({ downloadRedirectFallbackSameHostEnabled: checked })
-                        }
-                      />
-                      <SettingToggleRow
-                        title="Allow same-site redirects"
-                        description="Fallback when the blocked redirect stays on the same site, even across subdomains."
-                        checked={settings.downloadRedirectFallbackSameSiteEnabled}
-                        onChange={(checked) =>
-                          updateSettings({ downloadRedirectFallbackSameSiteEnabled: checked })
-                        }
-                      />
-                      <SettingToggleRow
-                        title="Allow any redirect from allowed pages"
-                        description="Most aggressive fallback. Useful for signed CDN links that do not look like downloads."
-                        checked={settings.downloadRedirectFallbackAnyAllowedRedirectEnabled}
-                        onChange={(checked) =>
-                          updateSettings({ downloadRedirectFallbackAnyAllowedRedirectEnabled: checked })
-                        }
-                      />
-                      <SettingToggleRow
-                        title="Allow across tabs"
-                        description="Do not scope the short-lived rescue to a single tab. Helpful when downloads open a new tab or window."
-                        checked={settings.downloadRedirectAllowAcrossTabsEnabled}
-                        onChange={(checked) =>
-                          updateSettings({ downloadRedirectAllowAcrossTabsEnabled: checked })
-                        }
-                      />
+                      {downloadRescueRows.map((toggle) => (
+                        <SettingToggleRow
+                          key={toggle.key}
+                          title={toggle.title}
+                          description={toggle.description}
+                          checked={toggle.checked}
+                          onChange={(checked) => updateSettings({ [toggle.key]: checked } as Partial<Settings>)}
+                        />
+                      ))}
                     </div>
                   </div>
 

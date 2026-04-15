@@ -750,11 +750,7 @@ function registerBlockingListeners(): void {
     if (isHttpUrl(details.url)) {
       recordCommittedDocumentUrl(details.tabId, details.url);
       navigationSourceTabByTab.delete(details.tabId);
-      for (const key of recentProgrammaticDownloadAttempts.keys()) {
-        if (key.startsWith(`${details.tabId}:`)) {
-          recentProgrammaticDownloadAttempts.delete(key);
-        }
-      }
+      clearRecentProgrammaticDownloadAttemptsForTab(details.tabId);
       void clearBlockedTab(details.tabId);
     }
   });
@@ -763,11 +759,7 @@ function registerBlockingListeners(): void {
     pendingNavigationByTab.delete(tabId);
     currentDocumentUrlByTab.delete(tabId);
     navigationSourceTabByTab.delete(tabId);
-    for (const key of recentProgrammaticDownloadAttempts.keys()) {
-      if (key.startsWith(`${tabId}:`)) {
-        recentProgrammaticDownloadAttempts.delete(key);
-      }
-    }
+    clearRecentProgrammaticDownloadAttemptsForTab(tabId);
     void clearBlockedTab(tabId);
     void clearStoredDocumentUrl(tabId);
   });
@@ -824,7 +816,7 @@ export function recordCommittedDocumentUrl(tabId: number, url: string): void {
   void persistDocumentUrl(tabId, url);
 }
 
-export async function hydrateOpenTabsDocumentUrls(): Promise<void> {
+async function hydrateOpenTabsDocumentUrls(): Promise<void> {
   const tabs = await chrome.tabs.query({});
   for (const tab of tabs) {
     if (!tab.id || !tab.url || !isHttpUrl(tab.url)) continue;
@@ -972,7 +964,6 @@ export async function handleDownloadCreated(
   const targetUrl = item.finalUrl || item.url;
   if (!targetUrl || !isHttpUrl(targetUrl)) return;
 
-  const targetHost = new URL(targetUrl).hostname;
   const sourceUrl = item.referrer && isHttpUrl(item.referrer) ? item.referrer : null;
   const [settings, allowances] = await Promise.all([
     getSettings(),
@@ -981,30 +972,25 @@ export async function handleDownloadCreated(
   if (!settings.downloadRedirectUseDownloadsApi) return;
 
   const inferredTabId = await inferTabIdForSourceUrl(sourceUrl);
-  const tabId = settings.downloadRedirectAllowAcrossTabsEnabled ? null : inferredTabId;
+  const allowanceTabId = settings.downloadRedirectAllowAcrossTabsEnabled ? null : inferredTabId;
 
   if (!(await isAllowedDownloadSource(sourceUrl, inferredTabId))) return;
-  const key = buildDownloadAllowanceKey('download', item.id, targetHost, tabId);
-  const allowance: DownloadAllowance = {
-    key,
+  const allowance = createDownloadAllowance({
     allowanceType: 'download',
     downloadId: item.id,
-    tabId,
+    tabId: allowanceTabId,
     sourceUrl,
-    sourceHost: sourceUrl && isHttpUrl(sourceUrl) ? new URL(sourceUrl).hostname : null,
     targetUrl,
-    targetHost,
-    ruleId: createDownloadAllowanceRuleId(targetHost, `download:${item.id}`),
-    expiresAt: new Date(Date.now() + DOWNLOAD_ALLOWANCE_TIMEOUT_MS).toISOString(),
+    expiresAtMs: Date.now() + DOWNLOAD_ALLOWANCE_TIMEOUT_MS,
+    ruleSeed: `download:${item.id}`,
+  });
+
+  const nextAllowances = {
+    ...removeMatchingFallbackAllowances(allowances, allowanceTabId, allowance.targetHost),
+    [allowance.key]: allowance,
   };
 
-  const nextAllowances = removeMatchingFallbackAllowances(allowances, tabId, targetHost);
-  nextAllowances[key] = allowance;
-
-  await Promise.all([
-    setDownloadAllowances(nextAllowances),
-    syncTemporaryAllowances(undefined, nextAllowances),
-  ]);
+  await commitDownloadAllowances(nextAllowances);
 
   const calendarState = await getCalendarState();
   await reconcileBlockedTabs(calendarState, undefined, nextAllowances);
@@ -1023,18 +1009,18 @@ export async function handleDownloadChanged(
 
   const nextUrl = delta.finalUrl?.current ?? delta.url?.current ?? null;
   if (nextUrl && isHttpUrl(nextUrl)) {
-    const nextHost = new URL(nextUrl).hostname;
     for (const [key, allowance] of matching) {
-      const nextKey = buildDownloadAllowanceKey(allowance.allowanceType, delta.id, nextHost, allowance.tabId);
       delete nextAllowances[key];
-      nextAllowances[nextKey] = {
-        ...allowance,
-        key: nextKey,
+      const nextAllowance = createDownloadAllowance({
+        allowanceType: allowance.allowanceType,
+        downloadId: delta.id,
+        tabId: allowance.tabId,
+        sourceUrl: allowance.sourceUrl,
         targetUrl: nextUrl,
-        targetHost: nextHost,
-        ruleId: createDownloadAllowanceRuleId(nextHost, `download:${delta.id}`),
-        expiresAt: new Date(Date.now() + DOWNLOAD_ALLOWANCE_TIMEOUT_MS).toISOString(),
-      };
+        expiresAtMs: Date.now() + DOWNLOAD_ALLOWANCE_TIMEOUT_MS,
+        ruleSeed: `download:${delta.id}`,
+      });
+      nextAllowances[nextAllowance.key] = nextAllowance;
       mutated = true;
     }
   }
@@ -1052,10 +1038,7 @@ export async function handleDownloadChanged(
 
   if (!mutated) return;
 
-  await Promise.all([
-    setDownloadAllowances(nextAllowances),
-    syncTemporaryAllowances(undefined, nextAllowances),
-  ]);
+  await commitDownloadAllowances(nextAllowances);
 
   if (removedHosts.size > 0) {
     const calendarState = await getCalendarState();
@@ -1067,11 +1050,12 @@ export async function maybeStartDownloadRedirectFallback(
   tabId: number,
   sourceUrl: string | null,
   blockedUrl: string,
+  settingsInput?: Awaited<ReturnType<typeof getSettings>>,
 ): Promise<void> {
   const resolvedSourceUrl = await getLikelySourceUrlForTab(tabId, sourceUrl);
 
   const [settings, allowances] = await Promise.all([
-    getSettings(),
+    settingsInput ? Promise.resolve(settingsInput) : getSettings(),
     getDownloadAllowances(),
   ]);
   if (!(await shouldAllowDownloadFallback(tabId, resolvedSourceUrl, blockedUrl, settings))) return;
@@ -1079,30 +1063,21 @@ export async function maybeStartDownloadRedirectFallback(
   if (findMatchingDownloadAllowance(targetHost, tabId, allowances)) return;
 
   const allowanceTabId = settings.downloadRedirectAllowAcrossTabsEnabled ? null : tabId;
-  const key = buildDownloadAllowanceKey('fallback', null, targetHost, allowanceTabId);
-  const fallbackAllowance: DownloadAllowance = {
-    key,
+  const fallbackAllowance = createDownloadAllowance({
     allowanceType: 'fallback',
     downloadId: null,
     tabId: allowanceTabId,
     sourceUrl: resolvedSourceUrl,
-    sourceHost: resolvedSourceUrl && isHttpUrl(resolvedSourceUrl) ? new URL(resolvedSourceUrl).hostname : null,
     targetUrl: blockedUrl,
-    targetHost,
-    ruleId: createDownloadAllowanceRuleId(targetHost, `fallback:${tabId}`),
-    expiresAt: new Date(
-      Date.now() + settings.downloadRedirectFallbackSeconds * 1_000,
-    ).toISOString(),
-  };
+    expiresAtMs: Date.now() + settings.downloadRedirectFallbackSeconds * 1_000,
+    ruleSeed: `fallback:${tabId}`,
+  });
   const nextAllowances = {
     ...allowances,
-    [key]: fallbackAllowance,
+    [fallbackAllowance.key]: fallbackAllowance,
   };
 
-  await Promise.all([
-    setDownloadAllowances(nextAllowances),
-    syncTemporaryAllowances(undefined, nextAllowances),
-  ]);
+  await commitDownloadAllowances(nextAllowances);
 
   try {
     await chrome.tabs.update(tabId, { url: blockedUrl });
@@ -1129,7 +1104,7 @@ export async function handleBlockedDownloadRedirect(
     return;
   }
 
-  await maybeStartDownloadRedirectFallback(tabId, resolvedSourceUrl, blockedUrl);
+  await maybeStartDownloadRedirectFallback(tabId, resolvedSourceUrl, blockedUrl, settings);
 }
 
 export async function maybeStartProgrammaticBlockedDownload(
@@ -1185,6 +1160,47 @@ async function isAllowedDownloadSource(
     unlocks,
     downloadAllowances,
   );
+}
+
+function createDownloadAllowance({
+  allowanceType,
+  downloadId,
+  tabId,
+  sourceUrl,
+  targetUrl,
+  expiresAtMs,
+  ruleSeed,
+}: {
+  allowanceType: DownloadAllowance['allowanceType'];
+  downloadId: number | null;
+  tabId: number | null;
+  sourceUrl: string | null;
+  targetUrl: string;
+  expiresAtMs: number;
+  ruleSeed: string;
+}): DownloadAllowance {
+  const targetHost = new URL(targetUrl).hostname;
+  return {
+    key: buildDownloadAllowanceKey(allowanceType, downloadId, targetHost, tabId),
+    allowanceType,
+    downloadId,
+    tabId,
+    sourceUrl,
+    sourceHost: getHttpHostname(sourceUrl),
+    targetUrl,
+    targetHost,
+    ruleId: createDownloadAllowanceRuleId(targetHost, ruleSeed),
+    expiresAt: new Date(expiresAtMs).toISOString(),
+  };
+}
+
+async function commitDownloadAllowances(
+  allowances: Record<string, DownloadAllowance>,
+): Promise<void> {
+  await Promise.all([
+    setDownloadAllowances(allowances),
+    syncTemporaryAllowances(undefined, allowances),
+  ]);
 }
 
 function buildDownloadAllowanceKey(
@@ -1258,6 +1274,18 @@ function rememberProgrammaticDownloadAttempt(tabId: number, url: string): void {
     buildProgrammaticDownloadAttemptKey(tabId, url),
     Date.now(),
   );
+}
+
+function clearRecentProgrammaticDownloadAttemptsForTab(tabId: number): void {
+  for (const key of recentProgrammaticDownloadAttempts.keys()) {
+    if (key.startsWith(`${tabId}:`)) {
+      recentProgrammaticDownloadAttempts.delete(key);
+    }
+  }
+}
+
+function getHttpHostname(url: string | null): string | null {
+  return url && isHttpUrl(url) ? new URL(url).hostname : null;
 }
 
 async function shouldAllowDownloadFallback(
