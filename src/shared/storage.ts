@@ -1,4 +1,7 @@
 import type {
+  AccountConflict,
+  AccountSyncState,
+  AccountUser,
   ActiveRuleSource,
   AllTimeStats,
   AssistantOptions,
@@ -7,6 +10,7 @@ import type {
   BlockedTabState,
   BreakVisitEvent,
   CalendarState,
+  DownloadAllowance,
   EventRule,
   EventBindings,
   IdeaRecord,
@@ -23,6 +27,7 @@ import type {
   WeeklyStats,
 } from './types';
 import {
+  DEFAULT_ACCOUNT_SYNC_STATE,
   DEFAULT_ALL_TIME_STATS,
   DEFAULT_ASSISTANT_OPTIONS,
   DEFAULT_BACKEND_SYNC_STATE,
@@ -117,7 +122,10 @@ export const setKeywordRules = (rules: KeywordRule[]): Promise<void> =>
 // ─── Settings ─────────────────────────────────────────────────────────────────
 
 export const getSettings = (): Promise<Settings> =>
-  get<Settings>('settings', DEFAULT_SETTINGS);
+  get<Partial<Settings>>('settings', DEFAULT_SETTINGS).then((settings) => ({
+    ...DEFAULT_SETTINGS,
+    ...settings,
+  }));
 
 export const setSettings = (settings: Settings): Promise<void> =>
   set('settings', settings);
@@ -226,6 +234,24 @@ export const getBackendSession = (): Promise<BackendSession | null> =>
 export const setBackendSession = (session: BackendSession | null): Promise<void> =>
   setLocal('backendSession', session);
 
+export const getAccountUser = (): Promise<AccountUser | null> =>
+  getLocal<AccountUser | null>('accountUser', null);
+
+export const setAccountUser = (user: AccountUser | null): Promise<void> =>
+  setLocal('accountUser', user);
+
+export const getAccountSyncState = (): Promise<AccountSyncState> =>
+  getLocal<AccountSyncState>('accountSyncState', DEFAULT_ACCOUNT_SYNC_STATE);
+
+export const setAccountSyncState = (state: AccountSyncState): Promise<void> =>
+  setLocal('accountSyncState', state);
+
+export const getAccountConflict = (): Promise<AccountConflict | null> =>
+  getLocal<AccountConflict | null>('accountConflict', null);
+
+export const setAccountConflict = (conflict: AccountConflict | null): Promise<void> =>
+  setLocal('accountConflict', conflict);
+
 export const getBackendSyncState = (): Promise<BackendSyncState> =>
   getLocal<BackendSyncState>('backendSyncState', DEFAULT_BACKEND_SYNC_STATE);
 
@@ -267,6 +293,18 @@ export const getTemporaryUnlocks = (): Promise<Record<string, TemporaryUnlockSta
 
 export const setTemporaryUnlocks = (unlocks: Record<string, TemporaryUnlockState>): Promise<void> =>
   setLocal('temporaryUnlocks', unlocks);
+
+export const getDownloadAllowances = (): Promise<Record<string, DownloadAllowance>> =>
+  getLocal<Record<string, DownloadAllowance>>('downloadAllowances', {});
+
+export const setDownloadAllowances = (allowances: Record<string, DownloadAllowance>): Promise<void> =>
+  setLocal('downloadAllowances', allowances);
+
+export const getTabDocumentUrls = (): Promise<Record<string, string>> =>
+  getLocal<Record<string, string>>('tabDocumentUrls', {});
+
+export const setTabDocumentUrls = (tabDocumentUrls: Record<string, string>): Promise<void> =>
+  setLocal('tabDocumentUrls', tabDocumentUrls);
 
 export const getUnlockSpendState = (): Promise<UnlockSpendState> =>
   getLocal<UnlockSpendState>('unlockSpendState', { activeEventKey: null, spendCount: 0 });

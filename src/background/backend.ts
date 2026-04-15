@@ -1,3 +1,12 @@
+import {
+  areAccountSnapshotsEqual,
+  accountSnapshotHasUserData,
+  applyAccountSnapshotToStorage,
+  buildAccountSnapshotFromStorage,
+  createDefaultAccountSyncState,
+  isAccountSyncedStorageKey,
+  normalizeAccountSnapshot,
+} from '../shared/account';
 import { DEFAULT_OPENCLAW_STATE, DEFAULT_WINDOW_BACKEND_URL } from '../shared/constants';
 import {
   applyIdeaDecision,
@@ -7,6 +16,9 @@ import {
   mergeIdeaRecord,
 } from '../shared/assistant';
 import {
+  getAccountConflict,
+  getAccountSyncState,
+  getAccountUser,
   getActiveBreakVisits,
   getAssistantOptions,
   getBackendSession,
@@ -15,6 +27,9 @@ import {
   getCalendarState,
   getIdeaRecords,
   getOpenClawState,
+  setAccountConflict,
+  setAccountSyncState,
+  setAccountUser,
   setActiveBreakVisits,
   setAssistantOptions,
   setBackendSession,
@@ -24,7 +39,13 @@ import {
   setOpenClawState,
 } from '../shared/storage';
 import type {
+  AccountConflict,
+  AccountSession,
+  AccountSnapshot,
+  AccountSyncState,
+  AccountUser,
   AssistantOptions,
+  AuthProvider,
   BackendSession,
   IdeaDecision,
   IdeaRecord,
@@ -43,11 +64,24 @@ const BACKEND_BASE_URL =
   DEFAULT_WINDOW_BACKEND_URL;
 const NOTIFICATION_ICON_DATA_URL =
   'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9WHa3WgAAAAASUVORK5CYII=';
+const ACCOUNT_SYNC_DEBOUNCE_MS = 300;
 
-interface AuthExchangeResponse {
+interface AuthSessionResponse {
   sessionToken: string;
   userId: string;
   expiresAt: string;
+  user: AccountUser;
+}
+
+interface AccountSnapshotResponse {
+  revision: number;
+  updatedAt: string | null;
+  data: AccountSnapshot;
+}
+
+interface BackendErrorPayload {
+  error?: string;
+  snapshot?: AccountSnapshotResponse;
 }
 
 interface RemoteIdeaRecord {
@@ -81,58 +115,278 @@ interface RemoteStateSnapshot {
   openClawState: OpenClawState;
 }
 
-export async function syncBackendAuthWithGoogleToken(): Promise<BackendSession | null> {
+let accountSyncTimer: ReturnType<typeof setTimeout> | null = null;
+let applyingRemoteSnapshot = false;
+
+export async function restoreAccountSession(): Promise<void> {
   if (!isBackendConfigured()) {
-    await setBackendSyncState({
+    await setAccountSyncState({
+      ...createDefaultAccountSyncState(),
       configured: false,
-      connected: false,
-      syncing: false,
-      lastSyncedAt: null,
       lastError: 'Backend URL is not configured.',
     });
-    return null;
+    return;
+  }
+
+  const [backendSession, accountUser] = await Promise.all([
+    getBackendSession(),
+    getAccountUser(),
+  ]);
+
+  if (!backendSession) {
+    await setAccountSyncState({
+      ...createDefaultAccountSyncState(),
+      configured: true,
+    });
+    return;
   }
 
   try {
-    const googleAccessToken = await getAuthToken(false);
-    const response = await backendRequest<AuthExchangeResponse>('/v1/auth/google/exchange', {
-      method: 'POST',
-      auth: 'none',
-      body: {
-        googleAccessToken,
-        extensionVersion: chrome.runtime.getManifest().version,
-      },
-    });
+    if (new Date(backendSession.expiresAt).getTime() - Date.now() <= 60_000) {
+      throw new Error('Your account session expired. Please sign in again.');
+    }
 
-    const session: BackendSession = {
-      sessionToken: response.sessionToken,
-      userId: response.userId,
-      expiresAt: response.expiresAt,
-      connectedAt: new Date().toISOString(),
-    };
+    const response = await backendRequest<{ user: AccountUser }>('/v1/auth/me');
+    await Promise.all([
+      setAccountUser(response.user),
+      setAccountSyncState({
+        ...(await getAccountSyncState()),
+        configured: true,
+        connected: Boolean(accountUser ?? response.user),
+        lastError: null,
+      }),
+    ]);
+  } catch (error) {
+    await invalidateAccountSession(error instanceof Error ? error.message : String(error));
+  }
+}
 
-    await setBackendSession(session);
-    await setBackendSyncState({
-      configured: true,
+export async function refreshAccountState(): Promise<{
+  user: AccountUser | null;
+  session: AccountSession | null;
+  syncState: AccountSyncState;
+  conflict: AccountConflict | null;
+}> {
+  const session = await getBackendSession();
+  if (!session) {
+    const [user, syncState, conflict] = await Promise.all([
+      getAccountUser(),
+      getAccountSyncState(),
+      getAccountConflict(),
+    ]);
+    return { user, session: null, syncState, conflict };
+  }
+
+  await restoreAccountSession();
+  return {
+    user: await getAccountUser(),
+    session: await getBackendSession(),
+    syncState: await getAccountSyncState(),
+    conflict: await getAccountConflict(),
+  };
+}
+
+export async function signInWithProvider(
+  provider: Exclude<AuthProvider, 'password'>,
+): Promise<AccountUser> {
+  ensureBackendConfigured();
+  if (provider !== 'google') {
+    throw new Error('Only Google sign-in is enabled right now.');
+  }
+
+  const response = await exchangeGoogleTokenForBackend(true);
+  await finalizeSignedInSession(response);
+  return response.user;
+}
+
+export async function registerAccount(
+  _email: string,
+  _password: string,
+): Promise<AccountUser> {
+  throw new Error('Only Google sign-in is enabled right now.');
+}
+
+export async function loginAccount(
+  _email: string,
+  _password: string,
+): Promise<AccountUser> {
+  throw new Error('Only Google sign-in is enabled right now.');
+}
+
+export async function signOutAccount(): Promise<void> {
+  const session = await getBackendSession();
+  if (session) {
+    try {
+      await backendRequest('/v1/auth/logout', {
+        method: 'POST',
+      });
+    } catch {
+      // Best-effort sign-out; local cleanup still proceeds.
+    }
+  }
+
+  await Promise.all([
+    clearAssistantState(),
+    setAccountUser(null),
+    setAccountConflict(null),
+    setAccountSyncState({
+      ...createDefaultAccountSyncState(),
+      configured: isBackendConfigured(),
+    }),
+  ]);
+}
+
+export async function resolveAccountConflict(
+  choice: 'local' | 'remote',
+): Promise<void> {
+  const conflict = await getAccountConflict();
+  if (!conflict) {
+    return;
+  }
+
+  if (choice === 'remote') {
+    await applyRemoteSnapshot(conflict.remote);
+    await setAccountConflict(null);
+    await setAccountSyncState({
+      ...(await getAccountSyncState()),
+      configured: isBackendConfigured(),
       connected: true,
       syncing: false,
+      initialized: true,
+      revision: conflict.remoteRevision,
       lastSyncedAt: new Date().toISOString(),
       lastError: null,
     });
+    return;
+  }
 
-    return session;
+  try {
+    const response = await putAccountSnapshot(conflict.local, conflict.remoteRevision);
+    await Promise.all([
+      setAccountConflict(null),
+      setAccountSyncState({
+        ...(await getAccountSyncState()),
+        configured: isBackendConfigured(),
+        connected: true,
+        syncing: false,
+        initialized: true,
+        revision: response.revision,
+        lastSyncedAt: response.updatedAt ?? new Date().toISOString(),
+        lastError: null,
+      }),
+    ]);
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    await setBackendSession(null);
-    await setBackendSyncState({
+    if (error instanceof AccountConflictError) {
+      await setAccountConflict({
+        local: conflict.local,
+        remote: error.snapshot.data,
+        remoteRevision: error.snapshot.revision,
+        detectedAt: new Date().toISOString(),
+      });
+      return;
+    }
+
+    throw error;
+  }
+}
+
+export function scheduleAccountSnapshotSync(): void {
+  if (applyingRemoteSnapshot) return;
+
+  if (accountSyncTimer) {
+    clearTimeout(accountSyncTimer);
+  }
+
+  accountSyncTimer = setTimeout(() => {
+    accountSyncTimer = null;
+    void syncAccountSnapshot();
+  }, ACCOUNT_SYNC_DEBOUNCE_MS);
+}
+
+export async function syncAccountSnapshot(): Promise<void> {
+  if (!isBackendConfigured()) return;
+
+  const session = await ensureBackendSession();
+  if (!session) {
+    await setAccountSyncState({
+      ...(await getAccountSyncState()),
       configured: true,
       connected: false,
       syncing: false,
-      lastSyncedAt: null,
+      lastError: 'Sign in to sync your account data.',
+    });
+    return;
+  }
+
+  const existingConflict = await getAccountConflict();
+  if (existingConflict) return;
+
+  const syncState = await getAccountSyncState();
+  await setAccountSyncState({
+    ...syncState,
+    configured: true,
+    connected: true,
+    syncing: true,
+    lastError: null,
+  });
+
+  try {
+    const snapshot = await buildAccountSnapshotFromStorage();
+    const response = await putAccountSnapshot(snapshot, syncState.revision);
+    await setAccountSyncState({
+      ...(await getAccountSyncState()),
+      configured: true,
+      connected: true,
+      syncing: false,
+      initialized: true,
+      revision: response.revision,
+      lastSyncedAt: response.updatedAt ?? new Date().toISOString(),
+      lastError: null,
+    });
+  } catch (error) {
+    if (error instanceof AccountConflictError) {
+      const local = await buildAccountSnapshotFromStorage();
+      await Promise.all([
+        setAccountConflict({
+          local,
+          remote: error.snapshot.data,
+          remoteRevision: error.snapshot.revision,
+          detectedAt: new Date().toISOString(),
+        }),
+        setAccountSyncState({
+          ...(await getAccountSyncState()),
+          configured: true,
+          connected: true,
+          syncing: false,
+          initialized: true,
+          revision: error.snapshot.revision,
+          lastError: 'Your local data and account data both changed. Choose which version to keep.',
+        }),
+      ]);
+      return;
+    }
+
+    const message = error instanceof Error ? error.message : String(error);
+    await setAccountSyncState({
+      ...(await getAccountSyncState()),
+      configured: true,
+      connected: true,
+      syncing: false,
       lastError: message,
     });
-    return null;
   }
+}
+
+export async function handleSyncedStorageChanges(
+  changes: Record<string, chrome.storage.StorageChange>,
+  areaName: string,
+): Promise<void> {
+  if (areaName !== 'sync' || applyingRemoteSnapshot) return;
+
+  const changedSyncedKey = Object.keys(changes).some((key) => isAccountSyncedStorageKey(key));
+  if (!changedSyncedKey) return;
+
+  scheduleAccountSnapshotSync();
 }
 
 export async function clearAssistantState(): Promise<void> {
@@ -277,6 +531,13 @@ export async function syncIdeaOutbox(): Promise<RemoteStateSnapshot> {
   try {
     const session = await ensureBackendSession();
     if (!session) {
+      await setBackendSyncState({
+        ...initialSyncState,
+        configured: isBackendConfigured(),
+        connected: false,
+        syncing: false,
+        lastError: 'Sign in to sync assistant state.',
+      });
       return buildAssistantSnapshot();
     }
 
@@ -408,6 +669,169 @@ export async function finalizeBreakTelemetry(): Promise<void> {
   ]);
 }
 
+async function exchangeGoogleTokenForBackend(
+  interactive: boolean,
+): Promise<AuthSessionResponse> {
+  const googleAccessToken = await getAuthToken(interactive);
+  return backendRequest<AuthSessionResponse>('/v1/auth/google/exchange', {
+    method: 'POST',
+    auth: 'none',
+    body: {
+      googleAccessToken,
+    },
+  });
+}
+
+async function finalizeSignedInSession(
+  response: AuthSessionResponse,
+): Promise<void> {
+  const session: BackendSession = {
+    sessionToken: response.sessionToken,
+    userId: response.userId,
+    expiresAt: response.expiresAt,
+    connectedAt: new Date().toISOString(),
+  };
+
+  await Promise.all([
+    setBackendSession(session),
+    setAccountUser(response.user),
+    setAccountConflict(null),
+    setAccountSyncState({
+      ...createDefaultAccountSyncState(),
+      configured: true,
+      connected: true,
+    }),
+    setBackendSyncState({
+      configured: true,
+      connected: true,
+      syncing: false,
+      lastSyncedAt: new Date().toISOString(),
+      lastError: null,
+    }),
+  ]);
+
+  await initializeAccountSnapshotSync();
+}
+
+async function initializeAccountSnapshotSync(): Promise<void> {
+  const [localSnapshot, remoteSnapshot] = await Promise.all([
+    buildAccountSnapshotFromStorage(),
+    getRemoteAccountSnapshot(),
+  ]);
+  const normalizedRemote = normalizeAccountSnapshot(remoteSnapshot.data);
+
+  if (areAccountSnapshotsEqual(localSnapshot, normalizedRemote)) {
+    await setAccountSyncState({
+      ...(await getAccountSyncState()),
+      configured: true,
+      connected: true,
+      syncing: false,
+      initialized: true,
+      revision: remoteSnapshot.revision,
+      lastSyncedAt: remoteSnapshot.updatedAt ?? new Date().toISOString(),
+      lastError: null,
+    });
+    return;
+  }
+
+  const localHasData = accountSnapshotHasUserData(localSnapshot);
+  const remoteHasData = accountSnapshotHasUserData(normalizedRemote);
+
+  if (!localHasData && remoteHasData) {
+    await applyRemoteSnapshot(normalizedRemote);
+    await setAccountSyncState({
+      ...(await getAccountSyncState()),
+      configured: true,
+      connected: true,
+      syncing: false,
+      initialized: true,
+      revision: remoteSnapshot.revision,
+      lastSyncedAt: remoteSnapshot.updatedAt ?? new Date().toISOString(),
+      lastError: null,
+    });
+    return;
+  }
+
+  if (localHasData && !remoteHasData) {
+    const response = await putAccountSnapshot(localSnapshot, remoteSnapshot.revision);
+    await setAccountSyncState({
+      ...(await getAccountSyncState()),
+      configured: true,
+      connected: true,
+      syncing: false,
+      initialized: true,
+      revision: response.revision,
+      lastSyncedAt: response.updatedAt ?? new Date().toISOString(),
+      lastError: null,
+    });
+    return;
+  }
+
+  await Promise.all([
+    setAccountConflict({
+      local: localSnapshot,
+      remote: normalizedRemote,
+      remoteRevision: remoteSnapshot.revision,
+      detectedAt: new Date().toISOString(),
+    }),
+    setAccountSyncState({
+      ...(await getAccountSyncState()),
+      configured: true,
+      connected: true,
+      syncing: false,
+      initialized: true,
+      revision: remoteSnapshot.revision,
+      lastError: 'Your local data and account data both exist. Choose which version to keep.',
+    }),
+  ]);
+}
+
+async function applyRemoteSnapshot(snapshot: AccountSnapshot): Promise<void> {
+  applyingRemoteSnapshot = true;
+  try {
+    await applyAccountSnapshotToStorage(snapshot);
+  } finally {
+    applyingRemoteSnapshot = false;
+  }
+}
+
+async function getRemoteAccountSnapshot(): Promise<AccountSnapshotResponse> {
+  const response = await backendRequest<AccountSnapshotResponse>('/v1/account/snapshot');
+  return {
+    revision: response.revision,
+    updatedAt: response.updatedAt,
+    data: normalizeAccountSnapshot(response.data),
+  };
+}
+
+async function putAccountSnapshot(
+  snapshot: AccountSnapshot,
+  revision: number,
+): Promise<AccountSnapshotResponse> {
+  const response = await backendRequestDetailed<AccountSnapshotResponse>('/v1/account/snapshot', {
+    method: 'PUT',
+    body: {
+      revision,
+      data: snapshot,
+    },
+  });
+
+  if (!response.ok) {
+    if (response.status === 409 && response.data?.snapshot) {
+      throw new AccountConflictError(response.data.snapshot);
+    }
+
+    throw new Error(response.data?.error ?? `Backend request failed with ${response.status}`);
+  }
+
+  const payload = response.data as AccountSnapshotResponse;
+  return {
+    revision: payload.revision,
+    updatedAt: payload.updatedAt,
+    data: normalizeAccountSnapshot(payload.data),
+  };
+}
+
 async function buildAssistantSnapshot(): Promise<RemoteStateSnapshot> {
   const [items, openClawState] = await Promise.all([
     getIdeaRecords(),
@@ -427,17 +851,78 @@ async function ensureBackendSession(): Promise<BackendSession | null> {
     return session;
   }
 
-  return syncBackendAuthWithGoogleToken();
+  if (!session) {
+    return null;
+  }
+
+  try {
+    const response = await exchangeGoogleTokenForBackend(false);
+    await Promise.all([
+      setBackendSession({
+        sessionToken: response.sessionToken,
+        userId: response.userId,
+        expiresAt: response.expiresAt,
+        connectedAt: new Date().toISOString(),
+      }),
+      setAccountUser(response.user),
+    ]);
+    return getBackendSession();
+  } catch (error) {
+    await invalidateAccountSession(
+      error instanceof Error ? error.message : 'Please sign in again.',
+    );
+    return null;
+  }
+}
+
+async function invalidateAccountSession(reason: string): Promise<void> {
+  await Promise.all([
+    setBackendSession(null),
+    setAccountUser(null),
+    setAccountConflict(null),
+    setAccountSyncState({
+      ...createDefaultAccountSyncState(),
+      configured: isBackendConfigured(),
+      lastError: reason,
+    }),
+    setBackendSyncState({
+      configured: isBackendConfigured(),
+      connected: false,
+      syncing: false,
+      lastSyncedAt: null,
+      lastError: reason,
+    }),
+  ]);
 }
 
 async function backendRequest<T>(
   path: string,
   init: {
-    method?: 'GET' | 'POST';
+    method?: 'GET' | 'POST' | 'PUT';
     body?: unknown;
     auth?: 'required' | 'none';
   } = {},
 ): Promise<T> {
+  const response = await backendRequestDetailed<T>(path, init);
+  if (!response.ok) {
+    throw new Error(response.data?.error ?? `Backend request failed with ${response.status}`);
+  }
+
+  return response.data as T;
+}
+
+async function backendRequestDetailed<T>(
+  path: string,
+  init: {
+    method?: 'GET' | 'POST' | 'PUT';
+    body?: unknown;
+    auth?: 'required' | 'none';
+  } = {},
+): Promise<{
+  ok: boolean;
+  status: number;
+  data: (T & BackendErrorPayload) | BackendErrorPayload | undefined;
+}> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), BACKEND_REQUEST_TIMEOUT_MS);
 
@@ -461,16 +946,23 @@ async function backendRequest<T>(
       signal: controller.signal,
     });
 
-    if (!response.ok) {
+    let data: (T & BackendErrorPayload) | BackendErrorPayload | undefined;
+    if (response.status !== 204) {
       const text = await response.text();
-      throw new Error(text || `Backend request failed with ${response.status}`);
+      data = text ? (JSON.parse(text) as (T & BackendErrorPayload)) : undefined;
     }
 
-    if (response.status === 204) {
-      return undefined as T;
+    if (response.status === 401 && (init.auth ?? 'required') === 'required') {
+      await invalidateAccountSession(
+        (data as BackendErrorPayload | undefined)?.error ?? 'Your account session expired.',
+      );
     }
 
-    return (await response.json()) as T;
+    return {
+      ok: response.ok,
+      status: response.status,
+      data,
+    };
   } finally {
     clearTimeout(timeout);
   }
@@ -547,7 +1039,19 @@ function isBackendConfigured(): boolean {
   return BACKEND_BASE_URL.length > 0;
 }
 
+function ensureBackendConfigured(): void {
+  if (!isBackendConfigured()) {
+    throw new Error('Backend URL is not configured.');
+  }
+}
+
 function truncate(value: string, maxLength: number): string {
   if (value.length <= maxLength) return value;
   return `${value.slice(0, maxLength - 1)}…`;
+}
+
+class AccountConflictError extends Error {
+  constructor(readonly snapshot: AccountSnapshotResponse) {
+    super('Account snapshot conflict.');
+  }
 }

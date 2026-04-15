@@ -5,6 +5,8 @@ export type TaskStatus = 'active' | 'carryover' | 'completed' | 'dismissed' | 'e
 export type CarryoverMode = 'union' | 'intersection';
 
 export type BreakDurationMinutes = 5 | 10 | 15;
+export type DownloadRedirectFallbackSeconds = 1 | 2 | 3 | 4 | 5;
+export type AuthProvider = 'google' | 'github' | 'password';
 export type IdeaJobStatus =
   | 'queued'
   | 'syncing'
@@ -47,6 +49,14 @@ export interface Settings {
   persistentPanelEnabled: boolean;
   dailyBlockingPauseEnabled: boolean;
   dailyBlockingPauseStartTime: string;
+  downloadRedirectFallbackSeconds: DownloadRedirectFallbackSeconds;
+  downloadRedirectUseDownloadsApi: boolean;
+  downloadRedirectFallbackPatternMatchEnabled: boolean;
+  downloadRedirectFallbackSameHostEnabled: boolean;
+  downloadRedirectFallbackSameSiteEnabled: boolean;
+  downloadRedirectFallbackAnyAllowedRedirectEnabled: boolean;
+  downloadRedirectAllowAcrossTabsEnabled: boolean;
+  downloadRedirectProgrammaticDownloadEnabled: boolean;
 }
 
 // Profile map: profile name → list of allowed domains
@@ -106,11 +116,49 @@ export interface AllTimeStats {
   currentWeekStreak: number;
 }
 
-export interface BackendSession {
+export interface AccountUser {
+  id: string;
+  email: string | null;
+  displayName: string | null;
+  avatarUrl: string | null;
+  providers: AuthProvider[];
+  createdAt: string;
+}
+
+export interface AccountSession {
   sessionToken: string;
   userId: string;
   expiresAt: string;
   connectedAt: string;
+}
+
+export type BackendSession = AccountSession;
+
+export interface AccountSnapshot {
+  allTimeStats: AllTimeStats;
+  pointsHistory: PointsHistory;
+  profiles: Profiles;
+  eventBindings: EventBindings;
+  eventRules: EventRule[];
+  keywordRules: KeywordRule[];
+  globalAllowlist: string[];
+}
+
+export interface AccountSyncState {
+  configured: boolean;
+  connected: boolean;
+  syncing: boolean;
+  initialized: boolean;
+  revision: number;
+  lastSyncedAt: string | null;
+  lastError: string | null;
+}
+
+export interface AccountConflict {
+  local: AccountSnapshot;
+  remote: AccountSnapshot;
+  remoteRevision: number;
+  detectedAt: string;
 }
 
 export interface BackendSyncState {
@@ -240,6 +288,21 @@ export interface TemporaryUnlockState {
   activeEventTitle: string | null;
 }
 
+export type DownloadAllowanceType = 'download' | 'fallback';
+
+export interface DownloadAllowance {
+  key: string;
+  allowanceType: DownloadAllowanceType;
+  downloadId: number | null;
+  tabId: number | null;
+  sourceUrl: string | null;
+  sourceHost: string | null;
+  targetUrl: string;
+  targetHost: string;
+  ruleId: number;
+  expiresAt: string;
+}
+
 export interface UnlockSpendState {
   activeEventKey: string | null;
   spendCount: number;
@@ -318,7 +381,11 @@ export type MessageType =
   | 'GET_STATE'
   | 'GET_BLOCKED_TAB_CONTEXT'
   | 'GET_CALENDAR_EVENTS_RANGE'
+  | 'REFRESH_ACCOUNT_STATE'
   | 'REFRESH_ASSISTANT_STATE'
+  | 'SIGN_IN_WITH_PROVIDER'
+  | 'SIGN_OUT_ACCOUNT'
+  | 'RESOLVE_ACCOUNT_CONFLICT'
   | 'TOGGLE_BLOCKING'
   | 'TOGGLE_PERSISTENT_PANEL'
   | 'CONNECT_CALENDAR'
@@ -349,6 +416,9 @@ export interface StateResponse {
   eventRules: EventRule[];
   keywordRules: KeywordRule[];
   backendSession: BackendSession | null;
+  accountUser: AccountUser | null;
+  accountSyncState: AccountSyncState;
+  accountConflict: AccountConflict | null;
   backendSyncState: BackendSyncState;
   assistantOptions: AssistantOptions;
   ideaState: IdeaState;

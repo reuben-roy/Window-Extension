@@ -1,4 +1,5 @@
 import type {
+  AccountSyncState,
   AllTimeStats,
   AssistantOptions,
   BackendSyncState,
@@ -23,6 +24,14 @@ export const DEFAULT_SETTINGS: Settings = {
   persistentPanelEnabled: false,
   dailyBlockingPauseEnabled: false,
   dailyBlockingPauseStartTime: '22:00',
+  downloadRedirectFallbackSeconds: 2,
+  downloadRedirectUseDownloadsApi: true,
+  downloadRedirectFallbackPatternMatchEnabled: true,
+  downloadRedirectFallbackSameHostEnabled: true,
+  downloadRedirectFallbackSameSiteEnabled: true,
+  downloadRedirectFallbackAnyAllowedRedirectEnabled: false,
+  downloadRedirectAllowAcrossTabsEnabled: false,
+  downloadRedirectProgrammaticDownloadEnabled: true,
 };
 
 export const DEFAULT_GLOBAL_ALLOWLIST: string[] = ['accounts.google.com'];
@@ -61,6 +70,16 @@ export const DEFAULT_BACKEND_SYNC_STATE: BackendSyncState = {
   configured: false,
   connected: false,
   syncing: false,
+  lastSyncedAt: null,
+  lastError: null,
+};
+
+export const DEFAULT_ACCOUNT_SYNC_STATE: AccountSyncState = {
+  configured: false,
+  connected: false,
+  syncing: false,
+  initialized: false,
+  revision: 0,
   lastSyncedAt: null,
   lastError: null,
 };
@@ -177,9 +196,11 @@ export const DEFAULT_WINDOW_BACKEND_URL = 'http://localhost:8787';
 export const BLOCK_ALL_RULE_ID = 1;
 export const ALLOW_RULE_ID_START = 2;
 export const TEMP_UNLOCK_RULE_ID_START = 10_000;
+export const DOWNLOAD_ALLOWANCE_RULE_ID_START = 200_000;
 export const TEMP_UNLOCK_DURATION_MINUTES = 5;
 export const TEMP_UNLOCK_BASE_COST = 25;
 export const TEMP_UNLOCK_INCREMENT = 25;
+export const DOWNLOAD_ALLOWANCE_TIMEOUT_MS = 30_000;
 
 // Path to the blocked page within the extension (used by declarativeNetRequest redirect)
 export const BLOCKED_PAGE_EXTENSION_PATH = '/src/blocked/index.html';

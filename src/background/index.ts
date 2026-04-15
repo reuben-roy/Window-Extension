@@ -3,6 +3,8 @@ import {
   ALARM_TICK,
   ALARM_TICK_PERIOD_MINUTES,
   BLOCKED_PAGE_EXTENSION_PATH,
+  DOWNLOAD_ALLOWANCE_RULE_ID_START,
+  DOWNLOAD_ALLOWANCE_TIMEOUT_MS,
   SIDE_PANEL_EXTENSION_PATH,
   TEMP_UNLOCK_BASE_COST,
   TEMP_UNLOCK_DURATION_MINUTES,
@@ -10,12 +12,16 @@ import {
   TEMP_UNLOCK_RULE_ID_START,
 } from '../shared/constants';
 import {
+  getAccountConflict,
+  getAccountSyncState,
+  getAccountUser,
   getAssistantOptions,
   getAllTimeStats,
   getBackendSession,
   getBackendSyncState,
   getBlockedTabs,
   getCalendarState,
+  getDownloadAllowances,
   getEventRules,
   getGlobalAllowlist,
   getIdeaRecords,
@@ -25,14 +31,17 @@ import {
   getWeekKey,
   getSettings,
   getSnoozeState,
+  getTabDocumentUrls,
   getTaskQueue,
   getTemporaryUnlocks,
   getUnlockSpendState,
   setAllTimeStats,
   setBlockedTabs,
   setCalendarState,
+  setDownloadAllowances,
   setPointsHistory,
   setSettings,
+  setTabDocumentUrls,
   setTemporaryUnlocks,
   setUnlockSpendState,
 } from '../shared/storage';
@@ -40,6 +49,7 @@ import type {
   BlockedTabState,
   CalendarEvent,
   CalendarState,
+  DownloadAllowance,
   Message,
   StateResponse,
   Task,
@@ -47,13 +57,17 @@ import type {
 } from '../shared/types';
 import {
   cancelOpenClawJob,
-  clearAssistantState,
   decideIdea,
+  handleSyncedStorageChanges,
+  refreshAccountState,
   refreshAssistantState,
+  resolveAccountConflict,
+  restoreAccountSession,
   retryIdea,
+  signInWithProvider,
+  signOutAccount,
   startOpenClawSession,
   submitIdea,
-  syncBackendAuthWithGoogleToken,
   syncBreakTelemetryQueue,
   syncIdeaOutbox,
   updateAssistantPreference,
@@ -79,12 +93,16 @@ import { finalizeTrackedBreakVisits, registerTelemetryListeners } from './teleme
 import { markTaskCompleted, syncTasksFromCalendarState } from './taskQueue';
 
 const pendingNavigationByTab = new Map<number, string>();
+const currentDocumentUrlByTab = new Map<number, string>();
+const navigationSourceTabByTab = new Map<number, number>();
+const recentProgrammaticDownloadAttempts = new Map<string, number>();
 
 // ─── Lifecycle ────────────────────────────────────────────────────────────────
 
 chrome.runtime.onInstalled.addListener(() => {
   chrome.alarms.create(ALARM_TICK, { periodInMinutes: ALARM_TICK_PERIOD_MINUTES });
   void ensureDemoStatsSeeded();
+  void hydrateOpenTabsDocumentUrls();
   void syncActionSurfaceBehavior();
   console.log('[Window] Installed — tick alarm scheduled.');
 });
@@ -97,8 +115,11 @@ chrome.alarms.get(ALARM_TICK, (alarm) => {
 
 registerTelemetryListeners();
 registerBlockingListeners();
+registerDownloadListeners();
 void ensureDemoStatsSeeded();
+void hydrateOpenTabsDocumentUrls();
 void syncActionSurfaceBehavior();
+void restoreAccountSession();
 
 chrome.storage.onChanged.addListener((changes, areaName) => {
   if (areaName === 'sync' && ('settings' in changes || 'eventRules' in changes || 'keywordRules' in changes || 'globalAllowlist' in changes)) {
@@ -108,6 +129,8 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
   if (areaName === 'sync' && 'settings' in changes) {
     void syncActionSurfaceBehavior();
   }
+
+  void handleSyncedStorageChanges(changes, areaName);
 });
 
 // ─── Alarm handler ────────────────────────────────────────────────────────────
@@ -129,6 +152,7 @@ async function handleTick(): Promise<void> {
 
   await syncTasksFromCalendarState(calendarState);
   await cleanupExpiredTemporaryUnlocks(calendarState);
+  await cleanupExpiredDownloadAllowances(calendarState);
 
   const snoozed = await isSnoozeActive();
   if (snoozed) {
@@ -175,8 +199,24 @@ async function handleMessage(
     case 'GET_CALENDAR_EVENTS_RANGE':
       return getCalendarEventsRange(message);
 
+    case 'REFRESH_ACCOUNT_STATE':
+      return refreshAccountState();
+
     case 'REFRESH_ASSISTANT_STATE':
       return refreshAssistantState();
+
+    case 'SIGN_IN_WITH_PROVIDER':
+      return signInWithProvider(
+        ((message.payload as { provider?: 'google' | 'github' } | undefined)?.provider ?? 'google'),
+      );
+
+    case 'SIGN_OUT_ACCOUNT':
+      return signOutAccount().then(() => ({ ok: true }));
+
+    case 'RESOLVE_ACCOUNT_CONFLICT':
+      return resolveAccountConflict(
+        ((message.payload as { choice?: 'local' | 'remote' } | undefined)?.choice ?? 'local'),
+      ).then(() => ({ ok: true }));
 
     case 'TOGGLE_BLOCKING':
       return toggleBlocking(message);
@@ -250,6 +290,9 @@ async function buildStateResponse(): Promise<StateResponse> {
     eventRules,
     keywordRules,
     backendSession,
+    accountUser,
+    accountSyncState,
+    accountConflict,
     backendSyncState,
     assistantOptions,
     ideaRecords,
@@ -263,6 +306,9 @@ async function buildStateResponse(): Promise<StateResponse> {
     getEventRules(),
     getKeywordRules(),
     getBackendSession(),
+    getAccountUser(),
+    getAccountSyncState(),
+    getAccountConflict(),
     getBackendSyncState(),
     getAssistantOptions(),
     getIdeaRecords(),
@@ -278,6 +324,9 @@ async function buildStateResponse(): Promise<StateResponse> {
     eventRules,
     keywordRules,
     backendSession,
+    accountUser,
+    accountSyncState,
+    accountConflict,
     backendSyncState,
     assistantOptions,
     ideaState: {
@@ -298,8 +347,6 @@ async function connectCalendar(): Promise<{ ok: boolean; error?: string }> {
     await getAuthToken(true);
     const calendarState = await syncCalendar();
     await syncTasksFromCalendarState(calendarState);
-    await syncBackendAuthWithGoogleToken();
-    await refreshAssistantState();
     await applyBlockingState(calendarState);
     return { ok: true };
   } catch (err) {
@@ -333,9 +380,9 @@ async function disconnectCalendar(): Promise<{ ok: boolean }> {
     setCalendarState(disconnected),
     setBlockedTabs({}),
     setTemporaryUnlocks({}),
-    clearAssistantState(),
+    setDownloadAllowances({}),
     updateBlockingRules([], false),
-    syncTemporaryUnlockRules({}),
+    syncTemporaryUnlockRules({}, {}),
   ]);
 
   return { ok: true };
@@ -405,6 +452,7 @@ async function reconcileBlockingState(): Promise<void> {
   await setCalendarState(nextCalendarState);
   await syncTasksFromCalendarState(nextCalendarState);
   await cleanupExpiredTemporaryUnlocks(nextCalendarState);
+  await cleanupExpiredDownloadAllowances(nextCalendarState);
 
   if (!snoozed) {
     await applyBlockingState(nextCalendarState);
@@ -414,17 +462,18 @@ async function reconcileBlockingState(): Promise<void> {
 }
 
 async function applyBlockingState(calendarState: CalendarState): Promise<void> {
-  const [settings, unlocks] = await Promise.all([
+  const [settings, unlocks, downloadAllowances] = await Promise.all([
     getSettings(),
     getTemporaryUnlocks(),
+    getDownloadAllowances(),
   ]);
 
   await updateBlockingRules(
     calendarState.allowedDomains,
     settings.enableBlocking && calendarState.isRestricted,
   );
-  await syncTemporaryUnlockRules(unlocks);
-  await reconcileBlockedTabs(calendarState, unlocks);
+  await syncTemporaryUnlockRules(unlocks, downloadAllowances);
+  await reconcileBlockedTabs(calendarState, unlocks, downloadAllowances);
 }
 
 // ─── Blocked page + unlock handling ──────────────────────────────────────────
@@ -562,7 +611,7 @@ export async function spendPointsForTemporaryUnlock(
   await Promise.all([
     setTemporaryUnlocks(nextUnlocks),
     setBlockedTabs(nextBlockedTabs),
-    syncTemporaryUnlockRules(nextUnlocks),
+    syncTemporaryAllowances(nextUnlocks),
   ]);
 
   return {
@@ -576,7 +625,10 @@ export async function spendPointsForTemporaryUnlock(
 async function cleanupExpiredTemporaryUnlocks(
   calendarState: CalendarState,
 ): Promise<void> {
-  const unlocks = await getTemporaryUnlocks();
+  const [unlocks, downloadAllowances] = await Promise.all([
+    getTemporaryUnlocks(),
+    getDownloadAllowances(),
+  ]);
   const now = Date.now();
   const activeUnlocks: Record<string, TemporaryUnlockState> = {};
   const expiredUnlocks: TemporaryUnlockState[] = [];
@@ -593,46 +645,54 @@ async function cleanupExpiredTemporaryUnlocks(
 
   await Promise.all([
     setTemporaryUnlocks(activeUnlocks),
-    syncTemporaryUnlockRules(activeUnlocks),
+    syncTemporaryAllowances(activeUnlocks, downloadAllowances),
   ]);
 
-  const settings = await getSettings();
-  const tabs = await chrome.tabs.query({});
+  await reloadTabsForExpiredHosts(
+    expiredUnlocks.map((unlock) => unlock.blockedHost),
+    calendarState,
+  );
+}
 
-  for (const unlock of expiredUnlocks) {
-    for (const tab of tabs) {
-      try {
-        if (!tab.id || !tab.url || !isHttpUrl(tab.url)) continue;
-        const host = new URL(tab.url).hostname;
-        if (
-          host !== unlock.blockedHost &&
-          !host.endsWith(`.${unlock.blockedHost}`)
-        ) {
-          continue;
-        }
+async function cleanupExpiredDownloadAllowances(
+  calendarState: CalendarState,
+): Promise<void> {
+  const [unlocks, allowances] = await Promise.all([
+    getTemporaryUnlocks(),
+    getDownloadAllowances(),
+  ]);
+  const now = Date.now();
+  const activeAllowances: Record<string, DownloadAllowance> = {};
+  const expiredHosts = new Set<string>();
 
-        const stillAllowed =
-          !settings.enableBlocking ||
-          !calendarState.isRestricted ||
-          isDomainAllowed(host, calendarState.allowedDomains);
-        if (!stillAllowed) {
-          await chrome.tabs.reload(tab.id);
-        }
-      } catch {
-        // Ignore tabs that disappeared.
-      }
+  for (const [key, allowance] of Object.entries(allowances)) {
+    if (new Date(allowance.expiresAt).getTime() > now) {
+      activeAllowances[key] = allowance;
+    } else {
+      expiredHosts.add(allowance.targetHost);
     }
   }
+
+  if (expiredHosts.size === 0) return;
+
+  await Promise.all([
+    setDownloadAllowances(activeAllowances),
+    syncTemporaryAllowances(unlocks, activeAllowances),
+  ]);
+
+  await reloadTabsForExpiredHosts([...expiredHosts], calendarState);
 }
 
 async function reconcileBlockedTabs(
   calendarState: CalendarState,
   unlocksInput?: Record<string, TemporaryUnlockState>,
+  downloadAllowancesInput?: Record<string, DownloadAllowance>,
 ): Promise<void> {
-  const [settings, blockedTabs, unlocks] = await Promise.all([
+  const [settings, blockedTabs, unlocks, downloadAllowances] = await Promise.all([
     getSettings(),
     getBlockedTabs(),
     unlocksInput ? Promise.resolve(unlocksInput) : getTemporaryUnlocks(),
+    downloadAllowancesInput ? Promise.resolve(downloadAllowancesInput) : getDownloadAllowances(),
   ]);
 
   const nextBlockedTabs = { ...blockedTabs };
@@ -644,6 +704,7 @@ async function reconcileBlockedTabs(
       calendarState,
       settings,
       unlocks,
+      downloadAllowances,
     );
 
     if (!allowed) continue;
@@ -666,6 +727,10 @@ function registerBlockingListeners(): void {
     pendingNavigationByTab.set(details.tabId, details.url);
   });
 
+  chrome.webNavigation.onCreatedNavigationTarget?.addListener((details) => {
+    navigationSourceTabByTab.set(details.tabId, details.sourceTabId);
+  });
+
   chrome.webNavigation.onCommitted.addListener((details) => {
     if (details.frameId !== 0) return;
 
@@ -673,19 +738,48 @@ function registerBlockingListeners(): void {
       const originalUrl = pendingNavigationByTab.get(details.tabId);
       if (originalUrl) {
         void rememberBlockedTab(details.tabId, originalUrl);
+        void handleBlockedDownloadRedirect(
+          details.tabId,
+          currentDocumentUrlByTab.get(details.tabId) ?? null,
+          originalUrl,
+        );
       }
       return;
     }
 
     if (isHttpUrl(details.url)) {
-      pendingNavigationByTab.set(details.tabId, details.url);
+      recordCommittedDocumentUrl(details.tabId, details.url);
+      navigationSourceTabByTab.delete(details.tabId);
+      for (const key of recentProgrammaticDownloadAttempts.keys()) {
+        if (key.startsWith(`${details.tabId}:`)) {
+          recentProgrammaticDownloadAttempts.delete(key);
+        }
+      }
       void clearBlockedTab(details.tabId);
     }
   });
 
   chrome.tabs.onRemoved.addListener((tabId) => {
     pendingNavigationByTab.delete(tabId);
+    currentDocumentUrlByTab.delete(tabId);
+    navigationSourceTabByTab.delete(tabId);
+    for (const key of recentProgrammaticDownloadAttempts.keys()) {
+      if (key.startsWith(`${tabId}:`)) {
+        recentProgrammaticDownloadAttempts.delete(key);
+      }
+    }
     void clearBlockedTab(tabId);
+    void clearStoredDocumentUrl(tabId);
+  });
+}
+
+function registerDownloadListeners(): void {
+  chrome.downloads.onCreated.addListener((item) => {
+    void handleDownloadCreated(item);
+  });
+
+  chrome.downloads.onChanged.addListener((delta) => {
+    void handleDownloadChanged(delta);
   });
 }
 
@@ -724,6 +818,20 @@ function isHttpUrl(url: string): boolean {
   return url.startsWith('http://') || url.startsWith('https://');
 }
 
+export function recordCommittedDocumentUrl(tabId: number, url: string): void {
+  currentDocumentUrlByTab.set(tabId, url);
+  pendingNavigationByTab.set(tabId, url);
+  void persistDocumentUrl(tabId, url);
+}
+
+export async function hydrateOpenTabsDocumentUrls(): Promise<void> {
+  const tabs = await chrome.tabs.query({});
+  for (const tab of tabs) {
+    if (!tab.id || !tab.url || !isHttpUrl(tab.url)) continue;
+    recordCommittedDocumentUrl(tab.id, tab.url);
+  }
+}
+
 function normalizeUnlockKey(blockedHost: string): string {
   return blockedHost.trim().toLowerCase();
 }
@@ -736,6 +844,19 @@ function createTemporaryUnlockRuleId(blockedHost: string): number {
   }
 
   return TEMP_UNLOCK_RULE_ID_START + (Math.abs(hash) % 900_000);
+}
+
+function createDownloadAllowanceRuleId(
+  host: string,
+  seed: string,
+): number {
+  const key = `${normalizeUnlockKey(host)}:${seed}`;
+  let hash = 0;
+  for (let index = 0; index < key.length; index += 1) {
+    hash = (hash * 33 + key.charCodeAt(index)) | 0;
+  }
+
+  return DOWNLOAD_ALLOWANCE_RULE_ID_START + (Math.abs(hash) % 700_000);
 }
 
 function findMatchingUnlockForHost(
@@ -759,10 +880,11 @@ function findMatchingUnlockForHost(
 
 function isUrlReachableNow(
   url: string,
-  _tabId: number,
+  tabId: number,
   calendarState: CalendarState,
   settings: Awaited<ReturnType<typeof getSettings>>,
   unlocks: Record<string, TemporaryUnlockState>,
+  downloadAllowances: Record<string, DownloadAllowance>,
 ): boolean {
   if (!isHttpUrl(url)) return true;
   if (!settings.enableBlocking || !calendarState.isRestricted) return true;
@@ -771,9 +893,521 @@ function isUrlReachableNow(
   if (isDomainAllowed(host, calendarState.allowedDomains)) return true;
 
   const unlock = findMatchingUnlockForHost(host, unlocks);
-  if (!unlock) return false;
-  if (new Date(unlock.expiresAt).getTime() <= Date.now()) return false;
-  return host === unlock.blockedHost || host.endsWith(`.${unlock.blockedHost}`);
+  if (unlock && new Date(unlock.expiresAt).getTime() > Date.now()) {
+    return host === unlock.blockedHost || host.endsWith(`.${unlock.blockedHost}`);
+  }
+
+  const allowance = findMatchingDownloadAllowance(host, tabId, downloadAllowances);
+  if (!allowance) return false;
+  if (new Date(allowance.expiresAt).getTime() <= Date.now()) return false;
+  return host === allowance.targetHost || host.endsWith(`.${allowance.targetHost}`);
+}
+
+function findMatchingDownloadAllowance(
+  host: string,
+  tabId: number,
+  allowances: Record<string, DownloadAllowance>,
+): DownloadAllowance | null {
+  const lowerHost = host.toLowerCase();
+
+  const match = Object.values(allowances)
+    .filter((allowance) => {
+      const targetHost = allowance.targetHost.toLowerCase();
+      const matchesHost = lowerHost === targetHost || lowerHost.endsWith(`.${targetHost}`);
+      const matchesTab = allowance.tabId === null || allowance.tabId === tabId;
+      return matchesHost && matchesTab && new Date(allowance.expiresAt).getTime() > Date.now();
+    })
+    .sort((a, b) => b.targetHost.length - a.targetHost.length)[0];
+
+  return match ?? null;
+}
+
+async function syncTemporaryAllowances(
+  unlocksInput?: Record<string, TemporaryUnlockState>,
+  downloadAllowancesInput?: Record<string, DownloadAllowance>,
+): Promise<void> {
+  const [unlocks, downloadAllowances] = await Promise.all([
+    unlocksInput ? Promise.resolve(unlocksInput) : getTemporaryUnlocks(),
+    downloadAllowancesInput ? Promise.resolve(downloadAllowancesInput) : getDownloadAllowances(),
+  ]);
+
+  await syncTemporaryUnlockRules(unlocks, downloadAllowances);
+}
+
+async function reloadTabsForExpiredHosts(
+  hosts: string[],
+  calendarState: CalendarState,
+): Promise<void> {
+  if (hosts.length === 0) return;
+
+  const settings = await getSettings();
+  const tabs = await chrome.tabs.query({});
+
+  for (const tab of tabs) {
+    try {
+      if (!tab.id || !tab.url || !isHttpUrl(tab.url)) continue;
+      const host = new URL(tab.url).hostname;
+      const matchesExpiredHost = hosts.some(
+        (expiredHost) => host === expiredHost || host.endsWith(`.${expiredHost}`),
+      );
+      if (!matchesExpiredHost) continue;
+
+      const stillAllowed =
+        !settings.enableBlocking ||
+        !calendarState.isRestricted ||
+        isDomainAllowed(host, calendarState.allowedDomains);
+
+      if (!stillAllowed) {
+        await chrome.tabs.reload(tab.id);
+      }
+    } catch {
+      // Ignore tabs that disappeared during cleanup.
+    }
+  }
+}
+
+export async function handleDownloadCreated(
+  item: chrome.downloads.DownloadItem,
+): Promise<void> {
+  const targetUrl = item.finalUrl || item.url;
+  if (!targetUrl || !isHttpUrl(targetUrl)) return;
+
+  const targetHost = new URL(targetUrl).hostname;
+  const sourceUrl = item.referrer && isHttpUrl(item.referrer) ? item.referrer : null;
+  const [settings, allowances] = await Promise.all([
+    getSettings(),
+    getDownloadAllowances(),
+  ]);
+  if (!settings.downloadRedirectUseDownloadsApi) return;
+
+  const inferredTabId = await inferTabIdForSourceUrl(sourceUrl);
+  const tabId = settings.downloadRedirectAllowAcrossTabsEnabled ? null : inferredTabId;
+
+  if (!(await isAllowedDownloadSource(sourceUrl, inferredTabId))) return;
+  const key = buildDownloadAllowanceKey('download', item.id, targetHost, tabId);
+  const allowance: DownloadAllowance = {
+    key,
+    allowanceType: 'download',
+    downloadId: item.id,
+    tabId,
+    sourceUrl,
+    sourceHost: sourceUrl && isHttpUrl(sourceUrl) ? new URL(sourceUrl).hostname : null,
+    targetUrl,
+    targetHost,
+    ruleId: createDownloadAllowanceRuleId(targetHost, `download:${item.id}`),
+    expiresAt: new Date(Date.now() + DOWNLOAD_ALLOWANCE_TIMEOUT_MS).toISOString(),
+  };
+
+  const nextAllowances = removeMatchingFallbackAllowances(allowances, tabId, targetHost);
+  nextAllowances[key] = allowance;
+
+  await Promise.all([
+    setDownloadAllowances(nextAllowances),
+    syncTemporaryAllowances(undefined, nextAllowances),
+  ]);
+
+  const calendarState = await getCalendarState();
+  await reconcileBlockedTabs(calendarState, undefined, nextAllowances);
+}
+
+export async function handleDownloadChanged(
+  delta: chrome.downloads.DownloadDelta,
+): Promise<void> {
+  const allowances = await getDownloadAllowances();
+  const matching = Object.entries(allowances).filter(([, allowance]) => allowance.downloadId === delta.id);
+  if (matching.length === 0) return;
+
+  let nextAllowances = { ...allowances };
+  let mutated = false;
+  const removedHosts = new Set<string>();
+
+  const nextUrl = delta.finalUrl?.current ?? delta.url?.current ?? null;
+  if (nextUrl && isHttpUrl(nextUrl)) {
+    const nextHost = new URL(nextUrl).hostname;
+    for (const [key, allowance] of matching) {
+      const nextKey = buildDownloadAllowanceKey(allowance.allowanceType, delta.id, nextHost, allowance.tabId);
+      delete nextAllowances[key];
+      nextAllowances[nextKey] = {
+        ...allowance,
+        key: nextKey,
+        targetUrl: nextUrl,
+        targetHost: nextHost,
+        ruleId: createDownloadAllowanceRuleId(nextHost, `download:${delta.id}`),
+        expiresAt: new Date(Date.now() + DOWNLOAD_ALLOWANCE_TIMEOUT_MS).toISOString(),
+      };
+      mutated = true;
+    }
+  }
+
+  const nextState = delta.state?.current ?? null;
+  if (nextState === 'complete' || nextState === 'interrupted') {
+    for (const [, allowance] of matching) {
+      removedHosts.add(allowance.targetHost);
+    }
+    nextAllowances = Object.fromEntries(
+      Object.entries(nextAllowances).filter(([, allowance]) => allowance.downloadId !== delta.id),
+    );
+    mutated = true;
+  }
+
+  if (!mutated) return;
+
+  await Promise.all([
+    setDownloadAllowances(nextAllowances),
+    syncTemporaryAllowances(undefined, nextAllowances),
+  ]);
+
+  if (removedHosts.size > 0) {
+    const calendarState = await getCalendarState();
+    await reloadTabsForExpiredHosts([...removedHosts], calendarState);
+  }
+}
+
+export async function maybeStartDownloadRedirectFallback(
+  tabId: number,
+  sourceUrl: string | null,
+  blockedUrl: string,
+): Promise<void> {
+  const resolvedSourceUrl = await getLikelySourceUrlForTab(tabId, sourceUrl);
+
+  const [settings, allowances] = await Promise.all([
+    getSettings(),
+    getDownloadAllowances(),
+  ]);
+  if (!(await shouldAllowDownloadFallback(tabId, resolvedSourceUrl, blockedUrl, settings))) return;
+  const targetHost = new URL(blockedUrl).hostname;
+  if (findMatchingDownloadAllowance(targetHost, tabId, allowances)) return;
+
+  const allowanceTabId = settings.downloadRedirectAllowAcrossTabsEnabled ? null : tabId;
+  const key = buildDownloadAllowanceKey('fallback', null, targetHost, allowanceTabId);
+  const fallbackAllowance: DownloadAllowance = {
+    key,
+    allowanceType: 'fallback',
+    downloadId: null,
+    tabId: allowanceTabId,
+    sourceUrl: resolvedSourceUrl,
+    sourceHost: resolvedSourceUrl && isHttpUrl(resolvedSourceUrl) ? new URL(resolvedSourceUrl).hostname : null,
+    targetUrl: blockedUrl,
+    targetHost,
+    ruleId: createDownloadAllowanceRuleId(targetHost, `fallback:${tabId}`),
+    expiresAt: new Date(
+      Date.now() + settings.downloadRedirectFallbackSeconds * 1_000,
+    ).toISOString(),
+  };
+  const nextAllowances = {
+    ...allowances,
+    [key]: fallbackAllowance,
+  };
+
+  await Promise.all([
+    setDownloadAllowances(nextAllowances),
+    syncTemporaryAllowances(undefined, nextAllowances),
+  ]);
+
+  try {
+    await chrome.tabs.update(tabId, { url: blockedUrl });
+  } catch {
+    // Tab may have disappeared before retrying the navigation.
+  }
+}
+
+export async function handleBlockedDownloadRedirect(
+  tabId: number,
+  sourceUrl: string | null,
+  blockedUrl: string,
+): Promise<void> {
+  const resolvedSourceUrl = await getLikelySourceUrlForTab(tabId, sourceUrl);
+  const settings = await getSettings();
+
+  const startedProgrammaticDownload = await maybeStartProgrammaticBlockedDownload(
+    tabId,
+    resolvedSourceUrl,
+    blockedUrl,
+    settings,
+  );
+  if (startedProgrammaticDownload) {
+    return;
+  }
+
+  await maybeStartDownloadRedirectFallback(tabId, resolvedSourceUrl, blockedUrl);
+}
+
+export async function maybeStartProgrammaticBlockedDownload(
+  tabId: number,
+  sourceUrl: string | null,
+  blockedUrl: string,
+  settings: Awaited<ReturnType<typeof getSettings>>,
+): Promise<boolean> {
+  if (!settings.downloadRedirectProgrammaticDownloadEnabled) return false;
+  if (!looksLikeDownloadRedirect(blockedUrl)) return false;
+  if (!(await isAllowedDownloadSource(sourceUrl, tabId))) return false;
+  if (hasRecentProgrammaticDownloadAttempt(tabId, blockedUrl)) return false;
+
+  rememberProgrammaticDownloadAttempt(tabId, blockedUrl);
+
+  try {
+    await chrome.downloads.download({
+      url: blockedUrl,
+      saveAs: false,
+    });
+
+    await clearBlockedTab(tabId);
+
+    if (sourceUrl && sourceUrl !== blockedUrl) {
+      await chrome.tabs.update(tabId, { url: sourceUrl });
+    }
+
+    return true;
+  } catch (error) {
+    console.warn('[Window] Programmatic download handoff failed:', error);
+    return false;
+  }
+}
+
+async function isAllowedDownloadSource(
+  sourceUrl: string | null,
+  tabId: number | null,
+): Promise<boolean> {
+  if (!sourceUrl || !isHttpUrl(sourceUrl)) return false;
+
+  const [calendarState, settings, unlocks, downloadAllowances] = await Promise.all([
+    getCalendarState(),
+    getSettings(),
+    getTemporaryUnlocks(),
+    getDownloadAllowances(),
+  ]);
+
+  return isUrlReachableNow(
+    sourceUrl,
+    tabId ?? -1,
+    calendarState,
+    settings,
+    unlocks,
+    downloadAllowances,
+  );
+}
+
+function buildDownloadAllowanceKey(
+  allowanceType: DownloadAllowance['allowanceType'],
+  downloadId: number | null,
+  host: string,
+  tabId: number | null,
+): string {
+  return `${allowanceType}:${downloadId ?? 'none'}:${tabId ?? 'any'}:${normalizeUnlockKey(host)}`;
+}
+
+function removeMatchingFallbackAllowances(
+  allowances: Record<string, DownloadAllowance>,
+  tabId: number | null,
+  targetHost: string,
+): Record<string, DownloadAllowance> {
+  return Object.fromEntries(
+    Object.entries(allowances).filter(([, allowance]) => {
+      if (allowance.allowanceType !== 'fallback') return true;
+      if (allowance.targetHost !== targetHost) return true;
+      return allowance.tabId !== tabId;
+    }),
+  );
+}
+
+function looksLikeDownloadRedirect(url: string): boolean {
+  if (!isHttpUrl(url)) return false;
+
+  const parsed = new URL(url);
+  const pathname = parsed.pathname.toLowerCase();
+  const query = parsed.search.toLowerCase();
+
+  if (/\.(zip|pdf|csv|dmg|pkg|exe|msi|tar|gz|tgz|mp4|mp3|mov|xlsx|docx|pptx)$/i.test(pathname)) {
+    return true;
+  }
+
+  return [
+    '/download',
+    '/files/',
+    'download=',
+    'download_',
+    'filename=',
+    'attachment',
+    'content-disposition',
+    'response-content-disposition',
+    'export=download',
+    'verifier=',
+  ].some((token) => pathname.includes(token) || query.includes(token));
+}
+
+function buildProgrammaticDownloadAttemptKey(tabId: number, url: string): string {
+  return `${tabId}:${normalizeComparableUrl(url)}`;
+}
+
+function hasRecentProgrammaticDownloadAttempt(tabId: number, url: string): boolean {
+  const now = Date.now();
+  for (const [key, attemptedAt] of recentProgrammaticDownloadAttempts.entries()) {
+    if (now - attemptedAt > 15_000) {
+      recentProgrammaticDownloadAttempts.delete(key);
+    }
+  }
+
+  const attemptedAt = recentProgrammaticDownloadAttempts.get(
+    buildProgrammaticDownloadAttemptKey(tabId, url),
+  );
+  return typeof attemptedAt === 'number' && now - attemptedAt < 15_000;
+}
+
+function rememberProgrammaticDownloadAttempt(tabId: number, url: string): void {
+  recentProgrammaticDownloadAttempts.set(
+    buildProgrammaticDownloadAttemptKey(tabId, url),
+    Date.now(),
+  );
+}
+
+async function shouldAllowDownloadFallback(
+  tabId: number,
+  sourceUrl: string | null,
+  blockedUrl: string,
+  settings: Awaited<ReturnType<typeof getSettings>>,
+): Promise<boolean> {
+  if (!sourceUrl || !isHttpUrl(sourceUrl) || !isHttpUrl(blockedUrl)) return false;
+  if (!(await isAllowedDownloadSource(sourceUrl, tabId))) return false;
+
+  const sourceHost = new URL(sourceUrl).hostname;
+  const targetHost = new URL(blockedUrl).hostname;
+
+  if (
+    settings.downloadRedirectFallbackPatternMatchEnabled &&
+    looksLikeDownloadRedirect(blockedUrl)
+  ) {
+    return true;
+  }
+
+  if (
+    settings.downloadRedirectFallbackSameHostEnabled &&
+    areHostsEquivalentOrNested(sourceHost, targetHost)
+  ) {
+    return true;
+  }
+
+  if (
+    settings.downloadRedirectFallbackSameSiteEnabled &&
+    getApproximateSiteKey(sourceHost) === getApproximateSiteKey(targetHost)
+  ) {
+    return true;
+  }
+
+  return settings.downloadRedirectFallbackAnyAllowedRedirectEnabled;
+}
+
+function areHostsEquivalentOrNested(left: string, right: string): boolean {
+  const leftHost = left.toLowerCase();
+  const rightHost = right.toLowerCase();
+  return (
+    leftHost === rightHost ||
+    leftHost.endsWith(`.${rightHost}`) ||
+    rightHost.endsWith(`.${leftHost}`)
+  );
+}
+
+function getApproximateSiteKey(host: string): string {
+  const lowerHost = host.trim().toLowerCase();
+  if (!lowerHost) return '';
+
+  const labels = lowerHost.split('.').filter(Boolean);
+  if (labels.length <= 2) return lowerHost;
+
+  if (/^\d{1,3}(\.\d{1,3}){3}$/.test(lowerHost) || lowerHost === 'localhost') {
+    return lowerHost;
+  }
+
+  return labels.slice(-2).join('.');
+}
+
+function normalizeComparableUrl(url: string): string {
+  try {
+    const parsed = new URL(url);
+    parsed.hash = '';
+    if (parsed.pathname !== '/') {
+      parsed.pathname = parsed.pathname.replace(/\/+$/, '');
+    }
+    return parsed.toString();
+  } catch {
+    return url;
+  }
+}
+
+function urlsMatchForSourceLookup(left: string, right: string): boolean {
+  return normalizeComparableUrl(left) === normalizeComparableUrl(right);
+}
+
+async function inferTabIdForSourceUrl(sourceUrl: string | null): Promise<number | null> {
+  if (!sourceUrl) return null;
+
+  for (const [tabId, currentUrl] of currentDocumentUrlByTab.entries()) {
+    if (urlsMatchForSourceLookup(currentUrl, sourceUrl)) {
+      return tabId;
+    }
+  }
+
+  const stored = await getTabDocumentUrls();
+  for (const [tabId, currentUrl] of Object.entries(stored)) {
+    if (urlsMatchForSourceLookup(currentUrl, sourceUrl)) {
+      const numericTabId = Number(tabId);
+      if (Number.isFinite(numericTabId)) {
+        currentDocumentUrlByTab.set(numericTabId, currentUrl);
+        return numericTabId;
+      }
+    }
+  }
+
+  return null;
+}
+
+async function getLikelySourceUrlForTab(
+  tabId: number,
+  explicitSourceUrl: string | null,
+): Promise<string | null> {
+  if (explicitSourceUrl && isHttpUrl(explicitSourceUrl)) {
+    return explicitSourceUrl;
+  }
+
+  const directUrl = await getStoredDocumentUrl(tabId);
+  if (directUrl) {
+    return directUrl;
+  }
+
+  const sourceTabId = navigationSourceTabByTab.get(tabId);
+  if (typeof sourceTabId === 'number') {
+    return getStoredDocumentUrl(sourceTabId);
+  }
+
+  return null;
+}
+
+async function persistDocumentUrl(tabId: number, url: string): Promise<void> {
+  const stored = await getTabDocumentUrls();
+  if (stored[String(tabId)] === url) return;
+  await setTabDocumentUrls({
+    ...stored,
+    [String(tabId)]: url,
+  });
+}
+
+async function getStoredDocumentUrl(tabId: number): Promise<string | null> {
+  const inMemory = currentDocumentUrlByTab.get(tabId);
+  if (inMemory) return inMemory;
+
+  const stored = await getTabDocumentUrls();
+  const value = stored[String(tabId)] ?? null;
+  if (value) {
+    currentDocumentUrlByTab.set(tabId, value);
+  }
+  return value;
+}
+
+async function clearStoredDocumentUrl(tabId: number): Promise<void> {
+  const stored = await getTabDocumentUrls();
+  if (!(String(tabId) in stored)) return;
+  const nextStored = { ...stored };
+  delete nextStored[String(tabId)];
+  await setTabDocumentUrls(nextStored);
 }
 
 async function getNextUnlockCost(

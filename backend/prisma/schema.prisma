@@ -38,18 +38,65 @@ enum RecommendationKind {
   automation
 }
 
+enum AuthProvider {
+  google
+  github
+  password
+}
+
 model User {
-  id              String             @id @default(cuid())
-  googleSub       String             @unique
-  email           String?
-  createdAt       DateTime           @default(now())
-  updatedAt       DateTime           @updatedAt
-  backendSessions BackendSession[]
-  ideaCaptures    IdeaCapture[]
+  id               String             @id @default(cuid())
+  supabaseUserId   String?            @unique
+  email            String?            @unique
+  displayName      String?
+  avatarUrl        String?
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+  authCodes        AuthCode[]
+  identities       AuthIdentity[]
+  syncState        UserSyncState?
+  backendSessions  BackendSession[]
+  ideaCaptures     IdeaCapture[]
   openClawSessions OpenClawSession[]
   breakVisitEvents BreakVisitEvent[]
   interestProfiles InterestProfile[]
-  recommendations Recommendation[]
+  recommendations  Recommendation[]
+}
+
+model AuthIdentity {
+  id            String       @id @default(cuid())
+  userId        String
+  provider      AuthProvider
+  providerUserId String
+  email         String?
+  emailVerified Boolean      @default(false)
+  passwordHash  String?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerUserId])
+  @@index([email])
+}
+
+model AuthCode {
+  id        String       @id @default(cuid())
+  userId    String
+  provider  AuthProvider
+  codeHash  String       @unique
+  expiresAt DateTime
+  createdAt DateTime     @default(now())
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model UserSyncState {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  revision  Int
+  snapshot  Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model BackendSession {

@@ -1,24 +1,33 @@
 import Fastify, { type FastifyReply, type FastifyRequest } from 'fastify';
+import type { Prisma } from '@prisma/client';
 import { z } from 'zod';
-import { prisma } from './lib/prisma.js';
 import { env } from './env.js';
+import { prisma } from './lib/prisma.js';
 import {
+  fetchGoogleUserProfile,
   issueBackendSession,
   requireUser,
+  revokeBackendSession,
   verifyGoogleAccessToken,
 } from './lib/auth.js';
 import { openClawConnector } from './lib/openclaw/client.js';
 import {
+  toAccountSnapshotPayload,
+  toAccountUserPayload,
   toIdeaRecordPayload,
   toInterestPayload,
   toOpenClawJobPayload,
   toOpenClawSessionPayload,
   toRecommendationPayload,
 } from './lib/serializers.js';
+import type {
+  AccountSnapshotPayload,
+  AccountSnapshotResponsePayload,
+  AccountUserPayload,
+} from './types.js';
 
-const authExchangeSchema = z.object({
+const googleExchangeSchema = z.object({
   googleAccessToken: z.string().min(1),
-  extensionVersion: z.string().optional(),
 });
 
 const createSessionSchema = z.object({
@@ -53,6 +62,29 @@ const breakVisitsSchema = z.object({
   ),
 });
 
+const accountSnapshotPutSchema = z.object({
+  revision: z.number().int().min(0),
+  data: z.unknown(),
+});
+
+const emptyAccountSnapshot = (): AccountSnapshotPayload => ({
+  allTimeStats: {
+    totalPoints: 0,
+    level: 1,
+    title: 'Novice',
+    prestigeCount: 0,
+    tasksCompleted: 0,
+    bestWeek: 0,
+    currentWeekStreak: 0,
+  },
+  pointsHistory: {},
+  profiles: {},
+  eventBindings: {},
+  eventRules: [],
+  keywordRules: [],
+  globalAllowlist: ['accounts.google.com'],
+});
+
 export async function buildApp() {
   const app = Fastify({
     logger: true,
@@ -70,33 +102,130 @@ export async function buildApp() {
     service: 'window-backend',
   }));
 
-  app.post('/v1/auth/google/exchange', async (request, reply) => {
-    const body = authExchangeSchema.parse(request.body);
-    const identity = await verifyGoogleAccessToken(
-      env.GOOGLE_TOKENINFO_URL,
-      body.googleAccessToken,
-    );
+  app.post('/v1/auth/google/exchange', async (request) => {
+    const body = googleExchangeSchema.parse(request.body);
+    const [profile, googleUserProfile] = await Promise.all([
+      verifyGoogleAccessToken(
+        env.GOOGLE_TOKENINFO_URL,
+        body.googleAccessToken,
+      ),
+      fetchGoogleUserProfile(body.googleAccessToken).catch(() => ({})),
+    ]);
+    const user = await upsertGoogleUser({
+      ...profile,
+      ...googleUserProfile,
+    });
+    return issueSessionPayload(user.id, {
+      id: user.id,
+      email: user.email,
+      displayName: user.displayName,
+      avatarUrl: user.avatarUrl,
+      createdAt: user.createdAt,
+      providers: ['google'],
+    });
+  });
 
-    const user = await prisma.user.upsert({
-      where: { googleSub: identity.googleSub },
-      create: {
-        googleSub: identity.googleSub,
-        email: identity.email,
-      },
-      update: {
-        email: identity.email,
-      },
-      select: {
-        id: true,
+  app.post('/v1/auth/logout', async (request, reply) => {
+    const sessionToken = getSessionTokenFromHeader(request);
+    if (!sessionToken) {
+      return reply.code(204).send();
+    }
+
+    await revokeBackendSession(sessionToken);
+    return reply.code(204).send();
+  });
+
+  app.get('/v1/auth/me', async (request, reply) => {
+    const user = await getUserOrReply(request, reply);
+    if (!user) return;
+
+    const fullUser = await prisma.user.findUniqueOrThrow({
+      where: { id: user.id },
+      include: {
+        identities: {
+          select: {
+            provider: true,
+          },
+        },
       },
     });
 
-    const session = await issueBackendSession(user.id);
     return {
-      sessionToken: session.sessionToken,
-      userId: user.id,
-      expiresAt: session.expiresAt,
+      user: toAccountUserPayload({
+        id: fullUser.id,
+        email: fullUser.email,
+        displayName: fullUser.displayName,
+        avatarUrl: fullUser.avatarUrl,
+        createdAt: fullUser.createdAt,
+        providers: fullUser.identities.map((identity) => identity.provider),
+      }),
     };
+  });
+
+  app.get('/v1/account/snapshot', async (request, reply) => {
+    const user = await getUserOrReply(request, reply);
+    if (!user) return;
+
+    return getAccountSnapshotResponse(user.id);
+  });
+
+  app.put('/v1/account/snapshot', async (request, reply) => {
+    const user = await getUserOrReply(request, reply);
+    if (!user) return;
+
+    const body = accountSnapshotPutSchema.parse(request.body);
+    const nextData = toAccountSnapshotPayload(body.data);
+    const existing = await prisma.userSyncState.findUnique({
+      where: { userId: user.id },
+    });
+
+    if (!existing) {
+      if (body.revision !== 0) {
+        return reply.code(409).send({
+          error: 'Snapshot revision conflict.',
+          snapshot: await getAccountSnapshotResponse(user.id),
+        });
+      }
+
+      const created = await prisma.userSyncState.create({
+        data: {
+          userId: user.id,
+          revision: 1,
+          snapshot: nextData as unknown as Prisma.InputJsonValue,
+        },
+      });
+
+      return {
+        revision: created.revision,
+        updatedAt: created.updatedAt.toISOString(),
+        data: toAccountSnapshotPayload(created.snapshot),
+      } satisfies AccountSnapshotResponsePayload;
+    }
+
+    if (body.revision !== existing.revision) {
+      return reply.code(409).send({
+        error: 'Snapshot revision conflict.',
+        snapshot: {
+          revision: existing.revision,
+          updatedAt: existing.updatedAt.toISOString(),
+          data: toAccountSnapshotPayload(existing.snapshot),
+        } satisfies AccountSnapshotResponsePayload,
+      });
+    }
+
+    const updated = await prisma.userSyncState.update({
+      where: { userId: user.id },
+        data: {
+          revision: existing.revision + 1,
+          snapshot: nextData as unknown as Prisma.InputJsonValue,
+        },
+      });
+
+    return {
+      revision: updated.revision,
+      updatedAt: updated.updatedAt.toISOString(),
+      data: toAccountSnapshotPayload(updated.snapshot),
+    } satisfies AccountSnapshotResponsePayload;
   });
 
   app.get('/v1/openclaw/status', async (request, reply) => {
@@ -535,7 +664,7 @@ export async function buildApp() {
 
   app.setErrorHandler((error, _request, reply) => {
     const statusCode = inferStatusCode(error);
-    const message = error instanceof Error ? error.message : String(error);
+    const message = toPublicErrorMessage(error);
     reply.code(statusCode).send({
       error: message,
     });
@@ -547,7 +676,7 @@ export async function buildApp() {
 async function getUserOrReply(
   request: FastifyRequest,
   reply: FastifyReply,
-): Promise<{ id: string } | null> {
+): Promise<{ id: string; email: string | null } | null> {
   try {
     return await requireUser(request);
   } catch (error) {
@@ -556,6 +685,133 @@ async function getUserOrReply(
     });
     return null;
   }
+}
+
+async function issueSessionPayload(
+  userId: string,
+  cachedUser?: {
+    id: string;
+    email: string | null;
+    displayName?: string | null;
+    avatarUrl?: string | null;
+    createdAt: Date;
+    providers?: AccountUserPayload['providers'];
+  },
+) {
+  const session = await issueBackendSession(userId);
+  const user =
+    cachedUser ??
+    (await prisma.user.findUniqueOrThrow({
+      where: { id: userId },
+    }));
+
+  return {
+    sessionToken: session.sessionToken,
+    userId,
+    expiresAt: session.expiresAt,
+    user: toAccountUserPayload({
+      id: user.id,
+      email: user.email,
+      displayName: user.displayName,
+      avatarUrl: user.avatarUrl,
+      createdAt: user.createdAt,
+      providers: cachedUser?.providers ?? [],
+    }),
+  };
+}
+
+async function getAccountSnapshotResponse(
+  userId: string,
+): Promise<AccountSnapshotResponsePayload> {
+  const snapshot = await prisma.userSyncState.findUnique({
+    where: { userId },
+  });
+
+  if (!snapshot) {
+    return {
+      revision: 0,
+      updatedAt: null,
+      data: emptyAccountSnapshot(),
+    };
+  }
+
+  return {
+    revision: snapshot.revision,
+    updatedAt: snapshot.updatedAt.toISOString(),
+    data: toAccountSnapshotPayload(snapshot.snapshot),
+  };
+}
+
+async function upsertGoogleUser(input: {
+  googleSub: string;
+  email: string | null;
+  displayName?: string | null;
+  avatarUrl?: string | null;
+}) {
+  const normalizedEmail = input.email?.trim().toLowerCase() ?? null;
+  const normalizedDisplayName =
+    typeof input.displayName === 'string' ? input.displayName.trim() || null : undefined;
+  const normalizedAvatarUrl =
+    typeof input.avatarUrl === 'string' ? input.avatarUrl.trim() || null : undefined;
+  const existingIdentity = await prisma.authIdentity.findUnique({
+    where: {
+      provider_providerUserId: {
+        provider: 'google',
+        providerUserId: input.googleSub,
+      },
+    },
+  });
+
+  if (existingIdentity) {
+    await prisma.$transaction([
+      prisma.authIdentity.update({
+        where: { id: existingIdentity.id },
+        data: {
+          email: normalizedEmail ?? existingIdentity.email,
+          emailVerified: normalizedEmail !== null,
+        },
+      }),
+      prisma.user.update({
+        where: { id: existingIdentity.userId },
+        data: {
+          ...(normalizedEmail ? { email: normalizedEmail } : {}),
+          ...(normalizedDisplayName !== undefined ? { displayName: normalizedDisplayName } : {}),
+          ...(normalizedAvatarUrl !== undefined ? { avatarUrl: normalizedAvatarUrl } : {}),
+        },
+      }),
+    ]);
+
+    return prisma.user.findUniqueOrThrow({
+      where: { id: existingIdentity.userId },
+    });
+  }
+
+  const existingByEmail = normalizedEmail
+    ? await prisma.user.findFirst({
+        where: { email: normalizedEmail },
+      })
+    : null;
+  const user =
+    existingByEmail ??
+    (await prisma.user.create({
+      data: {
+        email: normalizedEmail,
+        displayName: normalizedDisplayName ?? null,
+        avatarUrl: normalizedAvatarUrl ?? null,
+      },
+    }));
+
+  await prisma.authIdentity.create({
+    data: {
+      userId: user.id,
+      provider: 'google',
+      providerUserId: input.googleSub,
+      email: normalizedEmail,
+      emailVerified: normalizedEmail !== null,
+    },
+  });
+
+  return user;
 }
 
 async function resolveIdeaSession(
@@ -634,11 +890,19 @@ async function resolveIdeaSession(
 function applyCors(reply: FastifyReply): void {
   reply.header('Access-Control-Allow-Origin', '*');
   reply.header('Access-Control-Allow-Headers', 'Authorization, Content-Type');
-  reply.header('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
+  reply.header('Access-Control-Allow-Methods', 'GET,POST,PUT,OPTIONS');
 }
 
 function buildJobTitle(prompt: string): string {
   return `Evaluate: ${truncate(prompt.trim(), 72)}`;
+}
+
+function getSessionTokenFromHeader(request: FastifyRequest): string | null {
+  const authHeader = request.headers.authorization;
+  if (!authHeader?.startsWith('Bearer ')) {
+    return null;
+  }
+  return authHeader.slice('Bearer '.length);
 }
 
 function truncate(value: string, maxLength: number): string {
@@ -648,7 +912,11 @@ function truncate(value: string, maxLength: number): string {
 function inferStatusCode(error: unknown): number {
   const message = error instanceof Error ? error.message : String(error);
 
-  if (/missing backend session token|expired/i.test(message)) {
+  if (message.includes('does not exist in the current database')) {
+    return 500;
+  }
+
+  if (/missing backend session token|expired|incorrect/i.test(message)) {
     return 401;
   }
 
@@ -656,5 +924,17 @@ function inferStatusCode(error: unknown): number {
     return 404;
   }
 
+  if (/already exists|conflict/i.test(message)) {
+    return 409;
+  }
+
   return 400;
+}
+
+function toPublicErrorMessage(error: unknown): string {
+  const message = error instanceof Error ? error.message : String(error);
+  if (message.includes('does not exist in the current database')) {
+    return 'The backend database is missing the latest migration.';
+  }
+  return message;
 }

@@ -80,10 +80,20 @@ const chromeMock = {
   },
   identity: {
     getAuthToken: vi.fn(),
+    getRedirectURL: vi.fn((path?: string) =>
+      `https://fake-extension.chromiumapp.org/${path ?? ''}`.replace(/\/$/, ''),
+    ),
+    launchWebAuthFlow: vi.fn(),
     removeCachedAuthToken: vi.fn(),
   },
   notifications: {
     create: vi.fn(),
+  },
+  downloads: {
+    download: vi.fn(() => Promise.resolve(1)),
+    search: vi.fn(() => Promise.resolve([])),
+    onCreated: { addListener: vi.fn() },
+    onChanged: { addListener: vi.fn() },
   },
   tabs: {
     get: vi.fn((tabId: number) =>
@@ -116,6 +126,7 @@ const chromeMock = {
   webNavigation: {
     onBeforeNavigate: { addListener: vi.fn() },
     onCommitted: { addListener: vi.fn() },
+    onCreatedNavigationTarget: { addListener: vi.fn() },
   },
 };
 

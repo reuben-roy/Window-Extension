@@ -10,6 +10,7 @@
     "alarms",
     "identity",
     "notifications",
+    "downloads",
     "sidePanel",
     "tabs",
     "webNavigation"

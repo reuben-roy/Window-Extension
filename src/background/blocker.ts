@@ -4,7 +4,7 @@ import {
   BLOCKED_PAGE_EXTENSION_PATH,
   TEMP_UNLOCK_RULE_ID_START,
 } from '../shared/constants';
-import type { CarryoverMode, Profiles, TemporaryUnlockState } from '../shared/types';
+import type { CarryoverMode, DownloadAllowance, Profiles, TemporaryUnlockState } from '../shared/types';
 
 // ─── Public API ───────────────────────────────────────────────────────────────
 
@@ -49,12 +49,16 @@ export async function clearAllRules(): Promise<void> {
 
 export async function syncTemporaryUnlockRules(
   unlocks: Record<string, TemporaryUnlockState>,
+  downloadAllowances: Record<string, DownloadAllowance> = {},
 ): Promise<void> {
   const existing = await chrome.declarativeNetRequest.getSessionRules();
   const removeRuleIds = existing
     .map((rule) => rule.id)
     .filter((id) => id >= TEMP_UNLOCK_RULE_ID_START);
-  const addRules = Object.values(unlocks).map(buildTemporaryUnlockRule);
+  const addRules = [
+    ...Object.values(unlocks).map(buildTemporaryUnlockRule),
+    ...Object.values(downloadAllowances).map(buildDownloadAllowanceRule),
+  ];
   await chrome.declarativeNetRequest.updateSessionRules({ removeRuleIds, addRules });
 }
 
@@ -142,13 +146,28 @@ function buildAllowRule(domain: string, id: number): chrome.declarativeNetReques
 }
 
 function buildTemporaryUnlockRule(unlock: TemporaryUnlockState): chrome.declarativeNetRequest.Rule {
+  return buildHostAllowanceRule(unlock.blockedHost, unlock.ruleId);
+}
+
+function buildDownloadAllowanceRule(
+  allowance: DownloadAllowance,
+): chrome.declarativeNetRequest.Rule {
+  return buildHostAllowanceRule(allowance.targetHost, allowance.ruleId, allowance.tabId);
+}
+
+function buildHostAllowanceRule(
+  host: string,
+  id: number,
+  tabId: number | null = null,
+): chrome.declarativeNetRequest.Rule {
   return {
-    id: unlock.ruleId,
+    id,
     priority: 3,
     action: { type: chrome.declarativeNetRequest.RuleActionType.ALLOW },
     condition: {
-      urlFilter: `||${unlock.blockedHost}`,
+      urlFilter: `||${host}`,
       resourceTypes: [chrome.declarativeNetRequest.ResourceType.MAIN_FRAME],
+      ...(typeof tabId === 'number' ? { tabIds: [tabId] } : {}),
     },
   };
 }

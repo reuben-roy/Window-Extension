@@ -34,6 +34,14 @@ const DEFAULT_SETTINGS: Settings = {
   persistentPanelEnabled: false,
   dailyBlockingPauseEnabled: false,
   dailyBlockingPauseStartTime: '22:00',
+  downloadRedirectFallbackSeconds: 2,
+  downloadRedirectUseDownloadsApi: true,
+  downloadRedirectFallbackPatternMatchEnabled: true,
+  downloadRedirectFallbackSameHostEnabled: true,
+  downloadRedirectFallbackSameSiteEnabled: true,
+  downloadRedirectFallbackAnyAllowedRedirectEnabled: false,
+  downloadRedirectAllowAcrossTabsEnabled: false,
+  downloadRedirectProgrammaticDownloadEnabled: true,
 };
 
 const GLOBAL_ALLOWLIST = ['accounts.google.com'];

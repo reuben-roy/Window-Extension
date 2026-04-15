@@ -14,7 +14,11 @@ import {
   formatBlockingPauseTimeLabel,
   isDailyBlockingPauseActive,
 } from '../shared/blockingSchedule';
+import AccountStatusControl from '../shared/components/AccountStatusControl';
 import {
+  getAccountConflict,
+  getAccountSyncState,
+  getAccountUser,
   getCalendarState,
   getEventRules,
   getGlobalAllowlist,
@@ -23,9 +27,13 @@ import {
   setSettings,
 } from '../shared/storage';
 import type {
+  AccountConflict,
+  AccountSyncState,
+  AccountUser,
   BreakDurationMinutes,
   CalendarEvent,
   CalendarState,
+  DownloadRedirectFallbackSeconds,
   EventRule,
   KeywordRule,
   Settings,
@@ -60,13 +68,14 @@ export default function Options(): React.JSX.Element {
   const [settings, setLocalSettings] = useState<Settings | null>(null);
   const [eventRules, setLocalEventRules] = useState<EventRule[]>([]);
   const [keywordRules, setLocalKeywordRules] = useState<KeywordRule[]>([]);
-  const [connecting, setConnecting] = useState(false);
-  const [disconnecting, setDisconnecting] = useState(false);
   const [calendarView, setCalendarView] = useState<CalendarView>('timeGridWeek');
   const [calendarTitle, setCalendarTitle] = useState('');
   const [selectedTooltip, setSelectedTooltip] = useState<SelectedTooltipState | null>(null);
   const [tooltipMode, setTooltipMode] = useState<TooltipMode>('anchored');
   const [tooltipPlacement, setTooltipPlacement] = useState<TooltipPlacement>('bottom');
+  const [accountUser, setAccountUserState] = useState<AccountUser | null>(null);
+  const [accountSyncState, setAccountSyncStateState] = useState<AccountSyncState | null>(null);
+  const [accountConflict, setAccountConflictState] = useState<AccountConflict | null>(null);
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [keyword, setKeyword] = useState('');
   const [keywordDomains, setKeywordDomains] = useState('');
@@ -101,18 +110,33 @@ export default function Options(): React.JSX.Element {
   }, [calendarState?.todaysEvents]);
 
   const loadData = async () => {
-    const [calendar, nextSettings, nextEventRules, nextKeywordRules, nextGlobalAllowlist] = await Promise.all([
+    const [
+      calendar,
+      nextSettings,
+      nextEventRules,
+      nextKeywordRules,
+      nextGlobalAllowlist,
+      nextAccountUser,
+      nextAccountSyncState,
+      nextAccountConflict,
+    ] = await Promise.all([
       getCalendarState(),
       getSettings(),
       getEventRules(),
       getKeywordRules(),
       getGlobalAllowlist(),
+      getAccountUser(),
+      getAccountSyncState(),
+      getAccountConflict(),
     ]);
     setCalendarState(calendar);
     setLocalSettings(nextSettings);
     setLocalEventRules(nextEventRules);
     setLocalKeywordRules(nextKeywordRules);
     setGlobalAllowlistState(nextGlobalAllowlist);
+    setAccountUserState(nextAccountUser);
+    setAccountSyncStateState(nextAccountSyncState);
+    setAccountConflictState(nextAccountConflict);
     setVisibleEvents((prev) => {
       if (!calendar.lastSyncedAt || calendar.authError) {
         return [];
@@ -123,13 +147,18 @@ export default function Options(): React.JSX.Element {
 
   useEffect(() => {
     loadData();
+    void sendMessageAsync({ type: 'REFRESH_ACCOUNT_STATE' }).catch(() => undefined);
     const listener = (changes: Record<string, chrome.storage.StorageChange>) => {
       if (
         'calendarState' in changes ||
         'settings' in changes ||
         'eventRules' in changes ||
         'keywordRules' in changes ||
-        'globalAllowlist' in changes
+        'globalAllowlist' in changes ||
+        'accountUser' in changes ||
+        'accountSyncState' in changes ||
+        'accountConflict' in changes ||
+        'backendSession' in changes
       ) {
         loadData();
       }
@@ -260,23 +289,6 @@ export default function Options(): React.JSX.Element {
     };
   }, [selectedTooltip]);
 
-  const handleConnect = () => {
-    setConnecting(true);
-    chrome.runtime.sendMessage({ type: 'CONNECT_CALENDAR' }, () => {
-      setConnecting(false);
-      loadData();
-    });
-  };
-
-  const handleDisconnect = () => {
-    setDisconnecting(true);
-    chrome.runtime.sendMessage({ type: 'DISCONNECT_CALENDAR' }, () => {
-      setDisconnecting(false);
-      loadData();
-      setSelectedTooltip(null);
-    });
-  };
-
   const updateSettings = async (patch: Partial<Settings>) => {
     if (!settings) return;
     const next = { ...settings, ...patch };
@@ -374,37 +386,44 @@ export default function Options(): React.JSX.Element {
             </p>
           </div>
 
-          <div className="fg-card flex items-center gap-3 px-4 py-3">
-            {isConnected ? (
-              <>
-                <div className="text-right">
-                  <p className="text-sm font-medium text-emerald-700">Calendar connected</p>
-                  <p className="text-xs text-[var(--fg-muted)]">
-                    Synced {formatRelativeSync(calendarState.lastSyncedAt)}
-                  </p>
-                </div>
-                <button
-                  onClick={handleDisconnect}
-                  disabled={disconnecting}
-                  className="fg-button-secondary"
-                >
-                  {disconnecting ? 'Disconnecting…' : 'Disconnect'}
-                </button>
-              </>
-            ) : (
-              <button
-                onClick={handleConnect}
-                disabled={connecting}
-                className="fg-button-primary"
-              >
-                {connecting ? 'Connecting…' : 'Connect Calendar'}
-              </button>
+          <div className="flex flex-wrap items-start justify-end gap-3">
+            {accountSyncState && (
+              <AccountStatusControl
+                accountUser={accountUser}
+                accountSyncState={accountSyncState}
+                accountConflict={accountConflict}
+                calendarState={calendarState}
+                onSignIn={() =>
+                  sendMessageAsync({ type: 'SIGN_IN_WITH_PROVIDER', payload: { provider: 'google' } }).then(loadData)
+                }
+                onRefresh={() =>
+                  sendMessageAsync({ type: 'REFRESH_ACCOUNT_STATE' }).then(loadData)
+                }
+                onSignOut={() =>
+                  sendMessageAsync({ type: 'SIGN_OUT_ACCOUNT' }).then(loadData)
+                }
+                onResolveConflict={(choice) =>
+                  sendMessageAsync({ type: 'RESOLVE_ACCOUNT_CONFLICT', payload: { choice } }).then(loadData)
+                }
+                onConnectCalendar={() =>
+                  sendMessageAsync({ type: 'CONNECT_CALENDAR' }).then(() => {
+                    setSelectedTooltip(null);
+                    return loadData();
+                  })
+                }
+                onDisconnectCalendar={() =>
+                  sendMessageAsync({ type: 'DISCONNECT_CALENDAR' }).then(() => {
+                    setSelectedTooltip(null);
+                    return loadData();
+                  })
+                }
+              />
             )}
           </div>
         </header>
 
         <section className="mb-6 grid gap-4 xl:grid-cols-[minmax(0,1fr),320px]">
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-6">
             <MetricCard
               label="Blocking"
               value={
@@ -495,6 +514,29 @@ export default function Options(): React.JSX.Element {
               accent={nextEvent ? 'amber' : 'gray'}
               subvalue={nextEvent ? formatEventRange(nextEvent) : 'Today looks clear'}
             />
+            <MetricCard
+              label="Download Fallback"
+              value={`${settings.downloadRedirectFallbackSeconds}s`}
+              accent="violet"
+              subvalue="Used only when a download redirect needs a short retry window."
+              action={
+                <select
+                  value={settings.downloadRedirectFallbackSeconds}
+                  onChange={(event) =>
+                    updateSettings({
+                      downloadRedirectFallbackSeconds: Number(event.target.value) as DownloadRedirectFallbackSeconds,
+                    })
+                  }
+                  className="fg-select"
+                >
+                  <option value={1}>1 second</option>
+                  <option value={2}>2 seconds</option>
+                  <option value={3}>3 seconds</option>
+                  <option value={4}>4 seconds</option>
+                  <option value={5}>5 seconds</option>
+                </select>
+              }
+            />
           </div>
 
           <div className="fg-card p-5">
@@ -531,6 +573,109 @@ export default function Options(): React.JSX.Element {
 
               {advancedOpen && (
                 <div className="space-y-3">
+                  <div className="rounded-2xl border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] p-4">
+                    <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-medium text-[var(--fg-text)]">Download Rescue</p>
+                        <p className="text-xs text-[var(--fg-muted)]">
+                          Use these switches to widen the short-lived download bypass when a file redirect
+                          would otherwise get blocked.
+                        </p>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        <button
+                          onClick={() =>
+                            updateSettings({
+                              downloadRedirectUseDownloadsApi: true,
+                              downloadRedirectFallbackPatternMatchEnabled: true,
+                              downloadRedirectFallbackSameHostEnabled: true,
+                              downloadRedirectFallbackSameSiteEnabled: true,
+                              downloadRedirectFallbackAnyAllowedRedirectEnabled: true,
+                              downloadRedirectAllowAcrossTabsEnabled: true,
+                              downloadRedirectProgrammaticDownloadEnabled: true,
+                            })
+                          }
+                          className="fg-button-secondary"
+                        >
+                          Enable Every Rescue Path
+                        </button>
+                        <button
+                          onClick={() =>
+                            updateSettings({
+                              downloadRedirectUseDownloadsApi: true,
+                              downloadRedirectFallbackPatternMatchEnabled: true,
+                              downloadRedirectFallbackSameHostEnabled: true,
+                              downloadRedirectFallbackSameSiteEnabled: true,
+                              downloadRedirectFallbackAnyAllowedRedirectEnabled: false,
+                              downloadRedirectAllowAcrossTabsEnabled: false,
+                              downloadRedirectProgrammaticDownloadEnabled: true,
+                            })
+                          }
+                          className="fg-button-ghost"
+                        >
+                          Reset To Balanced
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="grid gap-3 md:grid-cols-2">
+                      <SettingToggleRow
+                        title="Programmatic download handoff"
+                        description="Start likely downloads through Chrome's downloads API instead of replaying the blocked page navigation."
+                        checked={settings.downloadRedirectProgrammaticDownloadEnabled}
+                        onChange={(checked) =>
+                          updateSettings({ downloadRedirectProgrammaticDownloadEnabled: checked })
+                        }
+                      />
+                      <SettingToggleRow
+                        title="Use downloads API"
+                        description="Trust real Chrome download events and keep the host open until the download settles."
+                        checked={settings.downloadRedirectUseDownloadsApi}
+                        onChange={(checked) => updateSettings({ downloadRedirectUseDownloadsApi: checked })}
+                      />
+                      <SettingToggleRow
+                        title="Pattern match download URLs"
+                        description="Fallback when the blocked URL looks like a file or download endpoint."
+                        checked={settings.downloadRedirectFallbackPatternMatchEnabled}
+                        onChange={(checked) =>
+                          updateSettings({ downloadRedirectFallbackPatternMatchEnabled: checked })
+                        }
+                      />
+                      <SettingToggleRow
+                        title="Allow same-host redirects"
+                        description="Fallback when the blocked redirect stays on the same host family as the source page."
+                        checked={settings.downloadRedirectFallbackSameHostEnabled}
+                        onChange={(checked) =>
+                          updateSettings({ downloadRedirectFallbackSameHostEnabled: checked })
+                        }
+                      />
+                      <SettingToggleRow
+                        title="Allow same-site redirects"
+                        description="Fallback when the blocked redirect stays on the same site, even across subdomains."
+                        checked={settings.downloadRedirectFallbackSameSiteEnabled}
+                        onChange={(checked) =>
+                          updateSettings({ downloadRedirectFallbackSameSiteEnabled: checked })
+                        }
+                      />
+                      <SettingToggleRow
+                        title="Allow any redirect from allowed pages"
+                        description="Most aggressive fallback. Useful for signed CDN links that do not look like downloads."
+                        checked={settings.downloadRedirectFallbackAnyAllowedRedirectEnabled}
+                        onChange={(checked) =>
+                          updateSettings({ downloadRedirectFallbackAnyAllowedRedirectEnabled: checked })
+                        }
+                      />
+                      <SettingToggleRow
+                        title="Allow across tabs"
+                        description="Do not scope the short-lived rescue to a single tab. Helpful when downloads open a new tab or window."
+                        checked={settings.downloadRedirectAllowAcrossTabsEnabled}
+                        onChange={(checked) =>
+                          updateSettings({ downloadRedirectAllowAcrossTabsEnabled: checked })
+                        }
+                      />
+                    </div>
+                  </div>
+
                   <div className="rounded-2xl border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] p-4">
                     <p className="mb-3 text-sm font-medium text-[var(--fg-text)]">Keyword Rules</p>
                     <div className="grid gap-3">
@@ -1058,6 +1203,30 @@ function MetricCard({
   );
 }
 
+function SettingToggleRow({
+  title,
+  description,
+  checked,
+  onChange,
+}: {
+  title: string;
+  description: string;
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+}): React.JSX.Element {
+  return (
+    <div className="rounded-2xl border border-[var(--fg-border)] bg-white px-4 py-3">
+      <div className="flex items-start justify-between gap-3">
+        <div className="space-y-1">
+          <p className="text-sm font-medium text-[var(--fg-text)]">{title}</p>
+          <p className="text-xs leading-5 text-[var(--fg-muted)]">{description}</p>
+        </div>
+        <Toggle checked={checked} onChange={onChange} />
+      </div>
+    </div>
+  );
+}
+
 function RuleListItem({
   title,
   subtitle,
@@ -1237,16 +1406,24 @@ function formatEventRange(event: CalendarEvent): string {
   })}`;
 }
 
-function formatRelativeSync(value: string | null): string {
-  if (!value) return 'never';
-  const seconds = Math.max(0, Math.floor((Date.now() - new Date(value).getTime()) / 1000));
-  if (seconds < 60) return 'just now';
-  const minutes = Math.floor(seconds / 60);
-  if (minutes < 60) return `${minutes}m ago`;
-  const hours = Math.floor(minutes / 60);
-  return `${hours}h ago`;
-}
-
 function truncate(value: string, length: number): string {
   return value.length > length ? `${value.slice(0, length - 1)}…` : value;
+}
+
+function sendMessageAsync<T = unknown>(message: { type: string; payload?: unknown }): Promise<T> {
+  return new Promise((resolve, reject) => {
+    chrome.runtime.sendMessage(message, (response: T & { error?: string }) => {
+      if (chrome.runtime.lastError) {
+        reject(new Error(chrome.runtime.lastError.message));
+        return;
+      }
+
+      if (response && typeof response === 'object' && 'error' in response && response.error) {
+        reject(new Error(String(response.error)));
+        return;
+      }
+
+      resolve(response);
+    });
+  });
 }

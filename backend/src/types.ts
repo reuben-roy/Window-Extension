@@ -7,8 +7,72 @@ export type IdeaStatus =
   | 'kept'
   | 'discarded';
 
+export type AuthProvider = 'google' | 'github' | 'password';
 export type OpenClawSessionStatus = 'active' | 'idle' | 'closed';
 export type OpenClawJobStatus = 'queued' | 'running' | 'completed' | 'failed' | 'cancelled';
+
+export interface WeeklyStatsPayload {
+  earned: number;
+  tasksCompleted: number;
+  tasksDismissed: number;
+  tasksExpired: number;
+  snoozesUsed: number;
+  perfectDays: number;
+  longestStreak: number;
+}
+
+export interface AllTimeStatsPayload {
+  totalPoints: number;
+  level: number;
+  title: string;
+  prestigeCount: number;
+  tasksCompleted: number;
+  bestWeek: number;
+  currentWeekStreak: number;
+}
+
+export interface EventRulePayload {
+  eventTitle: string;
+  domains: string[];
+}
+
+export interface KeywordRulePayload {
+  keyword: string;
+  domains: string[];
+  createdAt: string;
+}
+
+export interface AccountSnapshotPayload {
+  allTimeStats: AllTimeStatsPayload;
+  pointsHistory: Record<string, WeeklyStatsPayload>;
+  profiles: Record<string, string[]>;
+  eventBindings: Record<string, string>;
+  eventRules: EventRulePayload[];
+  keywordRules: KeywordRulePayload[];
+  globalAllowlist: string[];
+}
+
+export interface AccountUserPayload {
+  id: string;
+  email: string | null;
+  displayName: string | null;
+  avatarUrl: string | null;
+  providers: AuthProvider[];
+  createdAt: string;
+}
+
+export interface AuthSessionPayload {
+  sessionToken: string;
+  userId: string;
+  expiresAt: string;
+  user: AccountUserPayload;
+}
+
+export interface AccountSnapshotResponsePayload {
+  revision: number;
+  updatedAt: string | null;
+  data: AccountSnapshotPayload;
+}
 
 export interface IdeaReportPayload {
   summary: string;

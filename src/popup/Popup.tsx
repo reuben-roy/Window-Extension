@@ -8,8 +8,8 @@ import type {
 } from '../shared/types';
 import { formatBlockingPauseTimeLabel, isDailyBlockingPauseActive } from '../shared/blockingSchedule';
 import { MODEL_PLACEHOLDER_OPTIONS } from '../shared/constants';
+import AccountStatusControl from '../shared/components/AccountStatusControl';
 import PointsBubble from '../shared/components/PointsBubble';
-import CalendarConnect from './components/CalendarConnect';
 import CompletionModal from './components/CompletionModal';
 import PointsDisplay from './components/PointsDisplay';
 import TaskQueue from './components/TaskQueue';
@@ -52,6 +52,7 @@ export default function Popup({
 
   useEffect(() => {
     loadState();
+    chrome.runtime.sendMessage({ type: 'REFRESH_ACCOUNT_STATE' });
     chrome.runtime.sendMessage({ type: 'REFRESH_ASSISTANT_STATE' });
     const listener = () => loadState();
     chrome.storage.onChanged.addListener(listener);
@@ -146,6 +147,9 @@ export default function Popup({
   }
 
   const {
+    accountConflict,
+    accountSyncState,
+    accountUser,
     assistantOptions,
     backendSession,
     backendSyncState,
@@ -232,13 +236,35 @@ export default function Popup({
               title={allTimeStats.title}
               compact
             />
+            <AccountStatusControl
+              accountUser={accountUser}
+              accountSyncState={accountSyncState}
+              accountConflict={accountConflict}
+              calendarState={calendarState}
+              onSignIn={() =>
+                sendMessageAsync({ type: 'SIGN_IN_WITH_PROVIDER', payload: { provider: 'google' } }).then(loadState)
+              }
+              onRefresh={() =>
+                sendMessageAsync({ type: 'REFRESH_ACCOUNT_STATE' }).then(loadState)
+              }
+              onSignOut={() =>
+                sendMessageAsync({ type: 'SIGN_OUT_ACCOUNT' }).then(loadState)
+              }
+              onResolveConflict={(choice) =>
+                sendMessageAsync({ type: 'RESOLVE_ACCOUNT_CONFLICT', payload: { choice } }).then(loadState)
+              }
+              onConnectCalendar={() =>
+                sendMessageAsync({ type: 'CONNECT_CALENDAR' }).then(loadState)
+              }
+              onDisconnectCalendar={() =>
+                sendMessageAsync({ type: 'DISCONNECT_CALENDAR' }).then(loadState)
+              }
+            />
           </div>
         </div>
       </header>
 
       <div className="space-y-2.5 px-3.5 py-3.5">
-        <CalendarConnect calendarState={calendarState} onStateChange={loadState} />
-
         <section className={`grid gap-2.5 ${mode === 'panel' ? 'xl:grid-cols-[1.03fr,0.97fr]' : 'grid-cols-1'}`}>
           <div className="space-y-3">
             <DashboardCard
@@ -356,6 +382,7 @@ export default function Popup({
               selectedModel={selectedModel}
               openClawState={openClawState}
               breakTelemetryEnabled={settings.breakTelemetryEnabled}
+              accountUser={accountUser}
               backendSession={backendSession}
               backendSyncState={backendSyncState}
               ideaInput={ideaInput}
@@ -488,6 +515,7 @@ function AssistantPanel({
   selectedModel,
   openClawState,
   breakTelemetryEnabled,
+  accountUser,
   backendSession,
   backendSyncState,
   ideaInput,
@@ -513,6 +541,7 @@ function AssistantPanel({
   selectedModel: string;
   openClawState: StateResponse['openClawState'];
   breakTelemetryEnabled: boolean;
+  accountUser: StateResponse['accountUser'];
   backendSession: StateResponse['backendSession'];
   backendSyncState: StateResponse['backendSyncState'];
   ideaInput: string;
@@ -602,8 +631,8 @@ function AssistantPanel({
             <p className="text-sm font-semibold text-[var(--fg-text)]">Capture idea</p>
             <p className="text-[11px] leading-4 text-[var(--fg-muted)]">
               {backendSyncState.connected
-                ? `Synced${backendSession ? ` as ${backendSession.userId}` : ''}.`
-                : backendSyncState.lastError ?? 'Queued locally until the backend reconnects.'}
+                ? `Synced${accountUser?.email ? ` as ${accountUser.email}` : backendSession ? ` as ${backendSession.userId}` : ''}.`
+                : backendSyncState.lastError ?? 'Queued locally until you sign in.'}
             </p>
           </div>
           <button
@@ -893,4 +922,22 @@ function isStateResponse(value: unknown): value is StateResponse {
       candidate.ideaState &&
       candidate.openClawState,
   );
+}
+
+function sendMessageAsync<T = unknown>(message: { type: string; payload?: unknown }): Promise<T> {
+  return new Promise((resolve, reject) => {
+    chrome.runtime.sendMessage(message, (response: T & { error?: string }) => {
+      if (chrome.runtime.lastError) {
+        reject(new Error(chrome.runtime.lastError.message));
+        return;
+      }
+
+      if (response && typeof response === 'object' && 'error' in response && response.error) {
+        reject(new Error(String(response.error)));
+        return;
+      }
+
+      resolve(response);
+    });
+  });
 }
