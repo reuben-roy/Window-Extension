@@ -15,6 +15,9 @@ import {
   isDailyBlockingPauseActive,
 } from '../shared/blockingSchedule';
 import AccountStatusControl from '../shared/components/AccountStatusControl';
+import CompactSettingRow from '../shared/components/CompactSettingRow';
+import InfoTip from '../shared/components/InfoTip';
+import SettingsGroup from '../shared/components/SettingsGroup';
 import {
   getAccountConflict,
   getAccountSyncState,
@@ -144,7 +147,6 @@ export default function Options(): React.JSX.Element {
   const [accountUser, setAccountUserState] = useState<AccountUser | null>(null);
   const [accountSyncState, setAccountSyncStateState] = useState<AccountSyncState | null>(null);
   const [accountConflict, setAccountConflictState] = useState<AccountConflict | null>(null);
-  const [advancedOpen, setAdvancedOpen] = useState(false);
   const [keyword, setKeyword] = useState('');
   const [keywordDomains, setKeywordDomains] = useState('');
   const [keywordError, setKeywordError] = useState('');
@@ -443,7 +445,7 @@ export default function Options(): React.JSX.Element {
   return (
     <div className="fg-shell min-h-screen">
       <div className="mx-auto max-w-7xl px-6 py-8">
-        <header className="mb-6 flex flex-wrap items-center justify-between gap-4">
+        <header className="mb-5 flex flex-wrap items-center justify-between gap-4">
           <div className="space-y-1">
             <div className="inline-flex items-center gap-2 rounded-full border border-[var(--fg-border)] bg-white/70 px-3 py-1 text-xs font-medium text-[var(--fg-muted)] shadow-sm backdrop-blur">
               <span className="h-2 w-2 rounded-full bg-emerald-500" />
@@ -453,8 +455,7 @@ export default function Options(): React.JSX.Element {
               Window
             </h1>
             <p className="max-w-2xl text-sm leading-6 text-[var(--fg-muted)]">
-              Manage event-specific whitelist rules directly from your calendar. Exact rules override
-              keyword fallback, and unmatched events stay unrestricted.
+              Keep focus controls compact and edit event-specific allowlists directly from the calendar.
             </p>
           </div>
 
@@ -494,69 +495,86 @@ export default function Options(): React.JSX.Element {
           </div>
         </header>
 
-        <section className="mb-6 grid gap-4 xl:grid-cols-[minmax(0,1fr),320px]">
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-6">
-            <MetricCard
-              label="Blocking"
-              value={
-                !settings.enableBlocking
-                  ? 'Off'
-                  : quietHoursActive
-                    ? 'Paused'
-                    : 'On'
-              }
-              accent={settings.enableBlocking ? 'emerald' : 'gray'}
-              subvalue={
-                quietHoursActive
-                  ? `Daily cutoff active after ${formatBlockingPauseTimeLabel(settings.dailyBlockingPauseStartTime)}`
-                  : undefined
-              }
-              action={
-                <Toggle
-                  checked={settings.enableBlocking}
-                  onChange={updateBlockingEnabled}
-                />
-              }
-            />
-            <MetricCard
-              label="Break Duration"
-              value={`${settings.breakDurationMinutes} min`}
-              accent="blue"
-              action={
-                <select
-                  value={settings.breakDurationMinutes}
-                  onChange={(event) =>
-                    updateSettings({
-                      breakDurationMinutes: Number(event.target.value) as BreakDurationMinutes,
-                    })
-                  }
-                  className="fg-select"
-                >
-                  <option value={5}>5 min</option>
-                  <option value={10}>10 min</option>
-                  <option value={15}>15 min</option>
-                </select>
-              }
-            />
-            <MetricCard
-              label="Active Event"
-              value={activeEvent ? truncate(activeEvent.title, 26) : 'None'}
-              accent={activeEvent ? 'violet' : 'gray'}
-              subvalue={activeEvent ? formatEventRange(activeEvent) : 'No focus block live'}
-            />
-            <MetricCard
-              label="Daily Cutoff"
-              value={
-                settings.dailyBlockingPauseEnabled
-                  ? formatBlockingPauseTimeLabel(settings.dailyBlockingPauseStartTime)
-                  : 'Disabled'
-              }
-              accent={settings.dailyBlockingPauseEnabled ? 'amber' : 'gray'}
-              subvalue="Blocks stay off for the rest of the day after this time."
-              action={
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between gap-3">
-                    <p className="text-xs text-[var(--fg-muted)]">Pause blocking daily</p>
+        <section className="mb-5 grid gap-4 xl:grid-cols-[minmax(0,1fr),340px]">
+          <div className="fg-card p-4">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-sm font-semibold text-[var(--fg-text)]">Focus controls</h2>
+                  <InfoTip text="These are the quickest settings to understand the extension at a glance." />
+                </div>
+                <p className="mt-0.5 text-xs text-[var(--fg-muted)]">
+                  Keep the essentials close, and let the calendar do the explaining.
+                </p>
+              </div>
+              <span className="rounded-full border border-[var(--fg-border)] bg-white px-3 py-1 text-[11px] font-medium text-[var(--fg-muted)]">
+                {isConnected ? 'Calendar connected' : 'Calendar disconnected'}
+              </span>
+            </div>
+
+            <div className="mt-3 grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+              <CompactSettingRow
+                label="Blocking"
+                hint="Master switch for focus blocking."
+                value={
+                  !settings.enableBlocking
+                    ? 'Off'
+                    : quietHoursActive
+                      ? 'Paused'
+                      : 'On'
+                }
+                meta={
+                  quietHoursActive
+                    ? `Daily cutoff active after ${formatBlockingPauseTimeLabel(settings.dailyBlockingPauseStartTime)}`
+                    : 'Turns restriction rules on or off instantly.'
+                }
+                control={<Toggle checked={settings.enableBlocking} onChange={updateBlockingEnabled} />}
+              />
+
+              <CompactSettingRow
+                label="Break duration"
+                hint="Default duration used when starting a break."
+                value={`${settings.breakDurationMinutes} min`}
+                meta="Used by the blocked page and quick break actions."
+                control={
+                  <select
+                    value={settings.breakDurationMinutes}
+                    onChange={(event) =>
+                      updateSettings({
+                        breakDurationMinutes: Number(event.target.value) as BreakDurationMinutes,
+                      })
+                    }
+                    className="fg-select w-[112px] px-3 py-2 text-sm"
+                  >
+                    <option value={5}>5 min</option>
+                    <option value={10}>10 min</option>
+                    <option value={15}>15 min</option>
+                  </select>
+                }
+              />
+
+              <CompactSettingRow
+                label="Active event"
+                hint="The focus block currently driving your allowed domains."
+                value={activeEvent ? truncate(activeEvent.title, 30) : 'No focus block live'}
+                meta={activeEvent ? formatEventRange(activeEvent) : 'Browsing is unrestricted until the next matching event.'}
+              />
+
+              <CompactSettingRow
+                label="Daily cutoff"
+                hint="After this time, blocking pauses for the rest of the day."
+                value={
+                  settings.dailyBlockingPauseEnabled
+                    ? formatBlockingPauseTimeLabel(settings.dailyBlockingPauseStartTime)
+                    : 'Disabled'
+                }
+                meta={
+                  settings.dailyBlockingPauseEnabled
+                    ? 'Pauses restrictions nightly and resumes tomorrow.'
+                    : 'Blocking stays available all day.'
+                }
+                control={
+                  <div className="flex items-center gap-2">
                     <Toggle
                       checked={settings.dailyBlockingPauseEnabled}
                       onChange={(checked) =>
@@ -565,255 +583,238 @@ export default function Options(): React.JSX.Element {
                         })
                       }
                     />
+                    <input
+                      type="time"
+                      value={settings.dailyBlockingPauseStartTime}
+                      disabled={!settings.dailyBlockingPauseEnabled}
+                      onChange={(event) =>
+                        updateSettings({
+                          dailyBlockingPauseStartTime: event.target.value,
+                        })
+                      }
+                      className="fg-input w-[116px] px-3 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-50"
+                    />
                   </div>
-                  <input
-                    type="time"
-                    value={settings.dailyBlockingPauseStartTime}
-                    disabled={!settings.dailyBlockingPauseEnabled}
+                }
+              />
+
+              <CompactSettingRow
+                label="Next event"
+                hint="The next focus block coming up on your calendar."
+                value={nextEvent ? truncate(nextEvent.title, 30) : 'Nothing upcoming'}
+                meta={nextEvent ? formatEventRange(nextEvent) : 'Today looks clear.'}
+              />
+
+              <CompactSettingRow
+                label="Download fallback"
+                hint="Retry window used only when a blocked download redirect needs a short assist."
+                value={`${settings.downloadRedirectFallbackSeconds}s`}
+                meta="Only affects rescue retries, not normal browsing."
+                control={
+                  <select
+                    value={settings.downloadRedirectFallbackSeconds}
                     onChange={(event) =>
                       updateSettings({
-                        dailyBlockingPauseStartTime: event.target.value,
+                        downloadRedirectFallbackSeconds: Number(event.target.value) as DownloadRedirectFallbackSeconds,
                       })
                     }
-                    className="fg-input disabled:cursor-not-allowed disabled:opacity-50"
-                  />
-                </div>
-              }
-            />
-            <MetricCard
-              label="Next Event"
-              value={nextEvent ? truncate(nextEvent.title, 26) : 'Nothing upcoming'}
-              accent={nextEvent ? 'amber' : 'gray'}
-              subvalue={nextEvent ? formatEventRange(nextEvent) : 'Today looks clear'}
-            />
-            <MetricCard
-              label="Download Fallback"
-              value={`${settings.downloadRedirectFallbackSeconds}s`}
-              accent="violet"
-              subvalue="Used only when a download redirect needs a short retry window."
-              action={
-                <select
-                  value={settings.downloadRedirectFallbackSeconds}
-                  onChange={(event) =>
-                    updateSettings({
-                      downloadRedirectFallbackSeconds: Number(event.target.value) as DownloadRedirectFallbackSeconds,
-                    })
-                  }
-                  className="fg-select"
-                >
-                  <option value={1}>1 second</option>
-                  <option value={2}>2 seconds</option>
-                  <option value={3}>3 seconds</option>
-                  <option value={4}>4 seconds</option>
-                  <option value={5}>5 seconds</option>
-                </select>
-              }
-            />
-          </div>
-
-          <div className="fg-card p-5">
-            <div className="mb-4 flex items-center justify-between">
-              <div>
-                <h2 className="text-sm font-semibold text-[var(--fg-text)]">Advanced</h2>
-                <p className="text-xs text-[var(--fg-muted)]">
-                  Secondary controls that support fallback matching.
-                </p>
-              </div>
-              <button
-                onClick={() => setAdvancedOpen((open) => !open)}
-                className="fg-button-ghost"
-              >
-                {advancedOpen ? 'Hide' : 'Show'}
-              </button>
-            </div>
-
-            <div className="space-y-3">
-              <div className="rounded-2xl border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-4 py-3">
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <p className="text-sm font-medium text-[var(--fg-text)]">Keyword auto-match</p>
-                    <p className="text-xs text-[var(--fg-muted)]">
-                      Only applies when an event has no exact Event Rule.
-                    </p>
-                  </div>
-                  <Toggle
-                    checked={settings.keywordAutoMatchEnabled}
-                    onChange={(checked) => updateSettings({ keywordAutoMatchEnabled: checked })}
-                  />
-                </div>
-              </div>
-
-              {advancedOpen && (
-                <div className="space-y-3">
-                  <div className="rounded-2xl border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] p-4">
-                    <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
-                      <div>
-                        <p className="text-sm font-medium text-[var(--fg-text)]">Download Rescue</p>
-                        <p className="text-xs text-[var(--fg-muted)]">
-                          Use these switches to widen the short-lived download bypass when a file redirect
-                          would otherwise get blocked.
-                        </p>
-                      </div>
-                      <div className="flex flex-wrap gap-2">
-                        <button
-                          onClick={() => updateSettings(DOWNLOAD_RESCUE_MAX_PATCH)}
-                          className="fg-button-secondary"
-                        >
-                          Enable Every Rescue Path
-                        </button>
-                        <button
-                          onClick={() => updateSettings(DOWNLOAD_RESCUE_BALANCED_PATCH)}
-                          className="fg-button-ghost"
-                        >
-                          Reset To Balanced
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="grid gap-3 md:grid-cols-2">
-                      {downloadRescueRows.map((toggle) => (
-                        <SettingToggleRow
-                          key={toggle.key}
-                          title={toggle.title}
-                          description={toggle.description}
-                          checked={toggle.checked}
-                          onChange={(checked) => updateSettings({ [toggle.key]: checked } as Partial<Settings>)}
-                        />
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="rounded-2xl border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] p-4">
-                    <p className="mb-3 text-sm font-medium text-[var(--fg-text)]">Keyword Rules</p>
-                    <div className="grid gap-3">
-                      <input
-                        type="text"
-                        value={keyword}
-                        onChange={(event) => setKeyword(event.target.value)}
-                        placeholder="deep work"
-                        className="fg-input"
-                      />
-                      <input
-                        type="text"
-                        value={keywordDomains}
-                        onChange={(event) => setKeywordDomains(event.target.value)}
-                        placeholder="github.com, docs.google.com"
-                        className="fg-input"
-                      />
-                      <div className="flex justify-between gap-3">
-                        <p className="text-xs text-[var(--fg-muted)]">
-                          Longest keyword wins. Exact Event Rules always take precedence.
-                        </p>
-                        <button onClick={saveKeywordRule} className="fg-button-primary">
-                          Save Keyword Rule
-                        </button>
-                      </div>
-                      {keywordError && <p className="text-xs text-rose-600">{keywordError}</p>}
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    {keywordRules.length === 0 ? (
-                      <EmptyCard text="No keyword rules yet." />
-                    ) : (
-                      keywordRules.map((rule) => (
-                        <RuleListItem
-                          key={rule.keyword}
-                          title={rule.keyword}
-                          subtitle="Fallback keyword rule"
-                          domains={rule.domains}
-                          onDelete={async () => {
-                            await removeKeywordRule(rule.keyword);
-                            await loadData();
-                          }}
-                        />
-                      ))
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        </section>
-
-        <section className="mb-6 grid gap-4 lg:grid-cols-[minmax(0,1fr),320px]">
-          <div className="fg-card p-5">
-            <div className="mb-4">
-              <h2 className="text-sm font-semibold text-[var(--fg-text)]">Global Whitelist</h2>
-              <p className="text-xs text-[var(--fg-muted)]">
-                Domains here are always reachable, even when an event-specific rule is active.
-              </p>
-            </div>
-
-            <div className="mb-4 flex gap-2">
-              <input
-                type="text"
-                value={globalDomainInput}
-                onChange={(event) => {
-                  setGlobalDomainInput(event.target.value);
-                  setGlobalAllowlistError('');
-                }}
-                onKeyDown={(event) => {
-                  if (event.key === 'Enter') {
-                    void addGlobalDomain();
-                  }
-                }}
-                placeholder="accounts.google.com"
-                className="fg-input"
-              />
-              <button onClick={addGlobalDomain} className="fg-button-primary">
-                Add
-              </button>
-            </div>
-
-            {globalAllowlistError && (
-              <p className="mb-3 text-xs text-rose-600">{globalAllowlistError}</p>
-            )}
-
-            <div className="flex flex-wrap gap-2">
-              {globalAllowlist.length > 0 ? (
-                globalAllowlist.map((domain) => (
-                  <button
-                    key={domain}
-                    onClick={() => {
-                      void removeFromGlobalAllowlist(domain);
-                    }}
-                    className="rounded-full border border-[var(--fg-border)] bg-white px-3 py-1.5 text-xs font-medium text-[var(--fg-text)] transition hover:border-rose-200 hover:text-rose-600"
-                    title={`Remove ${domain}`}
+                    className="fg-select w-[124px] px-3 py-2 text-sm"
                   >
-                    {domain} ×
-                  </button>
-                ))
-              ) : (
-                <EmptyCard text="No globally whitelisted domains yet." />
-              )}
+                    <option value={1}>1 second</option>
+                    <option value={2}>2 seconds</option>
+                    <option value={3}>3 seconds</option>
+                    <option value={4}>4 seconds</option>
+                    <option value={5}>5 seconds</option>
+                  </select>
+                }
+              />
             </div>
           </div>
 
-          <div className="fg-card p-5">
-            <div className="mb-3">
-              <h2 className="text-sm font-semibold text-[var(--fg-text)]">How It Works</h2>
-              <p className="text-xs text-[var(--fg-muted)]">
-                Use the global whitelist for services that should never be interrupted.
-              </p>
-            </div>
-            <ul className="space-y-2 text-sm text-[var(--fg-muted)]">
-              <li>Global domains override active focus restrictions.</li>
-              <li>Event Rules still control everything outside this list.</li>
-              <li>Changes apply immediately to blocked tabs once saved.</li>
-            </ul>
-          </div>
+          <SettingsGroup
+            className="fg-card p-4"
+            title="Advanced"
+            subtitle="Secondary controls that support fallback matching and long-lived rules."
+            hint="Low-frequency settings are grouped here so the calendar remains the main focus."
+            collapsible
+            defaultOpen={false}
+          >
+            <CompactSettingRow
+              label="Keyword auto-match"
+              hint="Only used when an event does not already have an exact Event Rule."
+              value={settings.keywordAutoMatchEnabled ? 'On' : 'Off'}
+              meta="Automatically checks your fallback keyword rules against unmatched events."
+              control={
+                <Toggle
+                  checked={settings.keywordAutoMatchEnabled}
+                  onChange={(checked) => updateSettings({ keywordAutoMatchEnabled: checked })}
+                />
+              }
+            />
+
+            <SettingsGroup
+              className="rounded-[24px] border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-4 py-3"
+              title="Global whitelist"
+              subtitle={`${globalAllowlist.length} domain${globalAllowlist.length === 1 ? '' : 's'} always allowed`}
+              hint="Domains here stay reachable even when an event-specific rule is active."
+              collapsible
+              defaultOpen={false}
+              bodyClassName="mt-3 space-y-3"
+            >
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={globalDomainInput}
+                  onChange={(event) => {
+                    setGlobalDomainInput(event.target.value);
+                    setGlobalAllowlistError('');
+                  }}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter') {
+                      void addGlobalDomain();
+                    }
+                  }}
+                  placeholder="accounts.google.com"
+                  className="fg-input px-3 py-2.5"
+                />
+                <button onClick={addGlobalDomain} className="fg-button-primary px-4 py-2.5 text-sm">
+                  Add
+                </button>
+              </div>
+
+              {globalAllowlistError ? (
+                <p className="text-xs text-rose-600">{globalAllowlistError}</p>
+              ) : null}
+
+              <div className="flex flex-wrap gap-2">
+                {globalAllowlist.length > 0 ? (
+                  globalAllowlist.map((domain) => (
+                    <button
+                      key={domain}
+                      onClick={() => {
+                        void removeFromGlobalAllowlist(domain);
+                      }}
+                      className="rounded-full border border-[var(--fg-border)] bg-white px-3 py-1.5 text-xs font-medium text-[var(--fg-text)] transition hover:border-rose-200 hover:text-rose-600"
+                      title={`Remove ${domain}`}
+                    >
+                      {domain} ×
+                    </button>
+                  ))
+                ) : (
+                  <EmptyCard text="No globally whitelisted domains yet." />
+                )}
+              </div>
+            </SettingsGroup>
+
+            <SettingsGroup
+              className="rounded-[24px] border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-4 py-3"
+              title="Download rescue"
+              subtitle="Short-lived rules that help real downloads complete without opening browsing holes."
+              hint="Use the preset buttons for testing, then fine-tune the individual rescue paths if needed."
+              collapsible
+              defaultOpen={false}
+              bodyClassName="mt-3 space-y-3"
+            >
+              <div className="flex flex-wrap gap-2">
+                <button
+                  onClick={() => updateSettings(DOWNLOAD_RESCUE_MAX_PATCH)}
+                  className="fg-button-secondary px-3 py-2 text-xs"
+                >
+                  Enable Every Rescue Path
+                </button>
+                <button
+                  onClick={() => updateSettings(DOWNLOAD_RESCUE_BALANCED_PATCH)}
+                  className="fg-button-ghost px-3 py-2 text-xs"
+                >
+                  Reset To Balanced
+                </button>
+              </div>
+
+              <div className="grid gap-2">
+                {downloadRescueRows.map((toggle) => (
+                  <CompactSettingRow
+                    key={toggle.key}
+                    label={toggle.title}
+                    hint={toggle.description}
+                    value={toggle.checked ? 'On' : 'Off'}
+                    meta={toggle.description}
+                    control={
+                      <Toggle
+                        checked={toggle.checked}
+                        onChange={(checked) =>
+                          updateSettings({ [toggle.key]: checked } as Partial<Settings>)
+                        }
+                      />
+                    }
+                  />
+                ))}
+              </div>
+            </SettingsGroup>
+
+            <SettingsGroup
+              className="rounded-[24px] border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-4 py-3"
+              title="Keyword rules"
+              subtitle={`${keywordRules.length} saved fallback rule${keywordRules.length === 1 ? '' : 's'}`}
+              hint="Longest keyword match wins. Exact Event Rules always override these fallbacks."
+              collapsible
+              defaultOpen={false}
+              bodyClassName="mt-3 space-y-3"
+            >
+              <div className="grid gap-3">
+                <input
+                  type="text"
+                  value={keyword}
+                  onChange={(event) => setKeyword(event.target.value)}
+                  placeholder="deep work"
+                  className="fg-input"
+                />
+                <input
+                  type="text"
+                  value={keywordDomains}
+                  onChange={(event) => setKeywordDomains(event.target.value)}
+                  placeholder="github.com, docs.google.com"
+                  className="fg-input"
+                />
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <p className="text-xs text-[var(--fg-muted)]">
+                    Save a keyword and the domains it should unlock when no exact rule exists.
+                  </p>
+                  <button onClick={saveKeywordRule} className="fg-button-primary px-4 py-2.5 text-sm">
+                    Save Keyword Rule
+                  </button>
+                </div>
+                {keywordError ? <p className="text-xs text-rose-600">{keywordError}</p> : null}
+              </div>
+
+              <div className="space-y-2">
+                {keywordRules.length === 0 ? (
+                  <EmptyCard text="No keyword rules yet." />
+                ) : (
+                  keywordRules.map((rule) => (
+                    <RuleListItem
+                      key={rule.keyword}
+                      title={rule.keyword}
+                      subtitle="Fallback keyword rule"
+                      domains={rule.domains}
+                      onDelete={async () => {
+                        await removeKeywordRule(rule.keyword);
+                        await loadData();
+                      }}
+                    />
+                  ))
+                )}
+              </div>
+            </SettingsGroup>
+          </SettingsGroup>
         </section>
 
         <section className="fg-card relative overflow-hidden p-5">
           <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-            <div>
+            <div className="flex items-center gap-2">
               <h2 className="text-lg font-semibold tracking-[-0.02em] text-[var(--fg-text)]">
                 Calendar Workspace
               </h2>
-              <p className="text-sm text-[var(--fg-muted)]">
-                Click any event to open its whitelist tooltip and edit allowed sites inline.
-              </p>
+              <InfoTip text="Click an event to edit its exact allowlist. Exact Event Rules override keyword fallbacks immediately." />
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <button onClick={() => navigateCalendar('today')} className="fg-button-secondary">
@@ -904,13 +905,11 @@ export default function Options(): React.JSX.Element {
           )}
         </section>
 
-        <section className="mt-6 grid gap-4 lg:grid-cols-2">
+        <section className="mt-5">
           <div className="fg-card p-5">
-            <div className="mb-3">
+            <div className="mb-3 flex items-center gap-2">
               <h2 className="text-sm font-semibold text-[var(--fg-text)]">Exact Event Rules</h2>
-              <p className="text-xs text-[var(--fg-muted)]">
-                These are created from the calendar tooltip and always override keyword fallback.
-              </p>
+              <InfoTip text="These rules are created from the calendar tooltip and always take precedence over keyword fallback matches." />
             </div>
             <div className="space-y-2">
               {eventRules.length === 0 ? (
@@ -930,21 +929,6 @@ export default function Options(): React.JSX.Element {
                 ))
               )}
             </div>
-          </div>
-
-          <div className="fg-card p-5">
-            <div className="mb-3">
-              <h2 className="text-sm font-semibold text-[var(--fg-text)]">Workspace Notes</h2>
-              <p className="text-xs text-[var(--fg-muted)]">
-                The tooltip chooses anchored placement when there is room, then falls back to a modal sheet on tight viewports or unsafe edges.
-              </p>
-            </div>
-            <ul className="space-y-2 text-sm text-[var(--fg-muted)]">
-              <li>Events near edges flip above or below and clamp within the viewport.</li>
-              <li>Small or crowded events still open the same editor, even inside FullCalendar overflow popovers.</li>
-              <li>Recurring events show a hint that changes apply to all events with the same exact title.</li>
-              <li>Outside click and `Esc` close the tooltip, while storage sync keeps it fresh when possible.</li>
-            </ul>
           </div>
         </section>
       </div>
@@ -993,15 +977,23 @@ const EventRuleTooltip = React.forwardRef<HTMLDivElement, {
     ref,
   ) => {
     const exactRuleExists = resolvedEvent.source === 'event';
-    const [domainsInput, setDomainsInput] = useState(resolvedEvent.domains.join(', '));
+    const currentDomainsValue = resolvedEvent.domains.join(', ');
+    const [domainsInput, setDomainsInput] = useState(currentDomainsValue);
     const [editing, setEditing] = useState(!exactRuleExists);
     const [error, setError] = useState('');
+    const previousEventIdRef = useRef(resolvedEvent.event.id);
 
+    // Only reset the draft when switching events. Background storage refreshes
+    // happen often enough that syncing on every prop change can wipe mid-typing edits.
     useEffect(() => {
-      setDomainsInput(resolvedEvent.domains.join(', '));
+      if (previousEventIdRef.current === resolvedEvent.event.id) {
+        return;
+      }
+      previousEventIdRef.current = resolvedEvent.event.id;
+      setDomainsInput(currentDomainsValue);
       setEditing(resolvedEvent.source !== 'event');
       setError('');
-    }, [resolvedEvent.event.id, resolvedEvent.domains, resolvedEvent.source]);
+    }, [currentDomainsValue, resolvedEvent.event.id, resolvedEvent.source]);
 
     const positioning = mode === 'modal'
       ? {
@@ -1078,7 +1070,14 @@ const EventRuleTooltip = React.forwardRef<HTMLDivElement, {
             <div className="flex items-center justify-between">
               <p className="text-sm font-medium text-[var(--fg-text)]">Allowed sites</p>
               {!editing && (
-                <button onClick={() => setEditing(true)} className="fg-button-ghost">
+                <button
+                  onClick={() => {
+                    setDomainsInput(currentDomainsValue);
+                    setError('');
+                    setEditing(true);
+                  }}
+                  className="fg-button-ghost"
+                >
                   Edit
                 </button>
               )}
@@ -1121,7 +1120,14 @@ const EventRuleTooltip = React.forwardRef<HTMLDivElement, {
                     >
                       {savingRule ? 'Saving…' : 'Save Rule'}
                     </button>
-                    <button onClick={() => setEditing(false)} className="fg-button-secondary">
+                    <button
+                      onClick={() => {
+                        setDomainsInput(currentDomainsValue);
+                        setError('');
+                        setEditing(false);
+                      }}
+                      className="fg-button-secondary"
+                    >
                       Cancel
                     </button>
                   </div>
@@ -1179,57 +1185,6 @@ function CalendarEventChip({
     <div className="fg-event-chip" style={{ background: backgroundColor, color: foregroundColor }}>
       {timeText && <span className="fg-event-time">{timeText}</span>}
       <span className="fg-event-title">{title}</span>
-    </div>
-  );
-}
-
-function MetricCard({
-  label,
-  value,
-  accent: _accent,
-  action,
-  subvalue,
-}: {
-  label: string;
-  value: string;
-  accent: 'emerald' | 'blue' | 'violet' | 'amber' | 'gray';
-  action?: React.ReactNode;
-  subvalue?: string;
-}): React.JSX.Element {
-  return (
-    <div className="fg-card p-4">
-      <div className="mb-3">
-        <div className="space-y-1">
-          <p className="text-xs uppercase tracking-[0.18em] text-[var(--fg-muted)]">{label}</p>
-          <p className="text-lg font-semibold tracking-[-0.03em] text-[var(--fg-text)]">{value}</p>
-          {subvalue && <p className="text-xs text-[var(--fg-muted)]">{subvalue}</p>}
-        </div>
-      </div>
-      {action}
-    </div>
-  );
-}
-
-function SettingToggleRow({
-  title,
-  description,
-  checked,
-  onChange,
-}: {
-  title: string;
-  description: string;
-  checked: boolean;
-  onChange: (checked: boolean) => void;
-}): React.JSX.Element {
-  return (
-    <div className="rounded-2xl border border-[var(--fg-border)] bg-white px-4 py-3">
-      <div className="flex items-start justify-between gap-3">
-        <div className="space-y-1">
-          <p className="text-sm font-medium text-[var(--fg-text)]">{title}</p>
-          <p className="text-xs leading-5 text-[var(--fg-muted)]">{description}</p>
-        </div>
-        <Toggle checked={checked} onChange={onChange} />
-      </div>
     </div>
   );
 }

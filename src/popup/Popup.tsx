@@ -9,7 +9,10 @@ import type {
 import { formatBlockingPauseTimeLabel, isDailyBlockingPauseActive } from '../shared/blockingSchedule';
 import { MODEL_PLACEHOLDER_OPTIONS } from '../shared/constants';
 import AccountStatusControl from '../shared/components/AccountStatusControl';
+import CompactSettingRow from '../shared/components/CompactSettingRow';
+import InfoTip from '../shared/components/InfoTip';
 import PointsBubble from '../shared/components/PointsBubble';
+import SettingsGroup from '../shared/components/SettingsGroup';
 import CompletionModal from './components/CompletionModal';
 import PointsDisplay from './components/PointsDisplay';
 import TaskQueue from './components/TaskQueue';
@@ -177,6 +180,13 @@ export default function Popup({
     ? assistantOptions.preferredModel.value
     : MODEL_PLACEHOLDER_OPTIONS[0];
   const headerTitle = calendarState.currentEvent?.title ?? 'Window';
+  const blockingBadgeLabel = !settings.enableBlocking
+    ? 'Blocking off'
+    : quietHoursActive
+      ? 'Quiet hours'
+      : effectivelyBlocking
+        ? 'Locked in'
+        : 'Browsing open';
   const headerCaption = calendarConnected
     ? calendarState.currentEvent
       ? `${formatEventRange(calendarState.currentEvent)} · ${
@@ -196,46 +206,46 @@ export default function Popup({
 
   return (
     <div className={`${mode === 'panel' ? 'min-h-screen w-full' : 'max-h-[760px] w-[460px]'} overflow-y-auto bg-[var(--fg-bg)] font-sans select-none`}>
-      <header className="border-b border-[var(--fg-border)] px-3.5 py-3">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--fg-muted)]">Focus status</p>
-            <h1 className="mt-0.5 truncate text-lg font-semibold tracking-[-0.03em] text-[var(--fg-text)]">
-              {headerTitle}
-            </h1>
-            <p className="mt-0.5 text-[11px] leading-4 text-[var(--fg-muted)]">{headerCaption}</p>
+      <header className="sticky top-0 z-20 border-b border-[var(--fg-border)] bg-[var(--fg-bg)]/92 px-3 py-2.5 backdrop-blur">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="truncate text-[15px] font-semibold tracking-[-0.03em] text-[var(--fg-text)]">
+                {headerTitle}
+              </h1>
+              <span className="rounded-full border border-[var(--fg-border)] bg-white px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.14em] text-[var(--fg-muted)]">
+                {blockingBadgeLabel}
+              </span>
+            </div>
+            <p className="mt-1 text-[11px] leading-4 text-[var(--fg-muted)]">{headerCaption}</p>
           </div>
 
-          <div className="flex flex-wrap items-center justify-end gap-2">
-            {mode === 'panel' && settings.persistentPanelEnabled && (
-              <button
-                onClick={() => togglePersistentPanel(false)}
-                className="rounded-full border border-[var(--fg-border)] bg-white px-3 py-1.5 text-xs font-medium text-[var(--fg-muted)] transition hover:text-[var(--fg-text)]"
-              >
-                Disable Right Panel
-              </button>
-            )}
-            <button
-              onClick={handleToggle}
-              disabled={toggling || !calendarConnected}
-              className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${
-                settings.enableBlocking
-                  ? 'bg-[var(--fg-accent)] text-white shadow-[0_12px_24px_rgba(0,102,255,0.18)]'
-                  : 'border border-[var(--fg-border)] bg-white text-[var(--fg-muted)]'
-              } ${toggling || !calendarConnected ? 'cursor-not-allowed opacity-50' : ''}`}
-            >
-              {settings.enableBlocking
-                ? quietHoursActive
-                  ? 'Quiet Hours'
-                  : 'Blocking ON'
-                : 'Blocking OFF'}
-            </button>
+          <div className="flex flex-wrap items-center justify-end gap-1.5">
             <PointsBubble
               points={allTimeStats.totalPoints}
               level={allTimeStats.level}
               title={allTimeStats.title}
               compact
             />
+            {mode === 'panel' && settings.persistentPanelEnabled && (
+              <button
+                onClick={() => togglePersistentPanel(false)}
+                className="fg-button-ghost px-3 py-1.5 text-[11px]"
+              >
+                Undock
+              </button>
+            )}
+            <button
+              onClick={handleToggle}
+              disabled={toggling || !calendarConnected}
+              className={`rounded-full px-3 py-1.5 text-[11px] font-medium transition ${
+                settings.enableBlocking
+                  ? 'bg-[var(--fg-accent)] text-white shadow-[0_12px_24px_rgba(0,102,255,0.18)]'
+                  : 'border border-[var(--fg-border)] bg-white text-[var(--fg-muted)]'
+              } ${toggling || !calendarConnected ? 'cursor-not-allowed opacity-50' : ''}`}
+            >
+              {settings.enableBlocking ? 'Blocking on' : 'Blocking off'}
+            </button>
             <AccountStatusControl
               accountUser={accountUser}
               accountSyncState={accountSyncState}
@@ -264,117 +274,160 @@ export default function Popup({
         </div>
       </header>
 
-      <div className="space-y-2.5 px-3.5 py-3.5">
-        <section className={`grid gap-2.5 ${mode === 'panel' ? 'xl:grid-cols-[1.03fr,0.97fr]' : 'grid-cols-1'}`}>
-          <div className="space-y-3">
-            <DashboardCard
-              eyebrow="Focus"
-              title={calendarState.currentEvent?.title ?? 'No focus block live'}
-              caption={focusCaption}
+      <div className="space-y-2 px-3 py-2.5">
+        <section className={`grid gap-2 ${mode === 'panel' ? 'xl:grid-cols-[minmax(0,1.02fr),minmax(0,0.98fr)]' : 'grid-cols-1'}`}>
+          <div className="space-y-2">
+            <SettingsGroup
+              className="fg-card p-3"
+              title="Focus"
+              subtitle={focusCaption}
+              hint="Current focus state, next event, and task progress."
             >
-              <div className="space-y-2.5">
+              <div className="space-y-1.5">
                 <PointsDisplay stats={allTimeStats} />
 
-                <div className="grid gap-2 sm:grid-cols-2">
-                  <MiniPanel
-                    label="Status"
-                    value={effectivelyBlocking ? 'Locked in' : 'Open browsing'}
-                    body={
-                      calendarState.activeRuleSource === 'event' && calendarState.activeRuleName
-                        ? `Event rule: ${calendarState.activeRuleName}`
-                        : quietHoursActive
-                          ? `Daily cutoff active after ${formatBlockingPauseTimeLabel(settings.dailyBlockingPauseStartTime)}.`
+                <CompactSettingRow
+                  label="Status"
+                  hint="How Window is resolving restrictions for the current block."
+                  value={effectivelyBlocking ? 'Locked in' : 'Open browsing'}
+                  meta={
+                    calendarState.activeRuleSource === 'event' && calendarState.activeRuleName
+                      ? `Event rule: ${calendarState.activeRuleName}`
+                      : quietHoursActive
+                        ? `Daily cutoff active after ${formatBlockingPauseTimeLabel(settings.dailyBlockingPauseStartTime)}`
                         : effectivelyBlocking
                           ? 'Focus restrictions are active for this calendar block.'
                           : 'No active restriction is limiting browsing right now.'
-                    }
-                  />
-                  <MiniPanel
-                    label="Next up"
-                    value={nextEvent?.title ?? 'Nothing queued'}
-                    body={nextEvent ? formatEventRange(nextEvent) : 'You are clear after this block.'}
-                  />
-                </div>
+                  }
+                  className="px-3 py-2.5"
+                />
 
-                {snoozeState.active && snoozeState.expiresAt && (
+                <CompactSettingRow
+                  label="Next up"
+                  hint="The next upcoming calendar block that Window can react to."
+                  value={nextEvent?.title ?? 'Nothing queued'}
+                  meta={nextEvent ? formatEventRange(nextEvent) : 'You are clear after this block.'}
+                  className="px-3 py-2.5"
+                />
+
+                {snoozeState.active && snoozeState.expiresAt ? (
                   <div className="rounded-[18px] border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs text-amber-800">
                     Break active. Blocking resumes in {formatCountdown(snoozeState.expiresAt)}.
                   </div>
-                )}
+                ) : null}
 
                 {actionableTasks.length > 0 ? (
-                  <>
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-[var(--fg-muted)]">
+                          Tasks
+                        </p>
+                        <InfoTip text="Active and carryover tasks stay compact until you expand the queue." />
+                      </div>
+                      <button
+                        onClick={() => setCompletionModalOpen(true)}
+                        className="fg-button-primary px-3.5 py-1.5 text-[11px]"
+                      >
+                        Mark Task Done
+                      </button>
+                    </div>
                     <TaskQueue tasks={actionableTasks} />
-                    <button
-                      onClick={() => setCompletionModalOpen(true)}
-                      className="fg-button-primary px-4 py-3"
-                    >
-                      Mark Task Done
-                    </button>
-                  </>
+                  </div>
                 ) : (
-                  <p className="text-sm text-[var(--fg-muted)]">
-                    Nothing to complete yet. Active focus tasks will surface here automatically.
-                  </p>
+                  <CompactSettingRow
+                    label="Tasks"
+                    hint="Tasks appear automatically from active and carryover calendar blocks."
+                    value="Nothing to complete"
+                    meta="Active focus tasks will surface here automatically."
+                    className="px-3 py-2.5"
+                  />
                 )}
               </div>
-            </DashboardCard>
+            </SettingsGroup>
 
-            <DashboardCard
-              eyebrow="Quick controls"
-              title="Essential controls"
-              caption=""
+            <SettingsGroup
+              className="fg-card p-3"
+              title="Controls"
+              subtitle="Fast adjustments without leaving the current page."
+              hint="Keep the day moving with break, surface, and settings controls."
             >
-              <div className="grid gap-2.5 sm:grid-cols-2">
-                <ControlField label="Break length" hint="Default duration used when starting a break from a blocked page.">
-                  <select
-                    value={settings.breakDurationMinutes}
-                    onChange={(event) => {
-                      const next = Number(event.target.value) as 5 | 10 | 15;
-                      setState((prev) =>
-                        prev ? { ...prev, settings: { ...prev.settings, breakDurationMinutes: next } } : prev,
-                      );
-                      updateSettings({ ...settings, breakDurationMinutes: next });
-                    }}
-                    className="fg-select px-3 py-2.5 text-sm"
-                  >
-                    <option value={5}>5 min</option>
-                    <option value={10}>10 min</option>
-                    <option value={15}>15 min</option>
-                  </select>
-                </ControlField>
+              <div className="space-y-1.5">
+                <CompactSettingRow
+                  label="Break length"
+                  hint="Default duration used when starting a break from a blocked page."
+                  value={`${settings.breakDurationMinutes} min`}
+                  meta="The same duration is reused by quick break actions."
+                  control={
+                    <select
+                      value={settings.breakDurationMinutes}
+                      onChange={(event) => {
+                        const next = Number(event.target.value) as 5 | 10 | 15;
+                        setState((prev) =>
+                          prev ? { ...prev, settings: { ...prev.settings, breakDurationMinutes: next } } : prev,
+                        );
+                        updateSettings({ ...settings, breakDurationMinutes: next });
+                      }}
+                      className="fg-select w-[112px] px-3 py-2 text-sm"
+                    >
+                      <option value={5}>5 min</option>
+                      <option value={10}>10 min</option>
+                      <option value={15}>15 min</option>
+                    </select>
+                  }
+                  className="px-3 py-2.5"
+                />
 
-                <ControlField label="Surface mode" hint="Choose whether the extension opens as a compact popup or a persistent right-side panel.">
-                  <BinarySelector
-                    leftLabel="Popup"
-                    rightLabel="Docked"
-                    selected={settings.persistentPanelEnabled ? 'right' : 'left'}
-                    onSelect={(selection) => togglePersistentPanel(selection === 'right')}
-                  />
-                </ControlField>
-              </div>
+                <CompactSettingRow
+                  label="Surface mode"
+                  hint="Choose whether Window opens as a popup or a persistent right-side panel."
+                  value={settings.persistentPanelEnabled ? 'Docked panel' : 'Popup'}
+                  meta="Switch modes without changing the rest of the dashboard."
+                  control={
+                    <div className="w-[172px]">
+                      <BinarySelector
+                        leftLabel="Popup"
+                        rightLabel="Docked"
+                        selected={settings.persistentPanelEnabled ? 'right' : 'left'}
+                        onSelect={(selection) => togglePersistentPanel(selection === 'right')}
+                      />
+                    </div>
+                  }
+                  className="px-3 py-2.5"
+                />
 
-              <div className="mt-2.5 flex flex-wrap gap-2">
-                <button
-                  onClick={() => chrome.runtime.openOptionsPage()}
-                  className="fg-button-secondary px-3 py-2 text-xs"
-                >
-                  Open Settings
-                </button>
-                <button
-                  onClick={() => chrome.runtime.sendMessage({ type: 'SNOOZE' })}
-                  className="fg-button-secondary px-3 py-2 text-xs"
-                >
-                  Start Break
-                </button>
+                <CompactSettingRow
+                  label="Quick actions"
+                  hint="Shortcuts for the two most common actions outside task completion."
+                  value="Settings and breaks"
+                  meta="Open the full workspace or start a manual break."
+                  footer={
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        onClick={() => chrome.runtime.openOptionsPage()}
+                        className="fg-button-secondary px-3 py-2 text-xs"
+                      >
+                        Open Settings
+                      </button>
+                      <button
+                        onClick={() => chrome.runtime.sendMessage({ type: 'SNOOZE' })}
+                        className="fg-button-secondary px-3 py-2 text-xs"
+                      >
+                        Start Break
+                      </button>
+                    </div>
+                  }
+                  className="px-3 py-2.5"
+                />
               </div>
-            </DashboardCard>
+            </SettingsGroup>
           </div>
 
-          <DashboardCard
-            eyebrow="Assistant"
-            title={openClawState.status.connected ? 'OpenClaw ready' : 'OpenClaw offline'}
-            caption={openClawState.status.message ?? 'Session controls for async assistant work.'}
+          <SettingsGroup
+            className="fg-card p-3"
+            title="Assistant"
+            subtitle={openClawState.status.connected ? 'OpenClaw ready' : 'OpenClaw offline'}
+            hint="Session controls, model selection, telemetry, and idea capture."
           >
             <AssistantPanel
               mode={mode}
@@ -430,7 +483,7 @@ export default function Popup({
                 })
               }
             />
-          </DashboardCard>
+          </SettingsGroup>
         </section>
       </div>
 
@@ -444,67 +497,6 @@ export default function Popup({
           }}
         />
       )}
-    </div>
-  );
-}
-
-function DashboardCard({
-  eyebrow,
-  title,
-  caption,
-  children,
-}: {
-  eyebrow: string;
-  title: string;
-  caption?: string;
-  children?: React.ReactNode;
-}): React.JSX.Element {
-  return (
-    <div className="fg-card p-3.5">
-      <div className="mb-2.5">
-        <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--fg-muted)]">{eyebrow}</p>
-        <h2 className="mt-0.5 text-[1.55rem] font-semibold tracking-[-0.03em] text-[var(--fg-text)]">{title}</h2>
-        {caption ? <p className="mt-0.5 text-[11px] leading-4 text-[var(--fg-muted)]">{caption}</p> : null}
-      </div>
-      {children}
-    </div>
-  );
-}
-
-function MiniPanel({
-  label,
-  value,
-  body,
-}: {
-  label: string;
-  value: string;
-  body: string;
-}): React.JSX.Element {
-  return (
-    <div className="rounded-[20px] border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-3 py-2.5">
-      <p className="text-[10px] uppercase tracking-[0.16em] text-[var(--fg-muted)]">{label}</p>
-      <p className="mt-0.5 text-sm font-semibold leading-5 text-[var(--fg-text)]">{value}</p>
-      <p className="mt-0.5 text-[11px] leading-4 text-[var(--fg-muted)]">{body}</p>
-    </div>
-  );
-}
-
-function ControlField({
-  label,
-  hint,
-  children,
-}: {
-  label: string;
-  hint: string;
-  children: React.ReactNode;
-}): React.JSX.Element {
-  return (
-    <div className="space-y-1.5">
-      <div className="flex items-center gap-2">
-        <p className="text-[11px] font-medium text-[var(--fg-text)]">{label}</p>
-        <InfoTip text={hint} />
-      </div>
-      {children}
     </div>
   );
 }
@@ -563,73 +555,131 @@ function AssistantPanel({
   onRetry: (localId: string) => void;
 }): React.JSX.Element {
   const reusableSession = openClawState.sessions.find((session) => session.status !== 'closed');
+  const currentJob = openClawState.currentJob;
+  const visibleSessions = openClawState.sessions.slice(0, mode === 'panel' ? 4 : 3);
+  const toolbarButtonClass = 'fg-button-ghost px-3 py-1.5 text-[11px]';
 
   return (
-    <div className="space-y-3">
-      <div className="grid grid-cols-2 gap-2">
-        <MiniPanel
+    <div className="space-y-2.5">
+      <div className="flex flex-wrap gap-1.5">
+        <button onClick={onRefresh} className={toolbarButtonClass}>Refresh</button>
+        <button onClick={onStartSession} className={toolbarButtonClass}>New Session</button>
+        {reusableSession && (
+          <button onClick={() => onReuseSession(reusableSession.id)} className={toolbarButtonClass}>
+            Reuse Session
+          </button>
+        )}
+        {currentJob && (
+          <button onClick={() => onCancelJob(currentJob.id)} className={toolbarButtonClass}>
+            Cancel Job
+          </button>
+        )}
+      </div>
+
+      <div className="grid gap-1.5 sm:grid-cols-2">
+        <CompactSettingRow
           label="Transport"
+          hint="Where assistant traffic is routed right now."
           value={openClawState.status.transport.toUpperCase()}
-          body={openClawState.status.label ?? 'Oracle-hosted OpenClaw'}
+          meta={openClawState.status.label ?? 'Oracle-hosted OpenClaw'}
+          className="px-3 py-2.5"
         />
-        <MiniPanel
+        <CompactSettingRow
           label="Current job"
-          value={openClawState.currentJob?.status ?? 'idle'}
-          body={openClawState.currentJob?.title ?? 'No job running right now.'}
+          hint="The active OpenClaw request, if one is currently running."
+          value={currentJob?.status ?? 'Idle'}
+          meta={currentJob?.title ?? 'No job running right now.'}
+          className="px-3 py-2.5"
         />
       </div>
 
-      <ControlField
-        label="Model selector"
-        hint="Placeholder choices for the future provider switcher."
-      >
-        <select
+      <div className="space-y-1.5">
+        <CompactSettingRow
+          label="Model selector"
+          hint="Placeholder choices for the future provider switcher."
           value={selectedModel}
-          onChange={(event) => onModelSelect(event.target.value)}
-          className="fg-select px-3 py-2.5 text-sm"
-        >
-          {MODEL_PLACEHOLDER_OPTIONS.map((option) => (
-            <option key={option} value={option}>
-              {option}
-            </option>
-          ))}
-        </select>
-      </ControlField>
+          meta="Display-only today, but ready for future routing."
+          control={
+            <select
+              value={selectedModel}
+              onChange={(event) => onModelSelect(event.target.value)}
+              className="fg-select w-[172px] px-3 py-2 text-sm"
+            >
+              {MODEL_PLACEHOLDER_OPTIONS.map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+            </select>
+          }
+          className="px-3 py-2.5"
+        />
 
-      <div className="space-y-2">
-        <PreferenceRow
+        <CompactSettingRow
           label="Session behavior"
           hint="Reuse the current thread when you want continuity, or always start fresh."
-          leftLabel="Fresh thread"
-          rightLabel="Reuse current"
-          selected={assistantOptions.reuseActiveSession ? 'right' : 'left'}
-          onSelect={(selection) => onToggleReuse(selection === 'right')}
+          value={assistantOptions.reuseActiveSession ? 'Reuse current' : 'Fresh thread'}
+          meta="Choose whether capture actions continue the latest reusable session."
+          control={
+            <div className="w-[176px]">
+              <BinarySelector
+                leftLabel="Fresh thread"
+                rightLabel="Reuse current"
+                selected={assistantOptions.reuseActiveSession ? 'right' : 'left'}
+                onSelect={(selection) => onToggleReuse(selection === 'right')}
+              />
+            </div>
+          }
+          className="px-3 py-2.5"
         />
 
-        <PreferenceRow
+        <CompactSettingRow
           label="New session fallback"
           hint="Automatically create a new session when nothing reusable exists, or require manual starts."
-          leftLabel="Manual"
-          rightLabel="Auto-create"
-          selected={assistantOptions.autoCreateSession ? 'right' : 'left'}
-          onSelect={(selection) => onToggleAutoCreate(selection === 'right')}
+          value={assistantOptions.autoCreateSession ? 'Auto-create' : 'Manual'}
+          meta="Useful when you want capture to keep moving without opening the assistant first."
+          control={
+            <div className="w-[176px]">
+              <BinarySelector
+                leftLabel="Manual"
+                rightLabel="Auto-create"
+                selected={assistantOptions.autoCreateSession ? 'right' : 'left'}
+                onSelect={(selection) => onToggleAutoCreate(selection === 'right')}
+              />
+            </div>
+          }
+          className="px-3 py-2.5"
         />
 
-        <PreferenceRow
+        <CompactSettingRow
           label="Break telemetry"
           hint="Share domain-only break telemetry during active breaks."
-          leftLabel="Off"
-          rightLabel="On"
-          selected={breakTelemetryEnabled ? 'right' : 'left'}
-          onSelect={(selection) => onToggleTelemetry(selection === 'right')}
+          value={breakTelemetryEnabled ? 'On' : 'Off'}
+          meta="Used only for break analytics and trend summaries."
+          control={
+            <div className="w-[176px]">
+              <BinarySelector
+                leftLabel="Off"
+                rightLabel="On"
+                selected={breakTelemetryEnabled ? 'right' : 'left'}
+                onSelect={(selection) => onToggleTelemetry(selection === 'right')}
+              />
+            </div>
+          }
+          className="px-3 py-2.5"
         />
       </div>
 
-      <div className="rounded-[20px] border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] p-2.5">
+      <div className="rounded-[22px] border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-3.5 py-3">
         <div className="flex items-center justify-between gap-2">
-          <div>
-            <p className="text-sm font-semibold text-[var(--fg-text)]">Capture idea</p>
-            <p className="text-[11px] leading-4 text-[var(--fg-muted)]">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-[var(--fg-muted)]">
+                Capture idea
+              </p>
+              <InfoTip text="Ideas can sync live or queue locally until the backend reconnects." />
+            </div>
+            <p className="mt-1 text-[11px] leading-4 text-[var(--fg-muted)]">
               {backendSyncState.connected
                 ? `Synced${accountUser?.email ? ` as ${accountUser.email}` : backendSession ? ` as ${backendSession.userId}` : ''}.`
                 : backendSyncState.lastError ?? 'Queued locally until you sign in.'}
@@ -638,7 +688,7 @@ function AssistantPanel({
           <button
             onClick={onIdeaSubmit}
             disabled={submittingIdea}
-            className="fg-button-primary px-3.5 py-2 text-sm"
+            className="fg-button-primary shrink-0 px-3.5 py-2 text-xs"
           >
             {submittingIdea ? 'Submitting…' : 'Capture'}
           </button>
@@ -649,19 +699,24 @@ function AssistantPanel({
           value={ideaInput}
           onChange={(event) => onIdeaInputChange(event.target.value)}
           placeholder="I want to build a marketplace for horse breeders. Is this viable?"
-          className="fg-input mt-2 min-h-[72px] resize-none px-3 py-2.5 text-sm"
+          className="fg-input mt-2 min-h-[68px] resize-none px-3 py-2.5 text-sm"
         />
         {ideaError && <p className="mt-2 text-xs text-rose-600">{ideaError}</p>}
       </div>
 
-      {openClawState.sessions.length > 0 && (
+      {visibleSessions.length > 0 && (
         <div className="space-y-1.5">
           <div className="flex items-center justify-between gap-2">
-            <p className="text-xs uppercase tracking-[0.16em] text-[var(--fg-muted)]">Recent sessions</p>
-            <span className="text-xs text-[var(--fg-muted)]">{openClawState.sessions.length} saved</span>
+            <div className="flex items-center gap-2">
+              <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-[var(--fg-muted)]">
+                Recent sessions
+              </p>
+              <InfoTip text="Only shown when OpenClaw has reusable history, which keeps the panel lighter by default." />
+            </div>
+            <span className="text-[11px] text-[var(--fg-muted)]">{openClawState.sessions.length} saved</span>
           </div>
           <div className="space-y-1.5">
-            {openClawState.sessions.slice(0, mode === 'panel' ? 4 : 3).map((session) => (
+            {visibleSessions.map((session) => (
               <SessionRow
                 key={session.id}
                 session={session}
@@ -674,8 +729,13 @@ function AssistantPanel({
       )}
 
       {inboxIdeas.length > 0 ? (
-        <div className="space-y-2">
-          <p className="text-xs uppercase tracking-[0.16em] text-[var(--fg-muted)]">Idea inbox</p>
+        <div className="space-y-1.5">
+          <div className="flex items-center gap-2">
+            <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-[var(--fg-muted)]">
+              Idea inbox
+            </p>
+            <InfoTip text="Queued idea reports only expand when something needs your review." />
+          </div>
           <IdeaInbox
             ideas={inboxIdeas}
             onKeep={onKeep}
@@ -684,56 +744,10 @@ function AssistantPanel({
           />
         </div>
       ) : (
-        <div className="rounded-[20px] border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-3 py-2.5 text-xs leading-4 text-[var(--fg-muted)]">
-          No queued idea reports yet. Capture stays available, but the inbox only expands when something is waiting for you.
-        </div>
+        <p className="text-[11px] leading-4 text-[var(--fg-muted)]">
+          No queued idea reports right now.
+        </p>
       )}
-
-      <div className="flex flex-wrap gap-2">
-        <button onClick={onRefresh} className="fg-button-secondary px-3 py-2 text-xs">Refresh</button>
-        <button onClick={onStartSession} className="fg-button-secondary px-3 py-2 text-xs">New Session</button>
-        {reusableSession && (
-          <button onClick={() => onReuseSession(reusableSession.id)} className="fg-button-secondary px-3 py-2 text-xs">
-            Reuse Session
-          </button>
-        )}
-        {openClawState.currentJob && (
-          <button onClick={() => onCancelJob(openClawState.currentJob!.id)} className="fg-button-secondary px-3 py-2 text-xs">
-            Cancel Job
-          </button>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function PreferenceRow({
-  label,
-  hint,
-  leftLabel,
-  rightLabel,
-  selected,
-  onSelect,
-}: {
-  label: string;
-  hint: string;
-  leftLabel: string;
-  rightLabel: string;
-  selected: 'left' | 'right';
-  onSelect: (selection: 'left' | 'right') => void;
-}): React.JSX.Element {
-  return (
-    <div className="rounded-[20px] border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-3 py-2.5">
-      <div className="mb-1.5 flex items-center gap-2">
-        <p className="text-[11px] font-medium text-[var(--fg-text)]">{label}</p>
-        <InfoTip text={hint} />
-      </div>
-      <BinarySelector
-        leftLabel={leftLabel}
-        rightLabel={rightLabel}
-        selected={selected}
-        onSelect={onSelect}
-      />
     </div>
   );
 }
@@ -772,17 +786,6 @@ function BinarySelector({
         {rightLabel}
       </button>
     </div>
-  );
-}
-
-function InfoTip({ text }: { text: string }): React.JSX.Element {
-  return (
-    <span
-      title={text}
-      className="inline-flex h-4 w-4 items-center justify-center rounded-full border border-[var(--fg-border)] bg-white text-[10px] font-semibold text-[var(--fg-muted)]"
-    >
-      i
-    </span>
   );
 }
 
