@@ -42,12 +42,13 @@ describe('account snapshot helpers', () => {
       eventBindings: {
         research: 'Deep Work',
       },
-      eventRules: [{ eventTitle: 'Deep Work', domains: ['github.com'] }],
+      eventRules: [{ eventTitle: 'Deep Work', domains: ['github.com'], tagKey: null, difficultyOverride: null }],
       keywordRules: [
         {
           keyword: 'research',
           domains: ['arxiv.org'],
           createdAt: '2026-04-12T18:00:00.000Z',
+          tagKey: 'research',
         },
       ],
       globalAllowlist: ['accounts.google.com', 'calendar.google.com'],

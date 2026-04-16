@@ -59,6 +59,11 @@ model User {
   ideaCaptures     IdeaCapture[]
   openClawSessions OpenClawSession[]
   breakVisitEvents BreakVisitEvent[]
+  taskTags         TaskTag[]
+  focusSessions    FocusSession[]
+  activitySessions ActivitySession[]
+  dailyAnalytics   DailyAnalyticsAggregate[]
+  analyticsOverrides AnalyticsOverride[]
   interestProfiles InterestProfile[]
   recommendations  Recommendation[]
 }
@@ -222,4 +227,113 @@ model Recommendation {
   body      String
   createdAt DateTime           @default(now())
   user      User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model TaskTag {
+  id                 String   @id @default(cuid())
+  userId             String
+  key                String
+  label              String
+  color              String
+  aliases            Json
+  baselineDifficulty Int
+  alignedDomains     Json
+  supportiveDomains  Json
+  source             String
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, key])
+  @@index([userId, updatedAt])
+}
+
+model FocusSession {
+  id                String   @id @default(cuid())
+  userId            String
+  clientSessionId   String
+  calendarEventId   String
+  eventTitle        String
+  scheduledStart    DateTime
+  scheduledEnd      DateTime
+  startedAt         DateTime
+  endedAt           DateTime
+  sourceRuleType    String
+  sourceRuleName    String?
+  tagKey            String?
+  difficultyRank    Int?
+  productiveMinutes Int      @default(0)
+  supportiveMinutes Int      @default(0)
+  distractedMinutes Int      @default(0)
+  awayMinutes       Int      @default(0)
+  breakMinutes      Int      @default(0)
+  totalTrackedMinutes Int    @default(0)
+  leftEarly         Boolean  @default(false)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  activitySessions  ActivitySession[]
+  analyticsOverride AnalyticsOverride?
+
+  @@unique([userId, clientSessionId])
+  @@index([userId, startedAt])
+  @@index([userId, tagKey, startedAt])
+}
+
+model ActivitySession {
+  id              String   @id @default(cuid())
+  userId          String
+  clientActivityId String
+  focusSessionId  String
+  calendarEventId String
+  eventTitle      String
+  domain          String?
+  startedAt       DateTime
+  endedAt         DateTime
+  activityClass   String
+  tagKey          String?
+  difficultyRank  Int?
+  sourceRuleType  String
+  sourceRuleName  String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  focusSession    FocusSession @relation(fields: [focusSessionId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, clientActivityId])
+  @@index([userId, startedAt])
+  @@index([focusSessionId, startedAt])
+}
+
+model DailyAnalyticsAggregate {
+  id                String   @id @default(cuid())
+  userId            String
+  day               DateTime
+  productiveMinutes Int      @default(0)
+  supportiveMinutes Int      @default(0)
+  distractedMinutes Int      @default(0)
+  awayMinutes       Int      @default(0)
+  breakMinutes      Int      @default(0)
+  totalFocusSessions Int     @default(0)
+  leftEarlyCount    Int      @default(0)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, day])
+  @@index([userId, day])
+}
+
+model AnalyticsOverride {
+  id             String   @id @default(cuid())
+  userId         String
+  focusSessionId String   @unique
+  tagKey         String?
+  difficultyRank Int?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  focusSession   FocusSession @relation(fields: [focusSessionId], references: [id], onDelete: Cascade)
+
+  @@index([userId, updatedAt])
 }

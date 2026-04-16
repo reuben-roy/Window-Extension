@@ -57,6 +57,7 @@ export default function Popup({
     loadState();
     chrome.runtime.sendMessage({ type: 'REFRESH_ACCOUNT_STATE' });
     chrome.runtime.sendMessage({ type: 'REFRESH_ASSISTANT_STATE' });
+    chrome.runtime.sendMessage({ type: 'REFRESH_ANALYTICS_STATE' });
     const listener = () => loadState();
     chrome.storage.onChanged.addListener(listener);
     return () => chrome.storage.onChanged.removeListener(listener);
@@ -153,6 +154,7 @@ export default function Popup({
     accountConflict,
     accountSyncState,
     accountUser,
+    analyticsSnapshot,
     assistantOptions,
     backendSession,
     backendSyncState,
@@ -161,6 +163,7 @@ export default function Popup({
     openClawState,
     settings,
     snoozeState,
+    taskTags,
     taskQueue,
     allTimeStats,
   } = state;
@@ -344,6 +347,18 @@ export default function Popup({
                   />
                 )}
               </div>
+            </SettingsGroup>
+
+            <SettingsGroup
+              className="fg-card p-3"
+              title="Analytics"
+              subtitle="Live session health and the last 7 days."
+              hint="Compact productivity analytics. Open the full workspace for deeper breakdowns."
+            >
+              <AnalyticsSummaryCard
+                analyticsSnapshot={analyticsSnapshot}
+                taskTags={taskTags}
+              />
             </SettingsGroup>
 
             <SettingsGroup
@@ -896,6 +911,130 @@ function formatCountdown(expiresAt: string): string {
   const minutes = Math.floor(totalSeconds / 60);
   const seconds = totalSeconds % 60;
   return `${minutes}m ${String(seconds).padStart(2, '0')}s`;
+}
+
+function AnalyticsSummaryCard({
+  analyticsSnapshot,
+  taskTags,
+}: {
+  analyticsSnapshot: StateResponse['analyticsSnapshot'];
+  taskTags: StateResponse['taskTags'];
+}): React.JSX.Element {
+  const current = analyticsSnapshot.currentSession;
+  const summary = analyticsSnapshot.summary7d;
+  const currentTag = current?.tagKey
+    ? taskTags.find((tag) => tag.key === current.tagKey) ?? null
+    : null;
+  const segments = [
+    { label: 'Productive', value: current?.productiveMinutes ?? summary.productiveMinutes, color: '#2563eb' },
+    { label: 'Supportive', value: current?.supportiveMinutes ?? summary.supportiveMinutes, color: '#0f766e' },
+    { label: 'Distracted', value: current?.distractedMinutes ?? summary.distractedMinutes, color: '#dc2626' },
+    { label: 'Away', value: current?.awayMinutes ?? summary.awayMinutes, color: '#64748b' },
+  ].filter((segment) => segment.value > 0);
+  const total = segments.reduce((sum, segment) => sum + segment.value, 0);
+
+  return (
+    <div className="space-y-2">
+      <div className="grid gap-1.5 sm:grid-cols-2">
+        <CompactSettingRow
+          label="Status"
+          hint="What Window thinks is happening right now."
+          value={
+            current?.currentActivityClass
+              ? current.currentActivityClass.charAt(0).toUpperCase() + current.currentActivityClass.slice(1)
+              : 'Idle'
+          }
+          meta={
+            current
+              ? `${current.eventTitle}${current.difficultyRank ? ` · Difficulty ${current.difficultyRank}` : ''}`
+              : 'No active focus session right now.'
+          }
+          className="px-3 py-2.5"
+        />
+        <CompactSettingRow
+          label="Primary tag"
+          hint="The task tag currently linked to the active session."
+          value={currentTag?.label ?? 'None'}
+          meta={currentTag ? `Baseline difficulty ${currentTag.baselineDifficulty}` : 'Waiting for a resolved task tag.'}
+          className="px-3 py-2.5"
+        />
+      </div>
+
+      <div className="rounded-[20px] border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-3 py-3">
+        <div className="flex items-center justify-between gap-2">
+          <div>
+            <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-[var(--fg-muted)]">
+              {current ? 'Current session' : 'Last 7 days'}
+            </p>
+            <p className="mt-1 text-xs text-[var(--fg-muted)]">
+              {current
+                ? `${formatMinutes(current.productiveMinutes)} productive · ${formatMinutes(current.distractedMinutes)} distracted`
+                : `${formatMinutes(summary.productiveMinutes)} productive across ${summary.totalFocusSessions} session${summary.totalFocusSessions === 1 ? '' : 's'}`}
+            </p>
+          </div>
+          {current?.difficultyRank ? (
+            <span
+              title="Difficulty score"
+              className="rounded-full border border-[var(--fg-border)] bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--fg-muted)]"
+            >
+              D{current.difficultyRank}
+            </span>
+          ) : null}
+        </div>
+
+        <div className="mt-3 h-2 overflow-hidden rounded-full bg-white">
+          {total > 0 ? (
+            <div className="flex h-full w-full">
+              {segments.map((segment) => (
+                <div
+                  key={segment.label}
+                  title={`${segment.label}: ${formatMinutes(segment.value)}`}
+                  style={{
+                    width: `${(segment.value / total) * 100}%`,
+                    background: segment.color,
+                  }}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="h-full w-full bg-slate-200" />
+          )}
+        </div>
+
+        <div className="mt-3 grid grid-cols-4 gap-2 text-[11px] text-[var(--fg-muted)]">
+          <MetricChip label="Prod" value={formatMinutes(current?.productiveMinutes ?? summary.productiveMinutes)} />
+          <MetricChip label="Help" value={formatMinutes(current?.supportiveMinutes ?? summary.supportiveMinutes)} />
+          <MetricChip label="Distract" value={formatMinutes(current?.distractedMinutes ?? summary.distractedMinutes)} />
+          <MetricChip label="Away" value={formatMinutes(current?.awayMinutes ?? summary.awayMinutes)} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function MetricChip({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}): React.JSX.Element {
+  return (
+    <div className="rounded-[16px] border border-[var(--fg-border)] bg-white px-2.5 py-2 text-center">
+      <p className="text-[10px] font-medium uppercase tracking-[0.12em] text-[var(--fg-muted)]">{label}</p>
+      <p className="mt-1 text-xs font-medium text-[var(--fg-text)]">{value}</p>
+    </div>
+  );
+}
+
+function formatMinutes(value: number): string {
+  if (value <= 0) return '0m';
+  if (value >= 60) {
+    const hours = Math.floor(value / 60);
+    const minutes = value % 60;
+    return minutes > 0 ? `${hours}h ${minutes}m` : `${hours}h`;
+  }
+  return `${value}m`;
 }
 
 function formatEventRange(event: CalendarEvent): string {

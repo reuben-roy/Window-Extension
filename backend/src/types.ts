@@ -31,15 +31,30 @@ export interface AllTimeStatsPayload {
   currentWeekStreak: number;
 }
 
-export interface EventRulePayload {
-  eventTitle: string;
-  domains: string[];
-}
-
 export interface KeywordRulePayload {
   keyword: string;
   domains: string[];
   createdAt: string;
+  tagKey: string | null;
+}
+
+export interface TaskTagPayload {
+  key: string;
+  label: string;
+  color: string;
+  aliases: string[];
+  baselineDifficulty: 1 | 2 | 3 | 5 | 8;
+  alignedDomains: string[];
+  supportiveDomains: string[];
+  source: 'seed' | 'keyword' | 'auto' | 'user';
+  updatedAt: string;
+}
+
+export interface EventRulePayload {
+  eventTitle: string;
+  domains: string[];
+  tagKey: string | null;
+  difficultyOverride: 1 | 2 | 3 | 5 | 8 | null;
 }
 
 export interface AccountSnapshotPayload {
@@ -49,6 +64,7 @@ export interface AccountSnapshotPayload {
   eventBindings: Record<string, string>;
   eventRules: EventRulePayload[];
   keywordRules: KeywordRulePayload[];
+  taskTags: TaskTagPayload[];
   globalAllowlist: string[];
 }
 
@@ -147,4 +163,48 @@ export interface OpenClawJobResult {
   status: OpenClawJobStatus;
   report: IdeaReportPayload | null;
   error: string | null;
+}
+
+export interface AnalyticsSummaryPayload {
+  range: '7d' | '30d';
+  productiveMinutes: number;
+  supportiveMinutes: number;
+  distractedMinutes: number;
+  awayMinutes: number;
+  breakMinutes: number;
+  totalFocusSessions: number;
+  leftEarlyCount: number;
+}
+
+export interface TagBreakdownPayload {
+  tagKey: string;
+  label: string;
+  color: string;
+  productiveMinutes: number;
+  supportiveMinutes: number;
+  distractedMinutes: number;
+  awayMinutes: number;
+  breakMinutes: number;
+  sessions: number;
+}
+
+export interface FocusSessionPayload {
+  id: string;
+  calendarEventId: string;
+  eventTitle: string;
+  scheduledStart: string;
+  scheduledEnd: string;
+  startedAt: string;
+  endedAt: string;
+  sourceRuleType: 'event' | 'keyword' | 'none';
+  sourceRuleName: string | null;
+  tagKey: string | null;
+  difficultyRank: 1 | 2 | 3 | 5 | 8 | null;
+  productiveMinutes: number;
+  supportiveMinutes: number;
+  distractedMinutes: number;
+  awayMinutes: number;
+  breakMinutes: number;
+  totalTrackedMinutes: number;
+  leftEarly: boolean;
 }

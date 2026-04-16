@@ -1,23 +1,40 @@
 import {
   getCalendarState,
   getEventRules,
+  getEventPatternStats,
+  getFocusSessionHistory,
   getGlobalAllowlist,
   getKeywordRules,
   getSettings,
+  getTaskTags,
   setCalendarState,
+  setEventPatternStats,
+  setEventRules,
+  setKeywordRules,
+  setTaskTags,
 } from '../shared/storage';
+import { deriveDifficultyRank } from '../shared/analytics';
 import {
   type CalendarColorDefinition,
   resolveCalendarEventColors,
 } from '../shared/calendarColors';
 import { isDailyBlockingPauseActive } from '../shared/blockingSchedule';
+import {
+  ensureRuleMetadata,
+  findTaskTag,
+  inferTaskTagKeyFromTitle,
+  observeEventPatterns,
+} from '../shared/tags';
 import type {
   ActiveRuleSource,
   CalendarEvent,
   CalendarState,
+  DifficultyRank,
   EventRule,
+  FocusSessionRecord,
   KeywordRule,
   Settings,
+  TaskTag,
 } from '../shared/types';
 
 const CALENDAR_API_BASE = 'https://www.googleapis.com/calendar/v3';
@@ -48,12 +65,32 @@ export function revokeAuthToken(token: string): Promise<void> {
 }
 
 export async function syncCalendar(): Promise<CalendarState> {
-  const [eventRules, keywordRules, globalAllowlist, settings] = await Promise.all([
+  const [
+    eventRules,
+    keywordRules,
+    globalAllowlist,
+    settings,
+    taskTags,
+    eventPatternStats,
+    focusHistory,
+  ] = await Promise.all([
     getEventRules(),
     getKeywordRules(),
     getGlobalAllowlist(),
     getSettings(),
+    getTaskTags(),
+    getEventPatternStats(),
+    getFocusSessionHistory(),
   ]);
+
+  const migrated = ensureRuleMetadata(eventRules, keywordRules, taskTags);
+  if (migrated.changed) {
+    await Promise.all([
+      setEventRules(migrated.eventRules),
+      setKeywordRules(migrated.keywordRules),
+      setTaskTags(migrated.taskTags),
+    ]);
+  }
 
   let token: string;
   try {
@@ -79,7 +116,27 @@ export async function syncCalendar(): Promise<CalendarState> {
     }
   }
 
-  const state = resolveActiveState(events, eventRules, keywordRules, globalAllowlist, settings);
+  const observed = observeEventPatterns(
+    events.map((event) => event.title),
+    eventPatternStats,
+    migrated.taskTags,
+  );
+  if (observed.changed) {
+    await Promise.all([
+      setEventPatternStats(observed.stats),
+      setTaskTags(observed.taskTags),
+    ]);
+  }
+
+  const state = resolveActiveState(
+    events,
+    migrated.eventRules,
+    migrated.keywordRules,
+    globalAllowlist,
+    settings,
+    observed.taskTags,
+    focusHistory,
+  );
   await setCalendarState(state);
   return state;
 }
@@ -148,6 +205,8 @@ export function resolveActiveState(
   keywordRules: KeywordRule[],
   globalAllowlist: string[],
   settings: Settings,
+  taskTags: TaskTag[] = [],
+  focusHistory: FocusSessionRecord[] = [],
 ): CalendarState {
   const allActiveEvents = getAllActiveEvents(events);
   const recentEventTitles = [...new Set(events.map((event) => event.title.trim()).filter(Boolean))];
@@ -156,13 +215,21 @@ export function resolveActiveState(
     .filter((rule): rule is ResolvedRule => rule !== null);
 
   if (matched.length === 0) {
+    const currentEvent = allActiveEvents[0] ?? null;
+    const tagResolution = currentEvent
+      ? resolveTagMetadataForEvent(currentEvent, eventRules, keywordRules, taskTags, settings, focusHistory)
+      : { tagKey: null, tagLabel: null, difficultyRank: null };
+
     return {
-      currentEvent: allActiveEvents[0] ?? null,
+      currentEvent,
       allActiveEvents,
       todaysEvents: events,
       activeProfile: null,
       activeRuleSource: 'none',
       activeRuleName: null,
+      primaryTagKey: tagResolution.tagKey,
+      primaryTagLabel: tagResolution.tagLabel,
+      difficultyRank: tagResolution.difficultyRank,
       allowedDomains: [],
       recentEventTitles,
       isRestricted: false,
@@ -179,6 +246,14 @@ export function resolveActiveState(
     }, [] as string[]);
   const allowedDomains = [...new Set([...intersectedDomains, ...globalAllowlist])];
   const primary = matched[0];
+  const tagResolution = resolveTagMetadataForEvent(
+    primary.event,
+    eventRules,
+    keywordRules,
+    taskTags,
+    settings,
+    focusHistory,
+  );
 
   return {
     currentEvent: primary.event,
@@ -187,11 +262,51 @@ export function resolveActiveState(
     activeProfile: primary.name,
     activeRuleSource: primary.source,
     activeRuleName: primary.name,
+    primaryTagKey: tagResolution.tagKey,
+    primaryTagLabel: tagResolution.tagLabel,
+    difficultyRank: tagResolution.difficultyRank,
     allowedDomains,
     recentEventTitles,
     isRestricted: settings.enableBlocking && !isDailyBlockingPauseActive(new Date(), settings),
     lastSyncedAt: new Date().toISOString(),
     authError: null,
+  };
+}
+
+function resolveTagMetadataForEvent(
+  event: CalendarEvent,
+  eventRules: EventRule[],
+  keywordRules: KeywordRule[],
+  taskTags: TaskTag[],
+  settings: Settings,
+  focusHistory: FocusSessionRecord[],
+): {
+  tagKey: string | null;
+  tagLabel: string | null;
+  difficultyRank: DifficultyRank | null;
+} {
+  const exactRule = eventRules.find((rule) => rule.eventTitle === event.title);
+  const keywordRule = settings.keywordAutoMatchEnabled
+    ? findMatchingKeywordRule(event.title, keywordRules)
+    : null;
+  const inferredTagKey = inferTaskTagKeyFromTitle(event.title, taskTags);
+  const tagKey = exactRule?.tagKey ?? keywordRule?.tagKey ?? inferredTagKey ?? null;
+  const tag = findTaskTag(taskTags, tagKey);
+  const priorSessions = focusHistory.filter((session) => session.tagKey === tagKey);
+  const difficultyRank = tagKey
+    ? deriveDifficultyRank({
+        baselineDifficulty: tag?.baselineDifficulty ?? null,
+        scheduledStart: event.start,
+        scheduledEnd: event.end,
+        priorSessions,
+        override: exactRule?.difficultyOverride ?? null,
+      })
+    : exactRule?.difficultyOverride ?? null;
+
+  return {
+    tagKey,
+    tagLabel: tag?.label ?? null,
+    difficultyRank,
   };
 }
 
@@ -336,6 +451,9 @@ async function persistError(error: string): Promise<CalendarState> {
     activeProfile: prev.activeProfile,
     activeRuleSource: prev.activeRuleSource,
     activeRuleName: prev.activeRuleName,
+    primaryTagKey: prev.primaryTagKey,
+    primaryTagLabel: prev.primaryTagLabel,
+    difficultyRank: prev.difficultyRank,
     allowedDomains: prev.allowedDomains,
     recentEventTitles: prev.recentEventTitles,
     isRestricted: false,

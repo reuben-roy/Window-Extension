@@ -10,6 +10,7 @@ import type {
 } from '@fullcalendar/core';
 import { removeEventRule, removeKeywordRule, upsertEventRule, upsertKeywordRule } from '../shared/eventRules';
 import { addToGlobalAllowlist, removeFromGlobalAllowlist } from '../shared/profiles';
+import { deriveDifficultyRank } from '../shared/analytics';
 import {
   formatBlockingPauseTimeLabel,
   isDailyBlockingPauseActive,
@@ -22,24 +23,31 @@ import {
   getAccountConflict,
   getAccountSyncState,
   getAccountUser,
+  getAnalyticsSnapshot,
   getCalendarState,
   getEventRules,
   getGlobalAllowlist,
   getKeywordRules,
   getSettings,
+  getTaskTags,
   setSettings,
 } from '../shared/storage';
+import { findTaskTag, inferTaskTagKeyFromTitle } from '../shared/tags';
 import type {
   AccountConflict,
   AccountSyncState,
   AccountUser,
+  AnalyticsSnapshot,
   BreakDurationMinutes,
   CalendarEvent,
   CalendarState,
+  DifficultyRank,
   DownloadRedirectFallbackSeconds,
   EventRule,
+  FocusSessionRecord,
   KeywordRule,
   Settings,
+  TaskTag,
 } from '../shared/types';
 
 type CalendarView = 'dayGridMonth' | 'timeGridWeek' | 'timeGridDay';
@@ -51,6 +59,8 @@ interface ResolvedWorkspaceEvent {
   source: 'event' | 'keyword' | 'none';
   ruleName: string | null;
   domains: string[];
+  tagKey: string | null;
+  difficultyRank: DifficultyRank | null;
 }
 
 interface SelectedTooltipState {
@@ -134,13 +144,16 @@ export default function Options(): React.JSX.Element {
   const calendarRef = useRef<FullCalendar | null>(null);
   const tooltipRef = useRef<HTMLDivElement | null>(null);
   const [calendarState, setCalendarState] = useState<CalendarState | null>(null);
+  const [analyticsSnapshot, setAnalyticsSnapshotState] = useState<AnalyticsSnapshot | null>(null);
   const [visibleEvents, setVisibleEvents] = useState<CalendarEvent[]>([]);
   const [hasLoadedVisibleRange, setHasLoadedVisibleRange] = useState(false);
   const [settings, setLocalSettings] = useState<Settings | null>(null);
   const [eventRules, setLocalEventRules] = useState<EventRule[]>([]);
   const [keywordRules, setLocalKeywordRules] = useState<KeywordRule[]>([]);
+  const [taskTags, setTaskTagsState] = useState<TaskTag[]>([]);
   const [calendarView, setCalendarView] = useState<CalendarView>('timeGridWeek');
   const [calendarTitle, setCalendarTitle] = useState('');
+  const [surfaceTab, setSurfaceTab] = useState<'workspace' | 'analytics'>('workspace');
   const [selectedTooltip, setSelectedTooltip] = useState<SelectedTooltipState | null>(null);
   const [tooltipMode, setTooltipMode] = useState<TooltipMode>('anchored');
   const [tooltipPlacement, setTooltipPlacement] = useState<TooltipPlacement>('bottom');
@@ -149,6 +162,7 @@ export default function Options(): React.JSX.Element {
   const [accountConflict, setAccountConflictState] = useState<AccountConflict | null>(null);
   const [keyword, setKeyword] = useState('');
   const [keywordDomains, setKeywordDomains] = useState('');
+  const [keywordTagKey, setKeywordTagKey] = useState<string>('');
   const [keywordError, setKeywordError] = useState('');
   const [globalAllowlist, setGlobalAllowlistState] = useState<string[]>([]);
   const [globalDomainInput, setGlobalDomainInput] = useState('');
@@ -185,6 +199,8 @@ export default function Options(): React.JSX.Element {
       nextSettings,
       nextEventRules,
       nextKeywordRules,
+      nextTaskTags,
+      nextAnalyticsSnapshot,
       nextGlobalAllowlist,
       nextAccountUser,
       nextAccountSyncState,
@@ -194,6 +210,8 @@ export default function Options(): React.JSX.Element {
       getSettings(),
       getEventRules(),
       getKeywordRules(),
+      getTaskTags(),
+      getAnalyticsSnapshot(),
       getGlobalAllowlist(),
       getAccountUser(),
       getAccountSyncState(),
@@ -203,6 +221,8 @@ export default function Options(): React.JSX.Element {
     setLocalSettings(nextSettings);
     setLocalEventRules(nextEventRules);
     setLocalKeywordRules(nextKeywordRules);
+    setTaskTagsState(nextTaskTags);
+    setAnalyticsSnapshotState(nextAnalyticsSnapshot);
     setGlobalAllowlistState(nextGlobalAllowlist);
     setAccountUserState(nextAccountUser);
     setAccountSyncStateState(nextAccountSyncState);
@@ -218,12 +238,15 @@ export default function Options(): React.JSX.Element {
   useEffect(() => {
     loadData();
     void sendMessageAsync({ type: 'REFRESH_ACCOUNT_STATE' }).catch(() => undefined);
+    void sendMessageAsync({ type: 'REFRESH_ANALYTICS_STATE' }).catch(() => undefined);
     const listener = (changes: Record<string, chrome.storage.StorageChange>) => {
       if (
         'calendarState' in changes ||
         'settings' in changes ||
         'eventRules' in changes ||
         'keywordRules' in changes ||
+        'taskTags' in changes ||
+        'analyticsSnapshot' in changes ||
         'globalAllowlist' in changes ||
         'accountUser' in changes ||
         'accountSyncState' in changes ||
@@ -260,40 +283,14 @@ export default function Options(): React.JSX.Element {
     : visibleEvents.length > 0
       ? visibleEvents
       : todaysEvents;
+  const recentAnalyticsSessions = analyticsSnapshot?.recentSessions ?? [];
 
   const workspaceEvents = useMemo(
     () =>
-      workspaceSourceEvents.map((event) => {
-        const exactRule = eventRules.find((rule) => rule.eventTitle === event.title);
-        if (exactRule) {
-          return {
-            event,
-            source: 'event' as const,
-            ruleName: exactRule.eventTitle,
-            domains: exactRule.domains,
-          };
-        }
-
-        if (settings?.keywordAutoMatchEnabled) {
-          const keywordRule = findBestKeywordRule(event.title, keywordRules);
-          if (keywordRule) {
-            return {
-              event,
-              source: 'keyword' as const,
-              ruleName: keywordRule.keyword,
-              domains: keywordRule.domains,
-            };
-          }
-        }
-
-        return {
-          event,
-          source: 'none' as const,
-          ruleName: null,
-          domains: [],
-        };
-      }),
-    [workspaceSourceEvents, eventRules, keywordRules, settings?.keywordAutoMatchEnabled],
+      workspaceSourceEvents.map((event) =>
+        resolveWorkspaceEvent(event, eventRules, keywordRules, taskTags, recentAnalyticsSessions, settings),
+      ),
+    [workspaceSourceEvents, eventRules, keywordRules, recentAnalyticsSessions, settings, taskTags],
   );
 
   const selectedResolvedEvent = selectedTooltip
@@ -414,13 +411,39 @@ export default function Options(): React.JSX.Element {
 
   const saveKeywordRule = async () => {
     setKeywordError('');
-    const result = await upsertKeywordRule(keyword, splitDomains(keywordDomains));
+    const result = await upsertKeywordRule(keyword, splitDomains(keywordDomains), {
+      tagKey: keywordTagKey || null,
+    });
     if (!result.ok) {
       setKeywordError(result.error ?? 'Unable to save keyword rule.');
       return;
     }
     setKeyword('');
     setKeywordDomains('');
+    setKeywordTagKey('');
+    await loadData();
+  };
+
+  const updateKeywordRuleTag = async (rule: KeywordRule, tagKey: string) => {
+    await upsertKeywordRule(rule.keyword, rule.domains, {
+      tagKey: tagKey || null,
+    });
+    await loadData();
+  };
+
+  const saveSessionOverride = async (
+    focusSessionId: string,
+    tagKey: string | null,
+    difficultyRank: DifficultyRank | null,
+  ) => {
+    await sendMessageAsync({
+      type: 'SAVE_ANALYTICS_OVERRIDE',
+      payload: {
+        focusSessionId,
+        tagKey,
+        difficultyRank,
+      },
+    });
     await loadData();
   };
 
@@ -434,7 +457,7 @@ export default function Options(): React.JSX.Element {
     setGlobalDomainInput('');
   };
 
-  if (!settings || !calendarState) {
+  if (!settings || !calendarState || !analyticsSnapshot) {
     return (
       <div className="fg-shell min-h-screen flex items-center justify-center">
         <div className="fg-card px-6 py-5 text-sm text-[var(--fg-muted)]">Loading calendar workspace…</div>
@@ -494,6 +517,21 @@ export default function Options(): React.JSX.Element {
             )}
           </div>
         </header>
+
+        <div className="mb-5 inline-flex rounded-[20px] border border-[var(--fg-border)] bg-white p-1 shadow-sm">
+          <button
+            onClick={() => setSurfaceTab('workspace')}
+            className={surfaceTab === 'workspace' ? 'fg-segment-active' : 'fg-segment'}
+          >
+            Workspace
+          </button>
+          <button
+            onClick={() => setSurfaceTab('analytics')}
+            className={surfaceTab === 'analytics' ? 'fg-segment-active' : 'fg-segment'}
+          >
+            Analytics
+          </button>
+        </div>
 
         <section className="mb-5 grid gap-4 xl:grid-cols-[minmax(0,1fr),340px]">
           <div className="fg-card p-4">
@@ -775,9 +813,21 @@ export default function Options(): React.JSX.Element {
                   placeholder="github.com, docs.google.com"
                   className="fg-input"
                 />
+                <select
+                  value={keywordTagKey}
+                  onChange={(event) => setKeywordTagKey(event.target.value)}
+                  className="fg-select"
+                >
+                  <option value="">Link to a tag</option>
+                  {taskTags.map((tag) => (
+                    <option key={tag.key} value={tag.key}>
+                      {tag.label}
+                    </option>
+                  ))}
+                </select>
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <p className="text-xs text-[var(--fg-muted)]">
-                    Save a keyword and the domains it should unlock when no exact rule exists.
+                    Save a keyword, the domains it should unlock, and the tag it should feed when no exact rule exists.
                   </p>
                   <button onClick={saveKeywordRule} className="fg-button-primary px-4 py-2.5 text-sm">
                     Save Keyword Rule
@@ -791,11 +841,13 @@ export default function Options(): React.JSX.Element {
                   <EmptyCard text="No keyword rules yet." />
                 ) : (
                   keywordRules.map((rule) => (
-                    <RuleListItem
+                    <KeywordRuleListItem
                       key={rule.keyword}
-                      title={rule.keyword}
-                      subtitle="Fallback keyword rule"
-                      domains={rule.domains}
+                      rule={rule}
+                      taskTags={taskTags}
+                      onTagChange={(tagKey) => {
+                        void updateKeywordRuleTag(rule, tagKey);
+                      }}
                       onDelete={async () => {
                         await removeKeywordRule(rule.keyword);
                         await loadData();
@@ -808,129 +860,142 @@ export default function Options(): React.JSX.Element {
           </SettingsGroup>
         </section>
 
-        <section className="fg-card relative overflow-hidden p-5">
-          <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center gap-2">
-              <h2 className="text-lg font-semibold tracking-[-0.02em] text-[var(--fg-text)]">
-                Calendar Workspace
-              </h2>
-              <InfoTip text="Click an event to edit its exact allowlist. Exact Event Rules override keyword fallbacks immediately." />
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <button onClick={() => navigateCalendar('today')} className="fg-button-secondary">
-                Today
-              </button>
-              <button onClick={() => navigateCalendar('prev')} className="fg-button-ghost">
-                Prev
-              </button>
-              <button onClick={() => navigateCalendar('next')} className="fg-button-ghost">
-                Next
-              </button>
-              <div className="ml-1 inline-flex rounded-2xl border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] p-1">
-                {(['dayGridMonth', 'timeGridWeek', 'timeGridDay'] as CalendarView[]).map((view) => (
-                  <button
-                    key={view}
-                    onClick={() => changeView(view)}
-                    className={calendarView === view ? 'fg-segment-active' : 'fg-segment'}
-                  >
-                    {view === 'dayGridMonth' ? 'Month' : view === 'timeGridWeek' ? 'Week' : 'Day'}
+        {surfaceTab === 'workspace' ? (
+          <>
+            <section className="fg-card relative overflow-hidden p-5">
+              <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <h2 className="text-lg font-semibold tracking-[-0.02em] text-[var(--fg-text)]">
+                    Calendar Workspace
+                  </h2>
+                  <InfoTip text="Click an event to edit its exact allowlist. Exact Event Rules override keyword fallbacks immediately." />
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <button onClick={() => navigateCalendar('today')} className="fg-button-secondary">
+                    Today
                   </button>
-                ))}
+                  <button onClick={() => navigateCalendar('prev')} className="fg-button-ghost">
+                    Prev
+                  </button>
+                  <button onClick={() => navigateCalendar('next')} className="fg-button-ghost">
+                    Next
+                  </button>
+                  <div className="ml-1 inline-flex rounded-2xl border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] p-1">
+                    {(['dayGridMonth', 'timeGridWeek', 'timeGridDay'] as CalendarView[]).map((view) => (
+                      <button
+                        key={view}
+                        onClick={() => changeView(view)}
+                        className={calendarView === view ? 'fg-segment-active' : 'fg-segment'}
+                      >
+                        {view === 'dayGridMonth' ? 'Month' : view === 'timeGridWeek' ? 'Week' : 'Day'}
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>
 
-          <div className="mb-4 flex items-center justify-between gap-3">
-            <p className="text-xl font-semibold tracking-[-0.03em] text-[var(--fg-text)]">
-              {calendarTitle || 'Today'}
-            </p>
-            <div className="flex items-center gap-2 text-xs text-[var(--fg-muted)]">
-              <LegendDot tone="emerald" label="Exact rule" />
-              <LegendDot tone="amber" label="Keyword fallback" />
-              <LegendDot tone="slate" label="Unrestricted" />
-            </div>
-          </div>
+              <div className="mb-4 flex items-center justify-between gap-3">
+                <p className="text-xl font-semibold tracking-[-0.03em] text-[var(--fg-text)]">
+                  {calendarTitle || 'Today'}
+                </p>
+                <div className="flex items-center gap-2 text-xs text-[var(--fg-muted)]">
+                  <LegendDot tone="emerald" label="Exact rule" />
+                  <LegendDot tone="amber" label="Keyword fallback" />
+                  <LegendDot tone="slate" label="Unrestricted" />
+                </div>
+              </div>
 
-          {isConnected ? (
-            <div className="fg-calendar-wrap">
-              <FullCalendar
-                ref={calendarRef}
-                plugins={[dayGridPlugin, timeGridPlugin]}
-                initialView={calendarView}
-                headerToolbar={false}
-                height="auto"
-                dayMaxEvents={3}
-                events={workspaceEvents.map((item) => ({
-                  ...calendarEventAppearance(item.event),
-                  id: item.event.id,
-                  title: item.event.title,
-                  start: item.event.start,
-                  end: item.event.end,
-                  allDay: item.event.isAllDay,
-                  extendedProps: {
-                    ruleSource: item.source,
-                    ruleName: item.ruleName,
-                    domains: item.domains,
-                    recurrenceHint: item.event.recurrenceHint,
-                  },
-                }))}
-                datesSet={handleDatesSet}
-                eventClick={handleEventClick}
-                eventDidMount={(arg: EventMountArg) => {
-                  arg.el.dataset.windowEventId = arg.event.id;
-                  arg.el.tabIndex = 0;
-                  if (selectedTooltip?.eventId === arg.event.id) {
-                    arg.el.dataset.windowSelected = 'true';
-                  } else {
-                    delete arg.el.dataset.windowSelected;
-                  }
-                }}
-                eventContent={(arg: EventContentArg) => (
-                  <CalendarEventChip
-                    title={arg.event.title}
-                    timeText={arg.timeText}
-                    backgroundColor={arg.event.backgroundColor}
-                    foregroundColor={arg.event.textColor}
-                  />
-                )}
-              />
-            </div>
-          ) : (
-            <div className="rounded-[28px] border border-dashed border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-8 py-12 text-center">
-              <p className="text-lg font-medium text-[var(--fg-text)]">Connect your calendar to unlock the workspace.</p>
-              <p className="mt-2 text-sm text-[var(--fg-muted)]">
-                Once connected, you’ll get a Google-Calendar-like view where each event can own its whitelist.
-              </p>
-            </div>
-          )}
-        </section>
-
-        <section className="mt-5">
-          <div className="fg-card p-5">
-            <div className="mb-3 flex items-center gap-2">
-              <h2 className="text-sm font-semibold text-[var(--fg-text)]">Exact Event Rules</h2>
-              <InfoTip text="These rules are created from the calendar tooltip and always take precedence over keyword fallback matches." />
-            </div>
-            <div className="space-y-2">
-              {eventRules.length === 0 ? (
-                <EmptyCard text="No Event Rules yet. Click an event in the calendar to start." />
-              ) : (
-                eventRules.map((rule) => (
-                  <RuleListItem
-                    key={rule.eventTitle}
-                    title={rule.eventTitle}
-                    subtitle="Exact title rule"
-                    domains={rule.domains}
-                    onDelete={async () => {
-                      await removeEventRule(rule.eventTitle);
-                      await loadData();
+              {isConnected ? (
+                <div className="fg-calendar-wrap">
+                  <FullCalendar
+                    ref={calendarRef}
+                    plugins={[dayGridPlugin, timeGridPlugin]}
+                    initialView={calendarView}
+                    headerToolbar={false}
+                    height="auto"
+                    dayMaxEvents={3}
+                    events={workspaceEvents.map((item) => ({
+                      ...calendarEventAppearance(item.event),
+                      id: item.event.id,
+                      title: item.event.title,
+                      start: item.event.start,
+                      end: item.event.end,
+                      allDay: item.event.isAllDay,
+                      extendedProps: {
+                        ruleSource: item.source,
+                        ruleName: item.ruleName,
+                        domains: item.domains,
+                        recurrenceHint: item.event.recurrenceHint,
+                      },
+                    }))}
+                    datesSet={handleDatesSet}
+                    eventClick={handleEventClick}
+                    eventDidMount={(arg: EventMountArg) => {
+                      arg.el.dataset.windowEventId = arg.event.id;
+                      arg.el.tabIndex = 0;
+                      if (selectedTooltip?.eventId === arg.event.id) {
+                        arg.el.dataset.windowSelected = 'true';
+                      } else {
+                        delete arg.el.dataset.windowSelected;
+                      }
                     }}
+                    eventContent={(arg: EventContentArg) => (
+                      <CalendarEventChip
+                        title={arg.event.title}
+                        timeText={arg.timeText}
+                        backgroundColor={arg.event.backgroundColor}
+                        foregroundColor={arg.event.textColor}
+                      />
+                    )}
                   />
-                ))
+                </div>
+              ) : (
+                <div className="rounded-[28px] border border-dashed border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-8 py-12 text-center">
+                  <p className="text-lg font-medium text-[var(--fg-text)]">Connect your calendar to unlock the workspace.</p>
+                  <p className="mt-2 text-sm text-[var(--fg-muted)]">
+                    Once connected, you’ll get a Google-Calendar-like view where each event can own its whitelist.
+                  </p>
+                </div>
               )}
-            </div>
-          </div>
-        </section>
+            </section>
+
+            <section className="mt-5">
+              <div className="fg-card p-5">
+                <div className="mb-3 flex items-center gap-2">
+                  <h2 className="text-sm font-semibold text-[var(--fg-text)]">Exact Event Rules</h2>
+                  <InfoTip text="These rules are created from the calendar tooltip and always take precedence over keyword fallback matches." />
+                </div>
+                <div className="space-y-2">
+                  {eventRules.length === 0 ? (
+                    <EmptyCard text="No Event Rules yet. Click an event in the calendar to start." />
+                  ) : (
+                    eventRules.map((rule) => (
+                      <RuleListItem
+                        key={rule.eventTitle}
+                        title={rule.eventTitle}
+                        subtitle="Exact title rule"
+                        domains={rule.domains}
+                        tagLabel={taskTags.find((tag) => tag.key === rule.tagKey)?.label ?? null}
+                        difficultyRank={rule.difficultyOverride}
+                        onDelete={async () => {
+                          await removeEventRule(rule.eventTitle);
+                          await loadData();
+                        }}
+                      />
+                    ))
+                  )}
+                </div>
+              </div>
+            </section>
+          </>
+        ) : (
+          <AnalyticsWorkspace
+            analyticsSnapshot={analyticsSnapshot}
+            taskTags={taskTags}
+            onRefresh={() => sendMessageAsync({ type: 'REFRESH_ANALYTICS_STATE' }).then(loadData)}
+            onSaveOverride={saveSessionOverride}
+          />
+        )}
       </div>
 
       {selectedResolvedEvent && selectedTooltip && (
@@ -938,6 +1003,7 @@ export default function Options(): React.JSX.Element {
           key={selectedResolvedEvent.event.id}
           ref={tooltipRef}
           resolvedEvent={selectedResolvedEvent}
+          taskTags={taskTags}
           anchorRect={selectedTooltip.anchorRect}
           mode={tooltipMode}
           placement={tooltipPlacement}
@@ -955,6 +1021,7 @@ export default function Options(): React.JSX.Element {
 
 const EventRuleTooltip = React.forwardRef<HTMLDivElement, {
   resolvedEvent: ResolvedWorkspaceEvent;
+  taskTags: TaskTag[];
   anchorRect: DOMRect;
   mode: TooltipMode;
   placement: TooltipPlacement;
@@ -966,6 +1033,7 @@ const EventRuleTooltip = React.forwardRef<HTMLDivElement, {
   (
     {
       resolvedEvent,
+      taskTags,
       anchorRect,
       mode,
       placement,
@@ -979,6 +1047,10 @@ const EventRuleTooltip = React.forwardRef<HTMLDivElement, {
     const exactRuleExists = resolvedEvent.source === 'event';
     const currentDomainsValue = resolvedEvent.domains.join(', ');
     const [domainsInput, setDomainsInput] = useState(currentDomainsValue);
+    const [tagKey, setTagKey] = useState(resolvedEvent.tagKey ?? '');
+    const [difficultyRank, setDifficultyRank] = useState<string>(
+      resolvedEvent.difficultyRank ? String(resolvedEvent.difficultyRank) : '',
+    );
     const [editing, setEditing] = useState(!exactRuleExists);
     const [error, setError] = useState('');
     const previousEventIdRef = useRef(resolvedEvent.event.id);
@@ -991,9 +1063,11 @@ const EventRuleTooltip = React.forwardRef<HTMLDivElement, {
       }
       previousEventIdRef.current = resolvedEvent.event.id;
       setDomainsInput(currentDomainsValue);
+      setTagKey(resolvedEvent.tagKey ?? '');
+      setDifficultyRank(resolvedEvent.difficultyRank ? String(resolvedEvent.difficultyRank) : '');
       setEditing(resolvedEvent.source !== 'event');
       setError('');
-    }, [currentDomainsValue, resolvedEvent.event.id, resolvedEvent.source]);
+    }, [currentDomainsValue, resolvedEvent.difficultyRank, resolvedEvent.event.id, resolvedEvent.source, resolvedEvent.tagKey]);
 
     const positioning = mode === 'modal'
       ? {
@@ -1067,6 +1141,46 @@ const EventRuleTooltip = React.forwardRef<HTMLDivElement, {
           </div>
 
           <div className="space-y-3">
+            <div className="grid gap-3 md:grid-cols-2">
+              <div className="space-y-1.5">
+                <p className="text-sm font-medium text-[var(--fg-text)]">Primary tag</p>
+                <select
+                  value={tagKey}
+                  onChange={(event) => setTagKey(event.target.value)}
+                  className="fg-select w-full"
+                >
+                  <option value="">No explicit tag</option>
+                  {taskTags.map((tag) => (
+                    <option key={tag.key} value={tag.key}>
+                      {tag.label}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-xs text-[var(--fg-muted)]">
+                  Exact rules can pin a tag instead of relying on keyword inference.
+                </p>
+              </div>
+
+              <div className="space-y-1.5">
+                <p className="text-sm font-medium text-[var(--fg-text)]">Difficulty</p>
+                <select
+                  value={difficultyRank}
+                  onChange={(event) => setDifficultyRank(event.target.value)}
+                  className="fg-select w-full"
+                >
+                  <option value="">Auto from tag and history</option>
+                  <option value="1">1 · Routine</option>
+                  <option value="2">2 · Light</option>
+                  <option value="3">3 · Standard</option>
+                  <option value="5">5 · Demanding</option>
+                  <option value="8">8 · Deep</option>
+                </select>
+                <p className="text-xs text-[var(--fg-muted)]">
+                  Use an exact override only when this block is consistently easier or harder than the tag default.
+                </p>
+              </div>
+            </div>
+
             <div className="flex items-center justify-between">
               <p className="text-sm font-medium text-[var(--fg-text)]">Allowed sites</p>
               {!editing && (
@@ -1106,6 +1220,10 @@ const EventRuleTooltip = React.forwardRef<HTMLDivElement, {
                         const result = await upsertEventRule(
                           resolvedEvent.event.title,
                           splitDomains(domainsInput),
+                          {
+                            tagKey: tagKey || null,
+                            difficultyOverride: parseDifficultyRank(difficultyRank),
+                          },
                         );
                         onSavingChange(false);
                         if (!result.ok) {
@@ -1123,6 +1241,8 @@ const EventRuleTooltip = React.forwardRef<HTMLDivElement, {
                     <button
                       onClick={() => {
                         setDomainsInput(currentDomainsValue);
+                        setTagKey(resolvedEvent.tagKey ?? '');
+                        setDifficultyRank(resolvedEvent.difficultyRank ? String(resolvedEvent.difficultyRank) : '');
                         setError('');
                         setEditing(false);
                       }}
@@ -1193,11 +1313,15 @@ function RuleListItem({
   title,
   subtitle,
   domains,
+  tagLabel,
+  difficultyRank,
   onDelete,
 }: {
   title: string;
   subtitle: string;
   domains: string[];
+  tagLabel?: string | null;
+  difficultyRank?: DifficultyRank | null;
   onDelete: () => void;
 }): React.JSX.Element {
   return (
@@ -1206,6 +1330,20 @@ function RuleListItem({
         <div>
           <p className="text-sm font-medium text-[var(--fg-text)]">{title}</p>
           <p className="text-xs text-[var(--fg-muted)]">{subtitle}</p>
+          {(tagLabel || difficultyRank) && (
+            <div className="mt-2 flex flex-wrap gap-2">
+              {tagLabel ? (
+                <span className="rounded-full border border-[var(--fg-border)] bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--fg-muted)]">
+                  {tagLabel}
+                </span>
+              ) : null}
+              {difficultyRank ? (
+                <span className="rounded-full border border-[var(--fg-border)] bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--fg-muted)]">
+                  D{difficultyRank}
+                </span>
+              ) : null}
+            </div>
+          )}
         </div>
         <button onClick={onDelete} className="text-sm font-medium text-rose-600 transition hover:text-rose-700">
           Delete
@@ -1224,6 +1362,308 @@ function RuleListItem({
         ) : (
           <span className="text-xs text-[var(--fg-muted)]">No allowed domains configured.</span>
         )}
+      </div>
+    </div>
+  );
+}
+
+function KeywordRuleListItem({
+  rule,
+  taskTags,
+  onTagChange,
+  onDelete,
+}: {
+  rule: KeywordRule;
+  taskTags: TaskTag[];
+  onTagChange: (tagKey: string) => void;
+  onDelete: () => void;
+}): React.JSX.Element {
+  return (
+    <div className="rounded-[22px] border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-4 py-3">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-sm font-medium text-[var(--fg-text)]">{rule.keyword}</p>
+          <p className="text-xs text-[var(--fg-muted)]">Fallback keyword rule</p>
+        </div>
+        <button onClick={onDelete} className="text-sm font-medium text-rose-600 transition hover:text-rose-700">
+          Delete
+        </button>
+      </div>
+
+      <div className="mt-3 grid gap-3 md:grid-cols-[minmax(0,1fr),180px]">
+        <div className="flex flex-wrap gap-2">
+          {rule.domains.length > 0 ? (
+            rule.domains.map((domain) => (
+              <span
+                key={domain}
+                className="rounded-full border border-[var(--fg-border)] bg-white px-2.5 py-1 text-xs font-medium text-[var(--fg-text)]"
+              >
+                {domain}
+              </span>
+            ))
+          ) : (
+            <span className="text-xs text-[var(--fg-muted)]">No allowed domains configured.</span>
+          )}
+        </div>
+
+        <div>
+          <p className="mb-1 text-[11px] font-medium uppercase tracking-[0.12em] text-[var(--fg-muted)]">
+            Linked tag
+          </p>
+          <select
+            value={rule.tagKey ?? ''}
+            onChange={(event) => onTagChange(event.target.value)}
+            className="fg-select w-full"
+          >
+            <option value="">No linked tag</option>
+            {taskTags.map((tag) => (
+              <option key={tag.key} value={tag.key}>
+                {tag.label}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AnalyticsWorkspace({
+  analyticsSnapshot,
+  taskTags,
+  onRefresh,
+  onSaveOverride,
+}: {
+  analyticsSnapshot: AnalyticsSnapshot;
+  taskTags: TaskTag[];
+  onRefresh: () => void;
+  onSaveOverride: (
+    focusSessionId: string,
+    tagKey: string | null,
+    difficultyRank: DifficultyRank | null,
+  ) => void;
+}): React.JSX.Element {
+  const summary = analyticsSnapshot.summary7d;
+  const dailyTrend = buildDailyTrend(analyticsSnapshot.recentSessions);
+
+  return (
+    <div className="space-y-5">
+      <section className="fg-card p-5">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-semibold tracking-[-0.02em] text-[var(--fg-text)]">Analytics</h2>
+            <p className="mt-1 text-sm text-[var(--fg-muted)]">
+              Compact focus reporting across productivity, tags, and difficulty.
+            </p>
+          </div>
+          <button onClick={onRefresh} className="fg-button-secondary px-3 py-2 text-sm">
+            Refresh Analytics
+          </button>
+        </div>
+
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          <AnalyticsMetricCard label="Productive" value={formatMinutes(summary.productiveMinutes)} />
+          <AnalyticsMetricCard label="Supportive" value={formatMinutes(summary.supportiveMinutes)} />
+          <AnalyticsMetricCard label="Distracted" value={formatMinutes(summary.distractedMinutes)} />
+          <AnalyticsMetricCard label="Away" value={formatMinutes(summary.awayMinutes)} />
+        </div>
+      </section>
+
+      <section className="grid gap-4 xl:grid-cols-[minmax(0,0.9fr),minmax(0,1.1fr)]">
+        <div className="fg-card p-5">
+          <div className="mb-3 flex items-center gap-2">
+            <h3 className="text-sm font-semibold text-[var(--fg-text)]">Weekly trend</h3>
+            <InfoTip text="Derived from recent focus sessions. Taller bars mean more productive minutes." />
+          </div>
+          <div className="grid gap-2">
+            {dailyTrend.length === 0 ? (
+              <EmptyCard text="No recent sessions yet." />
+            ) : (
+              dailyTrend.map((day) => (
+                <div key={day.label} className="grid grid-cols-[88px,minmax(0,1fr),72px] items-center gap-3">
+                  <span className="text-xs text-[var(--fg-muted)]">{day.label}</span>
+                  <div className="h-2 overflow-hidden rounded-full bg-[var(--fg-panel-soft)]">
+                    <div
+                      className="h-full rounded-full bg-[var(--fg-accent)]"
+                      style={{ width: `${day.percent}%` }}
+                    />
+                  </div>
+                  <span className="text-xs text-[var(--fg-text)]">{formatMinutes(day.productiveMinutes)}</span>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+
+        <div className="fg-card p-5">
+          <div className="mb-3 flex items-center gap-2">
+            <h3 className="text-sm font-semibold text-[var(--fg-text)]">Time by tag</h3>
+            <InfoTip text="Grouped by the primary task tag on each focus session." />
+          </div>
+          <div className="space-y-2">
+            {analyticsSnapshot.tagBreakdown7d.length === 0 ? (
+              <EmptyCard text="No tagged focus sessions yet." />
+            ) : (
+              analyticsSnapshot.tagBreakdown7d.map((item) => (
+                <div
+                  key={item.tagKey}
+                  className="rounded-[20px] border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-4 py-3"
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2">
+                      <span className="h-2.5 w-2.5 rounded-full" style={{ background: item.color }} />
+                      <p className="text-sm font-medium text-[var(--fg-text)]">{item.label}</p>
+                    </div>
+                    <p className="text-xs text-[var(--fg-muted)]">{formatMinutes(item.productiveMinutes)}</p>
+                  </div>
+                  <p className="mt-1 text-xs text-[var(--fg-muted)]">
+                    {item.sessions} session{item.sessions === 1 ? '' : 's'} · {formatMinutes(item.distractedMinutes)} distracted
+                  </p>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      </section>
+
+      <section className="grid gap-4 xl:grid-cols-[minmax(0,0.82fr),minmax(0,1.18fr)]">
+        <div className="fg-card p-5">
+          <div className="mb-3 flex items-center gap-2">
+            <h3 className="text-sm font-semibold text-[var(--fg-text)]">Difficulty matrix</h3>
+            <InfoTip text="Difficulty is a five-rank scale. Focus score measures productive minutes against distracted and away time." />
+          </div>
+          <div className="space-y-2">
+            {analyticsSnapshot.difficultyBreakdown7d.length === 0 ? (
+              <EmptyCard text="No difficulty data yet." />
+            ) : (
+              analyticsSnapshot.difficultyBreakdown7d.map((item) => (
+                <div
+                  key={item.difficultyRank}
+                  className="rounded-[20px] border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-4 py-3"
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-sm font-medium text-[var(--fg-text)]">Difficulty {item.difficultyRank}</p>
+                    <p className="text-xs text-[var(--fg-muted)]">{item.focusScore}% focus score</p>
+                  </div>
+                  <p className="mt-1 text-xs text-[var(--fg-muted)]">
+                    {formatMinutes(item.productiveMinutes)} productive · {formatMinutes(item.distractedMinutes)} distracted · {item.sessions} session{item.sessions === 1 ? '' : 's'}
+                  </p>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+
+        <div className="fg-card p-5">
+          <div className="mb-3 flex items-center gap-2">
+            <h3 className="text-sm font-semibold text-[var(--fg-text)]">Recent sessions</h3>
+            <InfoTip text="Override tag or difficulty here when Window inferred the wrong classification." />
+          </div>
+          <div className="space-y-3">
+            {analyticsSnapshot.recentSessions.length === 0 ? (
+              <EmptyCard text="No focus sessions recorded yet." />
+            ) : (
+              analyticsSnapshot.recentSessions.map((session) => (
+                <SessionAnalyticsRow
+                  key={session.id}
+                  session={session}
+                  taskTags={taskTags}
+                  onSaveOverride={onSaveOverride}
+                />
+              ))
+            )}
+          </div>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function AnalyticsMetricCard({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}): React.JSX.Element {
+  return (
+    <div className="rounded-[22px] border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-4 py-3">
+      <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-[var(--fg-muted)]">{label}</p>
+      <p className="mt-2 text-2xl font-semibold tracking-[-0.03em] text-[var(--fg-text)]">{value}</p>
+    </div>
+  );
+}
+
+function SessionAnalyticsRow({
+  session,
+  taskTags,
+  onSaveOverride,
+}: {
+  session: FocusSessionRecord;
+  taskTags: TaskTag[];
+  onSaveOverride: (
+    focusSessionId: string,
+    tagKey: string | null,
+    difficultyRank: DifficultyRank | null,
+  ) => void;
+}): React.JSX.Element {
+  const [tagKey, setTagKey] = useState(session.tagKey ?? '');
+  const [difficulty, setDifficulty] = useState(session.difficultyRank ? String(session.difficultyRank) : '');
+
+  useEffect(() => {
+    setTagKey(session.tagKey ?? '');
+    setDifficulty(session.difficultyRank ? String(session.difficultyRank) : '');
+  }, [session.difficultyRank, session.id, session.tagKey]);
+
+  return (
+    <div className="rounded-[20px] border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-4 py-3">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p className="text-sm font-medium text-[var(--fg-text)]">{session.eventTitle}</p>
+          <p className="mt-1 text-xs text-[var(--fg-muted)]">
+            {formatSessionRange(session)} · {formatMinutes(session.productiveMinutes)} productive · {formatMinutes(session.distractedMinutes)} distracted
+          </p>
+        </div>
+        {session.leftEarly ? (
+          <span className="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-amber-800">
+            Left early
+          </span>
+        ) : null}
+      </div>
+
+      <div className="mt-3 grid gap-3 md:grid-cols-[minmax(0,1fr),140px,120px]">
+        <select
+          value={tagKey}
+          onChange={(event) => setTagKey(event.target.value)}
+          className="fg-select"
+        >
+          <option value="">No tag</option>
+          {taskTags.map((tag) => (
+            <option key={tag.key} value={tag.key}>
+              {tag.label}
+            </option>
+          ))}
+        </select>
+
+        <select
+          value={difficulty}
+          onChange={(event) => setDifficulty(event.target.value)}
+          className="fg-select"
+        >
+          <option value="">Auto</option>
+          <option value="1">1</option>
+          <option value="2">2</option>
+          <option value="3">3</option>
+          <option value="5">5</option>
+          <option value="8">8</option>
+        </select>
+
+        <button
+          onClick={() => onSaveOverride(session.id, tagKey || null, parseDifficultyRank(difficulty))}
+          className="fg-button-secondary px-3 py-2 text-sm"
+        >
+          Save
+        </button>
       </div>
     </div>
   );
@@ -1307,6 +1747,62 @@ function splitDomains(value: string): string[] {
     .filter(Boolean);
 }
 
+function resolveWorkspaceEvent(
+  event: CalendarEvent,
+  eventRules: EventRule[],
+  keywordRules: KeywordRule[],
+  taskTags: TaskTag[],
+  recentSessions: FocusSessionRecord[],
+  settings: Settings | null,
+): ResolvedWorkspaceEvent {
+  const exactRule = eventRules.find((rule) => rule.eventTitle === event.title);
+  const keywordRule = settings?.keywordAutoMatchEnabled
+    ? findBestKeywordRule(event.title, keywordRules)
+    : null;
+  const inferredTagKey = exactRule?.tagKey ?? keywordRule?.tagKey ?? inferTaskTagKeyFromTitle(event.title, taskTags);
+  const tag = findTaskTag(taskTags, inferredTagKey);
+  const difficultyRank = inferredTagKey
+    ? deriveDifficultyRank({
+        baselineDifficulty: tag?.baselineDifficulty ?? null,
+        scheduledStart: event.start,
+        scheduledEnd: event.end,
+        priorSessions: recentSessions.filter((session) => session.tagKey === inferredTagKey),
+        override: exactRule?.difficultyOverride ?? null,
+      })
+    : exactRule?.difficultyOverride ?? null;
+
+  if (exactRule) {
+    return {
+      event,
+      source: 'event',
+      ruleName: exactRule.eventTitle,
+      domains: exactRule.domains,
+      tagKey: inferredTagKey,
+      difficultyRank,
+    };
+  }
+
+  if (keywordRule) {
+    return {
+      event,
+      source: 'keyword',
+      ruleName: keywordRule.keyword,
+      domains: keywordRule.domains,
+      tagKey: inferredTagKey,
+      difficultyRank,
+    };
+  }
+
+  return {
+    event,
+    source: 'none',
+    ruleName: null,
+    domains: [],
+    tagKey: inferredTagKey,
+    difficultyRank,
+  };
+}
+
 function findBestKeywordRule(eventTitle: string, rules: KeywordRule[]): KeywordRule | null {
   const lower = eventTitle.toLowerCase();
   const matches = rules.filter((rule) => lower.includes(rule.keyword.toLowerCase()));
@@ -1366,6 +1862,57 @@ function formatEventRange(event: CalendarEvent): string {
     hour: 'numeric',
     minute: '2-digit',
   })}`;
+}
+
+function formatSessionRange(session: FocusSessionRecord): string {
+  return `${new Date(session.scheduledStart).toLocaleDateString([], {
+    month: 'short',
+    day: 'numeric',
+  })} · ${new Date(session.scheduledStart).toLocaleTimeString([], {
+    hour: 'numeric',
+    minute: '2-digit',
+  })} – ${new Date(session.scheduledEnd).toLocaleTimeString([], {
+    hour: 'numeric',
+    minute: '2-digit',
+  })}`;
+}
+
+function buildDailyTrend(sessions: FocusSessionRecord[]): Array<{
+  label: string;
+  productiveMinutes: number;
+  percent: number;
+}> {
+  const byDay = new Map<string, number>();
+  for (const session of sessions.slice(0, 21)) {
+    const label = new Date(session.startedAt).toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' });
+    byDay.set(label, (byDay.get(label) ?? 0) + session.productiveMinutes);
+  }
+
+  const max = Math.max(0, ...byDay.values());
+  return [...byDay.entries()].map(([label, productiveMinutes]) => ({
+    label,
+    productiveMinutes,
+    percent: max > 0 ? (productiveMinutes / max) * 100 : 0,
+  }));
+}
+
+function formatMinutes(value: number): string {
+  if (value <= 0) return '0m';
+  if (value >= 60) {
+    const hours = Math.floor(value / 60);
+    const minutes = value % 60;
+    return minutes > 0 ? `${hours}h ${minutes}m` : `${hours}h`;
+  }
+  return `${value}m`;
+}
+
+function parseDifficultyRank(value: string): DifficultyRank | null {
+  const next = Number(value);
+  if (next === 1 || next === 2 || next === 3 || next === 5 || next === 8) {
+    return next;
+  }
+
+  return null;
 }
 
 function truncate(value: string, length: number): string {

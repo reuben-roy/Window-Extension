@@ -1,4 +1,5 @@
 import type {
+  AnalyticsSnapshot,
   AccountSyncState,
   AllTimeStats,
   AssistantOptions,
@@ -6,6 +7,7 @@ import type {
   OpenClawState,
   Settings,
   SnoozeState,
+  TaskTag,
 } from './types';
 
 // ─── Defaults ────────────────────────────────────────────────────────────────
@@ -54,6 +56,112 @@ export const DEFAULT_ALL_TIME_STATS: AllTimeStats = {
   tasksCompleted: 0,
   bestWeek: 0,
   currentWeekStreak: 0,
+};
+
+const DEFAULT_TAG_UPDATED_AT = '1970-01-01T00:00:00.000Z';
+
+export const DEFAULT_TASK_TAGS: TaskTag[] = [
+  {
+    key: 'coding',
+    label: 'Coding',
+    color: '#2563eb',
+    aliases: ['coding', 'code', 'development', 'dev', 'build', 'implement', 'pair programming'],
+    baselineDifficulty: 5,
+    alignedDomains: ['github.com', 'gitlab.com', 'localhost', 'linear.app'],
+    supportiveDomains: ['stackoverflow.com', 'developer.mozilla.org', 'docs.google.com'],
+    source: 'seed',
+    updatedAt: DEFAULT_TAG_UPDATED_AT,
+  },
+  {
+    key: 'research',
+    label: 'Research',
+    color: '#7c3aed',
+    aliases: ['research', 'investigation', 'investigate', 'reading', 'analyze'],
+    baselineDifficulty: 3,
+    alignedDomains: ['arxiv.org', 'scholar.google.com', 'semanticscholar.org'],
+    supportiveDomains: ['google.com', 'wikipedia.org', 'youtube.com'],
+    source: 'seed',
+    updatedAt: DEFAULT_TAG_UPDATED_AT,
+  },
+  {
+    key: 'writing',
+    label: 'Writing',
+    color: '#0f766e',
+    aliases: ['writing', 'write', 'draft', 'docs', 'documentation', 'spec'],
+    baselineDifficulty: 3,
+    alignedDomains: ['docs.google.com', 'notion.so', 'quip.com'],
+    supportiveDomains: ['grammarly.com', 'dictionary.com'],
+    source: 'seed',
+    updatedAt: DEFAULT_TAG_UPDATED_AT,
+  },
+  {
+    key: 'admin',
+    label: 'Admin',
+    color: '#64748b',
+    aliases: ['admin', 'inbox', 'email', 'ops', 'paperwork', 'triage'],
+    baselineDifficulty: 1,
+    alignedDomains: ['mail.google.com', 'calendar.google.com', 'drive.google.com'],
+    supportiveDomains: ['docs.google.com', 'sheets.google.com'],
+    source: 'seed',
+    updatedAt: DEFAULT_TAG_UPDATED_AT,
+  },
+  {
+    key: 'learning',
+    label: 'Learning',
+    color: '#ea580c',
+    aliases: ['learning', 'study', 'practice', 'course', 'lesson', 'class'],
+    baselineDifficulty: 3,
+    alignedDomains: ['coursera.org', 'udemy.com', 'leetcode.com'],
+    supportiveDomains: ['youtube.com', 'docs.google.com'],
+    source: 'seed',
+    updatedAt: DEFAULT_TAG_UPDATED_AT,
+  },
+  {
+    key: 'design',
+    label: 'Design',
+    color: '#db2777',
+    aliases: ['design', 'figma', 'mockup', 'prototype', 'ux'],
+    baselineDifficulty: 5,
+    alignedDomains: ['figma.com', 'miro.com', 'canva.com'],
+    supportiveDomains: ['dribbble.com', 'behance.net'],
+    source: 'seed',
+    updatedAt: DEFAULT_TAG_UPDATED_AT,
+  },
+  {
+    key: 'communication',
+    label: 'Communication',
+    color: '#0891b2',
+    aliases: ['meeting', 'sync', 'call', '1:1', 'standup', 'communication'],
+    baselineDifficulty: 2,
+    alignedDomains: ['meet.google.com', 'zoom.us', 'slack.com'],
+    supportiveDomains: ['calendar.google.com', 'docs.google.com'],
+    source: 'seed',
+    updatedAt: DEFAULT_TAG_UPDATED_AT,
+  },
+];
+
+function createEmptyAnalyticsSummary(range: '7d' | '30d') {
+  return {
+    range,
+    productiveMinutes: 0,
+    supportiveMinutes: 0,
+    distractedMinutes: 0,
+    awayMinutes: 0,
+    breakMinutes: 0,
+    totalFocusSessions: 0,
+    leftEarlyCount: 0,
+  };
+}
+
+export const DEFAULT_ANALYTICS_SNAPSHOT: AnalyticsSnapshot = {
+  currentSession: null,
+  summary7d: createEmptyAnalyticsSummary('7d'),
+  summary30d: createEmptyAnalyticsSummary('30d'),
+  tagBreakdown7d: [],
+  difficultyBreakdown7d: [],
+  recentSessions: [],
+  lastCalculatedAt: null,
+  lastSyncedAt: null,
 };
 
 export const DEFAULT_ASSISTANT_OPTIONS: AssistantOptions = {

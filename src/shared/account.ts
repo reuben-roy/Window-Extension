@@ -2,6 +2,7 @@ import {
   DEFAULT_ACCOUNT_SYNC_STATE,
   DEFAULT_ALL_TIME_STATS,
   DEFAULT_GLOBAL_ALLOWLIST,
+  DEFAULT_TASK_TAGS,
 } from './constants';
 import {
   getAllTimeStats,
@@ -11,7 +12,9 @@ import {
   getKeywordRules,
   getPointsHistory,
   getProfiles,
+  getTaskTags,
 } from './storage';
+import { ensureDefaultTaskTags, ensureRuleMetadata } from './tags';
 import type {
   AccountSnapshot,
   AccountSyncState,
@@ -20,6 +23,7 @@ import type {
   KeywordRule,
   PointsHistory,
   Profiles,
+  TaskTag,
 } from './types';
 
 export const ACCOUNT_SYNCED_STORAGE_KEYS = [
@@ -29,6 +33,7 @@ export const ACCOUNT_SYNCED_STORAGE_KEYS = [
   'eventBindings',
   'eventRules',
   'keywordRules',
+  'taskTags',
   'globalAllowlist',
 ] as const;
 
@@ -40,6 +45,7 @@ export function createEmptyAccountSnapshot(): AccountSnapshot {
     eventBindings: {},
     eventRules: [],
     keywordRules: [],
+    taskTags: [...DEFAULT_TASK_TAGS],
     globalAllowlist: [...DEFAULT_GLOBAL_ALLOWLIST],
   };
 }
@@ -56,6 +62,7 @@ export async function buildAccountSnapshotFromStorage(): Promise<AccountSnapshot
     eventBindings,
     eventRules,
     keywordRules,
+    taskTags,
     globalAllowlist,
   ] = await Promise.all([
     getAllTimeStats(),
@@ -64,6 +71,7 @@ export async function buildAccountSnapshotFromStorage(): Promise<AccountSnapshot
     getEventBindings(),
     getEventRules(),
     getKeywordRules(),
+    getTaskTags(),
     getGlobalAllowlist(),
   ]);
 
@@ -74,6 +82,7 @@ export async function buildAccountSnapshotFromStorage(): Promise<AccountSnapshot
     eventBindings,
     eventRules,
     keywordRules,
+    taskTags,
     globalAllowlist,
   });
 }
@@ -91,6 +100,7 @@ export async function applyAccountSnapshotToStorage(
         eventBindings: normalized.eventBindings,
         eventRules: normalized.eventRules,
         keywordRules: normalized.keywordRules,
+        taskTags: normalized.taskTags,
         globalAllowlist: normalized.globalAllowlist,
       },
       () => {
@@ -108,6 +118,12 @@ export function normalizeAccountSnapshot(
   snapshot: Partial<AccountSnapshot> | null | undefined,
 ): AccountSnapshot {
   const empty = createEmptyAccountSnapshot();
+  const migrated = ensureRuleMetadata(
+    snapshot?.eventRules ?? empty.eventRules,
+    snapshot?.keywordRules ?? empty.keywordRules,
+    snapshot?.taskTags ?? empty.taskTags,
+  );
+
   return {
     allTimeStats: {
       ...empty.allTimeStats,
@@ -116,15 +132,16 @@ export function normalizeAccountSnapshot(
     pointsHistory: normalizePointsHistory(snapshot?.pointsHistory ?? empty.pointsHistory),
     profiles: normalizeProfiles(snapshot?.profiles ?? empty.profiles),
     eventBindings: normalizeStringRecord(snapshot?.eventBindings ?? empty.eventBindings),
-    eventRules: normalizeEventRules(snapshot?.eventRules ?? empty.eventRules),
-    keywordRules: normalizeKeywordRules(snapshot?.keywordRules ?? empty.keywordRules),
+    eventRules: normalizeEventRules(migrated.eventRules),
+    keywordRules: normalizeKeywordRules(migrated.keywordRules),
+    taskTags: normalizeTaskTags(migrated.taskTags),
     globalAllowlist: normalizeStringArray(snapshot?.globalAllowlist ?? empty.globalAllowlist),
   };
 }
 
 export function accountSnapshotHasUserData(snapshot: AccountSnapshot): boolean {
   const normalized = normalizeAccountSnapshot(snapshot);
-  const empty = createEmptyAccountSnapshot();
+  const empty = normalizeAccountSnapshot(createEmptyAccountSnapshot());
 
   return (
     JSON.stringify(normalized.allTimeStats) !== JSON.stringify(empty.allTimeStats) ||
@@ -133,6 +150,7 @@ export function accountSnapshotHasUserData(snapshot: AccountSnapshot): boolean {
     Object.keys(normalized.eventBindings).length > 0 ||
     normalized.eventRules.length > 0 ||
     normalized.keywordRules.length > 0 ||
+    JSON.stringify(normalized.taskTags) !== JSON.stringify(empty.taskTags) ||
     JSON.stringify(normalized.globalAllowlist) !== JSON.stringify(empty.globalAllowlist)
   );
 }
@@ -159,6 +177,7 @@ function serializeAccountSnapshot(snapshot: AccountSnapshot): string {
     eventBindings: sortObject(normalized.eventBindings),
     eventRules: [...normalized.eventRules].sort((a, b) => a.eventTitle.localeCompare(b.eventTitle)),
     keywordRules: [...normalized.keywordRules].sort((a, b) => a.keyword.localeCompare(b.keyword)),
+    taskTags: [...normalized.taskTags].sort((a, b) => a.key.localeCompare(b.key)),
     globalAllowlist: [...normalized.globalAllowlist].sort(),
   });
 }
@@ -191,6 +210,8 @@ function normalizeEventRules(rules: EventRule[]): EventRule[] {
     .map((rule) => ({
       eventTitle: rule.eventTitle,
       domains: normalizeStringArray(rule.domains),
+      tagKey: typeof rule.tagKey === 'string' && rule.tagKey.trim().length > 0 ? rule.tagKey : null,
+      difficultyOverride: rule.difficultyOverride ?? null,
     }));
 }
 
@@ -201,7 +222,12 @@ function normalizeKeywordRules(rules: KeywordRule[]): KeywordRule[] {
       keyword: rule.keyword,
       domains: normalizeStringArray(rule.domains),
       createdAt: rule.createdAt,
+      tagKey: typeof rule.tagKey === 'string' && rule.tagKey.trim().length > 0 ? rule.tagKey : null,
     }));
+}
+
+function normalizeTaskTags(tags: TaskTag[]): TaskTag[] {
+  return ensureDefaultTaskTags(tags);
 }
 
 function normalizeStringArray(values: string[]): string[] {

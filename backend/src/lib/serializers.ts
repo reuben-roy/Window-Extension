@@ -8,6 +8,7 @@ import type {
 import type {
   AccountSnapshotPayload,
   AccountUserPayload,
+  FocusSessionPayload,
   IdeaReportPayload,
   OpenClawJobPayload,
   OpenClawSessionPayload,
@@ -59,6 +60,7 @@ export function toAccountSnapshotPayload(value: unknown): AccountSnapshotPayload
     eventBindings: coerceStringRecord(snapshot.eventBindings),
     eventRules: coerceEventRules(snapshot.eventRules),
     keywordRules: coerceKeywordRules(snapshot.keywordRules),
+    taskTags: coerceTaskTags(snapshot.taskTags),
     globalAllowlist: coerceStringArray(snapshot.globalAllowlist),
   };
 }
@@ -162,6 +164,52 @@ export function toRecommendationPayload(recommendation: Recommendation): {
   };
 }
 
+export function toFocusSessionPayload(session: {
+  id: string;
+  clientSessionId?: string;
+  calendarEventId: string;
+  eventTitle: string;
+  scheduledStart: Date;
+  scheduledEnd: Date;
+  startedAt: Date;
+  endedAt: Date;
+  sourceRuleType: string;
+  sourceRuleName: string | null;
+  tagKey: string | null;
+  difficultyRank: number | null;
+  productiveMinutes: number;
+  supportiveMinutes: number;
+  distractedMinutes: number;
+  awayMinutes: number;
+  breakMinutes: number;
+  totalTrackedMinutes: number;
+  leftEarly: boolean;
+}): FocusSessionPayload {
+  return {
+    id: session.clientSessionId ?? session.id,
+    calendarEventId: session.calendarEventId,
+    eventTitle: session.eventTitle,
+    scheduledStart: session.scheduledStart.toISOString(),
+    scheduledEnd: session.scheduledEnd.toISOString(),
+    startedAt: session.startedAt.toISOString(),
+    endedAt: session.endedAt.toISOString(),
+    sourceRuleType:
+      session.sourceRuleType === 'event' || session.sourceRuleType === 'keyword'
+        ? session.sourceRuleType
+        : 'none',
+    sourceRuleName: session.sourceRuleName,
+    tagKey: session.tagKey,
+    difficultyRank: normalizeDifficulty(session.difficultyRank),
+    productiveMinutes: session.productiveMinutes,
+    supportiveMinutes: session.supportiveMinutes,
+    distractedMinutes: session.distractedMinutes,
+    awayMinutes: session.awayMinutes,
+    breakMinutes: session.breakMinutes,
+    totalTrackedMinutes: session.totalTrackedMinutes,
+    leftEarly: session.leftEarly,
+  };
+}
+
 function normalizeViability(value: string): IdeaReportPayload['viability'] {
   if (value === 'low' || value === 'moderate' || value === 'high') {
     return value;
@@ -206,10 +254,19 @@ function coerceEventRules(value: unknown): AccountSnapshotPayload['eventRules'] 
   if (!Array.isArray(value)) return [];
 
   return value
-    .filter((item): item is { eventTitle?: unknown; domains?: unknown } => Boolean(item && typeof item === 'object'))
+    .filter(
+      (item): item is {
+        eventTitle?: unknown;
+        domains?: unknown;
+        tagKey?: unknown;
+        difficultyOverride?: unknown;
+      } => Boolean(item && typeof item === 'object'),
+    )
     .map((item) => ({
       eventTitle: typeof item.eventTitle === 'string' ? item.eventTitle : '',
       domains: coerceStringArray(item.domains),
+      tagKey: typeof item.tagKey === 'string' ? item.tagKey : null,
+      difficultyOverride: normalizeDifficulty(item.difficultyOverride),
     }))
     .filter((item) => item.eventTitle.length > 0);
 }
@@ -219,7 +276,7 @@ function coerceKeywordRules(value: unknown): AccountSnapshotPayload['keywordRule
 
   return value
     .filter(
-      (item): item is { keyword?: unknown; domains?: unknown; createdAt?: unknown } =>
+      (item): item is { keyword?: unknown; domains?: unknown; createdAt?: unknown; tagKey?: unknown } =>
         Boolean(item && typeof item === 'object'),
     )
     .map((item) => ({
@@ -229,8 +286,47 @@ function coerceKeywordRules(value: unknown): AccountSnapshotPayload['keywordRule
         typeof item.createdAt === 'string'
           ? item.createdAt
           : new Date(0).toISOString(),
+      tagKey: typeof item.tagKey === 'string' ? item.tagKey : null,
     }))
     .filter((item) => item.keyword.length > 0);
+}
+
+function coerceTaskTags(value: unknown): AccountSnapshotPayload['taskTags'] {
+  if (!Array.isArray(value)) return [];
+
+  return value
+    .filter(
+      (item): item is {
+        key?: unknown;
+        label?: unknown;
+        color?: unknown;
+        aliases?: unknown;
+        baselineDifficulty?: unknown;
+        alignedDomains?: unknown;
+        supportiveDomains?: unknown;
+        source?: unknown;
+        updatedAt?: unknown;
+      } => Boolean(item && typeof item === 'object'),
+    )
+    .map((item) => ({
+      key: typeof item.key === 'string' ? item.key : '',
+      label: typeof item.label === 'string' ? item.label : '',
+      color: typeof item.color === 'string' ? item.color : '#64748b',
+      aliases: coerceStringArray(item.aliases),
+      baselineDifficulty: normalizeDifficulty(item.baselineDifficulty) ?? 3,
+      alignedDomains: coerceStringArray(item.alignedDomains),
+      supportiveDomains: coerceStringArray(item.supportiveDomains),
+      source: (
+        item.source === 'keyword' || item.source === 'auto' || item.source === 'user'
+          ? item.source
+          : 'seed'
+      ) as AccountSnapshotPayload['taskTags'][number]['source'],
+      updatedAt:
+        typeof item.updatedAt === 'string'
+          ? item.updatedAt
+          : new Date(0).toISOString(),
+    }))
+    .filter((item) => item.key.length > 0);
 }
 
 function coercePointsHistory(value: unknown): AccountSnapshotPayload['pointsHistory'] {
@@ -249,4 +345,12 @@ function coercePointsHistory(value: unknown): AccountSnapshotPayload['pointsHist
     };
     return acc;
   }, {});
+}
+
+function normalizeDifficulty(value: unknown): 1 | 2 | 3 | 5 | 8 | null {
+  if (value === 1 || value === 2 || value === 3 || value === 5 || value === 8) {
+    return value;
+  }
+
+  return null;
 }

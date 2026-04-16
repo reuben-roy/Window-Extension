@@ -20,16 +20,35 @@ export type OpenClawSessionStatus = 'active' | 'idle' | 'closed';
 export type OpenClawJobStatus = 'queued' | 'running' | 'completed' | 'failed' | 'cancelled';
 export type OpenClawTransport = 'ssh' | 'http' | 'unknown';
 export type RecommendationKind = 'focus' | 'calendar' | 'interest' | 'automation';
+export type DifficultyRank = 1 | 2 | 3 | 5 | 8;
+export type ActivityClass = 'aligned' | 'supportive' | 'distracted' | 'away' | 'break';
+export type TaskTagSource = 'seed' | 'keyword' | 'auto' | 'user';
+export type AnalyticsRange = '7d' | '30d';
+
+export interface TaskTag {
+  key: string;
+  label: string;
+  color: string;
+  aliases: string[];
+  baselineDifficulty: DifficultyRank;
+  alignedDomains: string[];
+  supportiveDomains: string[];
+  source: TaskTagSource;
+  updatedAt: string;
+}
 
 export interface EventRule {
   eventTitle: string;
   domains: string[];
+  tagKey: string | null;
+  difficultyOverride: DifficultyRank | null;
 }
 
 export interface KeywordRule {
   keyword: string;
   domains: string[];
   createdAt: string;
+  tagKey: string | null;
 }
 
 export type ActiveRuleSource = 'event' | 'keyword' | 'none';
@@ -141,6 +160,7 @@ export interface AccountSnapshot {
   eventBindings: EventBindings;
   eventRules: EventRule[];
   keywordRules: KeywordRule[];
+  taskTags: TaskTag[];
   globalAllowlist: string[];
 }
 
@@ -261,6 +281,126 @@ export interface BreakVisitEvent {
   activeEventTitle: string | null;
 }
 
+export interface EventPatternStat {
+  pattern: string;
+  label: string;
+  occurrences: number;
+  correctionCount: number;
+  correctedTagKey: string | null;
+  autoTagKey: string | null;
+  lastSeenAt: string;
+}
+
+export interface ActivitySessionRecord {
+  id: string;
+  focusSessionId: string;
+  calendarEventId: string;
+  eventTitle: string;
+  domain: string | null;
+  startedAt: string;
+  endedAt: string;
+  activityClass: ActivityClass;
+  tagKey: string | null;
+  difficultyRank: DifficultyRank | null;
+  sourceRuleType: ActiveRuleSource;
+  sourceRuleName: string | null;
+}
+
+export interface FocusSessionRecord {
+  id: string;
+  calendarEventId: string;
+  eventTitle: string;
+  scheduledStart: string;
+  scheduledEnd: string;
+  startedAt: string;
+  endedAt: string;
+  sourceRuleType: ActiveRuleSource;
+  sourceRuleName: string | null;
+  tagKey: string | null;
+  difficultyRank: DifficultyRank | null;
+  productiveMinutes: number;
+  supportiveMinutes: number;
+  distractedMinutes: number;
+  awayMinutes: number;
+  breakMinutes: number;
+  totalTrackedMinutes: number;
+  leftEarly: boolean;
+}
+
+export interface ActiveFocusSessionState {
+  session: FocusSessionRecord;
+  lastProductiveAt: string | null;
+}
+
+export interface ActiveActivitySessionState extends ActivitySessionRecord {}
+
+export interface TagBreakdownItem {
+  tagKey: string;
+  label: string;
+  color: string;
+  productiveMinutes: number;
+  supportiveMinutes: number;
+  distractedMinutes: number;
+  awayMinutes: number;
+  breakMinutes: number;
+  sessions: number;
+}
+
+export interface DifficultyBreakdownItem {
+  difficultyRank: DifficultyRank;
+  focusScore: number;
+  productiveMinutes: number;
+  distractedMinutes: number;
+  awayMinutes: number;
+  sessions: number;
+}
+
+export interface AnalyticsSummary {
+  range: AnalyticsRange;
+  productiveMinutes: number;
+  supportiveMinutes: number;
+  distractedMinutes: number;
+  awayMinutes: number;
+  breakMinutes: number;
+  totalFocusSessions: number;
+  leftEarlyCount: number;
+}
+
+export interface LiveAnalyticsSession {
+  focusSessionId: string;
+  eventTitle: string;
+  tagKey: string | null;
+  tagLabel: string | null;
+  difficultyRank: DifficultyRank | null;
+  sourceRuleType: ActiveRuleSource;
+  sourceRuleName: string | null;
+  currentActivityClass: ActivityClass | null;
+  startedAt: string;
+  scheduledEnd: string;
+  productiveMinutes: number;
+  supportiveMinutes: number;
+  distractedMinutes: number;
+  awayMinutes: number;
+  breakMinutes: number;
+}
+
+export interface AnalyticsSnapshot {
+  currentSession: LiveAnalyticsSession | null;
+  summary7d: AnalyticsSummary;
+  summary30d: AnalyticsSummary;
+  tagBreakdown7d: TagBreakdownItem[];
+  difficultyBreakdown7d: DifficultyBreakdownItem[];
+  recentSessions: FocusSessionRecord[];
+  lastCalculatedAt: string | null;
+  lastSyncedAt: string | null;
+}
+
+export interface AnalyticsOverrideInput {
+  focusSessionId: string;
+  tagKey: string | null;
+  difficultyRank: DifficultyRank | null;
+}
+
 export interface RecommendationCard {
   id: string;
   title: string;
@@ -345,6 +485,12 @@ export interface CalendarState {
   activeRuleSource: ActiveRuleSource;
   /** Event title for exact rules, keyword text for keyword fallback, null when unrestricted. */
   activeRuleName: string | null;
+  /** Resolved primary tag key for the active event, even when browsing is unrestricted. */
+  primaryTagKey: string | null;
+  /** Human-friendly label for the resolved primary tag. */
+  primaryTagLabel: string | null;
+  /** Resolved difficulty rank for the active event. */
+  difficultyRank: DifficultyRank | null;
   /**
    * Effective allowed domains right now (intersection of bound-event profiles
    * + globalAllowlist). Empty = unrestricted (no binding found).
@@ -367,6 +513,7 @@ export interface StorageData {
   eventBindings: EventBindings;
   eventRules: EventRule[];
   keywordRules: KeywordRule[];
+  taskTags: TaskTag[];
   settings: Settings;
   taskQueue: Task[];
   snoozeState: SnoozeState;
@@ -400,7 +547,9 @@ export type MessageType =
   | 'CANCEL_OPENCLAW_JOB'
   | 'UPDATE_ASSISTANT_OPTIONS'
   | 'MARK_DONE'
-  | 'DISMISS_TASK';
+  | 'DISMISS_TASK'
+  | 'SAVE_ANALYTICS_OVERRIDE'
+  | 'REFRESH_ANALYTICS_STATE';
 
 export interface Message {
   type: MessageType;
@@ -415,6 +564,7 @@ export interface StateResponse {
   calendarState: CalendarState;
   eventRules: EventRule[];
   keywordRules: KeywordRule[];
+  taskTags: TaskTag[];
   backendSession: BackendSession | null;
   accountUser: AccountUser | null;
   accountSyncState: AccountSyncState;
@@ -423,4 +573,5 @@ export interface StateResponse {
   assistantOptions: AssistantOptions;
   ideaState: IdeaState;
   openClawState: OpenClawState;
+  analyticsSnapshot: AnalyticsSnapshot;
 }

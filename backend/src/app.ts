@@ -14,6 +14,7 @@ import { openClawConnector } from './lib/openclaw/client.js';
 import {
   toAccountSnapshotPayload,
   toAccountUserPayload,
+  toFocusSessionPayload,
   toIdeaRecordPayload,
   toInterestPayload,
   toOpenClawJobPayload,
@@ -67,6 +68,63 @@ const accountSnapshotPutSchema = z.object({
   data: z.unknown(),
 });
 
+const difficultyRankSchema = z.union([
+  z.literal(1),
+  z.literal(2),
+  z.literal(3),
+  z.literal(5),
+  z.literal(8),
+]);
+
+const activitySessionsBatchSchema = z.object({
+  focusSessions: z.array(
+    z.object({
+      id: z.string().min(1),
+      calendarEventId: z.string().min(1),
+      eventTitle: z.string().min(1),
+      scheduledStart: z.string().datetime(),
+      scheduledEnd: z.string().datetime(),
+      startedAt: z.string().datetime(),
+      endedAt: z.string().datetime(),
+      sourceRuleType: z.enum(['event', 'keyword', 'none']),
+      sourceRuleName: z.string().nullable(),
+      tagKey: z.string().nullable(),
+      difficultyRank: difficultyRankSchema.nullable(),
+      productiveMinutes: z.number().int().min(0),
+      supportiveMinutes: z.number().int().min(0),
+      distractedMinutes: z.number().int().min(0),
+      awayMinutes: z.number().int().min(0),
+      breakMinutes: z.number().int().min(0),
+      totalTrackedMinutes: z.number().int().min(0),
+      leftEarly: z.boolean(),
+    }),
+  ),
+  activitySessions: z.array(
+    z.object({
+      id: z.string().min(1),
+      focusSessionId: z.string().min(1),
+      calendarEventId: z.string().min(1),
+      eventTitle: z.string().min(1),
+      domain: z.string().nullable(),
+      startedAt: z.string().datetime(),
+      endedAt: z.string().datetime(),
+      activityClass: z.enum(['aligned', 'supportive', 'distracted', 'away', 'break']),
+      tagKey: z.string().nullable(),
+      difficultyRank: difficultyRankSchema.nullable(),
+      sourceRuleType: z.enum(['event', 'keyword', 'none']),
+      sourceRuleName: z.string().nullable(),
+    }),
+  ),
+});
+
+const analyticsOverrideSchema = z.object({
+  focusSessionId: z.string().min(1),
+  tagKey: z.string().nullable(),
+  difficultyRank: difficultyRankSchema.nullable(),
+});
+
+const analyticsRangeSchema = z.enum(['7d', '30d']);
+
 const emptyAccountSnapshot = (): AccountSnapshotPayload => ({
   allTimeStats: {
     totalPoints: 0,
@@ -82,6 +140,7 @@ const emptyAccountSnapshot = (): AccountSnapshotPayload => ({
   eventBindings: {},
   eventRules: [],
   keywordRules: [],
+  taskTags: [],
   globalAllowlist: ['accounts.google.com'],
 });
 
@@ -194,6 +253,7 @@ export async function buildApp() {
           snapshot: nextData as unknown as Prisma.InputJsonValue,
         },
       });
+      await syncTaskTagsFromSnapshot(user.id, nextData);
 
       return {
         revision: created.revision,
@@ -220,6 +280,7 @@ export async function buildApp() {
           snapshot: nextData as unknown as Prisma.InputJsonValue,
         },
       });
+    await syncTaskTagsFromSnapshot(user.id, nextData);
 
     return {
       revision: updated.revision,
@@ -630,6 +691,135 @@ export async function buildApp() {
     };
   });
 
+  app.post('/v1/activity-sessions/batch', async (request, reply) => {
+    const user = await getUserOrReply(request, reply);
+    if (!user) return;
+
+    const body = activitySessionsBatchSchema.parse(request.body);
+    if (body.focusSessions.length === 0 && body.activitySessions.length === 0) {
+      return { accepted: 0 };
+    }
+
+    const focusIdMap = new Map<string, string>();
+    await prisma.$transaction(async (tx) => {
+      for (const session of body.focusSessions) {
+        const upserted = await tx.focusSession.upsert({
+          where: {
+            userId_clientSessionId: {
+              userId: user.id,
+              clientSessionId: session.id,
+            },
+          },
+          update: {
+            calendarEventId: session.calendarEventId,
+            eventTitle: session.eventTitle,
+            scheduledStart: new Date(session.scheduledStart),
+            scheduledEnd: new Date(session.scheduledEnd),
+            startedAt: new Date(session.startedAt),
+            endedAt: new Date(session.endedAt),
+            sourceRuleType: session.sourceRuleType,
+            sourceRuleName: session.sourceRuleName,
+            tagKey: session.tagKey,
+            difficultyRank: session.difficultyRank,
+            productiveMinutes: session.productiveMinutes,
+            supportiveMinutes: session.supportiveMinutes,
+            distractedMinutes: session.distractedMinutes,
+            awayMinutes: session.awayMinutes,
+            breakMinutes: session.breakMinutes,
+            totalTrackedMinutes: session.totalTrackedMinutes,
+            leftEarly: session.leftEarly,
+          },
+          create: {
+            userId: user.id,
+            clientSessionId: session.id,
+            calendarEventId: session.calendarEventId,
+            eventTitle: session.eventTitle,
+            scheduledStart: new Date(session.scheduledStart),
+            scheduledEnd: new Date(session.scheduledEnd),
+            startedAt: new Date(session.startedAt),
+            endedAt: new Date(session.endedAt),
+            sourceRuleType: session.sourceRuleType,
+            sourceRuleName: session.sourceRuleName,
+            tagKey: session.tagKey,
+            difficultyRank: session.difficultyRank,
+            productiveMinutes: session.productiveMinutes,
+            supportiveMinutes: session.supportiveMinutes,
+            distractedMinutes: session.distractedMinutes,
+            awayMinutes: session.awayMinutes,
+            breakMinutes: session.breakMinutes,
+            totalTrackedMinutes: session.totalTrackedMinutes,
+            leftEarly: session.leftEarly,
+          },
+        });
+        focusIdMap.set(session.id, upserted.id);
+      }
+
+      for (const activity of body.activitySessions) {
+        const focusSessionId =
+          focusIdMap.get(activity.focusSessionId) ??
+          (
+            await tx.focusSession.findUnique({
+              where: {
+                userId_clientSessionId: {
+                  userId: user.id,
+                  clientSessionId: activity.focusSessionId,
+                },
+              },
+              select: { id: true },
+            })
+          )?.id;
+
+        if (!focusSessionId) continue;
+
+        await tx.activitySession.upsert({
+          where: {
+            userId_clientActivityId: {
+              userId: user.id,
+              clientActivityId: activity.id,
+            },
+          },
+          update: {
+            focusSessionId,
+            calendarEventId: activity.calendarEventId,
+            eventTitle: activity.eventTitle,
+            domain: activity.domain,
+            startedAt: new Date(activity.startedAt),
+            endedAt: new Date(activity.endedAt),
+            activityClass: activity.activityClass,
+            tagKey: activity.tagKey,
+            difficultyRank: activity.difficultyRank,
+            sourceRuleType: activity.sourceRuleType,
+            sourceRuleName: activity.sourceRuleName,
+          },
+          create: {
+            userId: user.id,
+            clientActivityId: activity.id,
+            focusSessionId,
+            calendarEventId: activity.calendarEventId,
+            eventTitle: activity.eventTitle,
+            domain: activity.domain,
+            startedAt: new Date(activity.startedAt),
+            endedAt: new Date(activity.endedAt),
+            activityClass: activity.activityClass,
+            tagKey: activity.tagKey,
+            difficultyRank: activity.difficultyRank,
+            sourceRuleType: activity.sourceRuleType,
+            sourceRuleName: activity.sourceRuleName,
+          },
+        });
+      }
+    });
+
+    await rebuildDailyAnalyticsAggregates(
+      user.id,
+      body.focusSessions.map((session) => session.startedAt),
+    );
+
+    return {
+      accepted: body.focusSessions.length + body.activitySessions.length,
+    };
+  });
+
   app.get('/v1/analytics/interests', async (request, reply) => {
     const user = await getUserOrReply(request, reply);
     if (!user) return;
@@ -644,6 +834,138 @@ export async function buildApp() {
 
     return {
       items: profiles.map(toInterestPayload),
+    };
+  });
+
+  app.get('/v1/analytics/summary', async (request, reply) => {
+    const user = await getUserOrReply(request, reply);
+    if (!user) return;
+
+    const range = analyticsRangeSchema.parse(
+      (request.query as { range?: '7d' | '30d' } | undefined)?.range ?? '7d',
+    );
+    const cutoff = getRangeCutoff(range);
+    const items = await prisma.dailyAnalyticsAggregate.findMany({
+      where: {
+        userId: user.id,
+        day: {
+          gte: cutoff,
+        },
+      },
+      orderBy: { day: 'asc' },
+    });
+
+    return {
+      summary: {
+        range,
+        productiveMinutes: items.reduce((sum, item) => sum + item.productiveMinutes, 0),
+        supportiveMinutes: items.reduce((sum, item) => sum + item.supportiveMinutes, 0),
+        distractedMinutes: items.reduce((sum, item) => sum + item.distractedMinutes, 0),
+        awayMinutes: items.reduce((sum, item) => sum + item.awayMinutes, 0),
+        breakMinutes: items.reduce((sum, item) => sum + item.breakMinutes, 0),
+        totalFocusSessions: items.reduce((sum, item) => sum + item.totalFocusSessions, 0),
+        leftEarlyCount: items.reduce((sum, item) => sum + item.leftEarlyCount, 0),
+      },
+    };
+  });
+
+  app.get('/v1/analytics/tags', async (request, reply) => {
+    const user = await getUserOrReply(request, reply);
+    if (!user) return;
+
+    const range = analyticsRangeSchema.parse(
+      (request.query as { range?: '7d' | '30d' } | undefined)?.range ?? '7d',
+    );
+    const cutoff = getRangeCutoff(range);
+    const [sessions, tags] = await Promise.all([
+      prisma.focusSession.findMany({
+        where: {
+          userId: user.id,
+          startedAt: { gte: cutoff },
+        },
+        orderBy: { startedAt: 'desc' },
+      }),
+      prisma.taskTag.findMany({
+        where: { userId: user.id },
+      }),
+    ]);
+
+    return {
+      items: buildTagBreakdownPayload(sessions, tags),
+    };
+  });
+
+  app.get('/v1/analytics/sessions', async (request, reply) => {
+    const user = await getUserOrReply(request, reply);
+    if (!user) return;
+
+    const range = analyticsRangeSchema.parse(
+      (request.query as { range?: '7d' | '30d' } | undefined)?.range ?? '7d',
+    );
+    const cutoff = getRangeCutoff(range);
+    const sessions = await prisma.focusSession.findMany({
+      where: {
+        userId: user.id,
+        startedAt: { gte: cutoff },
+      },
+      orderBy: { startedAt: 'desc' },
+      take: 48,
+    });
+
+    return {
+      items: sessions.map(toFocusSessionPayload),
+    };
+  });
+
+  app.post('/v1/analytics/overrides', async (request, reply) => {
+    const user = await getUserOrReply(request, reply);
+    if (!user) return;
+
+    const body = analyticsOverrideSchema.parse(request.body);
+    const focusSession = await prisma.focusSession.findUnique({
+      where: {
+        userId_clientSessionId: {
+          userId: user.id,
+          clientSessionId: body.focusSessionId,
+        },
+      },
+    });
+
+    if (!focusSession) {
+      return reply.code(404).send({ error: 'Focus session not found.' });
+    }
+
+    await prisma.$transaction([
+      prisma.analyticsOverride.upsert({
+        where: { focusSessionId: focusSession.id },
+        update: {
+          tagKey: body.tagKey,
+          difficultyRank: body.difficultyRank,
+        },
+        create: {
+          userId: user.id,
+          focusSessionId: focusSession.id,
+          tagKey: body.tagKey,
+          difficultyRank: body.difficultyRank,
+        },
+      }),
+      prisma.focusSession.update({
+        where: { id: focusSession.id },
+        data: {
+          tagKey: body.tagKey,
+          difficultyRank: body.difficultyRank,
+        },
+      }),
+    ]);
+
+    await rebuildDailyAnalyticsAggregates(user.id, [focusSession.startedAt.toISOString()]);
+
+    const updated = await prisma.focusSession.findUniqueOrThrow({
+      where: { id: focusSession.id },
+    });
+
+    return {
+      session: toFocusSessionPayload(updated),
     };
   });
 
@@ -740,6 +1062,183 @@ async function getAccountSnapshotResponse(
     updatedAt: snapshot.updatedAt.toISOString(),
     data: toAccountSnapshotPayload(snapshot.snapshot),
   };
+}
+
+async function syncTaskTagsFromSnapshot(
+  userId: string,
+  snapshot: AccountSnapshotPayload,
+): Promise<void> {
+  if (snapshot.taskTags.length === 0) {
+    await prisma.taskTag.deleteMany({ where: { userId } });
+    return;
+  }
+
+  const incomingKeys = new Set(snapshot.taskTags.map((tag) => tag.key));
+  await prisma.$transaction([
+    prisma.taskTag.deleteMany({
+      where: {
+        userId,
+        key: {
+          notIn: [...incomingKeys],
+        },
+      },
+    }),
+    ...snapshot.taskTags.map((tag) =>
+      prisma.taskTag.upsert({
+        where: {
+          userId_key: {
+            userId,
+            key: tag.key,
+          },
+        },
+        update: {
+          label: tag.label,
+          color: tag.color,
+          aliases: tag.aliases as unknown as Prisma.InputJsonValue,
+          baselineDifficulty: tag.baselineDifficulty,
+          alignedDomains: tag.alignedDomains as unknown as Prisma.InputJsonValue,
+          supportiveDomains: tag.supportiveDomains as unknown as Prisma.InputJsonValue,
+          source: tag.source,
+        },
+        create: {
+          userId,
+          key: tag.key,
+          label: tag.label,
+          color: tag.color,
+          aliases: tag.aliases as unknown as Prisma.InputJsonValue,
+          baselineDifficulty: tag.baselineDifficulty,
+          alignedDomains: tag.alignedDomains as unknown as Prisma.InputJsonValue,
+          supportiveDomains: tag.supportiveDomains as unknown as Prisma.InputJsonValue,
+          source: tag.source,
+        },
+      }),
+    ),
+  ]);
+}
+
+async function rebuildDailyAnalyticsAggregates(
+  userId: string,
+  startedAtValues: string[],
+): Promise<void> {
+  const days = [...new Set(startedAtValues.map((value) => startOfUtcDay(value).toISOString()))];
+  for (const day of days) {
+    const start = new Date(day);
+    const end = new Date(start.getTime() + 24 * 60 * 60 * 1000);
+    const sessions = await prisma.focusSession.findMany({
+      where: {
+        userId,
+        startedAt: {
+          gte: start,
+          lt: end,
+        },
+      },
+    });
+
+    await prisma.dailyAnalyticsAggregate.upsert({
+      where: {
+        userId_day: {
+          userId,
+          day: start,
+        },
+      },
+      update: {
+        productiveMinutes: sessions.reduce((sum, session) => sum + session.productiveMinutes, 0),
+        supportiveMinutes: sessions.reduce((sum, session) => sum + session.supportiveMinutes, 0),
+        distractedMinutes: sessions.reduce((sum, session) => sum + session.distractedMinutes, 0),
+        awayMinutes: sessions.reduce((sum, session) => sum + session.awayMinutes, 0),
+        breakMinutes: sessions.reduce((sum, session) => sum + session.breakMinutes, 0),
+        totalFocusSessions: sessions.length,
+        leftEarlyCount: sessions.filter((session) => session.leftEarly).length,
+      },
+      create: {
+        userId,
+        day: start,
+        productiveMinutes: sessions.reduce((sum, session) => sum + session.productiveMinutes, 0),
+        supportiveMinutes: sessions.reduce((sum, session) => sum + session.supportiveMinutes, 0),
+        distractedMinutes: sessions.reduce((sum, session) => sum + session.distractedMinutes, 0),
+        awayMinutes: sessions.reduce((sum, session) => sum + session.awayMinutes, 0),
+        breakMinutes: sessions.reduce((sum, session) => sum + session.breakMinutes, 0),
+        totalFocusSessions: sessions.length,
+        leftEarlyCount: sessions.filter((session) => session.leftEarly).length,
+      },
+    });
+  }
+}
+
+function getRangeCutoff(range: '7d' | '30d'): Date {
+  const days = range === '30d' ? 30 : 7;
+  return new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+}
+
+function buildTagBreakdownPayload(
+  sessions: Array<{
+    tagKey: string | null;
+    productiveMinutes: number;
+    supportiveMinutes: number;
+    distractedMinutes: number;
+    awayMinutes: number;
+    breakMinutes: number;
+  }>,
+  tags: Array<{
+    key: string;
+    label: string;
+    color: string;
+  }>,
+) {
+  const tagByKey = new Map(tags.map((tag) => [tag.key, tag]));
+  const map = new Map<
+    string,
+    {
+      tagKey: string;
+      label: string;
+      color: string;
+      productiveMinutes: number;
+      supportiveMinutes: number;
+      distractedMinutes: number;
+      awayMinutes: number;
+      breakMinutes: number;
+      sessions: number;
+    }
+  >();
+
+  for (const session of sessions) {
+    if (!session.tagKey) continue;
+    const tag = tagByKey.get(session.tagKey);
+    const current = map.get(session.tagKey) ?? {
+      tagKey: session.tagKey,
+      label: tag?.label ?? humanizeTagKey(session.tagKey),
+      color: tag?.color ?? '#64748b',
+      productiveMinutes: 0,
+      supportiveMinutes: 0,
+      distractedMinutes: 0,
+      awayMinutes: 0,
+      breakMinutes: 0,
+      sessions: 0,
+    };
+
+    current.productiveMinutes += session.productiveMinutes;
+    current.supportiveMinutes += session.supportiveMinutes;
+    current.distractedMinutes += session.distractedMinutes;
+    current.awayMinutes += session.awayMinutes;
+    current.breakMinutes += session.breakMinutes;
+    current.sessions += 1;
+    map.set(session.tagKey, current);
+  }
+
+  return [...map.values()].sort((a, b) => b.productiveMinutes - a.productiveMinutes);
+}
+
+function startOfUtcDay(value: string | Date): Date {
+  const date = typeof value === 'string' ? new Date(value) : value;
+  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+}
+
+function humanizeTagKey(value: string): string {
+  return value
+    .split('-')
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ');
 }
 
 async function upsertGoogleUser(input: {

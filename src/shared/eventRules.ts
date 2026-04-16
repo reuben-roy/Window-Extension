@@ -1,5 +1,10 @@
-import type { EventRule, KeywordRule } from './types';
-import { getEventRules, getKeywordRules, setEventRules, setKeywordRules } from './storage';
+import type { DifficultyRank, EventRule, KeywordRule } from './types';
+import {
+  getEventRules,
+  getKeywordRules,
+  setEventRules,
+  setKeywordRules,
+} from './storage';
 import { normalizeDomain } from './profiles';
 
 function dedupeDomains(domains: string[]): string[] {
@@ -9,6 +14,10 @@ function dedupeDomains(domains: string[]): string[] {
 export async function upsertEventRule(
   eventTitle: string,
   rawDomains: string[],
+  options: {
+    tagKey?: string | null;
+    difficultyOverride?: DifficultyRank | null;
+  } = {},
 ): Promise<{ ok: boolean; error?: string }> {
   const title = eventTitle.trim();
   if (!title) return { ok: false, error: 'Choose an event title first.' };
@@ -23,7 +32,13 @@ export async function upsertEventRule(
   }
 
   const rules = await getEventRules();
-  const nextRule: EventRule = { eventTitle: title, domains };
+  const existing = rules.find((rule) => rule.eventTitle === title);
+  const nextRule: EventRule = {
+    eventTitle: title,
+    domains,
+    tagKey: options.tagKey ?? existing?.tagKey ?? null,
+    difficultyOverride: options.difficultyOverride ?? existing?.difficultyOverride ?? null,
+  };
   const idx = rules.findIndex((rule) => rule.eventTitle === title);
   const updated = [...rules];
 
@@ -42,6 +57,9 @@ export async function removeEventRule(eventTitle: string): Promise<void> {
 export async function upsertKeywordRule(
   keyword: string,
   rawDomains: string[],
+  options: {
+    tagKey?: string | null;
+  } = {},
 ): Promise<{ ok: boolean; error?: string }> {
   const trimmedKeyword = keyword.trim().toLowerCase();
   if (!trimmedKeyword) return { ok: false, error: 'Keyword cannot be empty.' };
@@ -58,7 +76,12 @@ export async function upsertKeywordRule(
   const rules = await getKeywordRules();
   const idx = rules.findIndex((rule) => rule.keyword === trimmedKeyword);
   const createdAt = idx === -1 ? new Date().toISOString() : rules[idx].createdAt;
-  const nextRule: KeywordRule = { keyword: trimmedKeyword, domains, createdAt };
+  const nextRule: KeywordRule = {
+    keyword: trimmedKeyword,
+    domains,
+    createdAt,
+    tagKey: options.tagKey ?? rules[idx]?.tagKey ?? null,
+  };
   const updated = [...rules];
 
   if (idx === -1) updated.push(nextRule);

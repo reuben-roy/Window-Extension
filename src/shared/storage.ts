@@ -1,9 +1,13 @@
 import type {
+  ActiveActivitySessionState,
+  ActiveFocusSessionState,
   AccountConflict,
   AccountSyncState,
   AccountUser,
   ActiveRuleSource,
+  ActivitySessionRecord,
   AllTimeStats,
+  AnalyticsSnapshot,
   AssistantOptions,
   BackendSession,
   BackendSyncState,
@@ -11,8 +15,10 @@ import type {
   BreakVisitEvent,
   CalendarState,
   DownloadAllowance,
+  EventPatternStat,
   EventRule,
   EventBindings,
+  FocusSessionRecord,
   IdeaRecord,
   KeywordRule,
   OpenClawState,
@@ -21,6 +27,7 @@ import type {
   Settings,
   SnoozeState,
   StorageData,
+  TaskTag,
   TemporaryUnlockState,
   Task,
   UnlockSpendState,
@@ -28,6 +35,7 @@ import type {
 } from './types';
 import {
   DEFAULT_ACCOUNT_SYNC_STATE,
+  DEFAULT_ANALYTICS_SNAPSHOT,
   DEFAULT_ALL_TIME_STATS,
   DEFAULT_ASSISTANT_OPTIONS,
   DEFAULT_BACKEND_SYNC_STATE,
@@ -35,6 +43,7 @@ import {
   DEFAULT_OPENCLAW_STATE,
   DEFAULT_SETTINGS,
   DEFAULT_SNOOZE_STATE,
+  DEFAULT_TASK_TAGS,
 } from './constants';
 
 // ─── Generic helpers ─────────────────────────────────────────────────────────
@@ -118,6 +127,14 @@ export const getKeywordRules = (): Promise<KeywordRule[]> =>
 
 export const setKeywordRules = (rules: KeywordRule[]): Promise<void> =>
   set('keywordRules', rules);
+
+// ─── Task tags ───────────────────────────────────────────────────────────────
+
+export const getTaskTags = (): Promise<TaskTag[]> =>
+  get<TaskTag[]>('taskTags', DEFAULT_TASK_TAGS);
+
+export const setTaskTags = (tags: TaskTag[]): Promise<void> =>
+  set('taskTags', tags);
 
 // ─── Settings ─────────────────────────────────────────────────────────────────
 
@@ -213,6 +230,9 @@ const DEFAULT_CALENDAR_STATE: CalendarState = {
   activeProfile: null,
   activeRuleSource: 'none' as ActiveRuleSource,
   activeRuleName: null,
+  primaryTagKey: null,
+  primaryTagLabel: null,
+  difficultyRank: null,
   allowedDomains: [],
   recentEventTitles: [],
   isRestricted: false,
@@ -281,6 +301,56 @@ export const getActiveBreakVisits = (): Promise<Record<string, BreakVisitEvent>>
 
 export const setActiveBreakVisits = (events: Record<string, BreakVisitEvent>): Promise<void> =>
   setLocal('activeBreakVisits', events);
+
+export const getActiveFocusSession = (): Promise<ActiveFocusSessionState | null> =>
+  getLocal<ActiveFocusSessionState | null>('activeFocusSession', null);
+
+export const setActiveFocusSession = (
+  session: ActiveFocusSessionState | null,
+): Promise<void> => setLocal('activeFocusSession', session);
+
+export const getActiveActivitySession = (): Promise<ActiveActivitySessionState | null> =>
+  getLocal<ActiveActivitySessionState | null>('activeActivitySession', null);
+
+export const setActiveActivitySession = (
+  session: ActiveActivitySessionState | null,
+): Promise<void> => setLocal('activeActivitySession', session);
+
+export const getActivitySessionQueue = (): Promise<ActivitySessionRecord[]> =>
+  getLocal<ActivitySessionRecord[]>('activitySessionQueue', []);
+
+export const setActivitySessionQueue = (items: ActivitySessionRecord[]): Promise<void> =>
+  setLocal('activitySessionQueue', items);
+
+export const getFocusSessionQueue = (): Promise<FocusSessionRecord[]> =>
+  getLocal<FocusSessionRecord[]>('focusSessionQueue', []);
+
+export const setFocusSessionQueue = (items: FocusSessionRecord[]): Promise<void> =>
+  setLocal('focusSessionQueue', items);
+
+export const getActivityHistory = (): Promise<ActivitySessionRecord[]> =>
+  getLocal<ActivitySessionRecord[]>('activityHistory', []);
+
+export const setActivityHistory = (items: ActivitySessionRecord[]): Promise<void> =>
+  setLocal('activityHistory', items);
+
+export const getFocusSessionHistory = (): Promise<FocusSessionRecord[]> =>
+  getLocal<FocusSessionRecord[]>('focusSessionHistory', []);
+
+export const setFocusSessionHistory = (items: FocusSessionRecord[]): Promise<void> =>
+  setLocal('focusSessionHistory', items);
+
+export const getAnalyticsSnapshot = (): Promise<AnalyticsSnapshot> =>
+  getLocal<AnalyticsSnapshot>('analyticsSnapshot', DEFAULT_ANALYTICS_SNAPSHOT);
+
+export const setAnalyticsSnapshot = (snapshot: AnalyticsSnapshot): Promise<void> =>
+  setLocal('analyticsSnapshot', snapshot);
+
+export const getEventPatternStats = (): Promise<EventPatternStat[]> =>
+  getLocal<EventPatternStat[]>('eventPatternStats', []);
+
+export const setEventPatternStats = (stats: EventPatternStat[]): Promise<void> =>
+  setLocal('eventPatternStats', stats);
 
 export const getBlockedTabs = (): Promise<Record<string, BlockedTabState>> =>
   getLocal<Record<string, BlockedTabState>>('blockedTabs', {});

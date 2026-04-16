@@ -11,6 +11,7 @@
     "identity",
     "notifications",
     "downloads",
+    "idle",
     "sidePanel",
     "tabs",
     "webNavigation"

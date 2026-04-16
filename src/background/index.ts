@@ -17,12 +17,14 @@ import {
   getAccountUser,
   getAssistantOptions,
   getAllTimeStats,
+  getAnalyticsSnapshot,
   getBackendSession,
   getBackendSyncState,
   getBlockedTabs,
   getCalendarState,
   getDownloadAllowances,
   getEventRules,
+  getFocusSessionHistory,
   getGlobalAllowlist,
   getIdeaRecords,
   getKeywordRules,
@@ -31,6 +33,7 @@ import {
   getWeekKey,
   getSettings,
   getSnoozeState,
+  getTaskTags,
   getTabDocumentUrls,
   getTaskQueue,
   getTemporaryUnlocks,
@@ -64,15 +67,24 @@ import {
   resolveAccountConflict,
   restoreAccountSession,
   retryIdea,
+  refreshAnalyticsState,
+  saveAnalyticsOverrideRemote,
   signInWithProvider,
   signOutAccount,
   startOpenClawSession,
   submitIdea,
+  syncAnalyticsQueues,
   syncBreakTelemetryQueue,
   syncIdeaOutbox,
   updateAssistantPreference,
   reuseOpenClawSession,
 } from './backend';
+import {
+  finalizeAnalyticsTracking,
+  handleAnalyticsHeartbeat,
+  registerAnalyticsListeners,
+  saveAnalyticsOverrideLocally,
+} from './analytics';
 import {
   fetchCalendarEventsInRange,
   getAuthToken,
@@ -114,6 +126,7 @@ chrome.alarms.get(ALARM_TICK, (alarm) => {
 });
 
 registerTelemetryListeners();
+registerAnalyticsListeners();
 registerBlockingListeners();
 registerDownloadListeners();
 void ensureDemoStatsSeeded();
@@ -153,15 +166,18 @@ async function handleTick(): Promise<void> {
   await syncTasksFromCalendarState(calendarState);
   await cleanupExpiredTemporaryUnlocks(calendarState);
   await cleanupExpiredDownloadAllowances(calendarState);
+  await handleAnalyticsHeartbeat(calendarState);
 
   const snoozed = await isSnoozeActive();
   if (snoozed) {
-    await Promise.all([syncIdeaOutbox(), syncBreakTelemetryQueue()]);
+    await Promise.all([syncIdeaOutbox(), syncBreakTelemetryQueue(), syncAnalyticsQueues()]);
+    await refreshAnalyticsState();
     await reconcileBlockedTabs(calendarState);
     return;
   }
 
-  await Promise.all([syncIdeaOutbox(), syncBreakTelemetryQueue()]);
+  await Promise.all([syncIdeaOutbox(), syncBreakTelemetryQueue(), syncAnalyticsQueues()]);
+  await refreshAnalyticsState();
   await applyBlockingState(calendarState);
 }
 
@@ -170,6 +186,9 @@ async function handleSnoozeEnd(): Promise<void> {
   await finalizeTrackedBreakVisits();
   await syncBreakTelemetryQueue();
   await deactivateSnooze();
+  await handleAnalyticsHeartbeat();
+  await syncAnalyticsQueues();
+  await refreshAnalyticsState();
   await reconcileBlockingState();
 }
 
@@ -265,6 +284,12 @@ async function handleMessage(
         (message.payload as Partial<import('../shared/types').AssistantOptions> | undefined) ?? {},
       );
 
+    case 'REFRESH_ANALYTICS_STATE':
+      return refreshAnalyticsState();
+
+    case 'SAVE_ANALYTICS_OVERRIDE':
+      return handleSaveAnalyticsOverride(message);
+
     case 'MARK_DONE':
       return handleMarkDone(message);
 
@@ -289,6 +314,7 @@ async function buildStateResponse(): Promise<StateResponse> {
     calendarState,
     eventRules,
     keywordRules,
+    taskTags,
     backendSession,
     accountUser,
     accountSyncState,
@@ -297,6 +323,7 @@ async function buildStateResponse(): Promise<StateResponse> {
     assistantOptions,
     ideaRecords,
     openClawState,
+    analyticsSnapshot,
   ] = await Promise.all([
     getSettings(),
     getTaskQueue(),
@@ -305,6 +332,7 @@ async function buildStateResponse(): Promise<StateResponse> {
     getCalendarState(),
     getEventRules(),
     getKeywordRules(),
+    getTaskTags(),
     getBackendSession(),
     getAccountUser(),
     getAccountSyncState(),
@@ -313,6 +341,7 @@ async function buildStateResponse(): Promise<StateResponse> {
     getAssistantOptions(),
     getIdeaRecords(),
     getOpenClawState(),
+    getAnalyticsSnapshot(),
   ]);
 
   return {
@@ -323,6 +352,7 @@ async function buildStateResponse(): Promise<StateResponse> {
     calendarState,
     eventRules,
     keywordRules,
+    taskTags,
     backendSession,
     accountUser,
     accountSyncState,
@@ -337,6 +367,28 @@ async function buildStateResponse(): Promise<StateResponse> {
       lastSyncedAt: backendSyncState.lastSyncedAt,
     },
     openClawState,
+    analyticsSnapshot,
+  };
+}
+
+async function handleSaveAnalyticsOverride(
+  message: Message,
+): Promise<{ ok: boolean; analyticsSnapshot: StateResponse['analyticsSnapshot'] }> {
+  const payload = (message.payload as import('../shared/types').AnalyticsOverrideInput | undefined) ?? {
+    focusSessionId: '',
+    tagKey: null,
+    difficultyRank: null,
+  };
+  if (!payload.focusSessionId) {
+    throw new Error('Focus session override is missing an id.');
+  }
+
+  await saveAnalyticsOverrideLocally(payload);
+  await saveAnalyticsOverrideRemote(payload);
+
+  return {
+    ok: true,
+    analyticsSnapshot: await getAnalyticsSnapshot(),
   };
 }
 
@@ -369,6 +421,9 @@ async function disconnectCalendar(): Promise<{ ok: boolean }> {
     activeProfile: null,
     activeRuleSource: 'none',
     activeRuleName: null,
+    primaryTagKey: null,
+    primaryTagLabel: null,
+    difficultyRank: null,
     allowedDomains: [],
     recentEventTitles: [],
     isRestricted: false,
@@ -384,6 +439,7 @@ async function disconnectCalendar(): Promise<{ ok: boolean }> {
     updateBlockingRules([], false),
     syncTemporaryUnlockRules({}, {}),
   ]);
+  await finalizeAnalyticsTracking();
 
   return { ok: true };
 }
@@ -424,6 +480,8 @@ async function reconcileBlockingState(): Promise<void> {
     calendarState,
     eventRules,
     keywordRules,
+    taskTags,
+    focusHistory,
     globalAllowlist,
     snoozed,
   ] = await Promise.all([
@@ -431,6 +489,8 @@ async function reconcileBlockingState(): Promise<void> {
     getCalendarState(),
     getEventRules(),
     getKeywordRules(),
+    getTaskTags(),
+    getFocusSessionHistory(),
     getGlobalAllowlist(),
     isSnoozeActive(),
   ]);
@@ -441,6 +501,8 @@ async function reconcileBlockingState(): Promise<void> {
     keywordRules,
     globalAllowlist,
     settings,
+    taskTags,
+    focusHistory,
   );
 
   const nextCalendarState: CalendarState = {
@@ -459,6 +521,8 @@ async function reconcileBlockingState(): Promise<void> {
   } else {
     await reconcileBlockedTabs(nextCalendarState);
   }
+
+  await handleAnalyticsHeartbeat(nextCalendarState);
 }
 
 async function applyBlockingState(calendarState: CalendarState): Promise<void> {

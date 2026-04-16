@@ -86,6 +86,11 @@ const chromeMock = {
     launchWebAuthFlow: vi.fn(),
     removeCachedAuthToken: vi.fn(),
   },
+  idle: {
+    queryState: vi.fn((_thresholdSeconds: number, callback: (state: 'active' | 'idle' | 'locked') => void) => {
+      callback('active');
+    }),
+  },
   notifications: {
     create: vi.fn(),
   },

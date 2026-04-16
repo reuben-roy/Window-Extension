@@ -8,6 +8,7 @@ import {
   normalizeAccountSnapshot,
 } from '../shared/account';
 import { DEFAULT_OPENCLAW_STATE, DEFAULT_WINDOW_BACKEND_URL } from '../shared/constants';
+import { mergeAnalyticsSnapshot } from '../shared/analytics';
 import {
   applyIdeaDecision,
   createIdeaRecord,
@@ -20,11 +21,14 @@ import {
   getAccountSyncState,
   getAccountUser,
   getActiveBreakVisits,
+  getActivitySessionQueue,
+  getAnalyticsSnapshot,
   getAssistantOptions,
   getBackendSession,
   getBackendSyncState,
   getBreakVisitQueue,
   getCalendarState,
+  getFocusSessionQueue,
   getIdeaRecords,
   getOpenClawState,
   setAccountConflict,
@@ -32,14 +36,20 @@ import {
   setAccountUser,
   setActiveBreakVisits,
   setAssistantOptions,
+  setActivitySessionQueue,
+  setAnalyticsSnapshot,
   setBackendSession,
   setBackendSyncState,
   setBreakVisitQueue,
+  setFocusSessionQueue,
   setIdeaRecords,
   setOpenClawState,
 } from '../shared/storage';
 import type {
   AccountConflict,
+  AnalyticsOverrideInput,
+  AnalyticsSnapshot,
+  AnalyticsSummary,
   AccountSession,
   AccountSnapshot,
   AccountSyncState,
@@ -51,6 +61,8 @@ import type {
   IdeaRecord,
   IdeaReport,
   IdeaState,
+  FocusSessionRecord,
+  TagBreakdownItem,
   OpenClawConnectionStatus,
   OpenClawJobSummary,
   OpenClawSessionSummary,
@@ -113,6 +125,18 @@ interface RemoteStateSnapshot {
   items: IdeaRecord[];
   ideaState: IdeaState;
   openClawState: OpenClawState;
+}
+
+interface AnalyticsSummaryResponse {
+  summary: AnalyticsSummary;
+}
+
+interface AnalyticsTagsResponse {
+  items: TagBreakdownItem[];
+}
+
+interface AnalyticsSessionsResponse {
+  items: FocusSessionRecord[];
 }
 
 let accountSyncTimer: ReturnType<typeof setTimeout> | null = null;
@@ -667,6 +691,101 @@ export async function finalizeBreakTelemetry(): Promise<void> {
     setActiveBreakVisits({}),
     setBreakVisitQueue([...queue, ...finalized]),
   ]);
+}
+
+export async function syncAnalyticsQueues(): Promise<void> {
+  const [focusSessions, activitySessions] = await Promise.all([
+    getFocusSessionQueue(),
+    getActivitySessionQueue(),
+  ]);
+  if (focusSessions.length === 0 && activitySessions.length === 0) return;
+
+  const session = await ensureBackendSession();
+  if (!session) return;
+
+  try {
+    await backendRequest('/v1/activity-sessions/batch', {
+      method: 'POST',
+      body: {
+        focusSessions,
+        activitySessions,
+      },
+    });
+
+    await Promise.all([
+      setFocusSessionQueue([]),
+      setActivitySessionQueue([]),
+      setAnalyticsSnapshot({
+        ...(await getAnalyticsSnapshot()),
+        lastSyncedAt: new Date().toISOString(),
+      }),
+    ]);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    const currentSyncState = await getBackendSyncState();
+    await setBackendSyncState({
+      ...currentSyncState,
+      lastError: message,
+    });
+  }
+}
+
+export async function refreshAnalyticsState(): Promise<AnalyticsSnapshot> {
+  await syncAnalyticsQueues();
+  const existing = await getAnalyticsSnapshot();
+  const session = await ensureBackendSession();
+  if (!session) {
+    return existing;
+  }
+
+  try {
+    const [summary7d, summary30d, tags7d, sessionsResponse] = await Promise.all([
+      backendRequest<AnalyticsSummaryResponse>('/v1/analytics/summary?range=7d'),
+      backendRequest<AnalyticsSummaryResponse>('/v1/analytics/summary?range=30d'),
+      backendRequest<AnalyticsTagsResponse>('/v1/analytics/tags?range=7d'),
+      backendRequest<AnalyticsSessionsResponse>('/v1/analytics/sessions?range=30d'),
+    ]);
+
+    const next = mergeAnalyticsSnapshot(existing, {
+      summary7d: summary7d.summary,
+      summary30d: summary30d.summary,
+      tagBreakdown7d: tags7d.items,
+      recentSessions: sessionsResponse.items,
+      lastSyncedAt: new Date().toISOString(),
+    });
+    await setAnalyticsSnapshot(next);
+    return next;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    const currentSyncState = await getBackendSyncState();
+    await setBackendSyncState({
+      ...currentSyncState,
+      lastError: message,
+    });
+    return existing;
+  }
+}
+
+export async function saveAnalyticsOverrideRemote(
+  input: AnalyticsOverrideInput,
+): Promise<void> {
+  const session = await ensureBackendSession();
+  if (!session) return;
+
+  try {
+    await backendRequest('/v1/analytics/overrides', {
+      method: 'POST',
+      body: input,
+    });
+    await refreshAnalyticsState();
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    const currentSyncState = await getBackendSyncState();
+    await setBackendSyncState({
+      ...currentSyncState,
+      lastError: message,
+    });
+  }
 }
 
 async function exchangeGoogleTokenForBackend(

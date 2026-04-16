@@ -45,6 +45,18 @@ const DEFAULT_SETTINGS: Settings = {
 };
 
 const GLOBAL_ALLOWLIST = ['accounts.google.com'];
+const EVENT_RULE = (eventTitle: string, domains: string[]): EventRule => ({
+  eventTitle,
+  domains,
+  tagKey: null,
+  difficultyOverride: null,
+});
+const KEYWORD_RULE = (keyword: string, domains: string[], createdAt: string): KeywordRule => ({
+  keyword,
+  domains,
+  createdAt,
+  tagKey: keyword,
+});
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -73,26 +85,30 @@ describe('getCurrentEvent', () => {
 describe('findMatchingKeywordRule', () => {
   it('prefers the longest matching keyword', () => {
     const rules: KeywordRule[] = [
-      { keyword: 'deep', domains: ['github.com'], createdAt: '2026-01-01T00:00:00.000Z' },
-      { keyword: 'deep work', domains: ['docs.google.com'], createdAt: '2026-01-02T00:00:00.000Z' },
+      KEYWORD_RULE('deep', ['github.com'], '2026-01-01T00:00:00.000Z'),
+      KEYWORD_RULE('deep work', ['docs.google.com'], '2026-01-02T00:00:00.000Z'),
     ];
     expect(findMatchingKeywordRule('Morning Deep Work Session', rules)?.keyword).toBe('deep work');
   });
 
   it('breaks equal-length ties by earliest creation time', () => {
     const rules: KeywordRule[] = [
-      { keyword: 'focus', domains: ['github.com'], createdAt: '2026-01-01T00:00:00.000Z' },
-      { keyword: 'focus', domains: ['docs.google.com'], createdAt: '2026-01-02T00:00:00.000Z' },
+      KEYWORD_RULE('focus', ['github.com'], '2026-01-01T00:00:00.000Z'),
+      KEYWORD_RULE('focus', ['docs.google.com'], '2026-01-02T00:00:00.000Z'),
     ];
     expect(findMatchingKeywordRule('Focus sprint', rules)?.domains).toEqual(['github.com']);
   });
 });
 
 describe('resolveRuleForEvent', () => {
-  const eventRules: EventRule[] = [{ eventTitle: 'Deep Work', domains: ['github.com', 'claude.ai'] }];
+  const eventRules: EventRule[] = [EVENT_RULE('Deep Work', ['github.com', 'claude.ai'])];
   const keywordRules: KeywordRule[] = [
-    { keyword: 'study', domains: ['arxiv.org'], createdAt: '2026-01-01T00:00:00.000Z' },
+    KEYWORD_RULE('study', ['arxiv.org'], '2026-01-01T00:00:00.000Z'),
   ];
+
+  eventRules[0].tagKey = 'coding';
+  eventRules[0].difficultyOverride = 5;
+  keywordRules[0].tagKey = 'learning';
 
   it('uses exact event rules first', () => {
     const rule = resolveRuleForEvent(makeEvent(), eventRules, keywordRules, DEFAULT_SETTINGS);
@@ -115,12 +131,15 @@ describe('resolveRuleForEvent', () => {
 
 describe('resolveActiveState', () => {
   const eventRules: EventRule[] = [
-    { eventTitle: 'Deep Work', domains: ['github.com', 'claude.ai'] },
-    { eventTitle: 'Pairing Block', domains: ['github.com', 'linear.app'] },
+    EVENT_RULE('Deep Work', ['github.com', 'claude.ai']),
+    EVENT_RULE('Pairing Block', ['github.com', 'linear.app']),
   ];
   const keywordRules: KeywordRule[] = [
-    { keyword: 'study', domains: ['arxiv.org', 'github.com'], createdAt: '2026-01-01T00:00:00.000Z' },
+    KEYWORD_RULE('study', ['arxiv.org', 'github.com'], '2026-01-01T00:00:00.000Z'),
   ];
+  eventRules[0].tagKey = 'coding';
+  eventRules[0].difficultyOverride = 5;
+  keywordRules[0].tagKey = 'learning';
 
   it('stays unrestricted when no rules match', () => {
     const state = resolveActiveState(
@@ -146,6 +165,8 @@ describe('resolveActiveState', () => {
     expect(state.isRestricted).toBe(true);
     expect(state.activeRuleSource).toBe('event');
     expect(state.activeRuleName).toBe('Deep Work');
+    expect(state.primaryTagKey).toBe('coding');
+    expect(state.difficultyRank).toBe(5);
     expect(state.allowedDomains).toContain('github.com');
     expect(state.allowedDomains).toContain('accounts.google.com');
   });
@@ -181,14 +202,15 @@ describe('resolveActiveState', () => {
     expect(state.isRestricted).toBe(true);
     expect(state.activeRuleSource).toBe('keyword');
     expect(state.activeRuleName).toBe('study');
+    expect(state.primaryTagKey).toBe('learning');
     expect(state.allowedDomains).toContain('arxiv.org');
   });
 
   it('prefers exact event rules over keyword fallback', () => {
     const state = resolveActiveState(
       [makeEvent({ title: 'Deep Work' })],
-      [...eventRules, { eventTitle: 'Study Session', domains: ['docs.google.com'] }],
-      [{ keyword: 'deep', domains: ['arxiv.org'], createdAt: '2026-01-01T00:00:00.000Z' }],
+      [...eventRules, EVENT_RULE('Study Session', ['docs.google.com'])],
+      [KEYWORD_RULE('deep', ['arxiv.org'], '2026-01-01T00:00:00.000Z')],
       GLOBAL_ALLOWLIST,
       { ...DEFAULT_SETTINGS, keywordAutoMatchEnabled: true },
     );
