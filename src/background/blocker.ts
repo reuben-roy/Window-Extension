@@ -15,9 +15,8 @@ import type { CarryoverMode, DownloadAllowance, Profiles, TemporaryUnlockState }
  *   Priority 1 — one catch-all REDIRECT rule → custom blocked page
  *   Priority 2 — one ALLOW rule per whitelisted domain (higher priority wins)
  *
- * When `blockingEnabled` is false, all rules are cleared so nothing is blocked.
- * When `allowedDomains` is empty but `blockingEnabled` is true we still install
- * the block-all rule (the user has a profile with no domains).
+ * When `blockingEnabled` is false, or no domains resolved, all rules are
+ * cleared so nothing is blocked.
  */
 export async function updateBlockingRules(
   allowedDomains: string[],
@@ -25,7 +24,7 @@ export async function updateBlockingRules(
 ): Promise<void> {
   const removeRuleIds = await getExistingRuleIds();
 
-  if (!blockingEnabled) {
+  if (!blockingEnabled || allowedDomains.length === 0) {
     await chrome.declarativeNetRequest.updateDynamicRules({ removeRuleIds, addRules: [] });
     return;
   }

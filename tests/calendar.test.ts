@@ -206,6 +206,34 @@ describe('resolveActiveState', () => {
     expect(state.allowedDomains).toContain('arxiv.org');
   });
 
+  it('stays unrestricted when an exact rule exists but has no domains', () => {
+    const state = resolveActiveState(
+      [makeEvent({ title: '113 Lab' })],
+      [EVENT_RULE('113 Lab', [])],
+      keywordRules,
+      GLOBAL_ALLOWLIST,
+      DEFAULT_SETTINGS,
+    );
+    expect(state.isRestricted).toBe(false);
+    expect(state.activeRuleSource).toBe('none');
+    expect(state.activeRuleName).toBeNull();
+    expect(state.allowedDomains).toEqual([]);
+  });
+
+  it('uses an empty exact rule as an unrestricted override over keyword fallback', () => {
+    const state = resolveActiveState(
+      [makeEvent({ title: '113 Lab Study Session' })],
+      [EVENT_RULE('113 Lab Study Session', [])],
+      [KEYWORD_RULE('lab', ['github.com'], '2026-01-01T00:00:00.000Z')],
+      GLOBAL_ALLOWLIST,
+      { ...DEFAULT_SETTINGS, keywordAutoMatchEnabled: true },
+    );
+    expect(state.isRestricted).toBe(false);
+    expect(state.activeRuleSource).toBe('none');
+    expect(state.activeRuleName).toBeNull();
+    expect(state.allowedDomains).toEqual([]);
+  });
+
   it('prefers exact event rules over keyword fallback', () => {
     const state = resolveActiveState(
       [makeEvent({ title: 'Deep Work' })],
@@ -232,6 +260,25 @@ describe('resolveActiveState', () => {
     expect(state.allowedDomains).toContain('github.com');
     expect(state.allowedDomains).not.toContain('claude.ai');
     expect(state.allowedDomains).not.toContain('linear.app');
+  });
+
+  it('stays unrestricted when overlapping matched rules have no shared domains', () => {
+    const state = resolveActiveState(
+      [
+        makeEvent({ id: '1', title: 'Deep Work' }),
+        makeEvent({ id: '2', title: 'Pairing Block' }),
+      ],
+      [
+        EVENT_RULE('Deep Work', ['claude.ai']),
+        EVENT_RULE('Pairing Block', ['linear.app']),
+      ],
+      keywordRules,
+      GLOBAL_ALLOWLIST,
+      DEFAULT_SETTINGS,
+    );
+    expect(state.isRestricted).toBe(false);
+    expect(state.activeRuleSource).toBe('none');
+    expect(state.allowedDomains).toEqual([]);
   });
 
   it('ignores unmatched overlapping events and uses only matched ones', () => {

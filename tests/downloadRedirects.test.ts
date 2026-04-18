@@ -535,6 +535,6 @@ describe('download redirect allowances', () => {
 
     const allowances = await getDownloadAllowances();
     expect(allowances).toEqual({});
-    expect(chrome.tabs.reload).toHaveBeenCalledWith(5);
+    expect(chrome.tabs.reload).not.toHaveBeenCalled();
   });
 });

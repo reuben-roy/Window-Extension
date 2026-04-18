@@ -44,6 +44,7 @@ interface ResolvedRule {
   domains: string[];
   source: Exclude<ActiveRuleSource, 'none'>;
   name: string;
+  mode: 'allow' | 'unrestricted';
 }
 
 export function getAuthToken(interactive: boolean = false): Promise<string> {
@@ -159,7 +160,9 @@ export function findMatchingKeywordRule(
   keywordRules: KeywordRule[],
 ): KeywordRule | null {
   const lowerTitle = eventTitle.toLowerCase();
-  const matches = keywordRules.filter((rule) => lowerTitle.includes(rule.keyword.toLowerCase()));
+  const matches = keywordRules.filter(
+    (rule) => rule.domains.length > 0 && lowerTitle.includes(rule.keyword.toLowerCase()),
+  );
 
   if (matches.length === 0) return null;
 
@@ -183,6 +186,7 @@ export function resolveRuleForEvent(
       domains: exactRule.domains,
       source: 'event',
       name: exactRule.eventTitle,
+      mode: exactRule.domains.length > 0 ? 'allow' : 'unrestricted',
     };
   }
 
@@ -196,6 +200,7 @@ export function resolveRuleForEvent(
     domains: keywordRule.domains,
     source: 'keyword',
     name: keywordRule.keyword,
+    mode: 'allow',
   };
 }
 
@@ -215,27 +220,29 @@ export function resolveActiveState(
     .filter((rule): rule is ResolvedRule => rule !== null);
 
   if (matched.length === 0) {
-    const currentEvent = allActiveEvents[0] ?? null;
-    const tagResolution = currentEvent
-      ? resolveTagMetadataForEvent(currentEvent, eventRules, keywordRules, taskTags, settings, focusHistory)
-      : { tagKey: null, tagLabel: null, difficultyRank: null };
-
-    return {
-      currentEvent,
+    return buildUnrestrictedState(
+      events,
       allActiveEvents,
-      todaysEvents: events,
-      activeProfile: null,
-      activeRuleSource: 'none',
-      activeRuleName: null,
-      primaryTagKey: tagResolution.tagKey,
-      primaryTagLabel: tagResolution.tagLabel,
-      difficultyRank: tagResolution.difficultyRank,
-      allowedDomains: [],
       recentEventTitles,
-      isRestricted: false,
-      lastSyncedAt: new Date().toISOString(),
-      authError: null,
-    };
+      eventRules,
+      keywordRules,
+      settings,
+      taskTags,
+      focusHistory,
+    );
+  }
+
+  if (matched.some((rule) => rule.mode === 'unrestricted')) {
+    return buildUnrestrictedState(
+      events,
+      allActiveEvents,
+      recentEventTitles,
+      eventRules,
+      keywordRules,
+      settings,
+      taskTags,
+      focusHistory,
+    );
   }
 
   const intersectedDomains = matched
@@ -244,6 +251,20 @@ export function resolveActiveState(
       if (index === 0) return [...list];
       return acc.filter((domain) => list.includes(domain));
     }, [] as string[]);
+
+  if (intersectedDomains.length === 0) {
+    return buildUnrestrictedState(
+      events,
+      allActiveEvents,
+      recentEventTitles,
+      eventRules,
+      keywordRules,
+      settings,
+      taskTags,
+      focusHistory,
+    );
+  }
+
   const allowedDomains = [...new Set([...intersectedDomains, ...globalAllowlist])];
   const primary = matched[0];
   const tagResolution = resolveTagMetadataForEvent(
@@ -268,6 +289,39 @@ export function resolveActiveState(
     allowedDomains,
     recentEventTitles,
     isRestricted: settings.enableBlocking && !isDailyBlockingPauseActive(new Date(), settings),
+    lastSyncedAt: new Date().toISOString(),
+    authError: null,
+  };
+}
+
+function buildUnrestrictedState(
+  events: CalendarEvent[],
+  allActiveEvents: CalendarEvent[],
+  recentEventTitles: string[],
+  eventRules: EventRule[],
+  keywordRules: KeywordRule[],
+  settings: Settings,
+  taskTags: TaskTag[],
+  focusHistory: FocusSessionRecord[],
+): CalendarState {
+  const currentEvent = allActiveEvents[0] ?? null;
+  const tagResolution = currentEvent
+    ? resolveTagMetadataForEvent(currentEvent, eventRules, keywordRules, taskTags, settings, focusHistory)
+    : { tagKey: null, tagLabel: null, difficultyRank: null };
+
+  return {
+    currentEvent,
+    allActiveEvents,
+    todaysEvents: events,
+    activeProfile: null,
+    activeRuleSource: 'none',
+    activeRuleName: null,
+    primaryTagKey: tagResolution.tagKey,
+    primaryTagLabel: tagResolution.tagLabel,
+    difficultyRank: tagResolution.difficultyRank,
+    allowedDomains: [],
+    recentEventTitles,
+    isRestricted: false,
     lastSyncedAt: new Date().toISOString(),
     authError: null,
   };

@@ -56,11 +56,12 @@ type TooltipPlacement = 'top' | 'bottom';
 
 interface ResolvedWorkspaceEvent {
   event: CalendarEvent;
-  source: 'event' | 'keyword' | 'none';
+  source: 'event' | 'keyword' | 'none' | 'override';
   ruleName: string | null;
   domains: string[];
   tagKey: string | null;
   difficultyRank: DifficultyRank | null;
+  fallbackKeyword: string | null;
 }
 
 interface SelectedTooltipState {
@@ -81,8 +82,8 @@ interface DownloadRescueToggleConfig {
   description: string;
 }
 
-const TOOLTIP_WIDTH = 368;
-const TOOLTIP_HEIGHT = 360;
+const TOOLTIP_WIDTH = 392;
+const TOOLTIP_HEIGHT = 548;
 const TOOLTIP_MARGIN = 20;
 const DOWNLOAD_RESCUE_MAX_PATCH: Partial<Settings> = {
   downloadRedirectUseDownloadsApi: true,
@@ -400,13 +401,16 @@ export default function Options(): React.JSX.Element {
     loadVisibleRange(arg.start.toISOString(), arg.end.toISOString());
   };
 
-  const handleEventClick = (arg: EventClickArg) => {
-    arg.jsEvent.preventDefault();
-    const rect = arg.el.getBoundingClientRect();
-    setSelectedTooltip({ eventId: arg.event.id, anchorRect: rect });
-    const positioning = chooseTooltipPosition(rect);
+  const openTooltipAtRect = useCallback((eventId: string, anchorRect: DOMRect) => {
+    setSelectedTooltip({ eventId, anchorRect });
+    const positioning = chooseTooltipPosition(anchorRect);
     setTooltipMode(positioning.mode);
     setTooltipPlacement(positioning.placement);
+  }, []);
+
+  const handleEventClick = (arg: EventClickArg) => {
+    arg.jsEvent.preventDefault();
+    openTooltipAtRect(arg.event.id, arg.el.getBoundingClientRect());
   };
 
   const saveKeywordRule = async () => {
@@ -930,23 +934,34 @@ export default function Options(): React.JSX.Element {
                     }))}
                     datesSet={handleDatesSet}
                     eventClick={handleEventClick}
-                    eventDidMount={(arg: EventMountArg) => {
-                      arg.el.dataset.windowEventId = arg.event.id;
-                      arg.el.tabIndex = 0;
-                      if (selectedTooltip?.eventId === arg.event.id) {
-                        arg.el.dataset.windowSelected = 'true';
-                      } else {
-                        delete arg.el.dataset.windowSelected;
-                      }
+                eventDidMount={(arg: EventMountArg) => {
+                  arg.el.dataset.windowEventId = arg.event.id;
+                  arg.el.tabIndex = 0;
+                  arg.el.style.cursor = 'pointer';
+                  arg.el.onkeydown = (event: KeyboardEvent) => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault();
+                      openTooltipAtRect(arg.event.id, arg.el.getBoundingClientRect());
+                    }
+                  };
+                  if (selectedTooltip?.eventId === arg.event.id) {
+                    arg.el.dataset.windowSelected = 'true';
+                  } else {
+                    delete arg.el.dataset.windowSelected;
+                  }
+                }}
+                eventContent={(arg: EventContentArg) => (
+                  <CalendarEventChip
+                    eventId={arg.event.id}
+                    title={arg.event.title}
+                    timeText={arg.timeText}
+                    backgroundColor={arg.event.backgroundColor}
+                    foregroundColor={arg.event.textColor}
+                    onQuickOpen={(eventId, element) => {
+                      openTooltipAtRect(eventId, element.getBoundingClientRect());
                     }}
-                    eventContent={(arg: EventContentArg) => (
-                      <CalendarEventChip
-                        title={arg.event.title}
-                        timeText={arg.timeText}
-                        backgroundColor={arg.event.backgroundColor}
-                        foregroundColor={arg.event.textColor}
-                      />
-                    )}
+                  />
+                )}
                   />
                 </div>
               ) : (
@@ -973,10 +988,11 @@ export default function Options(): React.JSX.Element {
                       <RuleListItem
                         key={rule.eventTitle}
                         title={rule.eventTitle}
-                        subtitle="Exact title rule"
+                        subtitle={rule.domains.length === 0 ? 'Exact unrestricted override' : 'Exact title rule'}
                         domains={rule.domains}
                         tagLabel={taskTags.find((tag) => tag.key === rule.tagKey)?.label ?? null}
                         difficultyRank={rule.difficultyOverride}
+                        isUnrestrictedOverride={rule.domains.length === 0}
                         onDelete={async () => {
                           await removeEventRule(rule.eventTitle);
                           await loadData();
@@ -1044,7 +1060,8 @@ const EventRuleTooltip = React.forwardRef<HTMLDivElement, {
     },
     ref,
   ) => {
-    const exactRuleExists = resolvedEvent.source === 'event';
+    const exactRuleExists = resolvedEvent.source === 'event' || resolvedEvent.source === 'override';
+    const hasUnrestrictedOverride = resolvedEvent.source === 'override';
     const currentDomainsValue = resolvedEvent.domains.join(', ');
     const [domainsInput, setDomainsInput] = useState(currentDomainsValue);
     const [tagKey, setTagKey] = useState(resolvedEvent.tagKey ?? '');
@@ -1065,9 +1082,9 @@ const EventRuleTooltip = React.forwardRef<HTMLDivElement, {
       setDomainsInput(currentDomainsValue);
       setTagKey(resolvedEvent.tagKey ?? '');
       setDifficultyRank(resolvedEvent.difficultyRank ? String(resolvedEvent.difficultyRank) : '');
-      setEditing(resolvedEvent.source !== 'event');
+      setEditing(!exactRuleExists);
       setError('');
-    }, [currentDomainsValue, resolvedEvent.difficultyRank, resolvedEvent.event.id, resolvedEvent.source, resolvedEvent.tagKey]);
+    }, [currentDomainsValue, exactRuleExists, resolvedEvent.difficultyRank, resolvedEvent.event.id, resolvedEvent.tagKey]);
 
     const positioning = mode === 'modal'
       ? {
@@ -1083,71 +1100,102 @@ const EventRuleTooltip = React.forwardRef<HTMLDivElement, {
           left: `${clamp(anchorRect.left + anchorRect.width / 2 - TOOLTIP_WIDTH / 2, TOOLTIP_MARGIN, window.innerWidth - TOOLTIP_WIDTH - TOOLTIP_MARGIN)}px`,
           transform: 'none',
         };
+    const saveAsUnrestricted = splitDomains(domainsInput).length === 0;
+    const titleModeLabel =
+      resolvedEvent.source === 'event'
+        ? 'Exact Event Rule'
+        : resolvedEvent.source === 'keyword'
+          ? 'Keyword fallback'
+          : resolvedEvent.source === 'override'
+            ? 'Unrestricted override'
+            : 'Unrestricted';
+    const summaryTitle =
+      resolvedEvent.source === 'event'
+        ? `Using exact title rule “${resolvedEvent.ruleName}”`
+        : resolvedEvent.source === 'keyword'
+          ? `Using keyword fallback “${resolvedEvent.ruleName}”`
+          : resolvedEvent.source === 'override'
+            ? 'This title is explicitly unrestricted'
+            : 'No exact rule yet';
+    const summaryBody =
+      resolvedEvent.source === 'event'
+        ? 'Editing here updates the exact Event Rule used by every event with this title.'
+        : resolvedEvent.source === 'keyword'
+          ? 'Saving here creates an exact Event Rule and overrides the fallback immediately.'
+          : resolvedEvent.source === 'override'
+            ? resolvedEvent.fallbackKeyword
+              ? `Keyword fallback “${resolvedEvent.fallbackKeyword}” is currently suppressed for this exact title.`
+              : 'This exact-title override keeps the event unrestricted until you add allowed sites again.'
+            : 'Browsing stays unrestricted unless you save allowed sites for this event title.';
+    const saveButtonLabel = saveAsUnrestricted
+      ? exactRuleExists
+        ? 'Save Unrestricted Override'
+        : 'Keep Unrestricted'
+      : exactRuleExists
+        ? 'Save Rule'
+        : 'Create Rule';
 
     return (
       <>
-        <div className="fixed inset-0 z-40 bg-[rgba(6,9,20,0.12)] backdrop-blur-[1.5px]" onClick={onClose} />
+        {mode === 'modal' ? (
+          <div
+            className="fixed inset-0 z-40 bg-[rgba(9,14,30,0.12)] backdrop-blur-[2px]"
+            onClick={onClose}
+          />
+        ) : null}
         <div
           ref={ref}
-          className={`fixed z-50 w-[min(368px,calc(100vw-24px))] rounded-[30px] border border-[var(--fg-border)] bg-white/95 p-5 shadow-[0_24px_80px_rgba(15,23,42,0.18)] backdrop-blur-xl ${
-            mode === 'modal' ? 'max-h-[min(560px,calc(100vh-48px))] overflow-auto' : ''
+          className={`fixed z-50 w-[min(392px,calc(100vw-24px))] rounded-[28px] border border-white/80 bg-[rgba(255,255,255,0.98)] p-5 shadow-[0_26px_80px_rgba(15,23,42,0.18)] ring-1 ring-[rgba(148,163,184,0.12)] ${
+            mode === 'modal' ? 'max-h-[min(620px,calc(100vh-40px))] overflow-auto' : 'max-h-[min(620px,calc(100vh-32px))] overflow-auto'
           }`}
           style={positioning}
           role="dialog"
           aria-modal="true"
         >
           <div className="mb-4 flex items-start justify-between gap-3">
-            <div className="space-y-1">
-              <div className="inline-flex items-center gap-2 rounded-full border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-2.5 py-1 text-[11px] font-medium text-[var(--fg-muted)]">
+            <div className="space-y-2">
+              <div className="inline-flex items-center gap-2 rounded-full border border-[rgba(148,163,184,0.25)] bg-[rgba(241,245,249,0.78)] px-2.5 py-1 text-[11px] font-semibold text-[var(--fg-muted)]">
                 <span className={`h-2 w-2 rounded-full ${statusDot(resolvedEvent.source)}`} />
-                {resolvedEvent.source === 'event'
-                  ? 'Exact Event Rule'
-                  : resolvedEvent.source === 'keyword'
-                    ? 'Keyword fallback'
-                    : 'Unrestricted'}
+                {titleModeLabel}
               </div>
-              <h3 className="text-2xl font-semibold tracking-[-0.03em] text-[var(--fg-text)]">
+              <h3 className="text-[1.9rem] font-semibold tracking-[-0.04em] text-[var(--fg-text)]">
                 {resolvedEvent.event.title}
               </h3>
-              <p className="text-sm text-[var(--fg-muted)]">
+              <p className="text-sm font-medium text-[var(--fg-muted)]">
                 {formatTooltipDate(resolvedEvent.event)}
               </p>
               {resolvedEvent.event.recurrenceHint && (
-                <p className="text-xs text-[var(--fg-muted)]">
+                <p className="max-w-[30ch] text-xs leading-5 text-[var(--fg-muted)]">
                   {resolvedEvent.event.recurrenceHint}. Changes here apply to all events with this exact title.
                 </p>
               )}
             </div>
-            <button onClick={onClose} className="fg-button-ghost" aria-label="Close event rule editor">
+            <button
+              onClick={onClose}
+              className="rounded-full border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-3 py-1.5 text-sm font-medium text-[var(--fg-muted)] transition hover:bg-white hover:text-[var(--fg-text)]"
+              aria-label="Close event rule editor"
+            >
               Close
             </button>
           </div>
 
-          <div className="mb-4 rounded-2xl border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-4 py-3">
+          <div className="mb-4 rounded-[22px] border border-[rgba(148,163,184,0.18)] bg-[linear-gradient(180deg,rgba(248,250,252,0.96),rgba(241,245,249,0.9))] px-4 py-3.5">
             <p className="text-sm font-medium text-[var(--fg-text)]">
-              {resolvedEvent.source === 'none'
-                ? 'No exact rule yet'
-                : resolvedEvent.source === 'keyword'
-                  ? `Using keyword fallback “${resolvedEvent.ruleName}”`
-                  : `Using exact title rule “${resolvedEvent.ruleName}”`}
+              {summaryTitle}
             </p>
             <p className="mt-1 text-xs leading-5 text-[var(--fg-muted)]">
-              {resolvedEvent.source === 'none'
-                ? 'Browsing stays unrestricted unless you save allowed sites for this event title.'
-                : resolvedEvent.source === 'keyword'
-                  ? 'Saving here creates an exact Event Rule and overrides the fallback immediately.'
-                  : 'Editing here updates the exact Event Rule used by every event with this title.'}
+              {summaryBody}
             </p>
           </div>
 
-          <div className="space-y-3">
+          <div className="space-y-4">
             <div className="grid gap-3 md:grid-cols-2">
-              <div className="space-y-1.5">
+              <div className="rounded-[22px] border border-[rgba(148,163,184,0.16)] bg-[var(--fg-panel-soft)] px-4 py-3">
                 <p className="text-sm font-medium text-[var(--fg-text)]">Primary tag</p>
                 <select
                   value={tagKey}
                   onChange={(event) => setTagKey(event.target.value)}
-                  className="fg-select w-full"
+                  className="fg-select mt-2 w-full"
                 >
                   <option value="">No explicit tag</option>
                   {taskTags.map((tag) => (
@@ -1161,12 +1209,12 @@ const EventRuleTooltip = React.forwardRef<HTMLDivElement, {
                 </p>
               </div>
 
-              <div className="space-y-1.5">
+              <div className="rounded-[22px] border border-[rgba(148,163,184,0.16)] bg-[var(--fg-panel-soft)] px-4 py-3">
                 <p className="text-sm font-medium text-[var(--fg-text)]">Difficulty</p>
                 <select
                   value={difficultyRank}
                   onChange={(event) => setDifficultyRank(event.target.value)}
-                  className="fg-select w-full"
+                  className="fg-select mt-2 w-full"
                 >
                   <option value="">Auto from tag and history</option>
                   <option value="1">1 · Routine</option>
@@ -1181,8 +1229,14 @@ const EventRuleTooltip = React.forwardRef<HTMLDivElement, {
               </div>
             </div>
 
-            <div className="flex items-center justify-between">
-              <p className="text-sm font-medium text-[var(--fg-text)]">Allowed sites</p>
+            <div className="rounded-[24px] border border-[rgba(148,163,184,0.16)] bg-white px-4 py-4 shadow-[0_10px_30px_rgba(15,23,42,0.04)]">
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-medium text-[var(--fg-text)]">Allowed sites</p>
+                  <p className="mt-1 text-xs leading-5 text-[var(--fg-muted)]">
+                    Leave this empty to keep this event unrestricted, even if a keyword fallback matches.
+                  </p>
+                </div>
               {!editing && (
                 <button
                   onClick={() => {
@@ -1195,23 +1249,30 @@ const EventRuleTooltip = React.forwardRef<HTMLDivElement, {
                   Edit
                 </button>
               )}
-            </div>
+              </div>
 
-            {editing ? (
-              <>
+              {editing ? (
+                <>
                 <textarea
                   rows={4}
                   value={domainsInput}
                   onChange={(event) => setDomainsInput(event.target.value)}
-                  className="fg-input min-h-[112px] resize-none"
+                  className="fg-input min-h-[132px] resize-none"
                   placeholder="github.com, claude.ai, docs.google.com"
                   autoFocus
                 />
-                <p className="text-xs text-[var(--fg-muted)]">
-                  Enter domains separated by commas. Subdomains are allowed automatically by the block rule.
-                </p>
-                {error && <p className="text-xs text-rose-600">{error}</p>}
-                <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+                  <p className="text-xs leading-5 text-[var(--fg-muted)]">
+                    Enter domains separated by commas. Subdomains are allowed automatically by the block rule.
+                  </p>
+                  {saveAsUnrestricted ? (
+                    <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-emerald-700">
+                      Saves as unrestricted override
+                    </span>
+                  ) : null}
+                </div>
+                {error && <p className="mt-3 text-xs text-rose-600">{error}</p>}
+                <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
                   <div className="flex gap-2">
                     <button
                       onClick={async () => {
@@ -1236,7 +1297,7 @@ const EventRuleTooltip = React.forwardRef<HTMLDivElement, {
                       disabled={savingRule}
                       className="fg-button-primary"
                     >
-                      {savingRule ? 'Saving…' : 'Save Rule'}
+                      {savingRule ? 'Saving…' : saveButtonLabel}
                     </button>
                     <button
                       onClick={() => {
@@ -1260,27 +1321,35 @@ const EventRuleTooltip = React.forwardRef<HTMLDivElement, {
                       }}
                       className="text-sm font-medium text-rose-600 transition hover:text-rose-700"
                     >
-                      Remove exact rule
+                      {hasUnrestrictedOverride ? 'Delete unrestricted override' : 'Remove exact rule'}
                     </button>
                   )}
                 </div>
-              </>
-            ) : (
-              <div className="flex flex-wrap gap-2">
-                {resolvedEvent.domains.length > 0 ? (
-                  resolvedEvent.domains.map((domain) => (
-                    <span
-                      key={domain}
-                      className="rounded-full border border-[var(--fg-border)] bg-white px-3 py-1.5 text-xs font-medium text-[var(--fg-text)]"
-                    >
-                      {domain}
-                    </span>
-                  ))
-                ) : (
-                  <p className="text-sm text-[var(--fg-muted)]">No domains saved yet.</p>
-                )}
-              </div>
-            )}
+                </>
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  {resolvedEvent.domains.length > 0 ? (
+                    resolvedEvent.domains.map((domain) => (
+                      <span
+                        key={domain}
+                        className="rounded-full border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-3 py-1.5 text-xs font-medium text-[var(--fg-text)]"
+                      >
+                        {domain}
+                      </span>
+                    ))
+                  ) : hasUnrestrictedOverride ? (
+                    <p className="text-sm leading-6 text-[var(--fg-muted)]">
+                      This exact-title override keeps the event unrestricted.
+                      {resolvedEvent.fallbackKeyword
+                        ? ` Keyword fallback "${resolvedEvent.fallbackKeyword}" will stay off until you delete the override.`
+                        : ''}
+                    </p>
+                  ) : (
+                    <p className="text-sm text-[var(--fg-muted)]">No domains saved yet.</p>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </>
@@ -1291,18 +1360,28 @@ const EventRuleTooltip = React.forwardRef<HTMLDivElement, {
 EventRuleTooltip.displayName = 'EventRuleTooltip';
 
 function CalendarEventChip({
+  eventId,
   title,
   timeText,
   backgroundColor,
   foregroundColor,
+  onQuickOpen,
 }: {
+  eventId: string;
   title: string;
   timeText: string;
   backgroundColor: string;
   foregroundColor: string;
+  onQuickOpen: (eventId: string, element: HTMLElement) => void;
 }): React.JSX.Element {
   return (
-    <div className="fg-event-chip" style={{ background: backgroundColor, color: foregroundColor }}>
+    <div
+      className="fg-event-chip cursor-pointer transition duration-150 hover:brightness-[1.03]"
+      style={{ background: backgroundColor, color: foregroundColor }}
+      onPointerDownCapture={(event) => {
+        onQuickOpen(eventId, event.currentTarget as HTMLElement);
+      }}
+    >
       {timeText && <span className="fg-event-time">{timeText}</span>}
       <span className="fg-event-title">{title}</span>
     </div>
@@ -1315,6 +1394,7 @@ function RuleListItem({
   domains,
   tagLabel,
   difficultyRank,
+  isUnrestrictedOverride = false,
   onDelete,
 }: {
   title: string;
@@ -1322,6 +1402,7 @@ function RuleListItem({
   domains: string[];
   tagLabel?: string | null;
   difficultyRank?: DifficultyRank | null;
+  isUnrestrictedOverride?: boolean;
   onDelete: () => void;
 }): React.JSX.Element {
   return (
@@ -1359,6 +1440,8 @@ function RuleListItem({
               {domain}
             </span>
           ))
+        ) : isUnrestrictedOverride ? (
+          <span className="text-xs text-[var(--fg-muted)]">Keeps this event title unrestricted.</span>
         ) : (
           <span className="text-xs text-[var(--fg-muted)]">No allowed domains configured.</span>
         )}
@@ -1726,7 +1809,7 @@ function chooseTooltipPosition(anchorRect: DOMRect): {
   const canAnchorHorizontally = window.innerWidth >= TOOLTIP_WIDTH + TOOLTIP_MARGIN * 2;
   const canAnchorVertically = spaceBelow >= TOOLTIP_HEIGHT + 16 || spaceAbove >= TOOLTIP_HEIGHT + 16;
 
-  if (!canAnchorHorizontally || !canAnchorVertically || window.innerWidth < 980) {
+  if (!canAnchorHorizontally || !canAnchorVertically || window.innerWidth < 760) {
     return { mode: 'modal', placement: 'bottom' };
   }
 
@@ -1774,11 +1857,12 @@ function resolveWorkspaceEvent(
   if (exactRule) {
     return {
       event,
-      source: 'event',
+      source: exactRule.domains.length > 0 ? 'event' : 'override',
       ruleName: exactRule.eventTitle,
       domains: exactRule.domains,
       tagKey: inferredTagKey,
       difficultyRank,
+      fallbackKeyword: keywordRule?.keyword ?? null,
     };
   }
 
@@ -1790,6 +1874,7 @@ function resolveWorkspaceEvent(
       domains: keywordRule.domains,
       tagKey: inferredTagKey,
       difficultyRank,
+      fallbackKeyword: null,
     };
   }
 
@@ -1800,12 +1885,15 @@ function resolveWorkspaceEvent(
     domains: [],
     tagKey: inferredTagKey,
     difficultyRank,
+    fallbackKeyword: null,
   };
 }
 
 function findBestKeywordRule(eventTitle: string, rules: KeywordRule[]): KeywordRule | null {
   const lower = eventTitle.toLowerCase();
-  const matches = rules.filter((rule) => lower.includes(rule.keyword.toLowerCase()));
+  const matches = rules.filter(
+    (rule) => rule.domains.length > 0 && lower.includes(rule.keyword.toLowerCase()),
+  );
   if (matches.length === 0) return null;
   return [...matches].sort((a, b) => {
     const diff = b.keyword.length - a.keyword.length;
@@ -1814,9 +1902,10 @@ function findBestKeywordRule(eventTitle: string, rules: KeywordRule[]): KeywordR
   })[0];
 }
 
-function statusDot(source: 'event' | 'keyword' | 'none'): string {
+function statusDot(source: 'event' | 'keyword' | 'none' | 'override'): string {
   if (source === 'event') return 'bg-emerald-500';
   if (source === 'keyword') return 'bg-amber-500';
+  if (source === 'override') return 'bg-sky-500';
   return 'bg-slate-400';
 }
 

@@ -534,7 +534,7 @@ async function applyBlockingState(calendarState: CalendarState): Promise<void> {
 
   await updateBlockingRules(
     calendarState.allowedDomains,
-    settings.enableBlocking && calendarState.isRestricted,
+    shouldEnforceBlocking(settings, calendarState),
   );
   await syncTemporaryUnlockRules(unlocks, downloadAllowances);
   await reconcileBlockedTabs(calendarState, unlocks, downloadAllowances);
@@ -943,7 +943,7 @@ function isUrlReachableNow(
   downloadAllowances: Record<string, DownloadAllowance>,
 ): boolean {
   if (!isHttpUrl(url)) return true;
-  if (!settings.enableBlocking || !calendarState.isRestricted) return true;
+  if (!shouldEnforceBlocking(settings, calendarState)) return true;
 
   const host = new URL(url).hostname;
   if (isDomainAllowed(host, calendarState.allowedDomains)) return true;
@@ -1009,8 +1009,7 @@ async function reloadTabsForExpiredHosts(
       if (!matchesExpiredHost) continue;
 
       const stillAllowed =
-        !settings.enableBlocking ||
-        !calendarState.isRestricted ||
+        !shouldEnforceBlocking(settings, calendarState) ||
         isDomainAllowed(host, calendarState.allowedDomains);
 
       if (!stillAllowed) {
@@ -1020,6 +1019,13 @@ async function reloadTabsForExpiredHosts(
       // Ignore tabs that disappeared during cleanup.
     }
   }
+}
+
+function shouldEnforceBlocking(
+  settings: Awaited<ReturnType<typeof getSettings>>,
+  calendarState: CalendarState,
+): boolean {
+  return settings.enableBlocking && calendarState.isRestricted && calendarState.allowedDomains.length > 0;
 }
 
 export async function handleDownloadCreated(

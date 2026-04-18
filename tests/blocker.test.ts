@@ -70,14 +70,13 @@ describe('updateBlockingRules', () => {
     expect(allowRule.priority).toBeGreaterThan(blockRule.priority);
   });
 
-  it('still installs block-all rule when allowedDomains is empty', async () => {
+  it('clears rules when blocking is enabled but no domains resolved', async () => {
     await updateBlockingRules([], true);
 
-    const call = (chrome.declarativeNetRequest.updateDynamicRules as ReturnType<typeof vi.fn>).mock.calls[0][0];
-    const { addRules } = call as { addRules: chrome.declarativeNetRequest.Rule[] };
-
-    expect(addRules).toHaveLength(1);
-    expect(addRules[0].id).toBe(BLOCK_ALL_RULE_ID);
+    expect(chrome.declarativeNetRequest.updateDynamicRules).toHaveBeenCalledWith({
+      removeRuleIds: [],
+      addRules: [],
+    });
   });
 
   it('removes existing rules before adding new ones', async () => {
