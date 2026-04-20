@@ -23,6 +23,7 @@ const BASE_CALENDAR_STATE: CalendarState = {
     end: '2026-04-15T18:00:00.000Z',
     isAllDay: false,
   },
+  activeLaunchTarget: null,
   allActiveEvents: [],
   todaysEvents: [],
   activeProfile: 'Deep Work',
@@ -51,6 +52,17 @@ describe('tag metadata migration', () => {
 
     expect(result.keywordRules[0].tagKey).toBe('research');
     expect(result.taskTags.some((tag) => tag.key === 'research')).toBe(true);
+  });
+
+  it('preserves null difficultyOverride and does not mark rule as changed', () => {
+    const eventRules: EventRule[] = [
+      { eventTitle: 'Calling Friends', domains: ['leetcode.com'], tagKey: null, difficultyOverride: null },
+    ];
+
+    const result = ensureRuleMetadata(eventRules, [], []);
+
+    expect(result.eventRules[0].difficultyOverride).toBeNull();
+    expect(result.changed).toBe(false);
   });
 
   it('auto-creates a tag after the same pattern appears three times', () => {

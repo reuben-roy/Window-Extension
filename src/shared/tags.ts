@@ -126,7 +126,7 @@ export function ensureRuleMetadata(
       domains: normalizeStringArray(rule.domains),
       tagKey: rule.tagKey ?? null,
       difficultyOverride:
-        rule.difficultyOverride === undefined ? null : normalizeDifficultyRank(rule.difficultyOverride),
+        rule.difficultyOverride == null ? null : normalizeDifficultyRank(rule.difficultyOverride),
     };
 
     if (

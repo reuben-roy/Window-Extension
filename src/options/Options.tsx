@@ -25,6 +25,7 @@ import {
   getAccountUser,
   getAnalyticsSnapshot,
   getCalendarState,
+  getEventLaunchTargets,
   getEventRules,
   getGlobalAllowlist,
   getKeywordRules,
@@ -32,6 +33,12 @@ import {
   getTaskTags,
   setSettings,
 } from '../shared/storage';
+import { isRedundantExactRuleCopy } from '../shared/ruleResolution';
+import {
+  findEventLaunchTarget,
+  removeEventLaunchTarget,
+  upsertEventLaunchTarget,
+} from '../shared/launchTargets';
 import { findTaskTag, inferTaskTagKeyFromTitle } from '../shared/tags';
 import type {
   AccountConflict,
@@ -43,6 +50,7 @@ import type {
   CalendarState,
   DifficultyRank,
   DownloadRedirectFallbackSeconds,
+  EventLaunchTarget,
   EventRule,
   FocusSessionRecord,
   KeywordRule,
@@ -59,6 +67,7 @@ interface ResolvedWorkspaceEvent {
   source: 'event' | 'keyword' | 'none' | 'override';
   ruleName: string | null;
   domains: string[];
+  effectiveDomains: string[];
   tagKey: string | null;
   difficultyRank: DifficultyRank | null;
   fallbackKeyword: string | null;
@@ -83,7 +92,7 @@ interface DownloadRescueToggleConfig {
 }
 
 const TOOLTIP_WIDTH = 392;
-const TOOLTIP_HEIGHT = 548;
+const TOOLTIP_HEIGHT = 688;
 const TOOLTIP_MARGIN = 20;
 const DOWNLOAD_RESCUE_MAX_PATCH: Partial<Settings> = {
   downloadRedirectUseDownloadsApi: true,
@@ -150,6 +159,7 @@ export default function Options(): React.JSX.Element {
   const [hasLoadedVisibleRange, setHasLoadedVisibleRange] = useState(false);
   const [settings, setLocalSettings] = useState<Settings | null>(null);
   const [eventRules, setLocalEventRules] = useState<EventRule[]>([]);
+  const [eventLaunchTargets, setEventLaunchTargetsState] = useState<EventLaunchTarget[]>([]);
   const [keywordRules, setLocalKeywordRules] = useState<KeywordRule[]>([]);
   const [taskTags, setTaskTagsState] = useState<TaskTag[]>([]);
   const [calendarView, setCalendarView] = useState<CalendarView>('timeGridWeek');
@@ -199,6 +209,7 @@ export default function Options(): React.JSX.Element {
       calendar,
       nextSettings,
       nextEventRules,
+      nextEventLaunchTargets,
       nextKeywordRules,
       nextTaskTags,
       nextAnalyticsSnapshot,
@@ -210,6 +221,7 @@ export default function Options(): React.JSX.Element {
       getCalendarState(),
       getSettings(),
       getEventRules(),
+      getEventLaunchTargets(),
       getKeywordRules(),
       getTaskTags(),
       getAnalyticsSnapshot(),
@@ -221,6 +233,7 @@ export default function Options(): React.JSX.Element {
     setCalendarState(calendar);
     setLocalSettings(nextSettings);
     setLocalEventRules(nextEventRules);
+    setEventLaunchTargetsState(nextEventLaunchTargets);
     setLocalKeywordRules(nextKeywordRules);
     setTaskTagsState(nextTaskTags);
     setAnalyticsSnapshotState(nextAnalyticsSnapshot);
@@ -245,6 +258,7 @@ export default function Options(): React.JSX.Element {
         'calendarState' in changes ||
         'settings' in changes ||
         'eventRules' in changes ||
+        'eventLaunchTargets' in changes ||
         'keywordRules' in changes ||
         'taskTags' in changes ||
         'analyticsSnapshot' in changes ||
@@ -296,6 +310,9 @@ export default function Options(): React.JSX.Element {
 
   const selectedResolvedEvent = selectedTooltip
     ? workspaceEvents.find((item) => item.event.id === selectedTooltip.eventId) ?? null
+    : null;
+  const selectedEventLaunchTarget = selectedResolvedEvent
+    ? findEventLaunchTarget(selectedResolvedEvent.event.id, eventLaunchTargets)
     : null;
 
   const nextEvent = useMemo(() => {
@@ -1019,6 +1036,7 @@ export default function Options(): React.JSX.Element {
           key={selectedResolvedEvent.event.id}
           ref={tooltipRef}
           resolvedEvent={selectedResolvedEvent}
+          launchTarget={selectedEventLaunchTarget}
           taskTags={taskTags}
           anchorRect={selectedTooltip.anchorRect}
           mode={tooltipMode}
@@ -1037,6 +1055,7 @@ export default function Options(): React.JSX.Element {
 
 const EventRuleTooltip = React.forwardRef<HTMLDivElement, {
   resolvedEvent: ResolvedWorkspaceEvent;
+  launchTarget: EventLaunchTarget | null;
   taskTags: TaskTag[];
   anchorRect: DOMRect;
   mode: TooltipMode;
@@ -1049,6 +1068,7 @@ const EventRuleTooltip = React.forwardRef<HTMLDivElement, {
   (
     {
       resolvedEvent,
+      launchTarget,
       taskTags,
       anchorRect,
       mode,
@@ -1062,14 +1082,24 @@ const EventRuleTooltip = React.forwardRef<HTMLDivElement, {
   ) => {
     const exactRuleExists = resolvedEvent.source === 'event' || resolvedEvent.source === 'override';
     const hasUnrestrictedOverride = resolvedEvent.source === 'override';
-    const currentDomainsValue = resolvedEvent.domains.join(', ');
+    const keywordFallbackActive = resolvedEvent.source === 'keyword';
+    const startsInEditing = resolvedEvent.source === 'none';
+    const currentDomainsValue = exactRuleExists ? resolvedEvent.domains.join(', ') : '';
+    const currentEffectiveDomainsValue = resolvedEvent.effectiveDomains.join(', ');
+    const currentLaunchUrlValue = launchTarget?.launchUrl ?? '';
+    const displayedDomains = exactRuleExists ? resolvedEvent.domains : resolvedEvent.effectiveDomains;
+    const canCopyFallbackDomains = keywordFallbackActive && resolvedEvent.effectiveDomains.length > 0;
     const [domainsInput, setDomainsInput] = useState(currentDomainsValue);
+    const [launchUrlInput, setLaunchUrlInput] = useState(currentLaunchUrlValue);
     const [tagKey, setTagKey] = useState(resolvedEvent.tagKey ?? '');
     const [difficultyRank, setDifficultyRank] = useState<string>(
       resolvedEvent.difficultyRank ? String(resolvedEvent.difficultyRank) : '',
     );
-    const [editing, setEditing] = useState(!exactRuleExists);
+    const [editing, setEditing] = useState(startsInEditing);
+    const [editingLaunchTarget, setEditingLaunchTarget] = useState(false);
     const [error, setError] = useState('');
+    const [launchError, setLaunchError] = useState('');
+    const [savingLaunchTarget, setSavingLaunchTarget] = useState(false);
     const previousEventIdRef = useRef(resolvedEvent.event.id);
 
     // Only reset the draft when switching events. Background storage refreshes
@@ -1080,11 +1110,14 @@ const EventRuleTooltip = React.forwardRef<HTMLDivElement, {
       }
       previousEventIdRef.current = resolvedEvent.event.id;
       setDomainsInput(currentDomainsValue);
+      setLaunchUrlInput(currentLaunchUrlValue);
       setTagKey(resolvedEvent.tagKey ?? '');
       setDifficultyRank(resolvedEvent.difficultyRank ? String(resolvedEvent.difficultyRank) : '');
-      setEditing(!exactRuleExists);
+      setEditing(startsInEditing);
       setError('');
-    }, [currentDomainsValue, exactRuleExists, resolvedEvent.difficultyRank, resolvedEvent.event.id, resolvedEvent.tagKey]);
+      setLaunchError('');
+      setEditingLaunchTarget(false);
+    }, [currentDomainsValue, currentLaunchUrlValue, resolvedEvent.difficultyRank, resolvedEvent.event.id, resolvedEvent.tagKey, startsInEditing]);
 
     const positioning = mode === 'modal'
       ? {
@@ -1121,19 +1154,31 @@ const EventRuleTooltip = React.forwardRef<HTMLDivElement, {
       resolvedEvent.source === 'event'
         ? 'Editing here updates the exact Event Rule used by every event with this title.'
         : resolvedEvent.source === 'keyword'
-          ? 'Saving here creates an exact Event Rule and overrides the fallback immediately.'
+          ? 'These sites are coming from a keyword match. Create an exact rule only if this title should pin custom sites or stay unrestricted.'
           : resolvedEvent.source === 'override'
             ? resolvedEvent.fallbackKeyword
               ? `Keyword fallback “${resolvedEvent.fallbackKeyword}” is currently suppressed for this exact title.`
               : 'This exact-title override keeps the event unrestricted until you add allowed sites again.'
             : 'Browsing stays unrestricted unless you save allowed sites for this event title.';
     const saveButtonLabel = saveAsUnrestricted
-      ? exactRuleExists
-        ? 'Save Unrestricted Override'
-        : 'Keep Unrestricted'
+      ? resolvedEvent.source === 'none'
+        ? 'Keep Unrestricted'
+        : hasUnrestrictedOverride
+          ? 'Save Unrestricted Override'
+          : 'Create Unrestricted Override'
       : exactRuleExists
         ? 'Save Rule'
-        : 'Create Rule';
+        : 'Create Exact Rule';
+    const unrestrictedBadgeLabel = saveAsUnrestricted
+      ? resolvedEvent.source === 'none'
+        ? 'Keeps unrestricted'
+        : exactRuleExists
+          ? 'Saves as unrestricted override'
+          : 'Creates unrestricted override'
+      : null;
+    const editButtonLabel = exactRuleExists ? 'Edit' : keywordFallbackActive ? 'Create Rule' : 'Edit';
+    const hasLaunchTarget = launchTarget !== null;
+    const launchTargetHost = launchTarget ? safeHostname(launchTarget.launchUrl) : null;
 
     return (
       <>
@@ -1195,7 +1240,8 @@ const EventRuleTooltip = React.forwardRef<HTMLDivElement, {
                 <select
                   value={tagKey}
                   onChange={(event) => setTagKey(event.target.value)}
-                  className="fg-select mt-2 w-full"
+                  disabled={!editing}
+                  className="fg-select mt-2 w-full disabled:cursor-not-allowed disabled:bg-[rgba(248,250,252,0.92)] disabled:text-[var(--fg-muted)]"
                 >
                   <option value="">No explicit tag</option>
                   {taskTags.map((tag) => (
@@ -1214,7 +1260,8 @@ const EventRuleTooltip = React.forwardRef<HTMLDivElement, {
                 <select
                   value={difficultyRank}
                   onChange={(event) => setDifficultyRank(event.target.value)}
-                  className="fg-select mt-2 w-full"
+                  disabled={!editing}
+                  className="fg-select mt-2 w-full disabled:cursor-not-allowed disabled:bg-[rgba(248,250,252,0.92)] disabled:text-[var(--fg-muted)]"
                 >
                   <option value="">Auto from tag and history</option>
                   <option value="1">1 · Routine</option>
@@ -1246,13 +1293,43 @@ const EventRuleTooltip = React.forwardRef<HTMLDivElement, {
                   }}
                   className="fg-button-ghost"
                 >
-                  Edit
+                  {editButtonLabel}
                 </button>
               )}
               </div>
 
               {editing ? (
                 <>
+                {canCopyFallbackDomains ? (
+                  <div className="mb-3 rounded-[20px] border border-[rgba(59,130,246,0.14)] bg-[rgba(239,246,255,0.78)] px-3.5 py-3">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div className="max-w-[22rem]">
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-sky-700">
+                          Current keyword fallback
+                        </p>
+                        <p className="mt-1 text-xs leading-5 text-[var(--fg-muted)]">
+                          These sites are active now through the keyword rule. Copy them only if you want to pin this exact title to the same list.
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => setDomainsInput(currentEffectiveDomainsValue)}
+                        className="rounded-full border border-[rgba(59,130,246,0.18)] bg-white px-3 py-1.5 text-xs font-medium text-sky-700 transition hover:border-[rgba(59,130,246,0.26)] hover:bg-sky-50"
+                      >
+                        Copy current sites
+                      </button>
+                    </div>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {resolvedEvent.effectiveDomains.map((domain) => (
+                        <span
+                          key={domain}
+                          className="rounded-full border border-[rgba(148,163,184,0.2)] bg-white px-3 py-1.5 text-xs font-medium text-[var(--fg-text)]"
+                        >
+                          {domain}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
                 <textarea
                   rows={4}
                   value={domainsInput}
@@ -1265,9 +1342,9 @@ const EventRuleTooltip = React.forwardRef<HTMLDivElement, {
                   <p className="text-xs leading-5 text-[var(--fg-muted)]">
                     Enter domains separated by commas. Subdomains are allowed automatically by the block rule.
                   </p>
-                  {saveAsUnrestricted ? (
+                  {unrestrictedBadgeLabel ? (
                     <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-emerald-700">
-                      Saves as unrestricted override
+                      {unrestrictedBadgeLabel}
                     </span>
                   ) : null}
                 </div>
@@ -1327,16 +1404,30 @@ const EventRuleTooltip = React.forwardRef<HTMLDivElement, {
                 </div>
                 </>
               ) : (
-                <div className="flex flex-wrap gap-2">
-                  {resolvedEvent.domains.length > 0 ? (
-                    resolvedEvent.domains.map((domain) => (
+                <div>
+                  {displayedDomains.length > 0 ? (
+                    <>
+                    {keywordFallbackActive ? (
+                      <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--fg-muted)]">
+                        From keyword fallback
+                      </p>
+                    ) : null}
+                    <div className="flex flex-wrap gap-2">
+                      {displayedDomains.map((domain) => (
                       <span
                         key={domain}
                         className="rounded-full border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-3 py-1.5 text-xs font-medium text-[var(--fg-text)]"
                       >
                         {domain}
                       </span>
-                    ))
+                      ))}
+                    </div>
+                    {keywordFallbackActive ? (
+                      <p className="mt-3 text-xs leading-5 text-[var(--fg-muted)]">
+                        This title is still following the shared keyword rule. Create an exact rule only if you want this event title to stop inheriting those sites.
+                      </p>
+                    ) : null}
+                    </>
                   ) : hasUnrestrictedOverride ? (
                     <p className="text-sm leading-6 text-[var(--fg-muted)]">
                       This exact-title override keeps the event unrestricted.
@@ -1347,7 +1438,123 @@ const EventRuleTooltip = React.forwardRef<HTMLDivElement, {
                   ) : (
                     <p className="text-sm text-[var(--fg-muted)]">No domains saved yet.</p>
                   )}
+                  {exactRuleExists ? (
+                    <button
+                      onClick={async () => {
+                        await removeEventRule(resolvedEvent.event.title);
+                        await onSaved();
+                      }}
+                      className="mt-4 text-sm font-medium text-rose-600 transition hover:text-rose-700"
+                    >
+                      {hasUnrestrictedOverride ? 'Delete unrestricted override' : 'Remove exact rule'}
+                    </button>
+                  ) : null}
                 </div>
+              )}
+            </div>
+
+            <div className="rounded-[24px] border border-[rgba(148,163,184,0.16)] bg-white px-4 py-4 shadow-[0_10px_30px_rgba(15,23,42,0.04)]">
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-medium text-[var(--fg-text)]">Launch page</p>
+                  <p className="mt-1 text-xs leading-5 text-[var(--fg-muted)]">
+                    Save one exact task URL for this calendar occurrence. Window can bring that page forward automatically when the block starts.
+                  </p>
+                </div>
+                {!editingLaunchTarget && (
+                  <button
+                    onClick={() => {
+                      setLaunchUrlInput(currentLaunchUrlValue);
+                      setLaunchError('');
+                      setEditingLaunchTarget(true);
+                    }}
+                    className="fg-button-ghost"
+                  >
+                    {hasLaunchTarget ? 'Edit' : 'Add'}
+                  </button>
+                )}
+              </div>
+
+              {editingLaunchTarget ? (
+                <>
+                  <input
+                    type="url"
+                    value={launchUrlInput}
+                    onChange={(event) => setLaunchUrlInput(event.target.value)}
+                    className="fg-input"
+                    placeholder="https://leetcode.com/problems/two-sum/"
+                    autoFocus={!editing}
+                  />
+                  <p className="mt-3 text-xs leading-5 text-[var(--fg-muted)]">
+                    Exact `http://` or `https://` only. This launch page is saved for this event occurrence only and does not create an exact Event Rule.
+                  </p>
+                  {launchError && <p className="mt-3 text-xs text-rose-600">{launchError}</p>}
+                  <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+                    <div className="flex gap-2">
+                      <button
+                        onClick={async () => {
+                          setLaunchError('');
+                          setSavingLaunchTarget(true);
+                          const result = await upsertEventLaunchTarget(
+                            resolvedEvent.event,
+                            launchUrlInput,
+                          );
+                          setSavingLaunchTarget(false);
+                          if (!result.ok) {
+                            setLaunchError(result.error ?? 'Unable to save launch page.');
+                            return;
+                          }
+                          setEditingLaunchTarget(false);
+                          await onSaved();
+                        }}
+                        disabled={savingLaunchTarget}
+                        className="fg-button-primary"
+                      >
+                        {savingLaunchTarget ? 'Saving…' : hasLaunchTarget ? 'Save launch page' : 'Add launch page'}
+                      </button>
+                      <button
+                        onClick={() => {
+                          setLaunchUrlInput(currentLaunchUrlValue);
+                          setLaunchError('');
+                          setEditingLaunchTarget(false);
+                        }}
+                        className="fg-button-secondary"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+
+                    {hasLaunchTarget ? (
+                      <button
+                        onClick={async () => {
+                          await removeEventLaunchTarget(resolvedEvent.event.id);
+                          setLaunchError('');
+                          setEditingLaunchTarget(false);
+                          await onSaved();
+                        }}
+                        className="text-sm font-medium text-rose-600 transition hover:text-rose-700"
+                      >
+                        Remove launch page
+                      </button>
+                    ) : null}
+                  </div>
+                </>
+              ) : hasLaunchTarget ? (
+                <div className="space-y-3">
+                  <div className="rounded-[20px] border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-3.5 py-3">
+                    <p className="truncate text-sm font-medium text-[var(--fg-text)]">
+                      {launchTargetHost}
+                    </p>
+                    <p className="mt-1 break-all text-xs leading-5 text-[var(--fg-muted)]">
+                      {launchTarget.launchUrl}
+                    </p>
+                  </div>
+                  <p className="text-xs leading-5 text-[var(--fg-muted)]">
+                    This launch page stays tied to this occurrence only. Saving it does not change the title-wide allowlist rule.
+                  </p>
+                </div>
+              ) : (
+                <p className="text-sm text-[var(--fg-muted)]">No launch page saved for this occurrence.</p>
               )}
             </div>
           </div>
@@ -1830,6 +2037,14 @@ function splitDomains(value: string): string[] {
     .filter(Boolean);
 }
 
+function safeHostname(value: string): string | null {
+  try {
+    return new URL(value).hostname;
+  } catch {
+    return null;
+  }
+}
+
 function resolveWorkspaceEvent(
   event: CalendarEvent,
   eventRules: EventRule[],
@@ -1842,6 +2057,11 @@ function resolveWorkspaceEvent(
   const keywordRule = settings?.keywordAutoMatchEnabled
     ? findBestKeywordRule(event.title, keywordRules)
     : null;
+  const treatExactRuleAsFallback =
+    exactRule !== undefined &&
+    exactRule.domains.length > 0 &&
+    keywordRule !== null &&
+    isRedundantExactRuleCopy(exactRule, keywordRule);
   const inferredTagKey = exactRule?.tagKey ?? keywordRule?.tagKey ?? inferTaskTagKeyFromTitle(event.title, taskTags);
   const tag = findTaskTag(taskTags, inferredTagKey);
   const difficultyRank = inferredTagKey
@@ -1854,12 +2074,13 @@ function resolveWorkspaceEvent(
       })
     : exactRule?.difficultyOverride ?? null;
 
-  if (exactRule) {
+  if (exactRule && !treatExactRuleAsFallback) {
     return {
       event,
       source: exactRule.domains.length > 0 ? 'event' : 'override',
       ruleName: exactRule.eventTitle,
       domains: exactRule.domains,
+      effectiveDomains: exactRule.domains,
       tagKey: inferredTagKey,
       difficultyRank,
       fallbackKeyword: keywordRule?.keyword ?? null,
@@ -1871,7 +2092,8 @@ function resolveWorkspaceEvent(
       event,
       source: 'keyword',
       ruleName: keywordRule.keyword,
-      domains: keywordRule.domains,
+      domains: [],
+      effectiveDomains: keywordRule.domains,
       tagKey: inferredTagKey,
       difficultyRank,
       fallbackKeyword: null,
@@ -1883,6 +2105,7 @@ function resolveWorkspaceEvent(
     source: 'none',
     ruleName: null,
     domains: [],
+    effectiveDomains: [],
     tagKey: inferredTagKey,
     difficultyRank,
     fallbackKeyword: null,

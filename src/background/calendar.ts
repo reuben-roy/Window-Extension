@@ -20,6 +20,12 @@ import {
 } from '../shared/calendarColors';
 import { isDailyBlockingPauseActive } from '../shared/blockingSchedule';
 import {
+  getLaunchTargetHost,
+  reconcileEventLaunchTargets,
+  resolveActiveLaunchTarget,
+} from '../shared/launchTargets';
+import { isRedundantExactRuleCopy } from '../shared/ruleResolution';
+import {
   ensureRuleMetadata,
   findTaskTag,
   inferTaskTagKeyFromTitle,
@@ -30,6 +36,7 @@ import type {
   CalendarEvent,
   CalendarState,
   DifficultyRank,
+  EventLaunchTarget,
   EventRule,
   FocusSessionRecord,
   KeywordRule,
@@ -74,6 +81,7 @@ export async function syncCalendar(): Promise<CalendarState> {
     taskTags,
     eventPatternStats,
     focusHistory,
+    eventLaunchTargets,
   ] = await Promise.all([
     getEventRules(),
     getKeywordRules(),
@@ -82,6 +90,7 @@ export async function syncCalendar(): Promise<CalendarState> {
     getTaskTags(),
     getEventPatternStats(),
     getFocusSessionHistory(),
+    reconcileEventLaunchTargets(),
   ]);
 
   const migrated = ensureRuleMetadata(eventRules, keywordRules, taskTags);
@@ -137,6 +146,7 @@ export async function syncCalendar(): Promise<CalendarState> {
     settings,
     observed.taskTags,
     focusHistory,
+    eventLaunchTargets,
   );
   await setCalendarState(state);
   return state;
@@ -180,19 +190,40 @@ export function resolveRuleForEvent(
   settings: Settings,
 ): ResolvedRule | null {
   const exactRule = eventRules.find((rule) => rule.eventTitle === event.title);
+  const keywordRule = settings.keywordAutoMatchEnabled
+    ? findMatchingKeywordRule(event.title, keywordRules)
+    : null;
+
   if (exactRule) {
+    if (exactRule.domains.length === 0) {
+      return {
+        event,
+        domains: exactRule.domains,
+        source: 'event',
+        name: exactRule.eventTitle,
+        mode: 'unrestricted',
+      };
+    }
+
+    if (keywordRule && isRedundantExactRuleCopy(exactRule, keywordRule)) {
+      return {
+        event,
+        domains: keywordRule.domains,
+        source: 'keyword',
+        name: keywordRule.keyword,
+        mode: 'allow',
+      };
+    }
+
     return {
       event,
       domains: exactRule.domains,
       source: 'event',
       name: exactRule.eventTitle,
-      mode: exactRule.domains.length > 0 ? 'allow' : 'unrestricted',
+      mode: 'allow',
     };
   }
 
-  if (!settings.keywordAutoMatchEnabled) return null;
-
-  const keywordRule = findMatchingKeywordRule(event.title, keywordRules);
   if (!keywordRule) return null;
 
   return {
@@ -212,6 +243,7 @@ export function resolveActiveState(
   settings: Settings,
   taskTags: TaskTag[] = [],
   focusHistory: FocusSessionRecord[] = [],
+  eventLaunchTargets: EventLaunchTarget[] = [],
 ): CalendarState {
   const allActiveEvents = getAllActiveEvents(events);
   const recentEventTitles = [...new Set(events.map((event) => event.title.trim()).filter(Boolean))];
@@ -229,6 +261,7 @@ export function resolveActiveState(
       settings,
       taskTags,
       focusHistory,
+      eventLaunchTargets,
     );
   }
 
@@ -242,6 +275,7 @@ export function resolveActiveState(
       settings,
       taskTags,
       focusHistory,
+      eventLaunchTargets,
     );
   }
 
@@ -262,6 +296,7 @@ export function resolveActiveState(
       settings,
       taskTags,
       focusHistory,
+      eventLaunchTargets,
     );
   }
 
@@ -276,22 +311,26 @@ export function resolveActiveState(
     focusHistory,
   );
 
-  return {
-    currentEvent: primary.event,
+  return attachActiveLaunchTarget(
+    {
+      currentEvent: primary.event,
+      allActiveEvents,
+      todaysEvents: events,
+      activeProfile: primary.name,
+      activeRuleSource: primary.source,
+      activeRuleName: primary.name,
+      primaryTagKey: tagResolution.tagKey,
+      primaryTagLabel: tagResolution.tagLabel,
+      difficultyRank: tagResolution.difficultyRank,
+      allowedDomains,
+      recentEventTitles,
+      isRestricted: settings.enableBlocking && !isDailyBlockingPauseActive(new Date(), settings),
+      lastSyncedAt: new Date().toISOString(),
+      authError: null,
+    },
     allActiveEvents,
-    todaysEvents: events,
-    activeProfile: primary.name,
-    activeRuleSource: primary.source,
-    activeRuleName: primary.name,
-    primaryTagKey: tagResolution.tagKey,
-    primaryTagLabel: tagResolution.tagLabel,
-    difficultyRank: tagResolution.difficultyRank,
-    allowedDomains,
-    recentEventTitles,
-    isRestricted: settings.enableBlocking && !isDailyBlockingPauseActive(new Date(), settings),
-    lastSyncedAt: new Date().toISOString(),
-    authError: null,
-  };
+    eventLaunchTargets,
+  );
 }
 
 function buildUnrestrictedState(
@@ -303,28 +342,60 @@ function buildUnrestrictedState(
   settings: Settings,
   taskTags: TaskTag[],
   focusHistory: FocusSessionRecord[],
+  eventLaunchTargets: EventLaunchTarget[],
 ): CalendarState {
   const currentEvent = allActiveEvents[0] ?? null;
   const tagResolution = currentEvent
     ? resolveTagMetadataForEvent(currentEvent, eventRules, keywordRules, taskTags, settings, focusHistory)
     : { tagKey: null, tagLabel: null, difficultyRank: null };
 
-  return {
-    currentEvent,
+  return attachActiveLaunchTarget(
+    {
+      currentEvent,
+      allActiveEvents,
+      todaysEvents: events,
+      activeProfile: null,
+      activeRuleSource: 'none',
+      activeRuleName: null,
+      primaryTagKey: tagResolution.tagKey,
+      primaryTagLabel: tagResolution.tagLabel,
+      difficultyRank: tagResolution.difficultyRank,
+      allowedDomains: [],
+      recentEventTitles,
+      isRestricted: false,
+      lastSyncedAt: new Date().toISOString(),
+      authError: null,
+    },
     allActiveEvents,
-    todaysEvents: events,
-    activeProfile: null,
-    activeRuleSource: 'none',
-    activeRuleName: null,
-    primaryTagKey: tagResolution.tagKey,
-    primaryTagLabel: tagResolution.tagLabel,
-    difficultyRank: tagResolution.difficultyRank,
-    allowedDomains: [],
-    recentEventTitles,
-    isRestricted: false,
-    lastSyncedAt: new Date().toISOString(),
-    authError: null,
+    eventLaunchTargets,
+  );
+}
+
+function attachActiveLaunchTarget(
+  state: Omit<CalendarState, 'activeLaunchTarget'>,
+  allActiveEvents: CalendarEvent[],
+  eventLaunchTargets: EventLaunchTarget[],
+): CalendarState {
+  const activeLaunchTarget = resolveActiveLaunchTarget(allActiveEvents, eventLaunchTargets);
+  const launchHost = activeLaunchTarget ? getLaunchTargetHost(activeLaunchTarget.launchUrl) : null;
+  const allowedDomains =
+    state.isRestricted && launchHost !== null && !isAllowedHost(launchHost, state.allowedDomains)
+      ? [...new Set([...state.allowedDomains, launchHost])]
+      : state.allowedDomains;
+
+  return {
+    ...state,
+    activeLaunchTarget,
+    allowedDomains,
   };
+}
+
+function isAllowedHost(host: string, allowedDomains: string[]): boolean {
+  const lowerHost = host.toLowerCase();
+  return allowedDomains.some((domain) => {
+    const lowerDomain = domain.toLowerCase();
+    return lowerHost === lowerDomain || lowerHost.endsWith(`.${lowerDomain}`);
+  });
 }
 
 function resolveTagMetadataForEvent(
@@ -500,6 +571,7 @@ async function persistError(error: string): Promise<CalendarState> {
   const prev = await getCalendarState();
   const state: CalendarState = {
     currentEvent: prev.currentEvent,
+    activeLaunchTarget: prev.activeLaunchTarget ?? null,
     allActiveEvents: prev.allActiveEvents,
     todaysEvents: prev.todaysEvents,
     activeProfile: prev.activeProfile,

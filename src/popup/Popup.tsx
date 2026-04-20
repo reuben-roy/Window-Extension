@@ -175,6 +175,10 @@ export default function Popup({
     calendarState.todaysEvents
       .filter((event) => new Date(event.start).getTime() > now)
       .sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime())[0] ?? null;
+  const activeLaunchTarget = calendarState.activeLaunchTarget ?? null;
+  const activeLaunchTargetHost = activeLaunchTarget
+    ? safeHostname(activeLaunchTarget.launchUrl)
+    : null;
   const inboxIdeas = ideaState.items.filter((item) => !item.archived).slice(0, 3);
   const actionableTasks = taskQueue.filter((task) => task.status === 'active' || task.status === 'carryover');
   const selectedModel = MODEL_PLACEHOLDER_OPTIONS.includes(
@@ -312,6 +316,28 @@ export default function Popup({
                   meta={nextEvent ? formatEventRange(nextEvent) : 'You are clear after this block.'}
                   className="px-3 py-2.5"
                 />
+
+                {activeLaunchTarget ? (
+                  <CompactSettingRow
+                    label="Task page"
+                    hint="The page Window will auto-open for the active occurrence."
+                    value="Ready"
+                    meta={activeLaunchTargetHost ?? activeLaunchTarget.launchUrl}
+                    footer={
+                      <div className="flex flex-wrap gap-2">
+                        <button
+                          onClick={() => {
+                            void sendMessageAsync({ type: 'OPEN_ACTIVE_LAUNCH_TARGET' });
+                          }}
+                          className="fg-button-secondary px-3 py-2 text-xs"
+                        >
+                          Open Task
+                        </button>
+                      </div>
+                    }
+                    className="px-3 py-2.5"
+                  />
+                ) : null}
 
                 {snoozeState.active && snoozeState.expiresAt ? (
                   <div className="rounded-[18px] border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs text-amber-800">
@@ -1082,4 +1108,12 @@ function sendMessageAsync<T = unknown>(message: { type: string; payload?: unknow
       resolve(response);
     });
   });
+}
+
+function safeHostname(value: string): string | null {
+  try {
+    return new URL(value).hostname;
+  } catch {
+    return null;
+  }
 }

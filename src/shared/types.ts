@@ -448,6 +448,23 @@ export interface UnlockSpendState {
   spendCount: number;
 }
 
+export interface EventLaunchTarget {
+  calendarEventId: string;
+  eventTitle: string;
+  start: string;
+  end: string;
+  launchUrl: string;
+  updatedAt: string;
+}
+
+export type LaunchExecutionStatus = 'focused' | 'created' | 'failed';
+
+export interface LaunchExecutionState {
+  status: LaunchExecutionStatus;
+  handledAt: string;
+  tabId?: number;
+}
+
 // Google Calendar event (normalized from API response)
 export interface CalendarEvent {
   id: string;
@@ -471,6 +488,8 @@ export interface CalendarEvent {
 export interface CalendarState {
   /** The primary event to display (first bound event, or first active if none bound). */
   currentEvent: CalendarEvent | null;
+  /** The per-occurrence launch target that should be surfaced and auto-opened right now. */
+  activeLaunchTarget: EventLaunchTarget | null;
   /** All calendar events currently in progress (handles overlapping). */
   allActiveEvents: CalendarEvent[];
   /** All timed calendar events fetched for the current day. */
@@ -513,6 +532,7 @@ export interface StorageData {
   eventBindings: EventBindings;
   eventRules: EventRule[];
   keywordRules: KeywordRule[];
+  eventLaunchTargets: EventLaunchTarget[];
   taskTags: TaskTag[];
   settings: Settings;
   taskQueue: Task[];
@@ -548,6 +568,7 @@ export type MessageType =
   | 'UPDATE_ASSISTANT_OPTIONS'
   | 'MARK_DONE'
   | 'DISMISS_TASK'
+  | 'OPEN_ACTIVE_LAUNCH_TARGET'
   | 'SAVE_ANALYTICS_OVERRIDE'
   | 'REFRESH_ANALYTICS_STATE';
 

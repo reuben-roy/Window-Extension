@@ -16,11 +16,13 @@ import type {
   CalendarState,
   DownloadAllowance,
   EventPatternStat,
+  EventLaunchTarget,
   EventRule,
   EventBindings,
   FocusSessionRecord,
   IdeaRecord,
   KeywordRule,
+  LaunchExecutionState,
   OpenClawState,
   PointsHistory,
   Profiles,
@@ -225,6 +227,7 @@ export async function updateCurrentWeekStats(update: Partial<WeeklyStats>): Prom
 
 const DEFAULT_CALENDAR_STATE: CalendarState = {
   currentEvent: null,
+  activeLaunchTarget: null,
   allActiveEvents: [],
   todaysEvents: [],
   activeProfile: null,
@@ -245,6 +248,12 @@ export const getCalendarState = (): Promise<CalendarState> =>
 
 export const setCalendarState = (state: CalendarState): Promise<void> =>
   set('calendarState', state);
+
+export const getEventLaunchTargets = (): Promise<EventLaunchTarget[]> =>
+  get<EventLaunchTarget[]>('eventLaunchTargets', []);
+
+export const setEventLaunchTargets = (targets: EventLaunchTarget[]): Promise<void> =>
+  set('eventLaunchTargets', targets);
 
 // ─── Local backend state ─────────────────────────────────────────────────────
 
@@ -357,6 +366,13 @@ export const getBlockedTabs = (): Promise<Record<string, BlockedTabState>> =>
 
 export const setBlockedTabs = (tabs: Record<string, BlockedTabState>): Promise<void> =>
   setLocal('blockedTabs', tabs);
+
+export const getLaunchExecutionStates = (): Promise<Record<string, LaunchExecutionState>> =>
+  getLocal<Record<string, LaunchExecutionState>>('launchExecutionStates', {});
+
+export const setLaunchExecutionStates = (
+  states: Record<string, LaunchExecutionState>,
+): Promise<void> => setLocal('launchExecutionStates', states);
 
 export const getTemporaryUnlocks = (): Promise<Record<string, TemporaryUnlockState>> =>
   getLocal<Record<string, TemporaryUnlockState>>('temporaryUnlocks', {});
