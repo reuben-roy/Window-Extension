@@ -162,7 +162,7 @@ const DOWNLOAD_RESCUE_TOGGLES: DownloadRescueToggleConfig[] = [
 export default function Options(): React.JSX.Element {
   const calendarRef = useRef<FullCalendar | null>(null);
   const tooltipRef = useRef<HTMLDivElement | null>(null);
-  const hoverOpenTimerRef = useRef<number | null>(null);
+  const tooltipRefreshFrameRef = useRef<number | null>(null);
   const [calendarState, setCalendarState] = useState<CalendarState | null>(null);
   const [analyticsSnapshot, setAnalyticsSnapshotState] = useState<AnalyticsSnapshot | null>(null);
   const [visibleEvents, setVisibleEvents] = useState<CalendarEvent[]>([]);
@@ -363,14 +363,6 @@ export default function Options(): React.JSX.Element {
   }));
 
   useEffect(() => {
-    return () => {
-      if (hoverOpenTimerRef.current !== null) {
-        window.clearTimeout(hoverOpenTimerRef.current);
-      }
-    };
-  }, []);
-
-  useEffect(() => {
     if (!selectedTooltip) return;
 
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -397,25 +389,45 @@ export default function Options(): React.JSX.Element {
       }
       const nextRect = anchor.getBoundingClientRect();
       setSelectedTooltip((current) =>
-        current ? { ...current, anchorRect: nextRect } : current,
+        current && areRectsEqual(current.anchorRect, nextRect)
+          ? current
+          : current
+            ? { ...current, anchorRect: nextRect }
+            : current,
       );
       const positioning = chooseTooltipPosition(nextRect);
-      setTooltipMode(positioning.mode);
-      setTooltipPlacement(positioning.placement);
+      setTooltipMode((current) => (current === positioning.mode ? current : positioning.mode));
+      setTooltipPlacement((current) =>
+        current === positioning.placement ? current : positioning.placement,
+      );
+    };
+
+    const scheduleAnchorRefresh = () => {
+      if (tooltipRefreshFrameRef.current !== null) {
+        return;
+      }
+      tooltipRefreshFrameRef.current = window.requestAnimationFrame(() => {
+        tooltipRefreshFrameRef.current = null;
+        refreshAnchor();
+      });
     };
 
     window.addEventListener('keydown', handleKeyDown);
     document.addEventListener('mousedown', handlePointerDown);
-    window.addEventListener('resize', refreshAnchor);
-    window.addEventListener('scroll', refreshAnchor, true);
+    window.addEventListener('resize', scheduleAnchorRefresh);
+    window.addEventListener('scroll', scheduleAnchorRefresh, true);
 
     refreshAnchor();
 
     return () => {
+      if (tooltipRefreshFrameRef.current !== null) {
+        window.cancelAnimationFrame(tooltipRefreshFrameRef.current);
+        tooltipRefreshFrameRef.current = null;
+      }
       window.removeEventListener('keydown', handleKeyDown);
       document.removeEventListener('mousedown', handlePointerDown);
-      window.removeEventListener('resize', refreshAnchor);
-      window.removeEventListener('scroll', refreshAnchor, true);
+      window.removeEventListener('resize', scheduleAnchorRefresh);
+      window.removeEventListener('scroll', scheduleAnchorRefresh, true);
     };
   }, [selectedTooltip]);
 
@@ -465,21 +477,6 @@ export default function Options(): React.JSX.Element {
     setTooltipMode(positioning.mode);
     setTooltipPlacement(positioning.placement);
   }, []);
-
-  const cancelHoveredTooltipOpen = useCallback(() => {
-    if (hoverOpenTimerRef.current !== null) {
-      window.clearTimeout(hoverOpenTimerRef.current);
-      hoverOpenTimerRef.current = null;
-    }
-  }, []);
-
-  const scheduleHoveredTooltipOpen = useCallback((eventId: string, anchorRect: DOMRect) => {
-    cancelHoveredTooltipOpen();
-    hoverOpenTimerRef.current = window.setTimeout(() => {
-      openTooltipAtRect(eventId, anchorRect);
-      hoverOpenTimerRef.current = null;
-    }, 90);
-  }, [cancelHoveredTooltipOpen, openTooltipAtRect]);
 
   const handleEventClick = (arg: EventClickArg) => {
     arg.jsEvent.preventDefault();
@@ -702,13 +699,6 @@ export default function Options(): React.JSX.Element {
                 <CompactSettingRow
                   label="Blocking"
                   hint="Master switch for focus blocking."
-                  value={
-                    !settings.enableBlocking
-                      ? 'Off'
-                      : quietHoursActive
-                        ? 'Paused'
-                        : 'On'
-                  }
                   meta={
                     quietHoursActive
                       ? `Daily cutoff active after ${formatBlockingPauseTimeLabel(settings.dailyBlockingPauseStartTime)}`
@@ -720,7 +710,6 @@ export default function Options(): React.JSX.Element {
                 <CompactSettingRow
                   label="Break duration"
                   hint="Default duration used when starting a break."
-                  value={`${settings.breakDurationMinutes} min`}
                   meta="Used by the blocked page and quick break actions."
                   control={
                     <select
@@ -749,14 +738,9 @@ export default function Options(): React.JSX.Element {
                 <CompactSettingRow
                   label="Daily cutoff"
                   hint="After this time, blocking pauses for the rest of the day."
-                  value={
-                    settings.dailyBlockingPauseEnabled
-                      ? formatBlockingPauseTimeLabel(settings.dailyBlockingPauseStartTime)
-                      : 'Disabled'
-                  }
                   meta={
                     settings.dailyBlockingPauseEnabled
-                      ? 'Pauses restrictions nightly and resumes tomorrow.'
+                      ? `Pauses restrictions nightly after ${formatBlockingPauseTimeLabel(settings.dailyBlockingPauseStartTime)} and resumes tomorrow.`
                       : 'Blocking stays available all day.'
                   }
                   control={
@@ -794,7 +778,6 @@ export default function Options(): React.JSX.Element {
                 <CompactSettingRow
                   label="Download fallback"
                   hint="Retry window used only when a blocked download redirect needs a short assist."
-                  value={`${settings.downloadRedirectFallbackSeconds}s`}
                   meta="Only affects rescue retries, not normal browsing."
                   control={
                     <select
@@ -1083,12 +1066,6 @@ export default function Options(): React.JSX.Element {
                   arg.el.dataset.windowEventId = arg.event.id;
                   arg.el.tabIndex = 0;
                   arg.el.style.cursor = 'pointer';
-                  arg.el.onmouseenter = () => {
-                    scheduleHoveredTooltipOpen(arg.event.id, arg.el.getBoundingClientRect());
-                  };
-                  arg.el.onmouseleave = () => {
-                    cancelHoveredTooltipOpen();
-                  };
                   arg.el.onfocus = () => {
                     openTooltipAtRect(arg.event.id, arg.el.getBoundingClientRect());
                   };
@@ -2154,7 +2131,6 @@ function AnalyticsWorkspace({
 }): React.JSX.Element {
   const summary = analyticsSnapshot.summary7d;
   const recentSessions = analyticsSnapshot.recentSessions.slice(0, 12);
-  const dailyTrend = buildDailyTrend(analyticsSnapshot.recentSessions);
 
   return (
     <div className="space-y-4">
@@ -2655,6 +2631,15 @@ function chooseTooltipPosition(anchorRect: DOMRect): {
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max);
+}
+
+function areRectsEqual(a: DOMRect, b: DOMRect): boolean {
+  return (
+    Math.abs(a.top - b.top) < 0.5 &&
+    Math.abs(a.left - b.left) < 0.5 &&
+    Math.abs(a.width - b.width) < 0.5 &&
+    Math.abs(a.height - b.height) < 0.5
+  );
 }
 
 function splitDomains(value: string): string[] {

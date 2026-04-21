@@ -181,6 +181,8 @@ export const DEFAULT_ASSISTANT_OPTIONS: AssistantOptions = {
   },
   autoCreateSession: true,
   reuseActiveSession: true,
+  selectedConnectorId: null,
+  taskNotificationMode: 'after_focus',
   notes: '',
 };
 
@@ -211,9 +213,13 @@ export const DEFAULT_OPENCLAW_STATE: OpenClawState = {
     message: 'OpenClaw is not connected yet.',
     lastCheckedAt: null,
   },
+  connectors: [],
+  selectedConnectorId: null,
   sessions: [],
   activeSessionId: null,
   currentJob: null,
+  currentTask: null,
+  tasks: [],
   lastError: null,
 };
 

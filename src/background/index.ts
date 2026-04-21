@@ -65,6 +65,7 @@ import type {
   TemporaryUnlockState,
 } from '../shared/types';
 import {
+  cancelAssistantTask,
   cancelOpenClawJob,
   decideIdea,
   handleSyncedStorageChanges,
@@ -78,6 +79,7 @@ import {
   signInWithProvider,
   signOutAccount,
   startOpenClawSession,
+  submitAssistantTask,
   submitIdea,
   syncAnalyticsQueues,
   syncBreakTelemetryQueue,
@@ -280,6 +282,9 @@ async function handleMessage(
     case 'SUBMIT_IDEA':
       return handleIdeaSubmission(message);
 
+    case 'SUBMIT_ASSISTANT_TASK':
+      return handleAssistantTaskSubmission(message);
+
     case 'DECIDE_IDEA':
       return handleIdeaDecision(message);
 
@@ -299,6 +304,11 @@ async function handleMessage(
     case 'CANCEL_OPENCLAW_JOB':
       return cancelOpenClawJob(
         (message.payload as { jobId?: string } | undefined)?.jobId ?? '',
+      );
+
+    case 'CANCEL_ASSISTANT_TASK':
+      return cancelAssistantTask(
+        (message.payload as { taskId?: string } | undefined)?.taskId ?? '',
       );
 
     case 'UPDATE_ASSISTANT_OPTIONS':
@@ -1707,6 +1717,7 @@ async function handleMarkDone(
   });
 
   await applyPointDelta(pointsAwarded, { completedTasksDelta: 1 });
+  await refreshAssistantState();
   return { ok: true, pointsAwarded };
 }
 
@@ -1821,6 +1832,22 @@ async function handleIdeaSubmission(
 
   try {
     const state = await submitIdea(prompt);
+    return { ok: true, state };
+  } catch (error) {
+    return { ok: false, error: error instanceof Error ? error.message : String(error) };
+  }
+}
+
+async function handleAssistantTaskSubmission(
+  message: Message,
+): Promise<{ ok: boolean; state?: Awaited<ReturnType<typeof refreshAssistantState>>; error?: string }> {
+  const prompt = (message.payload as { prompt?: string } | undefined)?.prompt?.trim() ?? '';
+  if (!prompt) {
+    return { ok: false, error: 'Task handoff cannot be empty.' };
+  }
+
+  try {
+    const state = await submitAssistantTask(prompt);
     return { ok: true, state };
   } catch (error) {
     return { ok: false, error: error instanceof Error ? error.message : String(error) };

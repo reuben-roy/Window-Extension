@@ -3,10 +3,14 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { z } from 'zod';
 import { env } from '../../env.js';
-import type { IdeaReportPayload } from '../../types.js';
+import type {
+  AssistantTaskStatus,
+  IdeaReportPayload,
+} from '../../types.js';
 import { prisma } from '../prisma.js';
 
 const execFileAsync = promisify(execFile);
+const PRIMARY_CONNECTOR_KEY = 'primary-openclaw';
 
 const remoteHealthSchema = z
   .object({
@@ -46,6 +50,49 @@ const remoteEvaluationSchema = z
   })
   .partial();
 
+const remoteTaskCreateSchema = z
+  .object({
+    remoteJobId: z.string().nullable().optional(),
+    jobId: z.string().nullable().optional(),
+    remoteSessionId: z.string().nullable().optional(),
+    sessionId: z.string().nullable().optional(),
+    modelLabel: z.string().nullable().optional(),
+    title: z.string().optional(),
+  })
+  .partial();
+
+const remoteTaskStatusSchema = z
+  .object({
+    status: z.enum(['queued', 'running', 'completed', 'failed', 'cancelled']).optional(),
+    error: z.string().nullable().optional(),
+    remoteSessionId: z.string().nullable().optional(),
+    sessionId: z.string().nullable().optional(),
+    modelLabel: z.string().nullable().optional(),
+    result: z
+      .object({
+        summary: z.string().optional(),
+        output: z.string().optional(),
+        completedAt: z.string().optional(),
+      })
+      .partial()
+      .optional(),
+    summary: z.string().optional(),
+    output: z.string().optional(),
+    completedAt: z.string().optional(),
+  })
+  .partial();
+
+export interface OpenClawConnectionConfig {
+  id: string;
+  key: string;
+  name: string;
+  transport: string;
+  host: string | null;
+  baseUrl: string | null;
+  description: string | null;
+  enabled: boolean;
+}
+
 export interface OpenClawStatus {
   connected: boolean;
   healthy: boolean;
@@ -76,38 +123,79 @@ export interface OpenClawEvaluationResult {
   report: IdeaReportPayload;
 }
 
+export interface OpenClawTaskCreateInput {
+  prompt: string;
+  preferredModel?: string | null;
+  notes?: string | null;
+  remoteSessionId?: string | null;
+  title?: string | null;
+}
+
+export interface OpenClawTaskCreateResult {
+  remoteJobId: string | null;
+  remoteSessionId: string | null;
+  modelLabel: string | null;
+  title: string;
+}
+
+export interface OpenClawTaskStatusResult {
+  status: AssistantTaskStatus;
+  remoteSessionId: string | null;
+  modelLabel: string | null;
+  summary: string | null;
+  output: string | null;
+  completedAt: string | null;
+  error: string | null;
+}
+
 export interface OpenClawConnector {
   syncConnectionRecord(): Promise<void>;
-  getStatus(): Promise<OpenClawStatus>;
-  createSession(input: { title: string; preferredModel?: string | null }): Promise<OpenClawSessionCreateResult>;
-  evaluateIdea(input: OpenClawEvaluationInput): Promise<OpenClawEvaluationResult>;
-  cancelJob(remoteJobId: string | null): Promise<void>;
+  getAvailableConnections(): Promise<OpenClawConnectionConfig[]>;
+  getStatus(connection: OpenClawConnectionConfig): Promise<OpenClawStatus>;
+  createSession(
+    connection: OpenClawConnectionConfig,
+    input: { title: string; preferredModel?: string | null },
+  ): Promise<OpenClawSessionCreateResult>;
+  evaluateIdea(
+    connection: OpenClawConnectionConfig,
+    input: OpenClawEvaluationInput,
+  ): Promise<OpenClawEvaluationResult>;
+  createTask(
+    connection: OpenClawConnectionConfig,
+    input: OpenClawTaskCreateInput,
+  ): Promise<OpenClawTaskCreateResult>;
+  getTaskStatus(
+    connection: OpenClawConnectionConfig,
+    remoteJobId: string,
+  ): Promise<OpenClawTaskStatusResult>;
+  cancelJob(connection: OpenClawConnectionConfig, remoteJobId: string | null): Promise<void>;
+  cancelTask(connection: OpenClawConnectionConfig, remoteJobId: string | null): Promise<void>;
 }
 
 export const openClawConnector: OpenClawConnector = {
   async syncConnectionRecord() {
-    const existing = await prisma.openClawConnection.findFirst({
-      where: { name: 'Primary OpenClaw' },
-      select: { id: true },
-    });
-
-    const transport = env.OPENCLAW_TRANSPORT === 'mock' ? 'mock' : env.OPENCLAW_TRANSPORT;
-    const host =
-      env.OPENCLAW_TRANSPORT === 'ssh'
-        ? env.OPENCLAW_SSH_HOST || null
-        : null;
+    const transport = env.OPENCLAW_TRANSPORT;
+    const host = transport === 'ssh' ? env.OPENCLAW_SSH_HOST || null : null;
     const baseUrl =
-      env.OPENCLAW_TRANSPORT === 'http'
+      transport === 'http'
         ? env.OPENCLAW_HTTP_BASE_URL || null
         : env.OPENCLAW_REMOTE_BASE_URL || null;
+
+    const existing = await prisma.openClawConnection.findUnique({
+      where: { key: PRIMARY_CONNECTOR_KEY },
+      select: { id: true },
+    });
 
     if (existing) {
       await prisma.openClawConnection.update({
         where: { id: existing.id },
         data: {
+          name: 'Primary OpenClaw',
+          connectorType: 'openclaw',
           transport,
           host,
           baseUrl,
+          description: 'Oracle-hosted OpenClaw',
           enabled: true,
         },
       });
@@ -116,38 +204,60 @@ export const openClawConnector: OpenClawConnector = {
 
     await prisma.openClawConnection.create({
       data: {
+        key: PRIMARY_CONNECTOR_KEY,
         name: 'Primary OpenClaw',
+        connectorType: 'openclaw',
         transport,
         host,
         baseUrl,
+        description: 'Oracle-hosted OpenClaw',
         enabled: true,
       },
     });
   },
 
-  async getStatus() {
+  async getAvailableConnections() {
+    await this.syncConnectionRecord();
+    const rows = await prisma.openClawConnection.findMany({
+      where: { enabled: true },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    return rows.map((row) => ({
+      id: row.id,
+      key: row.key,
+      name: row.name,
+      transport: row.transport,
+      host: row.host,
+      baseUrl: row.baseUrl,
+      description: row.description,
+      enabled: row.enabled,
+    }));
+  },
+
+  async getStatus(connection) {
     const now = new Date().toISOString();
 
-    if (env.OPENCLAW_TRANSPORT === 'mock') {
+    if (connection.transport === 'mock') {
       return {
         connected: true,
         healthy: true,
         transport: 'unknown',
-        label: 'Mock OpenClaw',
+        label: connection.name,
         message: 'Mock transport is enabled for local development.',
         lastCheckedAt: now,
       } satisfies OpenClawStatus;
     }
 
     try {
-      const response = await remoteRequest('/api/window/health', { method: 'GET' });
+      const response = await remoteRequest(connection, '/api/window/health', { method: 'GET' });
       const parsed = remoteHealthSchema.parse(response);
 
       return {
         connected: parsed.connected ?? true,
         healthy: parsed.healthy ?? true,
-        transport: env.OPENCLAW_TRANSPORT,
-        label: parsed.label ?? 'OpenClaw',
+        transport: normalizeTransport(connection.transport),
+        label: parsed.label ?? connection.name,
         message: parsed.message ?? 'OpenClaw is reachable.',
         lastCheckedAt: now,
       } satisfies OpenClawStatus;
@@ -155,16 +265,16 @@ export const openClawConnector: OpenClawConnector = {
       return {
         connected: false,
         healthy: false,
-        transport: env.OPENCLAW_TRANSPORT,
-        label: 'OpenClaw',
+        transport: normalizeTransport(connection.transport),
+        label: connection.name,
         message: error instanceof Error ? error.message : String(error),
         lastCheckedAt: now,
       } satisfies OpenClawStatus;
     }
   },
 
-  async createSession({ title, preferredModel }) {
-    if (env.OPENCLAW_TRANSPORT === 'mock') {
+  async createSession(connection, { title, preferredModel }) {
+    if (connection.transport === 'mock') {
       return {
         remoteSessionId: `mock-session-${randomUUID()}`,
         title,
@@ -172,7 +282,7 @@ export const openClawConnector: OpenClawConnector = {
       } satisfies OpenClawSessionCreateResult;
     }
 
-    const response = await remoteRequest('/api/window/sessions', {
+    const response = await remoteRequest(connection, '/api/window/sessions', {
       method: 'POST',
       body: {
         title,
@@ -188,8 +298,8 @@ export const openClawConnector: OpenClawConnector = {
     } satisfies OpenClawSessionCreateResult;
   },
 
-  async evaluateIdea(input) {
-    if (env.OPENCLAW_TRANSPORT === 'mock') {
+  async evaluateIdea(connection, input) {
+    if (connection.transport === 'mock') {
       await sleep(env.OPENCLAW_MOCK_LATENCY_MS);
       const remoteSessionId = input.remoteSessionId ?? `mock-session-${randomUUID()}`;
       return {
@@ -200,7 +310,7 @@ export const openClawConnector: OpenClawConnector = {
       } satisfies OpenClawEvaluationResult;
     }
 
-    const response = await remoteRequest('/api/window/ideas/evaluate', {
+    const response = await remoteRequest(connection, '/api/window/ideas/evaluate', {
       method: 'POST',
       body: {
         prompt: input.prompt,
@@ -221,44 +331,121 @@ export const openClawConnector: OpenClawConnector = {
     } satisfies OpenClawEvaluationResult;
   },
 
-  async cancelJob(remoteJobId) {
-    if (!remoteJobId) return;
-    if (env.OPENCLAW_TRANSPORT === 'mock') return;
+  async createTask(connection, input) {
+    if (connection.transport === 'mock') {
+      return {
+        remoteJobId: `mock-task-${randomUUID()}`,
+        remoteSessionId: input.remoteSessionId ?? `mock-session-${randomUUID()}`,
+        modelLabel: input.preferredModel?.trim() || 'Mock OpenClaw model',
+        title: input.title?.trim() || buildTaskTitle(input.prompt),
+      } satisfies OpenClawTaskCreateResult;
+    }
 
-    await remoteRequest(`/api/window/jobs/${encodeURIComponent(remoteJobId)}/cancel`, {
+    const response = await remoteRequest(connection, '/api/window/tasks', {
       method: 'POST',
+      body: {
+        prompt: input.prompt,
+        preferredModel: input.preferredModel?.trim() || undefined,
+        notes: input.notes?.trim() || undefined,
+        sessionId: input.remoteSessionId ?? undefined,
+        title: input.title?.trim() || undefined,
+      },
     });
+    const parsed = remoteTaskCreateSchema.parse(response);
+
+    return {
+      remoteJobId: parsed.remoteJobId ?? parsed.jobId ?? null,
+      remoteSessionId: parsed.remoteSessionId ?? parsed.sessionId ?? input.remoteSessionId ?? null,
+      modelLabel: parsed.modelLabel ?? input.preferredModel ?? null,
+      title: parsed.title ?? input.title?.trim() ?? buildTaskTitle(input.prompt),
+    } satisfies OpenClawTaskCreateResult;
+  },
+
+  async getTaskStatus(connection, remoteJobId) {
+    if (connection.transport === 'mock') {
+      return {
+        status: 'completed',
+        remoteSessionId: `mock-session-${remoteJobId}`,
+        modelLabel: 'Mock OpenClaw model',
+        summary: 'Mock task finished',
+        output: 'Mock OpenClaw completed the handoff task successfully.',
+        completedAt: new Date().toISOString(),
+        error: null,
+      } satisfies OpenClawTaskStatusResult;
+    }
+
+    const response = await remoteRequest(
+      connection,
+      `/api/window/tasks/${encodeURIComponent(remoteJobId)}`,
+      { method: 'GET' },
+    );
+    const parsed = remoteTaskStatusSchema.parse(response);
+    const result = parsed.result ?? {};
+
+    return {
+      status: parsed.status ?? 'running',
+      remoteSessionId: parsed.remoteSessionId ?? parsed.sessionId ?? null,
+      modelLabel: parsed.modelLabel ?? null,
+      summary: result.summary ?? parsed.summary ?? null,
+      output: result.output ?? parsed.output ?? null,
+      completedAt: result.completedAt ?? parsed.completedAt ?? null,
+      error: parsed.error ?? null,
+    } satisfies OpenClawTaskStatusResult;
+  },
+
+  async cancelJob(connection, remoteJobId) {
+    if (!remoteJobId) return;
+    if (connection.transport === 'mock') return;
+
+    await remoteRequest(
+      connection,
+      `/api/window/jobs/${encodeURIComponent(remoteJobId)}/cancel`,
+      { method: 'POST' },
+    );
+  },
+
+  async cancelTask(connection, remoteJobId) {
+    if (!remoteJobId) return;
+    if (connection.transport === 'mock') return;
+
+    await remoteRequest(
+      connection,
+      `/api/window/tasks/${encodeURIComponent(remoteJobId)}/cancel`,
+      { method: 'POST' },
+    );
   },
 };
 
 async function remoteRequest(
+  connection: OpenClawConnectionConfig,
   path: string,
   init: {
     method: 'GET' | 'POST';
     body?: unknown;
   },
 ): Promise<unknown> {
-  if (env.OPENCLAW_TRANSPORT === 'http') {
-    return httpRequest(path, init);
+  if (connection.transport === 'http') {
+    return httpRequest(connection, path, init);
   }
 
-  if (env.OPENCLAW_TRANSPORT === 'ssh') {
-    return sshRequest(path, init);
+  if (connection.transport === 'ssh') {
+    return sshRequest(connection, path, init);
   }
 
-  throw new Error(`Unsupported OpenClaw transport: ${env.OPENCLAW_TRANSPORT}`);
+  throw new Error(`Unsupported OpenClaw transport: ${connection.transport}`);
 }
 
 async function httpRequest(
+  connection: OpenClawConnectionConfig,
   path: string,
   init: {
     method: 'GET' | 'POST';
     body?: unknown;
   },
 ): Promise<unknown> {
-  const baseUrl = env.OPENCLAW_HTTP_BASE_URL.trim();
+  const baseUrl = (connection.baseUrl ?? '').trim();
   if (!baseUrl) {
-    throw new Error('OPENCLAW_HTTP_BASE_URL is not configured.');
+    throw new Error('OpenClaw HTTP transport is missing a base URL.');
   }
 
   const response = await fetch(`${stripTrailingSlash(baseUrl)}${path}`, {
@@ -285,17 +472,23 @@ async function httpRequest(
 }
 
 async function sshRequest(
+  connection: OpenClawConnectionConfig,
   path: string,
   init: {
     method: 'GET' | 'POST';
     body?: unknown;
   },
 ): Promise<unknown> {
-  if (!env.OPENCLAW_SSH_HOST || !env.OPENCLAW_SSH_USER || !env.OPENCLAW_SSH_KEY_PATH) {
+  if (!connection.host || !env.OPENCLAW_SSH_USER || !env.OPENCLAW_SSH_KEY_PATH) {
     throw new Error('OpenClaw SSH transport is not fully configured.');
   }
 
-  const url = `${stripTrailingSlash(env.OPENCLAW_REMOTE_BASE_URL)}${path}`;
+  const baseUrl = (connection.baseUrl ?? '').trim();
+  if (!baseUrl) {
+    throw new Error('OpenClaw SSH transport is missing a remote base URL.');
+  }
+
+  const url = `${stripTrailingSlash(baseUrl)}${path}`;
   const remoteCommand = buildRemoteCurlCommand(url, init.method, init.body);
   const sshArgs = [
     '-i',
@@ -306,7 +499,7 @@ async function sshRequest(
     'IdentitiesOnly=yes',
     '-o',
     'StrictHostKeyChecking=accept-new',
-    `${env.OPENCLAW_SSH_USER}@${env.OPENCLAW_SSH_HOST}`,
+    `${env.OPENCLAW_SSH_USER}@${connection.host}`,
     remoteCommand,
   ];
 
@@ -345,14 +538,6 @@ function buildRemoteCurlCommand(url: string, method: 'GET' | 'POST', body?: unkn
   const encodedBody = Buffer.from(JSON.stringify(body), 'utf8').toString('base64');
   parts.push('--data-binary', '@-', shellQuote(url));
   return `printf '%s' ${shellQuote(encodedBody)} | base64 --decode | ${parts.join(' ')}`;
-}
-
-function shellQuote(value: string): string {
-  return `'${value.replace(/'/g, `'\"'\"'`)}'`;
-}
-
-function stripTrailingSlash(value: string): string {
-  return value.replace(/\/+$/, '');
 }
 
 function normalizeRemoteReport(
@@ -403,6 +588,14 @@ function normalizeRemoteReport(
   };
 }
 
+function normalizeTransport(value: string): OpenClawStatus['transport'] {
+  if (value === 'ssh' || value === 'http') {
+    return value;
+  }
+
+  return 'unknown';
+}
+
 function normalizeViability(value: unknown): IdeaReportPayload['viability'] {
   return value === 'low' || value === 'moderate' || value === 'high' ? value : 'unknown';
 }
@@ -411,6 +604,14 @@ function toStringArray(value: unknown): string[] {
   return Array.isArray(value)
     ? value.filter((item): item is string => typeof item === 'string')
     : [];
+}
+
+function shellQuote(value: string): string {
+  return `'${value.replace(/'/g, `'\"'\"'`)}'`;
+}
+
+function stripTrailingSlash(value: string): string {
+  return value.replace(/\/+$/, '');
 }
 
 function buildMockReport(prompt: string): IdeaReportPayload {
@@ -439,6 +640,10 @@ function buildMockReport(prompt: string): IdeaReportPayload {
   };
 }
 
+function buildTaskTitle(prompt: string): string {
+  return `Task handoff: ${truncate(prompt.trim(), 48)}`;
+}
+
 function truncate(value: string, maxLength: number): string {
   return value.length <= maxLength ? value : `${value.slice(0, maxLength - 1)}…`;
 }
@@ -446,4 +651,3 @@ function truncate(value: string, maxLength: number): string {
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
-

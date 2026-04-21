@@ -14,6 +14,8 @@ import { openClawConnector } from './lib/openclaw/client.js';
 import {
   toAccountSnapshotPayload,
   toAccountUserPayload,
+  toAssistantConnectorPayload,
+  toAssistantTaskPayload,
   toFocusSessionPayload,
   toIdeaRecordPayload,
   toInterestPayload,
@@ -44,6 +46,22 @@ const createIdeaSchema = z.object({
   autoCreateSession: z.boolean().optional().default(true),
   reuseActiveSession: z.boolean().optional().default(true),
   notes: z.string().max(2_000).optional(),
+});
+
+const selectConnectorSchema = z.object({
+  connectorId: z.string().min(1),
+});
+
+const createAssistantTaskSchema = z.object({
+  prompt: z.string().min(1).max(8_000),
+  title: z.string().min(1).max(160).optional(),
+  preferredModel: z.string().max(160).optional(),
+  autoCreateSession: z.boolean().optional().default(true),
+  reuseActiveSession: z.boolean().optional().default(true),
+  notes: z.string().max(2_000).optional(),
+  notificationMode: z.enum(['immediate', 'after_focus', 'inbox_only']).optional().default('after_focus'),
+  focusContextType: z.enum(['none', 'window_task', 'calendar_event']).optional().default('none'),
+  focusContextId: z.string().nullable().optional(),
 });
 
 const ideaDecisionSchema = z.object({
@@ -291,16 +309,85 @@ export async function buildApp() {
     } satisfies AccountSnapshotResponsePayload;
   });
 
-  app.get('/v1/openclaw/status', async (request, reply) => {
+  app.get('/v1/connectors', async (request, reply) => {
     const user = await getUserOrReply(request, reply);
     if (!user) return;
 
     await openClawConnector.syncConnectionRecord();
+
+    const [connectors, selectedConnector] = await Promise.all([
+      prisma.openClawConnection.findMany({
+        where: { enabled: true },
+        orderBy: { createdAt: 'asc' },
+      }),
+      resolveSelectedConnector(user.id),
+    ]);
+
+    return {
+      connectors: connectors.map(toAssistantConnectorPayload),
+      selectedConnectorId: selectedConnector?.id ?? null,
+    };
+  });
+
+  app.post('/v1/connectors/select', async (request, reply) => {
+    const user = await getUserOrReply(request, reply);
+    if (!user) return;
+
+    const body = selectConnectorSchema.parse(request.body ?? {});
+    await openClawConnector.syncConnectionRecord();
+    const connector = await prisma.openClawConnection.findFirst({
+      where: {
+        id: body.connectorId,
+        enabled: true,
+      },
+    });
+
+    if (!connector) {
+      return reply.code(404).send({ error: 'Connector not found.' });
+    }
+
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        selectedConnectorId: connector.id,
+      },
+    });
+
+    return {
+      selectedConnectorId: connector.id,
+      connector: toAssistantConnectorPayload(connector),
+    };
+  });
+
+  app.get('/v1/openclaw/status', async (request, reply) => {
+    const user = await getUserOrReply(request, reply);
+    if (!user) return;
+
+    const connector = await resolveSelectedConnector(user.id);
+    if (!connector) {
+      return {
+        status: {
+          connected: false,
+          healthy: false,
+          transport: 'unknown',
+          label: 'OpenClaw',
+          message: 'No connector is configured.',
+          lastCheckedAt: new Date().toISOString(),
+        },
+        currentJob: null,
+      };
+    }
+
     const [status, currentJob] = await Promise.all([
-      openClawConnector.getStatus(),
+      openClawConnector.getStatus(connector),
       prisma.researchJob.findFirst({
         where: {
-          idea: { userId: user.id },
+          idea: {
+            userId: user.id,
+            session: {
+              connectorId: connector.id,
+            },
+          },
           status: {
             in: ['queued', 'running'],
           },
@@ -322,8 +409,17 @@ export async function buildApp() {
     const user = await getUserOrReply(request, reply);
     if (!user) return;
 
+    const connector = await resolveSelectedConnector(user.id);
     const sessions = await prisma.openClawSession.findMany({
-      where: { userId: user.id },
+      where: connector
+        ? {
+            userId: user.id,
+            OR: [{ connectorId: connector.id }, { connectorId: null }],
+          }
+        : {
+            userId: user.id,
+            connectorId: null,
+          },
       orderBy: { lastActivityAt: 'desc' },
       take: 12,
     });
@@ -339,12 +435,17 @@ export async function buildApp() {
     if (!user) return;
 
     const body = createSessionSchema.parse(request.body ?? {});
+    const connector = await resolveSelectedConnector(user.id);
+    if (!connector) {
+      return reply.code(400).send({ error: 'No connector is configured.' });
+    }
 
     if (body.reuseSessionId) {
       const existing = await prisma.openClawSession.findFirst({
         where: {
           id: body.reuseSessionId,
           userId: user.id,
+          OR: [{ connectorId: connector.id }, { connectorId: null }],
         },
       });
 
@@ -364,6 +465,7 @@ export async function buildApp() {
         prisma.openClawSession.update({
           where: { id: existing.id },
           data: {
+            connectorId: connector.id,
             status: 'active',
             lastActivityAt: new Date(),
           },
@@ -378,8 +480,7 @@ export async function buildApp() {
       };
     }
 
-    await openClawConnector.syncConnectionRecord();
-    const created = await openClawConnector.createSession({
+    const created = await openClawConnector.createSession(connector, {
       title: body.title?.trim() || 'Window assistant session',
       preferredModel: body.preferredModel?.trim() || null,
     });
@@ -397,6 +498,7 @@ export async function buildApp() {
     const session = await prisma.openClawSession.create({
       data: {
         userId: user.id,
+        connectorId: connector.id,
         remoteSessionId: created.remoteSessionId,
         title: created.title,
         status: 'active',
@@ -414,12 +516,18 @@ export async function buildApp() {
     const user = await getUserOrReply(request, reply);
     if (!user) return;
 
+    const connector = await resolveSelectedConnector(user.id);
     const jobId = z.string().min(1).parse((request.params as { id?: string }).id);
     const job = await prisma.researchJob.findFirst({
       where: {
         id: jobId,
         idea: {
           userId: user.id,
+          session: connector
+            ? {
+                connectorId: connector.id,
+              }
+            : undefined,
         },
       },
       include: {
@@ -449,7 +557,159 @@ export async function buildApp() {
       }),
     ]);
 
-    await openClawConnector.cancelJob(job.remoteJobId);
+    if (connector) {
+      await openClawConnector.cancelJob(connector, job.remoteJobId);
+    }
+    return { ok: true };
+  });
+
+  app.post('/v1/assistant-tasks', async (request, reply) => {
+    const user = await getUserOrReply(request, reply);
+    if (!user) return;
+
+    const body = createAssistantTaskSchema.parse(request.body ?? {});
+    const connector = await resolveSelectedConnector(user.id);
+    if (!connector) {
+      return reply.code(400).send({ error: 'No connector is configured.' });
+    }
+
+    const session = await resolveOpenClawSession(user.id, {
+      connectorId: connector.id,
+      preferredModel: body.preferredModel ?? null,
+      autoCreateSession: body.autoCreateSession,
+      reuseActiveSession: body.reuseActiveSession,
+      title: body.title?.trim() || `Task handoff: ${truncate(body.prompt.trim(), 48)}`,
+    });
+
+    const task = await prisma.assistantTask.create({
+      data: {
+        userId: user.id,
+        connectorId: connector.id,
+        prompt: body.prompt.trim(),
+        title: body.title?.trim() || buildAssistantTaskTitle(body.prompt),
+        preferredModel: body.preferredModel?.trim() || null,
+        assistantNotes: body.notes?.trim() || null,
+        status: 'queued',
+        notificationMode: body.notificationMode,
+        focusContextType: body.focusContextType,
+        focusContextId: body.focusContextId ?? null,
+        sessionId: session?.id ?? null,
+        job: {
+          create: {
+            status: 'queued',
+          },
+        },
+      },
+      include: {
+        job: true,
+        result: true,
+        session: true,
+      },
+    });
+
+    return toAssistantTaskPayload(task);
+  });
+
+  app.get('/v1/assistant-tasks', async (request, reply) => {
+    const user = await getUserOrReply(request, reply);
+    if (!user) return;
+
+    const connector = await resolveSelectedConnector(user.id);
+    const tasks = await prisma.assistantTask.findMany({
+      where: connector
+        ? {
+            userId: user.id,
+            connectorId: connector.id,
+          }
+        : {
+            userId: user.id,
+          },
+      include: {
+        job: true,
+        result: true,
+        session: true,
+      },
+      orderBy: { updatedAt: 'desc' },
+      take: 20,
+    });
+
+    return {
+      tasks: tasks.map(toAssistantTaskPayload),
+    };
+  });
+
+  app.post('/v1/assistant-tasks/:id/cancel', async (request, reply) => {
+    const user = await getUserOrReply(request, reply);
+    if (!user) return;
+
+    const connector = await resolveSelectedConnector(user.id);
+    const taskId = z.string().min(1).parse((request.params as { id?: string }).id);
+    const task = await prisma.assistantTask.findFirst({
+      where: {
+        id: taskId,
+        userId: user.id,
+        connectorId: connector?.id ?? undefined,
+      },
+      include: {
+        job: true,
+        result: true,
+        session: true,
+      },
+    });
+
+    if (!task) {
+      return reply.code(404).send({ error: 'Task not found.' });
+    }
+
+    await prisma.$transaction([
+      prisma.assistantTask.update({
+        where: { id: task.id },
+        data: {
+          status: 'cancelled',
+          completedAt: new Date(),
+          lastError: 'Cancelled by user.',
+        },
+      }),
+      prisma.assistantTaskJob.updateMany({
+        where: { taskId: task.id },
+        data: {
+          status: 'cancelled',
+          completedAt: new Date(),
+          lastError: 'Cancelled by user.',
+        },
+      }),
+    ]);
+
+    if (connector) {
+      await openClawConnector.cancelTask(connector, task.job?.remoteJobId ?? null);
+    }
+
+    return { ok: true };
+  });
+
+  app.post('/v1/assistant-tasks/:id/notification-ack', async (request, reply) => {
+    const user = await getUserOrReply(request, reply);
+    if (!user) return;
+
+    const taskId = z.string().min(1).parse((request.params as { id?: string }).id);
+    const task = await prisma.assistantTask.findFirst({
+      where: {
+        id: taskId,
+        userId: user.id,
+      },
+    });
+
+    if (!task) {
+      return reply.code(404).send({ error: 'Task not found.' });
+    }
+
+    await prisma.assistantTask.update({
+      where: { id: task.id },
+      data: {
+        notifiedAt: new Date(),
+      },
+    });
+
     return { ok: true };
   });
 
@@ -476,7 +736,8 @@ export async function buildApp() {
       return toIdeaRecordPayload(existing);
     }
 
-    const session = await resolveIdeaSession(user.id, {
+    const connector = await resolveSelectedConnector(user.id);
+    const session = await resolveIdeaSession(user.id, connector?.id ?? null, {
       preferredModel: body.preferredModel,
       autoCreateSession: body.autoCreateSession,
       reuseActiveSession: body.reuseActiveSession,
@@ -617,9 +878,10 @@ export async function buildApp() {
       });
     }
 
+    const connector = await resolveSelectedConnector(user.id);
     const session = idea.sessionId
       ? idea.session
-      : await resolveIdeaSession(user.id, {
+      : await resolveIdeaSession(user.id, connector?.id ?? null, {
           preferredModel: idea.preferredModel,
           autoCreateSession: true,
           reuseActiveSession: true,
@@ -1337,13 +1599,56 @@ async function upsertGoogleUser(input: {
   return user;
 }
 
-async function resolveIdeaSession(
+async function resolveSelectedConnector(userId: string) {
+  await openClawConnector.syncConnectionRecord();
+
+  const [user, connectors] = await Promise.all([
+    prisma.user.findUnique({
+      where: { id: userId },
+      select: { selectedConnectorId: true },
+    }),
+    prisma.openClawConnection.findMany({
+      where: { enabled: true },
+      orderBy: { createdAt: 'asc' },
+    }),
+  ]);
+
+  const selected =
+    connectors.find((connector) => connector.id === user?.selectedConnectorId) ??
+    connectors[0] ??
+    null;
+
+  if (selected && user?.selectedConnectorId !== selected.id) {
+    await prisma.user.update({
+      where: { id: userId },
+      data: {
+        selectedConnectorId: selected.id,
+      },
+    });
+  }
+
+  return selected
+    ? {
+        id: selected.id,
+        key: selected.key,
+        name: selected.name,
+        transport: selected.transport,
+        host: selected.host,
+        baseUrl: selected.baseUrl,
+        description: selected.description,
+        enabled: selected.enabled,
+      }
+    : null;
+}
+
+async function resolveOpenClawSession(
   userId: string,
   input: {
+    connectorId: string;
     preferredModel?: string | null;
     autoCreateSession: boolean;
     reuseActiveSession: boolean;
-    prompt: string;
+    title: string;
   },
 ) {
   let session =
@@ -1352,14 +1657,20 @@ async function resolveIdeaSession(
           where: {
             userId,
             status: 'active',
+            OR: [{ connectorId: input.connectorId }, { connectorId: null }],
           },
           orderBy: { lastActivityAt: 'desc' },
         })
       : null;
 
   if (!session && input.autoCreateSession) {
-    const created = await openClawConnector.createSession({
-      title: `Idea review: ${truncate(input.prompt, 48)}`,
+    const connector = await resolveSelectedConnector(userId);
+    if (!connector || connector.id !== input.connectorId) {
+      return null;
+    }
+
+    const created = await openClawConnector.createSession(connector, {
+      title: input.title,
       preferredModel: input.preferredModel ?? null,
     });
 
@@ -1376,6 +1687,7 @@ async function resolveIdeaSession(
     session = await prisma.openClawSession.create({
       data: {
         userId,
+        connectorId: input.connectorId,
         remoteSessionId: created.remoteSessionId,
         title: created.title,
         status: 'active',
@@ -1400,6 +1712,7 @@ async function resolveIdeaSession(
     return prisma.openClawSession.update({
       where: { id: session.id },
       data: {
+        connectorId: input.connectorId,
         status: 'active',
         modelLabel: input.preferredModel?.trim() || session.modelLabel,
         lastActivityAt: new Date(),
@@ -1410,6 +1723,29 @@ async function resolveIdeaSession(
   return null;
 }
 
+async function resolveIdeaSession(
+  userId: string,
+  connectorId: string | null,
+  input: {
+    preferredModel?: string | null;
+    autoCreateSession: boolean;
+    reuseActiveSession: boolean;
+    prompt: string;
+  },
+) {
+  if (!connectorId) {
+    return null;
+  }
+
+  return resolveOpenClawSession(userId, {
+    connectorId,
+    preferredModel: input.preferredModel,
+    autoCreateSession: input.autoCreateSession,
+    reuseActiveSession: input.reuseActiveSession,
+    title: `Idea review: ${truncate(input.prompt, 48)}`,
+  });
+}
+
 function applyCors(reply: FastifyReply): void {
   reply.header('Access-Control-Allow-Origin', '*');
   reply.header('Access-Control-Allow-Headers', 'Authorization, Content-Type');
@@ -1418,6 +1754,10 @@ function applyCors(reply: FastifyReply): void {
 
 function buildJobTitle(prompt: string): string {
   return `Evaluate: ${truncate(prompt.trim(), 72)}`;
+}
+
+function buildAssistantTaskTitle(prompt: string): string {
+  return `Handoff: ${truncate(prompt.trim(), 72)}`;
 }
 
 function getSessionTokenFromHeader(request: FastifyRequest): string | null {

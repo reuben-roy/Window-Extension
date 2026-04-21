@@ -10,6 +10,10 @@ export type IdeaStatus =
 export type AuthProvider = 'google' | 'github' | 'password';
 export type OpenClawSessionStatus = 'active' | 'idle' | 'closed';
 export type OpenClawJobStatus = 'queued' | 'running' | 'completed' | 'failed' | 'cancelled';
+export type AssistantConnectorType = 'openclaw';
+export type AssistantTaskStatus = 'queued' | 'running' | 'completed' | 'failed' | 'cancelled';
+export type TaskNotificationMode = 'immediate' | 'after_focus' | 'inbox_only';
+export type AssistantFocusContextType = 'none' | 'window_task' | 'calendar_event';
 
 export interface WeeklyStatsPayload {
   earned: number;
@@ -149,6 +153,43 @@ export interface OpenClawStatusPayload {
   currentJob: OpenClawJobPayload | null;
 }
 
+export interface AssistantConnectorPayload {
+  id: string;
+  key: string;
+  label: string;
+  connectorType: AssistantConnectorType;
+  transport: 'ssh' | 'http' | 'unknown';
+  enabled: boolean;
+  host: string | null;
+  baseUrl: string | null;
+  description: string | null;
+}
+
+export interface AssistantTaskResultPayload {
+  summary: string;
+  output: string;
+  completedAt: string;
+}
+
+export interface AssistantTaskPayload {
+  id: string;
+  connectorId: string | null;
+  title: string;
+  prompt: string;
+  status: AssistantTaskStatus;
+  createdAt: string;
+  updatedAt: string;
+  completedAt: string | null;
+  error: string | null;
+  sessionId: string | null;
+  jobId: string | null;
+  notificationMode: TaskNotificationMode;
+  focusContextType: AssistantFocusContextType;
+  focusContextId: string | null;
+  notifiedAt: string | null;
+  result: AssistantTaskResultPayload | null;
+}
+
 export interface OpenClawCreateSessionInput {
   title: string;
   preferredModel?: string;
@@ -165,6 +206,18 @@ export interface OpenClawJobResult {
   status: OpenClawJobStatus;
   report: IdeaReportPayload | null;
   error: string | null;
+}
+
+export interface AssistantTaskCreateInput {
+  prompt: string;
+  title?: string;
+  preferredModel?: string;
+  notes?: string;
+  notificationMode?: TaskNotificationMode;
+  focusContextType?: AssistantFocusContextType;
+  focusContextId?: string | null;
+  autoCreateSession?: boolean;
+  reuseActiveSession?: boolean;
 }
 
 export interface AnalyticsSummaryPayload {

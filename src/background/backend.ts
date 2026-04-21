@@ -15,6 +15,7 @@ import {
   deriveIdeaState,
   finalizeBreakVisits,
   mergeIdeaRecord,
+  shouldNotifyAboutAssistantTask,
 } from '../shared/assistant';
 import {
   getAccountConflict,
@@ -31,6 +32,7 @@ import {
   getFocusSessionQueue,
   getIdeaRecords,
   getOpenClawState,
+  getTaskQueue,
   setAccountConflict,
   setAccountSyncState,
   setAccountUser,
@@ -54,7 +56,9 @@ import type {
   AccountSnapshot,
   AccountSyncState,
   AccountUser,
+  AssistantConnectorSummary,
   AssistantOptions,
+  AssistantTaskRecord,
   AuthProvider,
   BackendSession,
   IdeaDecision,
@@ -63,6 +67,7 @@ import type {
   IdeaState,
   FocusSessionRecord,
   TagBreakdownItem,
+  TaskNotificationMode,
   OpenClawConnectionStatus,
   OpenClawJobSummary,
   OpenClawSessionSummary,
@@ -119,6 +124,34 @@ interface OpenClawStatusResponse {
 interface OpenClawSessionsResponse {
   sessions: OpenClawSessionSummary[];
   activeSessionId: string | null;
+}
+
+interface ConnectorsResponse {
+  connectors: AssistantConnectorSummary[];
+  selectedConnectorId: string | null;
+}
+
+interface RemoteAssistantTask {
+  id: string;
+  connectorId: string | null;
+  title: string;
+  prompt: string;
+  status: AssistantTaskRecord['status'];
+  createdAt: string;
+  updatedAt: string;
+  completedAt: string | null;
+  error: string | null;
+  sessionId: string | null;
+  jobId: string | null;
+  notificationMode: TaskNotificationMode;
+  focusContextType: AssistantTaskRecord['focusContextType'];
+  focusContextId: string | null;
+  notifiedAt: string | null;
+  result: AssistantTaskRecord['result'];
+}
+
+interface AssistantTasksResponse {
+  tasks: RemoteAssistantTask[];
 }
 
 interface RemoteStateSnapshot {
@@ -445,6 +478,39 @@ export async function submitIdea(prompt: string): Promise<RemoteStateSnapshot> {
   return syncIdeaOutbox();
 }
 
+export async function submitAssistantTask(prompt: string): Promise<RemoteStateSnapshot> {
+  const normalizedPrompt = prompt.trim();
+  if (!normalizedPrompt) {
+    throw new Error('Task handoff cannot be empty.');
+  }
+
+  const session = await ensureBackendSession();
+  if (!session) {
+    throw new Error('Sign in to submit assistant tasks.');
+  }
+
+  const [assistantOptions, focusContext] = await Promise.all([
+    getAssistantOptions(),
+    getCurrentAssistantFocusContext(),
+  ]);
+
+  await backendRequest('/v1/assistant-tasks', {
+    method: 'POST',
+    body: {
+      prompt: normalizedPrompt,
+      preferredModel: assistantOptions.preferredModel.value,
+      autoCreateSession: assistantOptions.autoCreateSession,
+      reuseActiveSession: assistantOptions.reuseActiveSession,
+      notes: assistantOptions.notes,
+      notificationMode: assistantOptions.taskNotificationMode,
+      focusContextType: focusContext.type,
+      focusContextId: focusContext.id,
+    },
+  });
+
+  return refreshAssistantState();
+}
+
 export async function decideIdea(
   localId: string,
   decision: IdeaDecision,
@@ -524,6 +590,14 @@ export async function cancelOpenClawJob(jobId: string): Promise<RemoteStateSnaps
   return refreshAssistantState();
 }
 
+export async function cancelAssistantTask(taskId: string): Promise<RemoteStateSnapshot> {
+  await backendRequest(`/v1/assistant-tasks/${taskId}/cancel`, {
+    method: 'POST',
+  });
+
+  return refreshAssistantState();
+}
+
 export async function updateAssistantPreference(
   patch: Partial<AssistantOptions>,
 ): Promise<AssistantOptions> {
@@ -538,6 +612,18 @@ export async function updateAssistantPreference(
         }
       : current.preferredModel,
   };
+
+  if (patch.selectedConnectorId !== undefined && patch.selectedConnectorId !== null) {
+    const session = await ensureBackendSession();
+    if (session) {
+      await backendRequest('/v1/connectors/select', {
+        method: 'POST',
+        body: {
+          connectorId: patch.selectedConnectorId,
+        },
+      });
+    }
+  }
 
   await setAssistantOptions(next);
   return next;
@@ -567,6 +653,7 @@ export async function syncIdeaOutbox(): Promise<RemoteStateSnapshot> {
 
     const assistantOptions = await getAssistantOptions();
     let items = await getIdeaRecords();
+    const previousOpenClawState = await getOpenClawState();
 
     for (const item of items) {
       if (item.remoteId !== null) continue;
@@ -591,24 +678,40 @@ export async function syncIdeaOutbox(): Promise<RemoteStateSnapshot> {
       await setIdeaRecords(items);
     }
 
-    const [remoteIdeas, statusResponse, sessionsResponse] = await Promise.all([
+    const [remoteIdeas, statusResponse, sessionsResponse, connectorsResponse, tasksResponse] = await Promise.all([
       backendRequest<RemoteIdeaRecord[]>('/v1/ideas'),
       backendRequest<OpenClawStatusResponse>('/v1/openclaw/status'),
       backendRequest<OpenClawSessionsResponse>('/v1/openclaw/sessions'),
+      backendRequest<ConnectorsResponse>('/v1/connectors'),
+      backendRequest<AssistantTasksResponse>('/v1/assistant-tasks'),
     ]);
 
     const previousItems = items;
     items = reconcileIdeaRecords(items, remoteIdeas);
+    const tasks = reconcileAssistantTasks(previousOpenClawState.tasks, tasksResponse.tasks);
+    const selectedConnectorId =
+      connectorsResponse.selectedConnectorId ??
+      assistantOptions.selectedConnectorId ??
+      null;
     const nextOpenClawState: OpenClawState = {
       status: statusResponse.status,
+      connectors: connectorsResponse.connectors,
+      selectedConnectorId,
       sessions: sessionsResponse.sessions,
       activeSessionId: sessionsResponse.activeSessionId,
       currentJob: statusResponse.currentJob,
+      currentTask: deriveCurrentAssistantTask(tasks),
+      tasks,
       lastError: null,
+    };
+    const nextAssistantOptions: AssistantOptions = {
+      ...assistantOptions,
+      selectedConnectorId,
     };
 
     await Promise.all([
       setIdeaRecords(items),
+      setAssistantOptions(nextAssistantOptions),
       setOpenClawState(nextOpenClawState),
       setBackendSyncState({
         configured: true,
@@ -620,6 +723,7 @@ export async function syncIdeaOutbox(): Promise<RemoteStateSnapshot> {
     ]);
 
     await maybeNotifyAboutCompletedIdeas(previousItems, items);
+    await maybeNotifyAboutCompletedAssistantTasks(tasks);
 
     return {
       items,
@@ -1130,6 +1234,63 @@ function fromRemoteIdea(remote: RemoteIdeaRecord, existing?: IdeaRecord): IdeaRe
   };
 }
 
+function reconcileAssistantTasks(
+  localTasks: AssistantTaskRecord[],
+  remoteTasks: RemoteAssistantTask[],
+): AssistantTaskRecord[] {
+  const merged = [...localTasks];
+
+  for (const remote of remoteTasks) {
+    const existingIndex = merged.findIndex((task) => task.id === remote.id);
+    const existing = existingIndex >= 0 ? merged[existingIndex] : undefined;
+    const next = fromRemoteAssistantTask(remote, existing);
+
+    if (existingIndex >= 0) {
+      merged[existingIndex] = next;
+    } else {
+      merged.push(next);
+    }
+  }
+
+  return merged.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+}
+
+function fromRemoteAssistantTask(
+  remote: RemoteAssistantTask,
+  existing?: AssistantTaskRecord,
+): AssistantTaskRecord {
+  const completedNow = remote.status === 'completed' && remote.result !== null;
+  return {
+    id: remote.id,
+    connectorId: remote.connectorId,
+    title: remote.title,
+    prompt: remote.prompt,
+    status: remote.status,
+    createdAt: remote.createdAt,
+    updatedAt: remote.updatedAt,
+    completedAt: remote.completedAt,
+    error: remote.error,
+    sessionId: remote.sessionId,
+    jobId: remote.jobId,
+    unread: remote.notifiedAt
+      ? false
+      : completedNow
+        ? existing?.unread ?? true
+        : false,
+    notificationMode: remote.notificationMode,
+    focusContextType: remote.focusContextType,
+    focusContextId: remote.focusContextId,
+    notifiedAt: remote.notifiedAt,
+    result: remote.result,
+  };
+}
+
+function deriveCurrentAssistantTask(
+  tasks: AssistantTaskRecord[],
+): AssistantTaskRecord | null {
+  return tasks.find((task) => task.status === 'running' || task.status === 'queued') ?? null;
+}
+
 async function maybeNotifyAboutCompletedIdeas(
   previousItems: IdeaRecord[],
   nextItems: IdeaRecord[],
@@ -1152,6 +1313,102 @@ async function maybeNotifyAboutCompletedIdeas(
       message: truncate(item.report?.summary ?? item.prompt, 140),
     });
   }
+}
+
+async function maybeNotifyAboutCompletedAssistantTasks(
+  tasks: AssistantTaskRecord[],
+): Promise<void> {
+  const focusContext = await getCurrentAssistantFocusContext();
+  const toNotify = tasks.filter((task) =>
+    shouldNotifyAboutAssistantTask(task, {
+      currentWindowTaskId: focusContext.currentWindowTaskId,
+      currentCalendarEventId: focusContext.currentCalendarEventId,
+    }),
+  );
+
+  if (toNotify.length === 0) {
+    return;
+  }
+
+  const acknowledgedTaskIds = new Set<string>();
+
+  for (const task of toNotify) {
+    try {
+      chrome.notifications.create(`assistant-task-${task.id}`, {
+        type: 'basic',
+        iconUrl: NOTIFICATION_ICON_DATA_URL,
+        title: 'Window task handoff complete',
+        message: truncate(task.result?.summary ?? task.title, 140),
+      });
+
+      await backendRequest(`/v1/assistant-tasks/${task.id}/notification-ack`, {
+        method: 'POST',
+      });
+      acknowledgedTaskIds.add(task.id);
+    } catch (error) {
+      console.warn('[Window] Failed to acknowledge assistant task notification:', error);
+    }
+  }
+
+  if (acknowledgedTaskIds.size === 0) {
+    return;
+  }
+
+  const currentState = await getOpenClawState();
+  const nextTasks = currentState.tasks.map((task) =>
+    acknowledgedTaskIds.has(task.id)
+      ? {
+          ...task,
+          unread: false,
+          notifiedAt: new Date().toISOString(),
+        }
+      : task,
+  );
+
+  await setOpenClawState({
+    ...currentState,
+    tasks: nextTasks,
+    currentTask: deriveCurrentAssistantTask(nextTasks),
+  });
+}
+
+async function getCurrentAssistantFocusContext(): Promise<{
+  type: AssistantTaskRecord['focusContextType'];
+  id: string | null;
+  currentWindowTaskId: string | null;
+  currentCalendarEventId: string | null;
+}> {
+  const [taskQueue, calendarState] = await Promise.all([
+    getTaskQueue(),
+    getCalendarState(),
+  ]);
+  const activeTask = taskQueue.find((task) => task.status === 'active') ?? null;
+  const currentCalendarEventId = calendarState.currentEvent?.id ?? null;
+
+  if (activeTask) {
+    return {
+      type: 'window_task',
+      id: activeTask.id,
+      currentWindowTaskId: activeTask.id,
+      currentCalendarEventId,
+    };
+  }
+
+  if (currentCalendarEventId) {
+    return {
+      type: 'calendar_event',
+      id: currentCalendarEventId,
+      currentWindowTaskId: null,
+      currentCalendarEventId,
+    };
+  }
+
+  return {
+    type: 'none',
+    id: null,
+    currentWindowTaskId: null,
+    currentCalendarEventId: null,
+  };
 }
 
 function isBackendConfigured(): boolean {
