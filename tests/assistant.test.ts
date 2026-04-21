@@ -5,9 +5,11 @@ import {
   deriveIdeaState,
   finalizeBreakVisits,
   parseDomainFromUrl,
+  shouldNotifyAboutAssistantTask,
   upsertBreakVisit,
 } from '../src/shared/assistant';
 import { DEFAULT_OPENCLAW_STATE } from '../src/shared/constants';
+import type { AssistantTaskRecord } from '../src/shared/types';
 
 describe('idea helpers', () => {
   it('creates queued idea records', () => {
@@ -67,5 +69,97 @@ describe('telemetry helpers', () => {
     const finalized = finalizeBreakVisits(seeded.nextVisits, '2026-04-11T10:15:00.000Z');
     expect(finalized).toHaveLength(1);
     expect(finalized[0]?.endedAt).toBe('2026-04-11T10:15:00.000Z');
+  });
+});
+
+describe('assistant task notifications', () => {
+  function buildTask(overrides: Partial<AssistantTaskRecord> = {}): AssistantTaskRecord {
+    return {
+      id: 'task-1',
+      connectorId: 'connector-1',
+      title: 'Research billing API',
+      prompt: 'Research billing API options',
+      status: 'completed',
+      createdAt: '2026-04-21T10:00:00.000Z',
+      updatedAt: '2026-04-21T10:05:00.000Z',
+      completedAt: '2026-04-21T10:05:00.000Z',
+      error: null,
+      sessionId: 'session-1',
+      jobId: 'job-1',
+      unread: true,
+      notificationMode: 'after_focus',
+      focusContextType: 'none',
+      focusContextId: null,
+      notifiedAt: null,
+      result: {
+        summary: 'Done',
+        output: 'Completed successfully.',
+        completedAt: '2026-04-21T10:05:00.000Z',
+      },
+      ...overrides,
+    };
+  }
+
+  it('notifies immediately when mode is immediate', () => {
+    expect(
+      shouldNotifyAboutAssistantTask(buildTask({ notificationMode: 'immediate' }), {
+        currentWindowTaskId: 'task-queue-1',
+        currentCalendarEventId: 'event-1',
+      }),
+    ).toBe(true);
+  });
+
+  it('suppresses browser notifications in inbox-only mode', () => {
+    expect(
+      shouldNotifyAboutAssistantTask(buildTask({ notificationMode: 'inbox_only' }), {
+        currentWindowTaskId: null,
+        currentCalendarEventId: null,
+      }),
+    ).toBe(false);
+  });
+
+  it('waits while the linked window task is still active', () => {
+    expect(
+      shouldNotifyAboutAssistantTask(
+        buildTask({
+          focusContextType: 'window_task',
+          focusContextId: 'window-task-1',
+        }),
+        {
+          currentWindowTaskId: 'window-task-1',
+          currentCalendarEventId: null,
+        },
+      ),
+    ).toBe(false);
+  });
+
+  it('waits while the linked calendar event is still active', () => {
+    expect(
+      shouldNotifyAboutAssistantTask(
+        buildTask({
+          focusContextType: 'calendar_event',
+          focusContextId: 'calendar-event-1',
+        }),
+        {
+          currentWindowTaskId: null,
+          currentCalendarEventId: 'calendar-event-1',
+        },
+      ),
+    ).toBe(false);
+  });
+
+  it('releases after-focus notifications once the linked context clears', () => {
+    expect(
+      shouldNotifyAboutAssistantTask(
+        buildTask({
+          focusContextType: 'calendar_event',
+          focusContextId: 'calendar-event-1',
+        }),
+        {
+          currentWindowTaskId: null,
+          currentCalendarEventId: null,
+        },
+      ),
+    ).toBe(true);
   });
 });

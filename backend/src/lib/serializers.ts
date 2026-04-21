@@ -1,5 +1,7 @@
 import type {
+  AssistantTaskResult,
   InterestProfile,
+  OpenClawConnection,
   OpenClawSession,
   Prisma,
   Recommendation,
@@ -8,6 +10,8 @@ import type {
 import type {
   AccountSnapshotPayload,
   AccountUserPayload,
+  AssistantConnectorPayload,
+  AssistantTaskPayload,
   FocusSessionPayload,
   IdeaReportPayload,
   OpenClawJobPayload,
@@ -19,6 +23,14 @@ export type IdeaWithRelations = Prisma.IdeaCaptureGetPayload<{
   include: {
     report: true;
     researchJob: true;
+    session: true;
+  };
+}>;
+
+export type AssistantTaskWithRelations = Prisma.AssistantTaskGetPayload<{
+  include: {
+    job: true;
+    result: true;
     session: true;
   };
 }>;
@@ -127,6 +139,60 @@ export function toOpenClawJobPayload(job: ResearchJob): OpenClawJobPayload {
     status: job.status,
     startedAt: job.startedAt?.toISOString() ?? null,
     updatedAt: job.updatedAt.toISOString(),
+  };
+}
+
+export function toAssistantConnectorPayload(
+  connector: OpenClawConnection,
+): AssistantConnectorPayload {
+  return {
+    id: connector.id,
+    key: connector.key,
+    label: connector.name,
+    connectorType: 'openclaw',
+    transport:
+      connector.transport === 'ssh' || connector.transport === 'http'
+        ? connector.transport
+        : 'unknown',
+    enabled: connector.enabled,
+    host: connector.host,
+    baseUrl: connector.baseUrl,
+    description: connector.description ?? null,
+  };
+}
+
+export function toAssistantTaskPayload(
+  task: AssistantTaskWithRelations,
+): AssistantTaskPayload {
+  return {
+    id: task.id,
+    connectorId: task.connectorId,
+    title: task.title,
+    prompt: task.prompt,
+    status: task.status,
+    createdAt: task.createdAt.toISOString(),
+    updatedAt: task.updatedAt.toISOString(),
+    completedAt: task.completedAt?.toISOString() ?? null,
+    error: task.lastError ?? task.job?.lastError ?? null,
+    sessionId: task.sessionId,
+    jobId: task.job?.id ?? null,
+    notificationMode: task.notificationMode,
+    focusContextType: task.focusContextType,
+    focusContextId: task.focusContextId,
+    notifiedAt: task.notifiedAt?.toISOString() ?? null,
+    result: toAssistantTaskResultPayload(task.result),
+  };
+}
+
+export function toAssistantTaskResultPayload(
+  result: AssistantTaskResult | null,
+): AssistantTaskPayload['result'] {
+  if (!result) return null;
+
+  return {
+    summary: result.summary,
+    output: result.output,
+    completedAt: result.completedAt.toISOString(),
   };
 }
 

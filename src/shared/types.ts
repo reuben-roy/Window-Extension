@@ -19,6 +19,10 @@ export type IdeaDecision = 'keep' | 'discard';
 export type OpenClawSessionStatus = 'active' | 'idle' | 'closed';
 export type OpenClawJobStatus = 'queued' | 'running' | 'completed' | 'failed' | 'cancelled';
 export type OpenClawTransport = 'ssh' | 'http' | 'unknown';
+export type AssistantConnectorType = 'openclaw';
+export type AssistantTaskStatus = 'queued' | 'running' | 'completed' | 'failed' | 'cancelled';
+export type TaskNotificationMode = 'immediate' | 'after_focus' | 'inbox_only';
+export type AssistantFocusContextType = 'none' | 'window_task' | 'calendar_event';
 export type RecommendationKind = 'focus' | 'calendar' | 'interest' | 'automation';
 export type DifficultyRank = 1 | 2 | 3 | 5 | 8;
 export type ActivityClass = 'aligned' | 'supportive' | 'distracted' | 'away' | 'break';
@@ -252,11 +256,53 @@ export interface OpenClawConnectionStatus {
   lastCheckedAt: string | null;
 }
 
+export interface AssistantConnectorSummary {
+  id: string;
+  key: string;
+  label: string;
+  connectorType: AssistantConnectorType;
+  transport: OpenClawTransport;
+  enabled: boolean;
+  host: string | null;
+  baseUrl: string | null;
+  description: string | null;
+}
+
+export interface AssistantTaskResult {
+  summary: string;
+  output: string;
+  completedAt: string;
+}
+
+export interface AssistantTaskRecord {
+  id: string;
+  connectorId: string | null;
+  title: string;
+  prompt: string;
+  status: AssistantTaskStatus;
+  createdAt: string;
+  updatedAt: string;
+  completedAt: string | null;
+  error: string | null;
+  sessionId: string | null;
+  jobId: string | null;
+  unread: boolean;
+  notificationMode: TaskNotificationMode;
+  focusContextType: AssistantFocusContextType;
+  focusContextId: string | null;
+  notifiedAt: string | null;
+  result: AssistantTaskResult | null;
+}
+
 export interface OpenClawState {
   status: OpenClawConnectionStatus;
+  connectors: AssistantConnectorSummary[];
+  selectedConnectorId: string | null;
   sessions: OpenClawSessionSummary[];
   activeSessionId: string | null;
   currentJob: OpenClawJobSummary | null;
+  currentTask: AssistantTaskRecord | null;
+  tasks: AssistantTaskRecord[];
   lastError: string | null;
 }
 
@@ -269,6 +315,8 @@ export interface AssistantOptions {
   preferredModel: ModelSelectorState;
   autoCreateSession: boolean;
   reuseActiveSession: boolean;
+  selectedConnectorId: string | null;
+  taskNotificationMode: TaskNotificationMode;
   notes: string;
 }
 
@@ -540,11 +588,13 @@ export type MessageType =
   | 'SNOOZE'
   | 'SPEND_POINTS_UNLOCK'
   | 'SUBMIT_IDEA'
+  | 'SUBMIT_ASSISTANT_TASK'
   | 'DECIDE_IDEA'
   | 'RETRY_IDEA'
   | 'START_OPENCLAW_SESSION'
   | 'REUSE_OPENCLAW_SESSION'
   | 'CANCEL_OPENCLAW_JOB'
+  | 'CANCEL_ASSISTANT_TASK'
   | 'UPDATE_ASSISTANT_OPTIONS'
   | 'MARK_DONE'
   | 'DISMISS_TASK'

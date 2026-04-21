@@ -1,10 +1,12 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import type {
   AssistantOptions,
+  AssistantTaskRecord,
   CalendarEvent,
   IdeaRecord,
   OpenClawSessionSummary,
   StateResponse,
+  TaskNotificationMode,
 } from '../shared/types';
 import { formatBlockingPauseTimeLabel, isDailyBlockingPauseActive } from '../shared/blockingSchedule';
 import { MODEL_PLACEHOLDER_OPTIONS } from '../shared/constants';
@@ -17,6 +19,28 @@ import CompletionModal from './components/CompletionModal';
 import PointsDisplay from './components/PointsDisplay';
 import TaskQueue from './components/TaskQueue';
 
+const TASK_NOTIFICATION_MODE_OPTIONS: Array<{
+  value: TaskNotificationMode;
+  label: string;
+  description: string;
+}> = [
+  {
+    value: 'after_focus',
+    label: 'After focus',
+    description: 'Hold completion notifications until the current Window focus context ends.',
+  },
+  {
+    value: 'immediate',
+    label: 'Immediate',
+    description: 'Notify as soon as the remote assistant finishes the task.',
+  },
+  {
+    value: 'inbox_only',
+    label: 'Inbox only',
+    description: 'Keep completed handoffs in the assistant inbox without a browser notification.',
+  },
+];
+
 export default function Popup({
   mode = 'popup',
 }: {
@@ -27,6 +51,9 @@ export default function Popup({
   const [loadError, setLoadError] = useState<string | null>(null);
   const [toggling, setToggling] = useState(false);
   const [submittingIdea, setSubmittingIdea] = useState(false);
+  const [submittingAssistantTask, setSubmittingAssistantTask] = useState(false);
+  const [assistantTaskInput, setAssistantTaskInput] = useState('');
+  const [assistantTaskError, setAssistantTaskError] = useState<string | null>(null);
   const [ideaInput, setIdeaInput] = useState('');
   const [ideaError, setIdeaError] = useState<string | null>(null);
   const [completionModalOpen, setCompletionModalOpen] = useState(false);
@@ -124,6 +151,30 @@ export default function Popup({
     );
   };
 
+  const handleAssistantTaskSubmit = () => {
+    if (!state || submittingAssistantTask) return;
+    const prompt = assistantTaskInput.trim();
+    if (!prompt) {
+      setAssistantTaskError('Write the task you want OpenClaw to handle.');
+      return;
+    }
+
+    setSubmittingAssistantTask(true);
+    setAssistantTaskError(null);
+    chrome.runtime.sendMessage(
+      { type: 'SUBMIT_ASSISTANT_TASK', payload: { prompt } },
+      (response: { ok: boolean; error?: string }) => {
+        setSubmittingAssistantTask(false);
+        if (response?.ok) {
+          setAssistantTaskInput('');
+          loadState();
+        } else {
+          setAssistantTaskError(response?.error ?? 'Task handoff failed.');
+        }
+      },
+    );
+  };
+
   if (loading) {
     return (
       <div
@@ -177,6 +228,11 @@ export default function Popup({
       .sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime())[0] ?? null;
   const inboxIdeas = ideaState.items.filter((item) => !item.archived).slice(0, 3);
   const actionableTasks = taskQueue.filter((task) => task.status === 'active' || task.status === 'carryover');
+  const assistantSubtitle = openClawState.currentTask
+    ? `${formatTaskStatusLabel(openClawState.currentTask.status)} · ${openClawState.currentTask.title}`
+    : openClawState.status.connected
+      ? 'OpenClaw ready'
+      : 'OpenClaw offline';
   const selectedModel = MODEL_PLACEHOLDER_OPTIONS.includes(
     assistantOptions.preferredModel.value as (typeof MODEL_PLACEHOLDER_OPTIONS)[number],
   )
@@ -441,8 +497,8 @@ export default function Popup({
           <SettingsGroup
             className="fg-card p-3"
             title="Assistant"
-            subtitle={openClawState.status.connected ? 'OpenClaw ready' : 'OpenClaw offline'}
-            hint="Session controls, model selection, telemetry, and idea capture."
+            subtitle={assistantSubtitle}
+            hint="Connector routing, async handoff, sessions, telemetry, and idea capture."
           >
             <AssistantPanel
               mode={mode}
@@ -453,16 +509,26 @@ export default function Popup({
               accountUser={accountUser}
               backendSession={backendSession}
               backendSyncState={backendSyncState}
+              assistantTaskInput={assistantTaskInput}
+              assistantTaskError={assistantTaskError}
+              submittingAssistantTask={submittingAssistantTask}
               ideaInput={ideaInput}
               ideaError={ideaError}
               submittingIdea={submittingIdea}
               inboxIdeas={inboxIdeas}
+              onAssistantTaskInputChange={(value) => {
+                setAssistantTaskInput(value);
+                setAssistantTaskError(null);
+              }}
+              onAssistantTaskSubmit={handleAssistantTaskSubmit}
               onIdeaInputChange={(value) => {
                 setIdeaInput(value);
                 setIdeaError(null);
               }}
               onIdeaSubmit={handleIdeaSubmit}
               onModelSelect={updateModelSelector}
+              onConnectorSelect={(connectorId) => updateAssistantOptions({ selectedConnectorId: connectorId })}
+              onNotificationModeChange={(value) => updateAssistantOptions({ taskNotificationMode: value })}
               onToggleReuse={(checked) => updateAssistantOptions({ reuseActiveSession: checked })}
               onToggleAutoCreate={(checked) => updateAssistantOptions({ autoCreateSession: checked })}
               onToggleTelemetry={(checked) => {
@@ -478,6 +544,9 @@ export default function Popup({
               }
               onCancelJob={(jobId) =>
                 chrome.runtime.sendMessage({ type: 'CANCEL_OPENCLAW_JOB', payload: { jobId } })
+              }
+              onCancelTask={(taskId) =>
+                chrome.runtime.sendMessage({ type: 'CANCEL_ASSISTANT_TASK', payload: { taskId } })
               }
               onKeep={(localId) =>
                 chrome.runtime.sendMessage({
@@ -525,13 +594,20 @@ function AssistantPanel({
   accountUser,
   backendSession,
   backendSyncState,
+  assistantTaskInput,
+  assistantTaskError,
+  submittingAssistantTask,
   ideaInput,
   ideaError,
   submittingIdea,
   inboxIdeas,
+  onAssistantTaskInputChange,
+  onAssistantTaskSubmit,
   onIdeaInputChange,
   onIdeaSubmit,
   onModelSelect,
+  onConnectorSelect,
+  onNotificationModeChange,
   onToggleReuse,
   onToggleAutoCreate,
   onToggleTelemetry,
@@ -539,6 +615,7 @@ function AssistantPanel({
   onStartSession,
   onReuseSession,
   onCancelJob,
+  onCancelTask,
   onKeep,
   onDiscard,
   onRetry,
@@ -551,13 +628,20 @@ function AssistantPanel({
   accountUser: StateResponse['accountUser'];
   backendSession: StateResponse['backendSession'];
   backendSyncState: StateResponse['backendSyncState'];
+  assistantTaskInput: string;
+  assistantTaskError: string | null;
+  submittingAssistantTask: boolean;
   ideaInput: string;
   ideaError: string | null;
   submittingIdea: boolean;
   inboxIdeas: IdeaRecord[];
+  onAssistantTaskInputChange: (value: string) => void;
+  onAssistantTaskSubmit: () => void;
   onIdeaInputChange: (value: string) => void;
   onIdeaSubmit: () => void;
   onModelSelect: (value: string) => void;
+  onConnectorSelect: (connectorId: string) => void;
+  onNotificationModeChange: (value: TaskNotificationMode) => void;
   onToggleReuse: (checked: boolean) => void;
   onToggleAutoCreate: (checked: boolean) => void;
   onToggleTelemetry: (checked: boolean) => void;
@@ -565,12 +649,19 @@ function AssistantPanel({
   onStartSession: () => void;
   onReuseSession: (sessionId: string) => void;
   onCancelJob: (jobId: string) => void;
+  onCancelTask: (taskId: string) => void;
   onKeep: (localId: string) => void;
   onDiscard: (localId: string) => void;
   onRetry: (localId: string) => void;
 }): React.JSX.Element {
   const reusableSession = openClawState.sessions.find((session) => session.status !== 'closed');
   const currentJob = openClawState.currentJob;
+  const currentTask = openClawState.currentTask;
+  const selectedConnector =
+    openClawState.connectors.find((connector) => connector.id === openClawState.selectedConnectorId) ??
+    openClawState.connectors[0] ??
+    null;
+  const visibleTasks = openClawState.tasks.slice(0, mode === 'panel' ? 6 : 4);
   const visibleSessions = openClawState.sessions.slice(0, mode === 'panel' ? 4 : 3);
   const toolbarButtonClass = 'fg-button-ghost px-3 py-1.5 text-[11px]';
 
@@ -593,17 +684,42 @@ function AssistantPanel({
 
       <div className="grid gap-1.5 sm:grid-cols-2">
         <CompactSettingRow
-          label="Transport"
-          hint="Where assistant traffic is routed right now."
-          value={openClawState.status.transport.toUpperCase()}
-          meta={openClawState.status.label ?? 'Oracle-hosted OpenClaw'}
+          label="Connector"
+          hint="Choose which backend-managed assistant connector this panel should route through."
+          value={selectedConnector?.label ?? 'No connector configured'}
+          meta={buildConnectorMeta(selectedConnector, openClawState.status.message)}
+          control={
+            <select
+              value={selectedConnector?.id ?? ''}
+              onChange={(event) => onConnectorSelect(event.target.value)}
+              disabled={openClawState.connectors.length === 0}
+              className="fg-select w-[188px] px-3 py-2 text-sm"
+            >
+              {openClawState.connectors.length === 0 ? (
+                <option value="">No connector</option>
+              ) : (
+                openClawState.connectors.map((connector) => (
+                  <option key={connector.id} value={connector.id}>
+                    {connector.label}
+                  </option>
+                ))
+              )}
+            </select>
+          }
           className="px-3 py-2.5"
         />
         <CompactSettingRow
-          label="Current job"
-          hint="The active OpenClaw request, if one is currently running."
-          value={currentJob?.status ?? 'Idle'}
-          meta={currentJob?.title ?? 'No job running right now.'}
+          label="Current handoff"
+          hint="The current async task running in the background, independent from idea capture."
+          value={currentTask ? formatTaskStatusLabel(currentTask.status) : 'Idle'}
+          meta={currentTask?.title ?? 'No background task is running right now.'}
+          className="px-3 py-2.5"
+        />
+        <CompactSettingRow
+          label="Idea job"
+          hint="The active OpenClaw research request for idea capture, if one is currently running."
+          value={currentJob ? formatTaskStatusLabel(currentJob.status) : 'Idle'}
+          meta={currentJob?.title ?? 'No idea capture job running right now.'}
           className="px-3 py-2.5"
         />
       </div>
@@ -623,6 +739,27 @@ function AssistantPanel({
               {MODEL_PLACEHOLDER_OPTIONS.map((option) => (
                 <option key={option} value={option}>
                   {option}
+                </option>
+              ))}
+            </select>
+          }
+          className="px-3 py-2.5"
+        />
+
+        <CompactSettingRow
+          label="Notification timing"
+          hint="Control when completed handoff tasks should surface a browser notification."
+          value={formatNotificationModeLabel(assistantOptions.taskNotificationMode)}
+          meta={TASK_NOTIFICATION_MODE_OPTIONS.find((option) => option.value === assistantOptions.taskNotificationMode)?.description}
+          control={
+            <select
+              value={assistantOptions.taskNotificationMode}
+              onChange={(event) => onNotificationModeChange(event.target.value as TaskNotificationMode)}
+              className="fg-select w-[188px] px-3 py-2 text-sm"
+            >
+              {TASK_NOTIFICATION_MODE_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
                 </option>
               ))}
             </select>
@@ -684,6 +821,59 @@ function AssistantPanel({
           className="px-3 py-2.5"
         />
       </div>
+
+      <div className="rounded-[22px] border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-3.5 py-3">
+        <div className="flex items-center justify-between gap-2">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-[var(--fg-muted)]">
+                Handoff task
+              </p>
+              <InfoTip text="Send a longer-running task to OpenClaw so it can work in parallel while you stay in the browser." />
+            </div>
+            <p className="mt-1 text-[11px] leading-4 text-[var(--fg-muted)]">
+              {selectedConnector
+                ? `${selectedConnector.label} · ${openClawState.status.connected ? 'Connected' : openClawState.status.message ?? 'Offline'}`
+                : 'Select a connector to start handing off work.'}
+            </p>
+          </div>
+          <button
+            onClick={onAssistantTaskSubmit}
+            disabled={submittingAssistantTask || openClawState.connectors.length === 0}
+            className="fg-button-primary shrink-0 px-3.5 py-2 text-xs"
+          >
+            {submittingAssistantTask ? 'Sending…' : 'Send Task'}
+          </button>
+        </div>
+
+        <textarea
+          rows={mode === 'panel' ? 4 : 3}
+          value={assistantTaskInput}
+          onChange={(event) => onAssistantTaskInputChange(event.target.value)}
+          placeholder="Research API options for our billing sync, sketch the best approach, and return an implementation plan with risks."
+          className="fg-input mt-2 min-h-[84px] resize-none px-3 py-2.5 text-sm"
+        />
+        {assistantTaskError && <p className="mt-2 text-xs text-rose-600">{assistantTaskError}</p>}
+      </div>
+
+      {visibleTasks.length > 0 ? (
+        <div className="space-y-1.5">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-[var(--fg-muted)]">
+                Recent handoffs
+              </p>
+              <InfoTip text="Completed tasks stay here so you can review results even if notifications are deferred or suppressed." />
+            </div>
+            <span className="text-[11px] text-[var(--fg-muted)]">{openClawState.tasks.length} total</span>
+          </div>
+          <AssistantTaskList tasks={visibleTasks} onCancelTask={onCancelTask} />
+        </div>
+      ) : (
+        <p className="text-[11px] leading-4 text-[var(--fg-muted)]">
+          No background handoffs yet.
+        </p>
+      )}
 
       <div className="rounded-[22px] border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-3.5 py-3">
         <div className="flex items-center justify-between gap-2">
@@ -764,6 +954,106 @@ function AssistantPanel({
         </p>
       )}
     </div>
+  );
+}
+
+function AssistantTaskList({
+  tasks,
+  onCancelTask,
+}: {
+  tasks: AssistantTaskRecord[];
+  onCancelTask: (taskId: string) => void;
+}): React.JSX.Element {
+  return (
+    <div className="space-y-2">
+      {tasks.map((task) => (
+        <AssistantTaskRow key={task.id} task={task} onCancel={() => onCancelTask(task.id)} />
+      ))}
+    </div>
+  );
+}
+
+function AssistantTaskRow({
+  task,
+  onCancel,
+}: {
+  task: AssistantTaskRecord;
+  onCancel: () => void;
+}): React.JSX.Element {
+  const canCancel = task.status === 'queued' || task.status === 'running';
+  const detailPreview = task.result?.output?.trim() ?? '';
+
+  return (
+    <div className="rounded-[20px] border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-3 py-2.5">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="truncate text-[13px] font-medium leading-5 text-[var(--fg-text)]">{task.title}</p>
+            <TaskStatusBadge status={task.status} />
+            {task.unread && (
+              <span className="rounded-full bg-blue-100 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-blue-700">
+                New
+              </span>
+            )}
+          </div>
+          <p className="mt-1 text-xs leading-4 text-[var(--fg-muted)]">
+            {formatRelativeTime(task.updatedAt)} · {formatNotificationModeLabel(task.notificationMode)}
+          </p>
+        </div>
+        {canCancel ? (
+          <button onClick={onCancel} className="fg-button-secondary shrink-0 px-3 py-1.5 text-xs">
+            Cancel
+          </button>
+        ) : null}
+      </div>
+
+      <p className="mt-2 text-xs leading-4 text-[var(--fg-muted)]">{truncateText(task.prompt, 180)}</p>
+
+      {task.result ? (
+        <div className="mt-2.5 space-y-2">
+          <p className="text-xs leading-4 text-[var(--fg-muted)]">{task.result.summary}</p>
+          {detailPreview ? (
+            <details className="rounded-[16px] border border-[var(--fg-border)] bg-white px-3 py-2">
+              <summary className="cursor-pointer text-[11px] font-medium uppercase tracking-[0.12em] text-[var(--fg-muted)]">
+                Review output
+              </summary>
+              <p className="mt-2 whitespace-pre-wrap text-xs leading-5 text-[var(--fg-text)]">
+                {truncateText(detailPreview, 900)}
+              </p>
+            </details>
+          ) : null}
+        </div>
+      ) : task.error ? (
+        <p className="mt-2.5 text-xs leading-4 text-rose-600">{task.error}</p>
+      ) : canCancel ? (
+        <p className="mt-2.5 text-xs leading-4 text-[var(--fg-muted)]">
+          OpenClaw is still working on this handoff.
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+function TaskStatusBadge({
+  status,
+}: {
+  status: AssistantTaskRecord['status'];
+}): React.JSX.Element {
+  const className =
+    status === 'completed'
+      ? 'bg-emerald-100 text-emerald-700'
+      : status === 'running'
+        ? 'bg-blue-100 text-blue-700'
+        : status === 'queued'
+          ? 'bg-slate-100 text-slate-700'
+          : status === 'cancelled'
+            ? 'bg-amber-100 text-amber-700'
+            : 'bg-rose-100 text-rose-700';
+
+  return (
+    <span className={`rounded-full px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] ${className}`}>
+      {formatTaskStatusLabel(status)}
+    </span>
   );
 }
 
@@ -1035,6 +1325,47 @@ function formatMinutes(value: number): string {
     return minutes > 0 ? `${hours}h ${minutes}m` : `${hours}h`;
   }
   return `${value}m`;
+}
+
+function formatTaskStatusLabel(status: string): string {
+  return status.charAt(0).toUpperCase() + status.slice(1);
+}
+
+function formatNotificationModeLabel(value: TaskNotificationMode): string {
+  if (value === 'after_focus') return 'After focus';
+  if (value === 'inbox_only') return 'Inbox only';
+  return 'Immediate';
+}
+
+function buildConnectorMeta(
+  connector: StateResponse['openClawState']['connectors'][number] | null,
+  fallbackMessage: string | null,
+): string {
+  if (!connector) {
+    return fallbackMessage ?? 'No backend-managed connector is configured yet.';
+  }
+
+  const target = connector.host ?? connector.baseUrl ?? 'No remote target configured';
+  return `${connector.transport.toUpperCase()} · ${target}`;
+}
+
+function formatRelativeTime(value: string): string {
+  const delta = Date.now() - new Date(value).getTime();
+  const minutes = Math.max(0, Math.round(delta / 60_000));
+  if (minutes < 1) return 'Updated just now';
+  if (minutes === 1) return 'Updated 1 min ago';
+  if (minutes < 60) return `Updated ${minutes} min ago`;
+
+  const hours = Math.round(minutes / 60);
+  if (hours === 1) return 'Updated 1 hour ago';
+  if (hours < 24) return `Updated ${hours} hours ago`;
+
+  const days = Math.round(hours / 24);
+  return days === 1 ? 'Updated 1 day ago' : `Updated ${days} days ago`;
+}
+
+function truncateText(value: string, maxLength: number): string {
+  return value.length <= maxLength ? value : `${value.slice(0, maxLength - 1)}…`;
 }
 
 function formatEventRange(event: CalendarEvent): string {

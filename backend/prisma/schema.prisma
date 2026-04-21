@@ -31,6 +31,30 @@ enum OpenClawJobStatus {
   cancelled
 }
 
+enum AssistantConnectorType {
+  openclaw
+}
+
+enum AssistantTaskStatus {
+  queued
+  running
+  completed
+  failed
+  cancelled
+}
+
+enum TaskNotificationMode {
+  immediate
+  after_focus
+  inbox_only
+}
+
+enum AssistantFocusContextType {
+  none
+  window_task
+  calendar_event
+}
+
 enum RecommendationKind {
   focus
   calendar
@@ -50,6 +74,7 @@ model User {
   email            String?            @unique
   displayName      String?
   avatarUrl        String?
+  selectedConnectorId String?
   createdAt        DateTime           @default(now())
   updatedAt        DateTime           @updatedAt
   authCodes        AuthCode[]
@@ -58,6 +83,7 @@ model User {
   backendSessions  BackendSession[]
   ideaCaptures     IdeaCapture[]
   openClawSessions OpenClawSession[]
+  assistantTasks   AssistantTask[]
   breakVisitEvents BreakVisitEvent[]
   taskTags         TaskTag[]
   focusSessions    FocusSession[]
@@ -66,6 +92,7 @@ model User {
   analyticsOverrides AnalyticsOverride[]
   interestProfiles InterestProfile[]
   recommendations  Recommendation[]
+  selectedConnector OpenClawConnection? @relation("SelectedConnector", fields: [selectedConnectorId], references: [id], onDelete: SetNull)
 }
 
 model AuthIdentity {
@@ -115,20 +142,27 @@ model BackendSession {
 }
 
 model OpenClawConnection {
-  id         String   @id @default(cuid())
-  name       String
-  transport  String
-  host       String?
-  baseUrl    String?
-  enabled    Boolean  @default(true)
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  id          String                @id @default(cuid())
+  key         String                @unique
+  name        String
+  connectorType AssistantConnectorType @default(openclaw)
+  transport   String
+  host        String?
+  baseUrl     String?
+  description String?
+  enabled     Boolean               @default(true)
+  createdAt   DateTime              @default(now())
+  updatedAt   DateTime              @updatedAt
+  sessions    OpenClawSession[]
+  assistantTasks AssistantTask[]
+  selectedByUsers User[]            @relation("SelectedConnector")
 }
 
 model OpenClawSession {
   id             String                @id @default(cuid())
   userId         String
-  remoteSessionId String?              @unique
+  connectorId    String?
+  remoteSessionId String?
   title          String
   status         OpenClawSessionStatus @default(active)
   modelLabel     String?
@@ -137,7 +171,11 @@ model OpenClawSession {
   createdAt      DateTime              @default(now())
   updatedAt      DateTime              @updatedAt
   user           User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  connector      OpenClawConnection?   @relation(fields: [connectorId], references: [id], onDelete: SetNull)
   ideaCaptures   IdeaCapture[]
+  assistantTasks AssistantTask[]
+
+  @@unique([connectorId, remoteSessionId])
 }
 
 model IdeaCapture {
@@ -191,6 +229,55 @@ model IdeaReport {
   createdAt           DateTime    @default(now())
   updatedAt           DateTime    @updatedAt
   idea                IdeaCapture @relation(fields: [ideaId], references: [id], onDelete: Cascade)
+}
+
+model AssistantTask {
+  id               String                   @id @default(cuid())
+  userId           String
+  connectorId      String?
+  prompt           String
+  title            String
+  preferredModel   String?
+  assistantNotes   String?
+  status           AssistantTaskStatus      @default(queued)
+  notificationMode TaskNotificationMode     @default(after_focus)
+  focusContextType AssistantFocusContextType @default(none)
+  focusContextId   String?
+  lastError        String?
+  sessionId        String?
+  notifiedAt       DateTime?
+  completedAt      DateTime?
+  createdAt        DateTime                 @default(now())
+  updatedAt        DateTime                 @updatedAt
+  user             User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  connector        OpenClawConnection?      @relation(fields: [connectorId], references: [id], onDelete: SetNull)
+  session          OpenClawSession?         @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+  job              AssistantTaskJob?
+  result           AssistantTaskResult?
+}
+
+model AssistantTaskJob {
+  id          String              @id @default(cuid())
+  taskId       String              @unique
+  remoteJobId  String?
+  status       AssistantTaskStatus @default(queued)
+  lastError    String?
+  startedAt    DateTime?
+  completedAt  DateTime?
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+  task         AssistantTask       @relation(fields: [taskId], references: [id], onDelete: Cascade)
+}
+
+model AssistantTaskResult {
+  id          String         @id @default(cuid())
+  taskId      String         @unique
+  summary     String
+  output      String
+  completedAt DateTime
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  task        AssistantTask  @relation(fields: [taskId], references: [id], onDelete: Cascade)
 }
 
 model BreakVisitEvent {

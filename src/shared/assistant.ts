@@ -1,4 +1,5 @@
 import type {
+  AssistantTaskRecord,
   BreakVisitEvent,
   IdeaDecision,
   IdeaRecord,
@@ -68,6 +69,36 @@ export function applyIdeaDecision(record: IdeaRecord, decision: IdeaDecision): I
     saved: decision === 'keep',
     archived: decision === 'discard',
   };
+}
+
+export function shouldNotifyAboutAssistantTask(
+  task: AssistantTaskRecord,
+  input: {
+    currentWindowTaskId: string | null;
+    currentCalendarEventId: string | null;
+  },
+): boolean {
+  if (task.status !== 'completed' || task.result === null || task.notifiedAt !== null) {
+    return false;
+  }
+
+  if (task.notificationMode === 'inbox_only') {
+    return false;
+  }
+
+  if (task.notificationMode === 'immediate') {
+    return true;
+  }
+
+  if (task.focusContextType === 'window_task') {
+    return task.focusContextId !== input.currentWindowTaskId;
+  }
+
+  if (task.focusContextType === 'calendar_event') {
+    return task.focusContextId !== input.currentCalendarEventId;
+  }
+
+  return true;
 }
 
 export function parseDomainFromUrl(url: string): string | null {
