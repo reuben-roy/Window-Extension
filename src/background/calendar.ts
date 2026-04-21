@@ -1,4 +1,5 @@
 import {
+  getActivityHistory,
   getCalendarState,
   getEventRules,
   getEventPatternStats,
@@ -6,6 +7,7 @@ import {
   getGlobalAllowlist,
   getKeywordRules,
   getSettings,
+  getTaskQueue,
   getTaskTags,
   setCalendarState,
   setEventPatternStats,
@@ -13,7 +15,11 @@ import {
   setKeywordRules,
   setTaskTags,
 } from '../shared/storage';
-import { deriveDifficultyRank } from '../shared/analytics';
+import {
+  deriveDifficultyRank,
+  getCarryoverCountForEvent,
+  getRecentDistinctDomainsForTag,
+} from '../shared/analytics';
 import {
   type CalendarColorDefinition,
   resolveCalendarEventColors,
@@ -29,18 +35,23 @@ import {
   ensureRuleMetadata,
   findTaskTag,
   inferTaskTagKeyFromTitle,
+  inferTaskTagKeysFromText,
+  normalizeEventPattern,
   observeEventPatterns,
 } from '../shared/tags';
 import type {
   ActiveRuleSource,
+  ActivitySessionRecord,
   CalendarEvent,
   CalendarState,
   DifficultyRank,
+  EventPatternStat,
   EventLaunchTarget,
   EventRule,
   FocusSessionRecord,
   KeywordRule,
   Settings,
+  Task,
   TaskTag,
 } from '../shared/types';
 
@@ -81,6 +92,8 @@ export async function syncCalendar(): Promise<CalendarState> {
     taskTags,
     eventPatternStats,
     focusHistory,
+    activityHistory,
+    taskQueue,
     eventLaunchTargets,
   ] = await Promise.all([
     getEventRules(),
@@ -90,6 +103,8 @@ export async function syncCalendar(): Promise<CalendarState> {
     getTaskTags(),
     getEventPatternStats(),
     getFocusSessionHistory(),
+    getActivityHistory(),
+    getTaskQueue(),
     reconcileEventLaunchTargets(),
   ]);
 
@@ -146,6 +161,9 @@ export async function syncCalendar(): Promise<CalendarState> {
     settings,
     observed.taskTags,
     focusHistory,
+    activityHistory,
+    taskQueue,
+    observed.stats,
     eventLaunchTargets,
   );
   await setCalendarState(state);
@@ -243,6 +261,9 @@ export function resolveActiveState(
   settings: Settings,
   taskTags: TaskTag[] = [],
   focusHistory: FocusSessionRecord[] = [],
+  activityHistory: ActivitySessionRecord[] = [],
+  taskQueue: Task[] = [],
+  eventPatternStats: EventPatternStat[] = [],
   eventLaunchTargets: EventLaunchTarget[] = [],
 ): CalendarState {
   const allActiveEvents = getAllActiveEvents(events);
@@ -261,6 +282,9 @@ export function resolveActiveState(
       settings,
       taskTags,
       focusHistory,
+      activityHistory,
+      taskQueue,
+      eventPatternStats,
       eventLaunchTargets,
     );
   }
@@ -275,6 +299,9 @@ export function resolveActiveState(
       settings,
       taskTags,
       focusHistory,
+      activityHistory,
+      taskQueue,
+      eventPatternStats,
       eventLaunchTargets,
     );
   }
@@ -309,6 +336,9 @@ export function resolveActiveState(
     taskTags,
     settings,
     focusHistory,
+    activityHistory,
+    taskQueue,
+    eventPatternStats,
   );
 
   return attachActiveLaunchTarget(
@@ -321,6 +351,8 @@ export function resolveActiveState(
       activeRuleName: primary.name,
       primaryTagKey: tagResolution.tagKey,
       primaryTagLabel: tagResolution.tagLabel,
+      secondaryTagKeys: tagResolution.secondaryTagKeys,
+      secondaryTagLabels: tagResolution.secondaryTagLabels,
       difficultyRank: tagResolution.difficultyRank,
       allowedDomains,
       recentEventTitles,
@@ -342,12 +374,31 @@ function buildUnrestrictedState(
   settings: Settings,
   taskTags: TaskTag[],
   focusHistory: FocusSessionRecord[],
+  activityHistory: ActivitySessionRecord[],
+  taskQueue: Task[],
+  eventPatternStats: EventPatternStat[],
   eventLaunchTargets: EventLaunchTarget[],
 ): CalendarState {
   const currentEvent = allActiveEvents[0] ?? null;
   const tagResolution = currentEvent
-    ? resolveTagMetadataForEvent(currentEvent, eventRules, keywordRules, taskTags, settings, focusHistory)
-    : { tagKey: null, tagLabel: null, difficultyRank: null };
+    ? resolveTagMetadataForEvent(
+        currentEvent,
+        eventRules,
+        keywordRules,
+        taskTags,
+        settings,
+        focusHistory,
+        activityHistory,
+        taskQueue,
+        eventPatternStats,
+      )
+    : {
+        tagKey: null,
+        tagLabel: null,
+        secondaryTagKeys: [],
+        secondaryTagLabels: [],
+        difficultyRank: null,
+      };
 
   return attachActiveLaunchTarget(
     {
@@ -359,6 +410,8 @@ function buildUnrestrictedState(
       activeRuleName: null,
       primaryTagKey: tagResolution.tagKey,
       primaryTagLabel: tagResolution.tagLabel,
+      secondaryTagKeys: tagResolution.secondaryTagKeys,
+      secondaryTagLabels: tagResolution.secondaryTagLabels,
       difficultyRank: tagResolution.difficultyRank,
       allowedDomains: [],
       recentEventTitles,
@@ -405,32 +458,65 @@ function resolveTagMetadataForEvent(
   taskTags: TaskTag[],
   settings: Settings,
   focusHistory: FocusSessionRecord[],
+  activityHistory: ActivitySessionRecord[],
+  taskQueue: Task[],
+  eventPatternStats: EventPatternStat[],
 ): {
   tagKey: string | null;
   tagLabel: string | null;
+  secondaryTagKeys: string[];
+  secondaryTagLabels: string[];
   difficultyRank: DifficultyRank | null;
 } {
   const exactRule = eventRules.find((rule) => rule.eventTitle === event.title);
   const keywordRule = settings.keywordAutoMatchEnabled
     ? findMatchingKeywordRule(event.title, keywordRules)
     : null;
-  const inferredTagKey = inferTaskTagKeyFromTitle(event.title, taskTags);
-  const tagKey = exactRule?.tagKey ?? keywordRule?.tagKey ?? inferredTagKey ?? null;
-  const tag = findTaskTag(taskTags, tagKey);
-  const priorSessions = focusHistory.filter((session) => session.tagKey === tagKey);
-  const difficultyRank = tagKey
+  const learnedTagKey =
+    eventPatternStats.find((stat) => stat.pattern === normalizeEventPattern(event.title))?.correctedTagKey ??
+    null;
+  const titleMatches = inferTaskTagKeysFromText(event.title, taskTags);
+  const descriptionMatches = inferTaskTagKeysFromText(event.description ?? '', taskTags, {
+    excludeKeys: titleMatches,
+  });
+  const attendeeMatches = inferTaskTagKeysFromText(event.attendees.join(' '), taskTags, {
+    excludeKeys: [...titleMatches, ...descriptionMatches],
+  });
+  const inferredTagKey =
+    exactRule?.tagKey ??
+    keywordRule?.tagKey ??
+    learnedTagKey ??
+    titleMatches[0] ??
+    descriptionMatches[0] ??
+    attendeeMatches[0] ??
+    inferTaskTagKeyFromTitle(event.title, taskTags) ??
+    null;
+  const secondaryTagKeys = exactRule
+    ? exactRule.secondaryTagKeys
+    : [...new Set([...titleMatches, ...descriptionMatches, ...attendeeMatches])]
+        .filter((key) => key !== inferredTagKey)
+        .slice(0, 2);
+  const tag = findTaskTag(taskTags, inferredTagKey);
+  const priorSessions = focusHistory.filter((session) => session.tagKey === inferredTagKey);
+  const difficultyRank = inferredTagKey
     ? deriveDifficultyRank({
         baselineDifficulty: tag?.baselineDifficulty ?? null,
         scheduledStart: event.start,
         scheduledEnd: event.end,
         priorSessions,
+        carryoverCount: getCarryoverCountForEvent(taskQueue, event),
+        recentDistinctDomains: getRecentDistinctDomainsForTag(activityHistory, inferredTagKey),
         override: exactRule?.difficultyOverride ?? null,
       })
     : exactRule?.difficultyOverride ?? null;
 
   return {
-    tagKey,
+    tagKey: inferredTagKey,
     tagLabel: tag?.label ?? null,
+    secondaryTagKeys,
+    secondaryTagLabels: secondaryTagKeys
+      .map((key) => findTaskTag(taskTags, key)?.label ?? null)
+      .filter((label): label is string => Boolean(label)),
     difficultyRank,
   };
 }
@@ -506,6 +592,8 @@ interface GoogleCalendarEventRaw {
   colorId?: string;
   recurringEventId?: string;
   summary?: string;
+  description?: string;
+  attendees?: Array<{ email?: string; displayName?: string }>;
   start?: { dateTime?: string; date?: string };
   end?: { dateTime?: string; date?: string };
   recurrence?: string[];
@@ -522,6 +610,13 @@ function normalizeEvent(
   const title = raw.summary ?? '(No title)';
   const recurrenceHint = raw.recurringEventId || raw.recurrence?.length ? 'Recurring event' : null;
   const colors = resolveCalendarEventColors(title, raw.colorId, eventPalette);
+  const description = raw.description?.trim() || null;
+  const attendees = [...new Set(
+    (raw.attendees ?? [])
+      .flatMap((attendee) => [attendee.displayName, attendee.email])
+      .filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
+      .map((value) => value.trim().toLowerCase()),
+  )];
 
   if (raw.start?.dateTime && raw.end?.dateTime) {
     return [
@@ -531,6 +626,8 @@ function normalizeEvent(
         start: raw.start.dateTime,
         end: raw.end.dateTime,
         isAllDay: false,
+        description,
+        attendees,
         googleColorId: colors.googleColorId,
         backgroundColor: colors.backgroundColor,
         foregroundColor: colors.foregroundColor,
@@ -549,6 +646,8 @@ function normalizeEvent(
         start: localMidnightToISOString(raw.start.date),
         end: localMidnightToISOString(raw.end.date),
         isAllDay: true,
+        description,
+        attendees,
         googleColorId: colors.googleColorId,
         backgroundColor: colors.backgroundColor,
         foregroundColor: colors.foregroundColor,
@@ -579,6 +678,8 @@ async function persistError(error: string): Promise<CalendarState> {
     activeRuleName: prev.activeRuleName,
     primaryTagKey: prev.primaryTagKey,
     primaryTagLabel: prev.primaryTagLabel,
+    secondaryTagKeys: prev.secondaryTagKeys,
+    secondaryTagLabels: prev.secondaryTagLabels,
     difficultyRank: prev.difficultyRank,
     allowedDomains: prev.allowedDomains,
     recentEventTitles: prev.recentEventTitles,
