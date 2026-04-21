@@ -1,5 +1,6 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
+  buildAnalyticsSnapshot,
   classifyActivityDomain,
   createEmptyFocusSession,
   deriveDifficultyRank,
@@ -23,6 +24,7 @@ const BASE_CALENDAR_STATE: CalendarState = {
     end: '2026-04-15T18:00:00.000Z',
     isAllDay: false,
   },
+  activeLaunchTarget: null,
   allActiveEvents: [],
   todaysEvents: [],
   activeProfile: 'Deep Work',
@@ -38,6 +40,10 @@ const BASE_CALENDAR_STATE: CalendarState = {
   authError: null,
 };
 
+afterEach(() => {
+  vi.useRealTimers();
+});
+
 describe('tag metadata migration', () => {
   it('adds tag keys to legacy keyword rules and creates matching tags', () => {
     const eventRules: EventRule[] = [
@@ -51,6 +57,17 @@ describe('tag metadata migration', () => {
 
     expect(result.keywordRules[0].tagKey).toBe('research');
     expect(result.taskTags.some((tag) => tag.key === 'research')).toBe(true);
+  });
+
+  it('preserves null difficultyOverride and does not mark rule as changed', () => {
+    const eventRules: EventRule[] = [
+      { eventTitle: 'Calling Friends', domains: ['leetcode.com'], tagKey: null, difficultyOverride: null },
+    ];
+
+    const result = ensureRuleMetadata(eventRules, [], []);
+
+    expect(result.eventRules[0].difficultyOverride).toBeNull();
+    expect(result.changed).toBe(false);
   });
 
   it('auto-creates a tag after the same pattern appears three times', () => {
@@ -185,5 +202,107 @@ describe('difficulty and session summaries', () => {
     expect(summarized.leftEarly).toBe(true);
     expect(summarized.productiveMinutes).toBe(50);
     expect(summarized.awayMinutes).toBe(70);
+  });
+});
+
+describe('analytics snapshot derivations', () => {
+  it('builds consumption breakdowns, a timeline, and a domain tree from activity history', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-04-21T12:00:00.000Z'));
+
+    const focusHistory: FocusSessionRecord[] = [
+      {
+        id: 'focus-analytics',
+        calendarEventId: 'evt-1',
+        eventTitle: 'Leetcode block',
+        scheduledStart: '2026-04-20T16:00:00.000Z',
+        scheduledEnd: '2026-04-20T17:00:00.000Z',
+        startedAt: '2026-04-20T16:00:00.000Z',
+        endedAt: '2026-04-20T17:00:00.000Z',
+        sourceRuleType: 'event',
+        sourceRuleName: 'Leetcode block',
+        tagKey: 'learning',
+        difficultyRank: 5,
+        productiveMinutes: 30,
+        supportiveMinutes: 10,
+        distractedMinutes: 20,
+        awayMinutes: 0,
+        breakMinutes: 0,
+        totalTrackedMinutes: 60,
+        leftEarly: false,
+      },
+    ];
+
+    const activityHistory: ActivitySessionRecord[] = [
+      {
+        id: 'activity-1',
+        focusSessionId: 'focus-analytics',
+        calendarEventId: 'evt-1',
+        eventTitle: 'Leetcode block',
+        domain: 'leetcode.com',
+        startedAt: '2026-04-20T16:00:00.000Z',
+        endedAt: '2026-04-20T16:30:00.000Z',
+        activityClass: 'aligned',
+        tagKey: 'learning',
+        difficultyRank: 5,
+        sourceRuleType: 'event',
+        sourceRuleName: 'Leetcode block',
+      },
+      {
+        id: 'activity-2',
+        focusSessionId: 'focus-analytics',
+        calendarEventId: 'evt-1',
+        eventTitle: 'Leetcode block',
+        domain: 'docs.leetcode.com',
+        startedAt: '2026-04-20T16:30:00.000Z',
+        endedAt: '2026-04-20T16:40:00.000Z',
+        activityClass: 'supportive',
+        tagKey: 'learning',
+        difficultyRank: 5,
+        sourceRuleType: 'event',
+        sourceRuleName: 'Leetcode block',
+      },
+      {
+        id: 'activity-3',
+        focusSessionId: 'focus-analytics',
+        calendarEventId: 'evt-1',
+        eventTitle: 'Leetcode block',
+        domain: 'youtube.com',
+        startedAt: '2026-04-20T16:40:00.000Z',
+        endedAt: '2026-04-20T17:00:00.000Z',
+        activityClass: 'distracted',
+        tagKey: 'learning',
+        difficultyRank: 5,
+        sourceRuleType: 'event',
+        sourceRuleName: 'Leetcode block',
+      },
+    ];
+
+    const snapshot = buildAnalyticsSnapshot({
+      taskTags: DEFAULT_TASK_TAGS,
+      focusHistory,
+      activityHistory,
+      currentSession: null,
+      currentActivityClass: null,
+      lastCalculatedAt: '2026-04-20T17:01:00.000Z',
+      lastSyncedAt: null,
+    });
+
+    expect(snapshot.domainBreakdown7d[0]).toMatchObject({
+      domain: 'leetcode.com',
+      totalMinutes: 30,
+      primaryActivityClass: 'aligned',
+    });
+    expect(snapshot.domainBreakdown7d[1]).toMatchObject({
+      domain: 'youtube.com',
+      totalMinutes: 20,
+      primaryActivityClass: 'distracted',
+    });
+    expect(snapshot.consumptionTimeline7d).toHaveLength(7);
+    expect(
+      snapshot.consumptionTimeline7d.some((point) => point.productiveMinutes === 30 && point.distractedMinutes === 20),
+    ).toBe(true);
+    expect(snapshot.consumptionTree7d[0]?.label).toBe('leetcode.com');
+    expect(snapshot.consumptionTree7d[0]?.children[0]?.label).toBe('docs');
   });
 });

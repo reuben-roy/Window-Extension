@@ -105,13 +105,23 @@ const chromeMock = {
       Promise.resolve({
         id: tabId,
         url: 'https://example.com',
+        windowId: 1,
       }),
     ),
     query: vi.fn(() => Promise.resolve([])),
+    create: vi.fn((properties: chrome.tabs.CreateProperties) =>
+      Promise.resolve({
+        id: 99,
+        url: properties.url,
+        active: properties.active,
+        windowId: 1,
+      }),
+    ),
     getCurrent: vi.fn((callback: (tab?: chrome.tabs.Tab) => void) => {
       callback({
         id: 7,
         url: 'chrome-extension://fake-id/src/blocked/index.html',
+        windowId: 1,
       });
     }),
     update: vi.fn((_tabId: number, _properties: chrome.tabs.UpdateProperties) => Promise.resolve()),
@@ -127,6 +137,9 @@ const chromeMock = {
     setOptions: vi.fn(() => Promise.resolve()),
     setPanelBehavior: vi.fn(() => Promise.resolve()),
     open: vi.fn(() => Promise.resolve()),
+  },
+  windows: {
+    update: vi.fn(() => Promise.resolve()),
   },
   webNavigation: {
     onBeforeNavigate: { addListener: vi.fn() },

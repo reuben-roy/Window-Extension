@@ -242,6 +242,7 @@ export function toFocusSessionPayload(session: {
   sourceRuleType: string;
   sourceRuleName: string | null;
   tagKey: string | null;
+  secondaryTagKeys: unknown;
   difficultyRank: number | null;
   productiveMinutes: number;
   supportiveMinutes: number;
@@ -265,6 +266,7 @@ export function toFocusSessionPayload(session: {
         : 'none',
     sourceRuleName: session.sourceRuleName,
     tagKey: session.tagKey,
+    secondaryTagKeys: coerceStringArray(session.secondaryTagKeys),
     difficultyRank: normalizeDifficulty(session.difficultyRank),
     productiveMinutes: session.productiveMinutes,
     supportiveMinutes: session.supportiveMinutes,
@@ -325,6 +327,7 @@ function coerceEventRules(value: unknown): AccountSnapshotPayload['eventRules'] 
         eventTitle?: unknown;
         domains?: unknown;
         tagKey?: unknown;
+        secondaryTagKeys?: unknown;
         difficultyOverride?: unknown;
       } => Boolean(item && typeof item === 'object'),
     )
@@ -332,6 +335,7 @@ function coerceEventRules(value: unknown): AccountSnapshotPayload['eventRules'] 
       eventTitle: typeof item.eventTitle === 'string' ? item.eventTitle : '',
       domains: coerceStringArray(item.domains),
       tagKey: typeof item.tagKey === 'string' ? item.tagKey : null,
+      secondaryTagKeys: coerceStringArray(item.secondaryTagKeys),
       difficultyOverride: normalizeDifficulty(item.difficultyOverride),
     }))
     .filter((item) => item.eventTitle.length > 0);
@@ -371,6 +375,7 @@ function coerceTaskTags(value: unknown): AccountSnapshotPayload['taskTags'] {
         alignedDomains?: unknown;
         supportiveDomains?: unknown;
         source?: unknown;
+        archivedAt?: unknown;
         updatedAt?: unknown;
       } => Boolean(item && typeof item === 'object'),
     )
@@ -387,6 +392,7 @@ function coerceTaskTags(value: unknown): AccountSnapshotPayload['taskTags'] {
           ? item.source
           : 'seed'
       ) as AccountSnapshotPayload['taskTags'][number]['source'],
+      archivedAt: typeof item.archivedAt === 'string' ? item.archivedAt : null,
       updatedAt:
         typeof item.updatedAt === 'string'
           ? item.updatedAt

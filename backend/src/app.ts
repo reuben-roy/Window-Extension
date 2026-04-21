@@ -107,6 +107,7 @@ const activitySessionsBatchSchema = z.object({
       sourceRuleType: z.enum(['event', 'keyword', 'none']),
       sourceRuleName: z.string().nullable(),
       tagKey: z.string().nullable(),
+      secondaryTagKeys: z.array(z.string()),
       difficultyRank: difficultyRankSchema.nullable(),
       productiveMinutes: z.number().int().min(0),
       supportiveMinutes: z.number().int().min(0),
@@ -128,6 +129,7 @@ const activitySessionsBatchSchema = z.object({
       endedAt: z.string().datetime(),
       activityClass: z.enum(['aligned', 'supportive', 'distracted', 'away', 'break']),
       tagKey: z.string().nullable(),
+      secondaryTagKeys: z.array(z.string()),
       difficultyRank: difficultyRankSchema.nullable(),
       sourceRuleType: z.enum(['event', 'keyword', 'none']),
       sourceRuleName: z.string().nullable(),
@@ -957,6 +959,7 @@ export async function buildApp() {
     const user = await getUserOrReply(request, reply);
     if (!user) return;
 
+    await pruneOldAnalyticsData(user.id);
     const body = activitySessionsBatchSchema.parse(request.body);
     if (body.focusSessions.length === 0 && body.activitySessions.length === 0) {
       return { accepted: 0 };
@@ -982,6 +985,7 @@ export async function buildApp() {
             sourceRuleType: session.sourceRuleType,
             sourceRuleName: session.sourceRuleName,
             tagKey: session.tagKey,
+            secondaryTagKeys: session.secondaryTagKeys as unknown as Prisma.InputJsonValue,
             difficultyRank: session.difficultyRank,
             productiveMinutes: session.productiveMinutes,
             supportiveMinutes: session.supportiveMinutes,
@@ -1003,6 +1007,7 @@ export async function buildApp() {
             sourceRuleType: session.sourceRuleType,
             sourceRuleName: session.sourceRuleName,
             tagKey: session.tagKey,
+            secondaryTagKeys: session.secondaryTagKeys as unknown as Prisma.InputJsonValue,
             difficultyRank: session.difficultyRank,
             productiveMinutes: session.productiveMinutes,
             supportiveMinutes: session.supportiveMinutes,
@@ -1049,6 +1054,7 @@ export async function buildApp() {
             endedAt: new Date(activity.endedAt),
             activityClass: activity.activityClass,
             tagKey: activity.tagKey,
+            secondaryTagKeys: activity.secondaryTagKeys as unknown as Prisma.InputJsonValue,
             difficultyRank: activity.difficultyRank,
             sourceRuleType: activity.sourceRuleType,
             sourceRuleName: activity.sourceRuleName,
@@ -1064,6 +1070,7 @@ export async function buildApp() {
             endedAt: new Date(activity.endedAt),
             activityClass: activity.activityClass,
             tagKey: activity.tagKey,
+            secondaryTagKeys: activity.secondaryTagKeys as unknown as Prisma.InputJsonValue,
             difficultyRank: activity.difficultyRank,
             sourceRuleType: activity.sourceRuleType,
             sourceRuleName: activity.sourceRuleName,
@@ -1103,6 +1110,7 @@ export async function buildApp() {
     const user = await getUserOrReply(request, reply);
     if (!user) return;
 
+    await pruneOldAnalyticsData(user.id);
     const range = analyticsRangeSchema.parse(
       (request.query as { range?: '7d' | '30d' } | undefined)?.range ?? '7d',
     );
@@ -1135,6 +1143,7 @@ export async function buildApp() {
     const user = await getUserOrReply(request, reply);
     if (!user) return;
 
+    await pruneOldAnalyticsData(user.id);
     const range = analyticsRangeSchema.parse(
       (request.query as { range?: '7d' | '30d' } | undefined)?.range ?? '7d',
     );
@@ -1161,6 +1170,7 @@ export async function buildApp() {
     const user = await getUserOrReply(request, reply);
     if (!user) return;
 
+    await pruneOldAnalyticsData(user.id);
     const range = analyticsRangeSchema.parse(
       (request.query as { range?: '7d' | '30d' } | undefined)?.range ?? '7d',
     );
@@ -1361,6 +1371,7 @@ async function syncTaskTagsFromSnapshot(
           alignedDomains: tag.alignedDomains as unknown as Prisma.InputJsonValue,
           supportiveDomains: tag.supportiveDomains as unknown as Prisma.InputJsonValue,
           source: tag.source,
+          archivedAt: tag.archivedAt ? new Date(tag.archivedAt) : null,
         },
         create: {
           userId,
@@ -1372,6 +1383,7 @@ async function syncTaskTagsFromSnapshot(
           alignedDomains: tag.alignedDomains as unknown as Prisma.InputJsonValue,
           supportiveDomains: tag.supportiveDomains as unknown as Prisma.InputJsonValue,
           source: tag.source,
+          archivedAt: tag.archivedAt ? new Date(tag.archivedAt) : null,
         },
       }),
     ),
@@ -1425,6 +1437,18 @@ async function rebuildDailyAnalyticsAggregates(
       },
     });
   }
+}
+
+async function pruneOldAnalyticsData(userId: string): Promise<void> {
+  const cutoff = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
+  await prisma.focusSession.deleteMany({
+    where: {
+      userId,
+      startedAt: {
+        lt: cutoff,
+      },
+    },
+  });
 }
 
 function getRangeCutoff(range: '7d' | '30d'): Date {

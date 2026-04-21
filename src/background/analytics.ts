@@ -4,15 +4,19 @@ import {
   classifyActivityDomain,
   createEmptyFocusSession,
   finalizeActivitySession,
+  finalizeLocalActivityRecord,
   summarizeFocusSession,
   trimActivityHistory,
+  trimLocalActivityHistory,
   trimFocusSessionsHistory,
   upsertActivitySession,
+  upsertLocalActivityRecord,
 } from '../shared/analytics';
 import { parseDomainFromUrl } from '../shared/assistant';
 import {
   getActiveActivitySession,
   getActiveFocusSession,
+  getActiveLocalActivity,
   getActivityHistory,
   getActivitySessionQueue,
   getAnalyticsSnapshot,
@@ -20,15 +24,18 @@ import {
   getEventPatternStats,
   getFocusSessionHistory,
   getFocusSessionQueue,
+  getLocalActivityHistory,
   getTaskTags,
   setActiveActivitySession,
   setActiveFocusSession,
+  setActiveLocalActivity,
   setActivityHistory,
   setActivitySessionQueue,
   setAnalyticsSnapshot,
   setEventPatternStats,
   setFocusSessionHistory,
   setFocusSessionQueue,
+  setLocalActivityHistory,
   setTaskTags,
 } from '../shared/storage';
 import { applyTagCorrection, findTaskTag } from '../shared/tags';
@@ -72,7 +79,7 @@ export async function handleAnalyticsHeartbeat(
 
   const idle = await queryIdleState();
   if (idle) {
-    await recordActivity(null, 'away', now, state);
+    await recordActivity(null, null, 'away', now, state);
     return;
   }
 
@@ -149,11 +156,12 @@ async function recordCurrentActiveTab(calendarState?: CalendarState): Promise<vo
     const state = calendarState ?? (await getCalendarState());
     const tabs = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
     const url = tabs[0]?.url ?? null;
+    const tabTitle = tabs[0]?.title ?? null;
     if (!url) {
-      await recordActivity(null, 'away', new Date().toISOString(), state);
+      await recordActivity(null, null, 'away', new Date().toISOString(), state);
       return;
     }
-    await recordActivityFromUrl(url, state);
+    await recordActivityFromUrl(url, state, tabTitle);
   } catch {
     await refreshLocalAnalyticsSnapshot();
   }
@@ -162,15 +170,17 @@ async function recordCurrentActiveTab(calendarState?: CalendarState): Promise<vo
 async function recordActivityFromUrl(
   url: string,
   calendarState?: CalendarState,
+  tabTitle?: string | null,
 ): Promise<void> {
   const domain = parseDomainFromUrl(url);
   if (!domain) return;
   const state = calendarState ?? (await getCalendarState());
-  await recordActivity(domain, null, new Date().toISOString(), state);
+  await recordActivity(domain, tabTitle ?? null, null, new Date().toISOString(), state);
 }
 
 async function recordActivity(
   domain: string | null,
+  tabTitle: string | null,
   forcedClass: ActivityClass | null,
   at: string,
   calendarState: CalendarState,
@@ -202,21 +212,40 @@ async function recordActivity(
     domain,
     activityClass,
     tagKey: activeFocusSession.session.tagKey,
+    secondaryTagKeys: activeFocusSession.session.secondaryTagKeys,
     difficultyRank: activeFocusSession.session.difficultyRank,
     sourceRuleType: activeFocusSession.session.sourceRuleType,
     sourceRuleName: activeFocusSession.session.sourceRuleName,
     at,
   });
 
-  const [activityHistory, activityQueue] = await Promise.all([
+  const currentLocalActivity = await getActiveLocalActivity();
+  const upsertedLocal = upsertLocalActivityRecord(currentLocalActivity, {
+    id: currentLocalActivity?.id ?? safeId(),
+    focusSessionId: activeFocusSession.session.id,
+    calendarEventId: activeFocusSession.session.calendarEventId,
+    eventTitle: activeFocusSession.session.eventTitle,
+    domain,
+    tabTitle,
+    activityClass,
+    primaryTagKey: activeFocusSession.session.tagKey,
+    secondaryTagKeys: activeFocusSession.session.secondaryTagKeys,
+    at,
+  });
+
+  const [activityHistory, activityQueue, localActivityHistory] = await Promise.all([
     getActivityHistory(),
     getActivitySessionQueue(),
+    getLocalActivityHistory(),
   ]);
 
   const nextHistory = upserted.finalized
     ? trimActivityHistory([...activityHistory, upserted.finalized])
     : activityHistory;
   const nextQueue = upserted.finalized ? [...activityQueue, upserted.finalized] : activityQueue;
+  const nextLocalHistory = upsertedLocal.finalized
+    ? trimLocalActivityHistory([...localActivityHistory, upsertedLocal.finalized])
+    : localActivityHistory;
   const nextLastProductiveAt =
     activityClass === 'aligned' || activityClass === 'supportive'
       ? at
@@ -225,7 +254,9 @@ async function recordActivity(
   await Promise.all([
     setActivityHistory(nextHistory),
     setActivitySessionQueue(nextQueue),
+    setLocalActivityHistory(nextLocalHistory),
     setActiveActivitySession(upserted.current),
+    setActiveLocalActivity(upsertedLocal.current),
     setActiveFocusSession({
       ...activeFocusSession,
       session: {
@@ -266,6 +297,7 @@ async function synchronizeFocusSession(
         sourceRuleType: calendarState.activeRuleSource,
         sourceRuleName: calendarState.activeRuleName,
         tagKey: calendarState.primaryTagKey,
+        secondaryTagKeys: calendarState.secondaryTagKeys,
         difficultyRank: calendarState.difficultyRank,
         endedAt: at,
       },
@@ -286,28 +318,44 @@ async function synchronizeFocusSession(
 }
 
 async function finalizeActiveTracking(at: string): Promise<void> {
-  const [activeFocusSession, activeActivitySession, activityHistory, activityQueue, focusHistory, focusQueue] =
+  const [
+    activeFocusSession,
+    activeActivitySession,
+    activeLocalActivity,
+    activityHistory,
+    activityQueue,
+    localActivityHistory,
+    focusHistory,
+    focusQueue,
+  ] =
     await Promise.all([
       getActiveFocusSession(),
       getActiveActivitySession(),
+      getActiveLocalActivity(),
       getActivityHistory(),
       getActivitySessionQueue(),
+      getLocalActivityHistory(),
       getFocusSessionHistory(),
       getFocusSessionQueue(),
     ]);
 
   if (!activeFocusSession) {
     await setActiveActivitySession(null);
+    await setActiveLocalActivity(null);
     return;
   }
 
   const finalizedActivity = finalizeActivitySession(activeActivitySession, at);
+  const finalizedLocalActivity = finalizeLocalActivityRecord(activeLocalActivity, at);
   const nextActivityHistory = finalizedActivity
     ? trimActivityHistory([...activityHistory, finalizedActivity])
     : activityHistory;
   const nextActivityQueue = finalizedActivity
     ? [...activityQueue, finalizedActivity]
     : activityQueue;
+  const nextLocalActivityHistory = finalizedLocalActivity
+    ? trimLocalActivityHistory([...localActivityHistory, finalizedLocalActivity])
+    : localActivityHistory;
   const finalizedFocus = summarizeFocusSession(
     {
       ...activeFocusSession.session,
@@ -322,9 +370,11 @@ async function finalizeActiveTracking(at: string): Promise<void> {
   await Promise.all([
     setActivityHistory(nextActivityHistory),
     setActivitySessionQueue(nextActivityQueue),
+    setLocalActivityHistory(nextLocalActivityHistory),
     setFocusSessionHistory(nextFocusHistory),
     setFocusSessionQueue(nextFocusQueue),
     setActiveActivitySession(null),
+    setActiveLocalActivity(null),
     setActiveFocusSession(null),
   ]);
 }
@@ -339,6 +389,9 @@ async function refreshLocalAnalyticsSnapshot(): Promise<void> {
       getAnalyticsSnapshot(),
       getActivityHistory(),
     ]);
+  const activityHistoryWithCurrent = activeActivitySession
+    ? [...activityHistory, activeActivitySession as ActivitySessionRecord]
+    : activityHistory;
 
   const currentSession = activeFocusSession
     ? summarizeFocusSession(
@@ -346,9 +399,7 @@ async function refreshLocalAnalyticsSnapshot(): Promise<void> {
           ...activeFocusSession.session,
           endedAt: activeActivitySession?.endedAt ?? new Date().toISOString(),
         },
-        activeActivitySession
-          ? [...activityHistory, activeActivitySession as ActivitySessionRecord]
-          : activityHistory,
+        activityHistoryWithCurrent,
         activeFocusSession.lastProductiveAt,
       )
     : null;
@@ -356,6 +407,7 @@ async function refreshLocalAnalyticsSnapshot(): Promise<void> {
   const next = buildAnalyticsSnapshot({
     taskTags,
     focusHistory,
+    activityHistory: activityHistoryWithCurrent,
     currentSession,
     currentActivityClass: activeActivitySession?.activityClass ?? null,
     lastCalculatedAt: new Date().toISOString(),

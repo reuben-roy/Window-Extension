@@ -25,14 +25,29 @@ import {
   getAccountUser,
   getAnalyticsSnapshot,
   getCalendarState,
+  getEventLaunchTargets,
   getEventRules,
   getGlobalAllowlist,
   getKeywordRules,
   getSettings,
   getTaskTags,
+  setTaskTags,
   setSettings,
 } from '../shared/storage';
-import { findTaskTag, inferTaskTagKeyFromTitle } from '../shared/tags';
+import { isRedundantExactRuleCopy } from '../shared/ruleResolution';
+import {
+  findEventLaunchTarget,
+  removeEventLaunchTarget,
+  upsertEventLaunchTarget,
+} from '../shared/launchTargets';
+import {
+  ensureDefaultTaskTags,
+  findTaskTag,
+  inferTaskTagKeyFromTitle,
+  inferTaskTagKeysFromText,
+  normalizeTaskTag,
+  slugifyTagKey,
+} from '../shared/tags';
 import type {
   AccountConflict,
   AccountSyncState,
@@ -43,6 +58,7 @@ import type {
   CalendarState,
   DifficultyRank,
   DownloadRedirectFallbackSeconds,
+  EventLaunchTarget,
   EventRule,
   FocusSessionRecord,
   KeywordRule,
@@ -59,7 +75,9 @@ interface ResolvedWorkspaceEvent {
   source: 'event' | 'keyword' | 'none' | 'override';
   ruleName: string | null;
   domains: string[];
+  effectiveDomains: string[];
   tagKey: string | null;
+  secondaryTagKeys: string[];
   difficultyRank: DifficultyRank | null;
   fallbackKeyword: string | null;
 }
@@ -83,7 +101,7 @@ interface DownloadRescueToggleConfig {
 }
 
 const TOOLTIP_WIDTH = 392;
-const TOOLTIP_HEIGHT = 548;
+const TOOLTIP_HEIGHT = 688;
 const TOOLTIP_MARGIN = 20;
 const DOWNLOAD_RESCUE_MAX_PATCH: Partial<Settings> = {
   downloadRedirectUseDownloadsApi: true,
@@ -151,6 +169,7 @@ export default function Options(): React.JSX.Element {
   const [hasLoadedVisibleRange, setHasLoadedVisibleRange] = useState(false);
   const [settings, setLocalSettings] = useState<Settings | null>(null);
   const [eventRules, setLocalEventRules] = useState<EventRule[]>([]);
+  const [eventLaunchTargets, setEventLaunchTargetsState] = useState<EventLaunchTarget[]>([]);
   const [keywordRules, setLocalKeywordRules] = useState<KeywordRule[]>([]);
   const [taskTags, setTaskTagsState] = useState<TaskTag[]>([]);
   const [calendarView, setCalendarView] = useState<CalendarView>('timeGridWeek');
@@ -200,6 +219,7 @@ export default function Options(): React.JSX.Element {
       calendar,
       nextSettings,
       nextEventRules,
+      nextEventLaunchTargets,
       nextKeywordRules,
       nextTaskTags,
       nextAnalyticsSnapshot,
@@ -211,6 +231,7 @@ export default function Options(): React.JSX.Element {
       getCalendarState(),
       getSettings(),
       getEventRules(),
+      getEventLaunchTargets(),
       getKeywordRules(),
       getTaskTags(),
       getAnalyticsSnapshot(),
@@ -222,6 +243,7 @@ export default function Options(): React.JSX.Element {
     setCalendarState(calendar);
     setLocalSettings(nextSettings);
     setLocalEventRules(nextEventRules);
+    setEventLaunchTargetsState(nextEventLaunchTargets);
     setLocalKeywordRules(nextKeywordRules);
     setTaskTagsState(nextTaskTags);
     setAnalyticsSnapshotState(nextAnalyticsSnapshot);
@@ -246,6 +268,7 @@ export default function Options(): React.JSX.Element {
         'calendarState' in changes ||
         'settings' in changes ||
         'eventRules' in changes ||
+        'eventLaunchTargets' in changes ||
         'keywordRules' in changes ||
         'taskTags' in changes ||
         'analyticsSnapshot' in changes ||
@@ -286,6 +309,29 @@ export default function Options(): React.JSX.Element {
       ? visibleEvents
       : todaysEvents;
   const recentAnalyticsSessions = analyticsSnapshot?.recentSessions ?? [];
+  const activeTaskTags = useMemo(
+    () => taskTags.filter((tag) => tag.archivedAt === null),
+    [taskTags],
+  );
+  const tagReferenceKeys = useMemo(() => {
+    const keys = new Set<string>();
+    for (const rule of eventRules) {
+      if (rule.tagKey) keys.add(rule.tagKey);
+      for (const secondaryTagKey of rule.secondaryTagKeys) {
+        keys.add(secondaryTagKey);
+      }
+    }
+    for (const rule of keywordRules) {
+      if (rule.tagKey) keys.add(rule.tagKey);
+    }
+    for (const session of recentAnalyticsSessions) {
+      if (session.tagKey) keys.add(session.tagKey);
+      for (const secondaryTagKey of session.secondaryTagKeys) {
+        keys.add(secondaryTagKey);
+      }
+    }
+    return keys;
+  }, [eventRules, keywordRules, recentAnalyticsSessions]);
 
   const workspaceEvents = useMemo(
     () =>
@@ -297,6 +343,9 @@ export default function Options(): React.JSX.Element {
 
   const selectedResolvedEvent = selectedTooltip
     ? workspaceEvents.find((item) => item.event.id === selectedTooltip.eventId) ?? null
+    : null;
+  const selectedEventLaunchTarget = selectedResolvedEvent
+    ? findEventLaunchTarget(selectedResolvedEvent.event.id, eventLaunchTargets)
     : null;
 
   const nextEvent = useMemo(() => {
@@ -470,6 +519,76 @@ export default function Options(): React.JSX.Element {
       },
     });
     await loadData();
+  };
+
+  const saveTaskTagDefinition = async (input: {
+    existingKey?: string | null;
+    label: string;
+    color: string;
+    aliases: string[];
+    baselineDifficulty: DifficultyRank;
+    alignedDomains: string[];
+    supportiveDomains: string[];
+    archivedAt?: string | null;
+  }): Promise<{ ok: boolean; error?: string }> => {
+    const nextKey = slugifyTagKey(input.existingKey || input.label);
+    if (!nextKey) {
+      return { ok: false, error: 'Tag needs a label.' };
+    }
+
+    const duplicate = taskTags.find(
+      (tag) => tag.key === nextKey && tag.key !== (input.existingKey ?? null),
+    );
+    if (duplicate) {
+      return { ok: false, error: 'Another tag already uses that key.' };
+    }
+
+    const nextTag = normalizeTaskTag({
+      key: nextKey,
+      label: input.label,
+      color: input.color,
+      aliases: input.aliases,
+      baselineDifficulty: input.baselineDifficulty,
+      alignedDomains: input.alignedDomains,
+      supportiveDomains: input.supportiveDomains,
+      source: input.existingKey ? findTaskTag(taskTags, input.existingKey)?.source ?? 'user' : 'user',
+      archivedAt: input.archivedAt ?? null,
+      updatedAt: new Date().toISOString(),
+    });
+
+    const nextTags = ensureDefaultTaskTags([
+      ...taskTags.filter((tag) => tag.key !== (input.existingKey ?? null)),
+      nextTag,
+    ]);
+    await setTaskTags(nextTags);
+    await loadData();
+    return { ok: true };
+  };
+
+  const toggleTaskTagArchive = async (tagKey: string, archived: boolean) => {
+    const nextTags = ensureDefaultTaskTags(
+      taskTags.map((tag) =>
+        tag.key === tagKey
+          ? {
+              ...tag,
+              archivedAt: archived ? new Date().toISOString() : null,
+              updatedAt: new Date().toISOString(),
+            }
+          : tag,
+      ),
+    );
+    await setTaskTags(nextTags);
+    await loadData();
+  };
+
+  const deleteTaskTagDefinition = async (tagKey: string): Promise<{ ok: boolean; error?: string }> => {
+    if (tagReferenceKeys.has(tagKey)) {
+      return { ok: false, error: 'This tag is still referenced by a rule or session. Archive it or reassign those references first.' };
+    }
+
+    await setTaskTags(taskTags.filter((tag) => tag.key !== tagKey));
+    await loadData();
+    return { ok: true };
   };
 
   const addGlobalDomain = async () => {
@@ -1017,12 +1136,22 @@ export default function Options(): React.JSX.Element {
             </section>
           </>
         ) : (
-          <AnalyticsWorkspace
-            analyticsSnapshot={analyticsSnapshot}
-            taskTags={taskTags}
-            onRefresh={() => sendMessageAsync({ type: 'REFRESH_ANALYTICS_STATE' }).then(loadData)}
-            onSaveOverride={saveSessionOverride}
-          />
+          <div className="space-y-5">
+            <AnalyticsWorkspace
+              analyticsSnapshot={analyticsSnapshot}
+              taskTags={taskTags}
+              onRefresh={() => sendMessageAsync({ type: 'REFRESH_ANALYTICS_STATE' }).then(loadData)}
+              onSaveOverride={saveSessionOverride}
+            />
+            <TagManager
+              taskTags={taskTags}
+              activeTaskTags={activeTaskTags}
+              tagReferenceKeys={tagReferenceKeys}
+              onSaveTag={saveTaskTagDefinition}
+              onToggleArchive={toggleTaskTagArchive}
+              onDeleteTag={deleteTaskTagDefinition}
+            />
+          </div>
         )}
       </div>
 
@@ -1031,6 +1160,7 @@ export default function Options(): React.JSX.Element {
           key={selectedResolvedEvent.event.id}
           ref={tooltipRef}
           resolvedEvent={selectedResolvedEvent}
+          launchTarget={selectedEventLaunchTarget}
           taskTags={taskTags}
           anchorRect={selectedTooltip.anchorRect}
           mode={tooltipMode}
@@ -1049,6 +1179,7 @@ export default function Options(): React.JSX.Element {
 
 const EventRuleTooltip = React.forwardRef<HTMLDivElement, {
   resolvedEvent: ResolvedWorkspaceEvent;
+  launchTarget: EventLaunchTarget | null;
   taskTags: TaskTag[];
   anchorRect: DOMRect;
   mode: TooltipMode;
@@ -1061,6 +1192,7 @@ const EventRuleTooltip = React.forwardRef<HTMLDivElement, {
   (
     {
       resolvedEvent,
+      launchTarget,
       taskTags,
       anchorRect,
       mode,
@@ -1074,14 +1206,25 @@ const EventRuleTooltip = React.forwardRef<HTMLDivElement, {
   ) => {
     const exactRuleExists = resolvedEvent.source === 'event' || resolvedEvent.source === 'override';
     const hasUnrestrictedOverride = resolvedEvent.source === 'override';
-    const currentDomainsValue = resolvedEvent.domains.join(', ');
+    const keywordFallbackActive = resolvedEvent.source === 'keyword';
+    const startsInEditing = resolvedEvent.source === 'none';
+    const currentDomainsValue = exactRuleExists ? resolvedEvent.domains.join(', ') : '';
+    const currentEffectiveDomainsValue = resolvedEvent.effectiveDomains.join(', ');
+    const currentLaunchUrlValue = launchTarget?.launchUrl ?? '';
+    const displayedDomains = exactRuleExists ? resolvedEvent.domains : resolvedEvent.effectiveDomains;
+    const canCopyFallbackDomains = keywordFallbackActive && resolvedEvent.effectiveDomains.length > 0;
     const [domainsInput, setDomainsInput] = useState(currentDomainsValue);
+    const [launchUrlInput, setLaunchUrlInput] = useState(currentLaunchUrlValue);
     const [tagKey, setTagKey] = useState(resolvedEvent.tagKey ?? '');
+    const [secondaryTagKeys, setSecondaryTagKeys] = useState<string[]>(resolvedEvent.secondaryTagKeys);
     const [difficultyRank, setDifficultyRank] = useState<string>(
       resolvedEvent.difficultyRank ? String(resolvedEvent.difficultyRank) : '',
     );
-    const [editing, setEditing] = useState(!exactRuleExists);
+    const [editing, setEditing] = useState(startsInEditing);
+    const [editingLaunchTarget, setEditingLaunchTarget] = useState(false);
     const [error, setError] = useState('');
+    const [launchError, setLaunchError] = useState('');
+    const [savingLaunchTarget, setSavingLaunchTarget] = useState(false);
     const previousEventIdRef = useRef(resolvedEvent.event.id);
 
     // Only reset the draft when switching events. Background storage refreshes
@@ -1092,11 +1235,15 @@ const EventRuleTooltip = React.forwardRef<HTMLDivElement, {
       }
       previousEventIdRef.current = resolvedEvent.event.id;
       setDomainsInput(currentDomainsValue);
+      setLaunchUrlInput(currentLaunchUrlValue);
       setTagKey(resolvedEvent.tagKey ?? '');
+      setSecondaryTagKeys(resolvedEvent.secondaryTagKeys);
       setDifficultyRank(resolvedEvent.difficultyRank ? String(resolvedEvent.difficultyRank) : '');
-      setEditing(!exactRuleExists);
+      setEditing(startsInEditing);
       setError('');
-    }, [currentDomainsValue, exactRuleExists, resolvedEvent.difficultyRank, resolvedEvent.event.id, resolvedEvent.tagKey]);
+      setLaunchError('');
+      setEditingLaunchTarget(false);
+    }, [currentDomainsValue, currentLaunchUrlValue, resolvedEvent.difficultyRank, resolvedEvent.event.id, resolvedEvent.secondaryTagKeys, resolvedEvent.tagKey, startsInEditing]);
 
     const positioning = mode === 'modal'
       ? {
@@ -1133,19 +1280,31 @@ const EventRuleTooltip = React.forwardRef<HTMLDivElement, {
       resolvedEvent.source === 'event'
         ? 'Editing here updates the exact Event Rule used by every event with this title.'
         : resolvedEvent.source === 'keyword'
-          ? 'Saving here creates an exact Event Rule and overrides the fallback immediately.'
+          ? 'These sites are coming from a keyword match. Create an exact rule only if this title should pin custom sites or stay unrestricted.'
           : resolvedEvent.source === 'override'
             ? resolvedEvent.fallbackKeyword
               ? `Keyword fallback “${resolvedEvent.fallbackKeyword}” is currently suppressed for this exact title.`
               : 'This exact-title override keeps the event unrestricted until you add allowed sites again.'
             : 'Browsing stays unrestricted unless you save allowed sites for this event title.';
     const saveButtonLabel = saveAsUnrestricted
-      ? exactRuleExists
-        ? 'Save Unrestricted Override'
-        : 'Keep Unrestricted'
+      ? resolvedEvent.source === 'none'
+        ? 'Keep Unrestricted'
+        : hasUnrestrictedOverride
+          ? 'Save Unrestricted Override'
+          : 'Create Unrestricted Override'
       : exactRuleExists
         ? 'Save Rule'
-        : 'Create Rule';
+        : 'Create Exact Rule';
+    const unrestrictedBadgeLabel = saveAsUnrestricted
+      ? resolvedEvent.source === 'none'
+        ? 'Keeps unrestricted'
+        : exactRuleExists
+          ? 'Saves as unrestricted override'
+          : 'Creates unrestricted override'
+      : null;
+    const editButtonLabel = exactRuleExists ? 'Edit' : keywordFallbackActive ? 'Create Rule' : 'Edit';
+    const hasLaunchTarget = launchTarget !== null;
+    const launchTargetHost = launchTarget ? safeHostname(launchTarget.launchUrl) : null;
 
     return (
       <>
@@ -1207,10 +1366,11 @@ const EventRuleTooltip = React.forwardRef<HTMLDivElement, {
                 <select
                   value={tagKey}
                   onChange={(event) => setTagKey(event.target.value)}
-                  className="fg-select mt-2 w-full"
+                  disabled={!editing}
+                  className="fg-select mt-2 w-full disabled:cursor-not-allowed disabled:bg-[rgba(248,250,252,0.92)] disabled:text-[var(--fg-muted)]"
                 >
                   <option value="">No explicit tag</option>
-                  {taskTags.map((tag) => (
+                  {getSelectableTaskTags(taskTags, [tagKey, ...secondaryTagKeys]).map((tag) => (
                     <option key={tag.key} value={tag.key}>
                       {tag.label}
                     </option>
@@ -1222,11 +1382,50 @@ const EventRuleTooltip = React.forwardRef<HTMLDivElement, {
               </div>
 
               <div className="rounded-[22px] border border-[rgba(148,163,184,0.16)] bg-[var(--fg-panel-soft)] px-4 py-3">
+                <div className="flex items-center gap-2">
+                  <p className="text-sm font-medium text-[var(--fg-text)]">Secondary tags</p>
+                  <InfoTip text="Optional supporting tags for this exact title. Window stores them on the session, but the main charts still group by the primary tag." />
+                </div>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {getSelectableTaskTags(taskTags, [tagKey, ...secondaryTagKeys])
+                    .filter((tag) => tag.key !== tagKey)
+                    .map((tag) => {
+                      const selected = secondaryTagKeys.includes(tag.key);
+                      return (
+                        <button
+                          key={tag.key}
+                          type="button"
+                          disabled={!editing && !selected}
+                          onClick={() =>
+                            setSecondaryTagKeys((current) =>
+                              selected
+                                ? current.filter((key) => key !== tag.key)
+                                : [...current, tag.key].slice(0, 2),
+                            )
+                          }
+                          className={`rounded-full border px-3 py-1.5 text-xs font-medium transition ${
+                            selected
+                              ? 'border-[var(--fg-accent)] bg-[var(--fg-accent-soft)] text-[var(--fg-accent)]'
+                              : 'border-[var(--fg-border)] bg-white text-[var(--fg-muted)]'
+                          } disabled:cursor-not-allowed disabled:opacity-70`}
+                        >
+                          {tag.label}
+                        </button>
+                      );
+                    })}
+                </div>
+                <p className="mt-2 text-xs text-[var(--fg-muted)]">
+                  Select up to two. Archived tags stay hidden unless already attached here.
+                </p>
+              </div>
+
+              <div className="rounded-[22px] border border-[rgba(148,163,184,0.16)] bg-[var(--fg-panel-soft)] px-4 py-3">
                 <p className="text-sm font-medium text-[var(--fg-text)]">Difficulty</p>
                 <select
                   value={difficultyRank}
                   onChange={(event) => setDifficultyRank(event.target.value)}
-                  className="fg-select mt-2 w-full"
+                  disabled={!editing}
+                  className="fg-select mt-2 w-full disabled:cursor-not-allowed disabled:bg-[rgba(248,250,252,0.92)] disabled:text-[var(--fg-muted)]"
                 >
                   <option value="">Auto from tag and history</option>
                   <option value="1">1 · Routine</option>
@@ -1258,13 +1457,43 @@ const EventRuleTooltip = React.forwardRef<HTMLDivElement, {
                   }}
                   className="fg-button-ghost"
                 >
-                  Edit
+                  {editButtonLabel}
                 </button>
               )}
               </div>
 
               {editing ? (
                 <>
+                {canCopyFallbackDomains ? (
+                  <div className="mb-3 rounded-[20px] border border-[rgba(59,130,246,0.14)] bg-[rgba(239,246,255,0.78)] px-3.5 py-3">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div className="max-w-[22rem]">
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-sky-700">
+                          Current keyword fallback
+                        </p>
+                        <p className="mt-1 text-xs leading-5 text-[var(--fg-muted)]">
+                          These sites are active now through the keyword rule. Copy them only if you want to pin this exact title to the same list.
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => setDomainsInput(currentEffectiveDomainsValue)}
+                        className="rounded-full border border-[rgba(59,130,246,0.18)] bg-white px-3 py-1.5 text-xs font-medium text-sky-700 transition hover:border-[rgba(59,130,246,0.26)] hover:bg-sky-50"
+                      >
+                        Copy current sites
+                      </button>
+                    </div>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {resolvedEvent.effectiveDomains.map((domain) => (
+                        <span
+                          key={domain}
+                          className="rounded-full border border-[rgba(148,163,184,0.2)] bg-white px-3 py-1.5 text-xs font-medium text-[var(--fg-text)]"
+                        >
+                          {domain}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
                 <textarea
                   rows={4}
                   value={domainsInput}
@@ -1277,9 +1506,9 @@ const EventRuleTooltip = React.forwardRef<HTMLDivElement, {
                   <p className="text-xs leading-5 text-[var(--fg-muted)]">
                     Enter domains separated by commas. Subdomains are allowed automatically by the block rule.
                   </p>
-                  {saveAsUnrestricted ? (
+                  {unrestrictedBadgeLabel ? (
                     <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-emerald-700">
-                      Saves as unrestricted override
+                      {unrestrictedBadgeLabel}
                     </span>
                   ) : null}
                 </div>
@@ -1295,6 +1524,7 @@ const EventRuleTooltip = React.forwardRef<HTMLDivElement, {
                           splitDomains(domainsInput),
                           {
                             tagKey: tagKey || null,
+                            secondaryTagKeys,
                             difficultyOverride: parseDifficultyRank(difficultyRank),
                           },
                         );
@@ -1315,6 +1545,7 @@ const EventRuleTooltip = React.forwardRef<HTMLDivElement, {
                       onClick={() => {
                         setDomainsInput(currentDomainsValue);
                         setTagKey(resolvedEvent.tagKey ?? '');
+                        setSecondaryTagKeys(resolvedEvent.secondaryTagKeys);
                         setDifficultyRank(resolvedEvent.difficultyRank ? String(resolvedEvent.difficultyRank) : '');
                         setError('');
                         setEditing(false);
@@ -1339,16 +1570,30 @@ const EventRuleTooltip = React.forwardRef<HTMLDivElement, {
                 </div>
                 </>
               ) : (
-                <div className="flex flex-wrap gap-2">
-                  {resolvedEvent.domains.length > 0 ? (
-                    resolvedEvent.domains.map((domain) => (
+                <div>
+                  {displayedDomains.length > 0 ? (
+                    <>
+                    {keywordFallbackActive ? (
+                      <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--fg-muted)]">
+                        From keyword fallback
+                      </p>
+                    ) : null}
+                    <div className="flex flex-wrap gap-2">
+                      {displayedDomains.map((domain) => (
                       <span
                         key={domain}
                         className="rounded-full border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-3 py-1.5 text-xs font-medium text-[var(--fg-text)]"
                       >
                         {domain}
                       </span>
-                    ))
+                      ))}
+                    </div>
+                    {keywordFallbackActive ? (
+                      <p className="mt-3 text-xs leading-5 text-[var(--fg-muted)]">
+                        This title is still following the shared keyword rule. Create an exact rule only if you want this event title to stop inheriting those sites.
+                      </p>
+                    ) : null}
+                    </>
                   ) : hasUnrestrictedOverride ? (
                     <p className="text-sm leading-6 text-[var(--fg-muted)]">
                       This exact-title override keeps the event unrestricted.
@@ -1359,7 +1604,123 @@ const EventRuleTooltip = React.forwardRef<HTMLDivElement, {
                   ) : (
                     <p className="text-sm text-[var(--fg-muted)]">No domains saved yet.</p>
                   )}
+                  {exactRuleExists ? (
+                    <button
+                      onClick={async () => {
+                        await removeEventRule(resolvedEvent.event.title);
+                        await onSaved();
+                      }}
+                      className="mt-4 text-sm font-medium text-rose-600 transition hover:text-rose-700"
+                    >
+                      {hasUnrestrictedOverride ? 'Delete unrestricted override' : 'Remove exact rule'}
+                    </button>
+                  ) : null}
                 </div>
+              )}
+            </div>
+
+            <div className="rounded-[24px] border border-[rgba(148,163,184,0.16)] bg-white px-4 py-4 shadow-[0_10px_30px_rgba(15,23,42,0.04)]">
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-medium text-[var(--fg-text)]">Launch page</p>
+                  <p className="mt-1 text-xs leading-5 text-[var(--fg-muted)]">
+                    Save one exact task URL for this calendar occurrence. Window can bring that page forward automatically when the block starts.
+                  </p>
+                </div>
+                {!editingLaunchTarget && (
+                  <button
+                    onClick={() => {
+                      setLaunchUrlInput(currentLaunchUrlValue);
+                      setLaunchError('');
+                      setEditingLaunchTarget(true);
+                    }}
+                    className="fg-button-ghost"
+                  >
+                    {hasLaunchTarget ? 'Edit' : 'Add'}
+                  </button>
+                )}
+              </div>
+
+              {editingLaunchTarget ? (
+                <>
+                  <input
+                    type="url"
+                    value={launchUrlInput}
+                    onChange={(event) => setLaunchUrlInput(event.target.value)}
+                    className="fg-input"
+                    placeholder="https://leetcode.com/problems/two-sum/"
+                    autoFocus={!editing}
+                  />
+                  <p className="mt-3 text-xs leading-5 text-[var(--fg-muted)]">
+                    Exact `http://` or `https://` only. This launch page is saved for this event occurrence only and does not create an exact Event Rule.
+                  </p>
+                  {launchError && <p className="mt-3 text-xs text-rose-600">{launchError}</p>}
+                  <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+                    <div className="flex gap-2">
+                      <button
+                        onClick={async () => {
+                          setLaunchError('');
+                          setSavingLaunchTarget(true);
+                          const result = await upsertEventLaunchTarget(
+                            resolvedEvent.event,
+                            launchUrlInput,
+                          );
+                          setSavingLaunchTarget(false);
+                          if (!result.ok) {
+                            setLaunchError(result.error ?? 'Unable to save launch page.');
+                            return;
+                          }
+                          setEditingLaunchTarget(false);
+                          await onSaved();
+                        }}
+                        disabled={savingLaunchTarget}
+                        className="fg-button-primary"
+                      >
+                        {savingLaunchTarget ? 'Saving…' : hasLaunchTarget ? 'Save launch page' : 'Add launch page'}
+                      </button>
+                      <button
+                        onClick={() => {
+                          setLaunchUrlInput(currentLaunchUrlValue);
+                          setLaunchError('');
+                          setEditingLaunchTarget(false);
+                        }}
+                        className="fg-button-secondary"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+
+                    {hasLaunchTarget ? (
+                      <button
+                        onClick={async () => {
+                          await removeEventLaunchTarget(resolvedEvent.event.id);
+                          setLaunchError('');
+                          setEditingLaunchTarget(false);
+                          await onSaved();
+                        }}
+                        className="text-sm font-medium text-rose-600 transition hover:text-rose-700"
+                      >
+                        Remove launch page
+                      </button>
+                    ) : null}
+                  </div>
+                </>
+              ) : hasLaunchTarget ? (
+                <div className="space-y-3">
+                  <div className="rounded-[20px] border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-3.5 py-3">
+                    <p className="truncate text-sm font-medium text-[var(--fg-text)]">
+                      {launchTargetHost}
+                    </p>
+                    <p className="mt-1 break-all text-xs leading-5 text-[var(--fg-muted)]">
+                      {launchTarget.launchUrl}
+                    </p>
+                  </div>
+                  <p className="text-xs leading-5 text-[var(--fg-muted)]">
+                    This launch page stays tied to this occurrence only. Saving it does not change the title-wide allowlist rule.
+                  </p>
+                </div>
+              ) : (
+                <p className="text-sm text-[var(--fg-muted)]">No launch page saved for this occurrence.</p>
               )}
             </div>
           </div>
@@ -1511,13 +1872,243 @@ function KeywordRuleListItem({
             className="fg-select w-full"
           >
             <option value="">No linked tag</option>
-            {taskTags.map((tag) => (
+            {getSelectableTaskTags(taskTags, [rule.tagKey ?? '']).map((tag) => (
               <option key={tag.key} value={tag.key}>
                 {tag.label}
               </option>
             ))}
           </select>
         </div>
+      </div>
+    </div>
+  );
+}
+
+function TagManager({
+  taskTags,
+  activeTaskTags,
+  tagReferenceKeys,
+  onSaveTag,
+  onToggleArchive,
+  onDeleteTag,
+}: {
+  taskTags: TaskTag[];
+  activeTaskTags: TaskTag[];
+  tagReferenceKeys: Set<string>;
+  onSaveTag: (input: {
+    existingKey?: string | null;
+    label: string;
+    color: string;
+    aliases: string[];
+    baselineDifficulty: DifficultyRank;
+    alignedDomains: string[];
+    supportiveDomains: string[];
+    archivedAt?: string | null;
+  }) => Promise<{ ok: boolean; error?: string }>;
+  onToggleArchive: (tagKey: string, archived: boolean) => Promise<void>;
+  onDeleteTag: (tagKey: string) => Promise<{ ok: boolean; error?: string }>;
+}): React.JSX.Element {
+  const [label, setLabel] = useState('');
+  const [color, setColor] = useState('#2563eb');
+  const [aliases, setAliases] = useState('');
+  const [baselineDifficulty, setBaselineDifficulty] = useState<string>('3');
+  const [alignedDomains, setAlignedDomains] = useState('');
+  const [supportiveDomains, setSupportiveDomains] = useState('');
+  const [error, setError] = useState('');
+
+  const sortedTags = useMemo(
+    () => [...taskTags].sort((left, right) => Number(Boolean(left.archivedAt)) - Number(Boolean(right.archivedAt)) || left.label.localeCompare(right.label)),
+    [taskTags],
+  );
+
+  return (
+    <section className="fg-card p-4">
+      <div className="mb-4 flex items-center gap-2">
+        <h2 className="text-lg font-semibold tracking-[-0.02em] text-[var(--fg-text)]">Tag Manager</h2>
+        <InfoTip text="Manage reusable task tags, their default difficulty, and the domains Window should treat as aligned or supportive." />
+      </div>
+
+      <div className="mb-5 rounded-[24px] border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] p-4">
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <div>
+            <p className="text-sm font-medium text-[var(--fg-text)]">Create tag</p>
+            <p className="mt-1 text-xs text-[var(--fg-muted)]">
+              Active tags: {activeTaskTags.length} · Archived tags: {taskTags.length - activeTaskTags.length}
+            </p>
+          </div>
+        </div>
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-[minmax(0,1.1fr),140px,160px]">
+          <input value={label} onChange={(event) => setLabel(event.target.value)} placeholder="Research ops" className="fg-input" />
+          <input value={color} onChange={(event) => setColor(event.target.value)} placeholder="#2563eb" className="fg-input" />
+          <select value={baselineDifficulty} onChange={(event) => setBaselineDifficulty(event.target.value)} className="fg-select">
+            <option value="1">1 · Routine</option>
+            <option value="2">2 · Light</option>
+            <option value="3">3 · Standard</option>
+            <option value="5">5 · Demanding</option>
+            <option value="8">8 · Deep</option>
+          </select>
+        </div>
+        <div className="mt-3 grid gap-3 md:grid-cols-3">
+          <input value={aliases} onChange={(event) => setAliases(event.target.value)} placeholder="aliases: research, analyze" className="fg-input" />
+          <input value={alignedDomains} onChange={(event) => setAlignedDomains(event.target.value)} placeholder="aligned: github.com, figma.com" className="fg-input" />
+          <input value={supportiveDomains} onChange={(event) => setSupportiveDomains(event.target.value)} placeholder="supportive: docs.google.com" className="fg-input" />
+        </div>
+        {error ? <p className="mt-3 text-xs text-rose-600">{error}</p> : null}
+        <div className="mt-3 flex justify-end">
+          <button
+            className="fg-button-primary px-4 py-2.5 text-sm"
+            onClick={async () => {
+              setError('');
+              const result = await onSaveTag({
+                label,
+                color,
+                aliases: splitCommaList(aliases),
+                baselineDifficulty: parseDifficultyRank(baselineDifficulty) ?? 3,
+                alignedDomains: splitDomains(alignedDomains),
+                supportiveDomains: splitDomains(supportiveDomains),
+                archivedAt: null,
+              });
+              if (!result.ok) {
+                setError(result.error ?? 'Unable to save tag.');
+                return;
+              }
+              setLabel('');
+              setColor('#2563eb');
+              setAliases('');
+              setAlignedDomains('');
+              setSupportiveDomains('');
+              setBaselineDifficulty('3');
+            }}
+          >
+            Create Tag
+          </button>
+        </div>
+      </div>
+
+      <div className="space-y-3">
+        {sortedTags.map((tag) => (
+          <TagManagerRow
+            key={tag.key}
+            tag={tag}
+            isReferenced={tagReferenceKeys.has(tag.key)}
+            onSaveTag={onSaveTag}
+            onToggleArchive={onToggleArchive}
+            onDeleteTag={onDeleteTag}
+          />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function TagManagerRow({
+  tag,
+  isReferenced,
+  onSaveTag,
+  onToggleArchive,
+  onDeleteTag,
+}: {
+  tag: TaskTag;
+  isReferenced: boolean;
+  onSaveTag: (input: {
+    existingKey?: string | null;
+    label: string;
+    color: string;
+    aliases: string[];
+    baselineDifficulty: DifficultyRank;
+    alignedDomains: string[];
+    supportiveDomains: string[];
+    archivedAt?: string | null;
+  }) => Promise<{ ok: boolean; error?: string }>;
+  onToggleArchive: (tagKey: string, archived: boolean) => Promise<void>;
+  onDeleteTag: (tagKey: string) => Promise<{ ok: boolean; error?: string }>;
+}): React.JSX.Element {
+  const [label, setLabel] = useState(tag.label);
+  const [color, setColor] = useState(tag.color);
+  const [aliases, setAliases] = useState(tag.aliases.join(', '));
+  const [baselineDifficulty, setBaselineDifficulty] = useState<string>(String(tag.baselineDifficulty));
+  const [alignedDomains, setAlignedDomains] = useState(tag.alignedDomains.join(', '));
+  const [supportiveDomains, setSupportiveDomains] = useState(tag.supportiveDomains.join(', '));
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    setLabel(tag.label);
+    setColor(tag.color);
+    setAliases(tag.aliases.join(', '));
+    setBaselineDifficulty(String(tag.baselineDifficulty));
+    setAlignedDomains(tag.alignedDomains.join(', '));
+    setSupportiveDomains(tag.supportiveDomains.join(', '));
+    setError('');
+  }, [tag]);
+
+  return (
+    <div className="rounded-[22px] border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] p-4">
+      <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <span className="h-3 w-3 rounded-full" style={{ background: color }} />
+          <div>
+            <p className="text-sm font-medium text-[var(--fg-text)]">{tag.label}</p>
+            <p className="text-xs text-[var(--fg-muted)]">
+              `{tag.key}` · {tag.archivedAt ? 'Archived' : 'Active'} {isReferenced ? '· In use' : ''}
+            </p>
+          </div>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <button className="fg-button-secondary px-3 py-2 text-sm" onClick={() => onToggleArchive(tag.key, tag.archivedAt === null)}>
+            {tag.archivedAt ? 'Unarchive' : 'Archive'}
+          </button>
+          <button
+            className="fg-button-ghost px-3 py-2 text-sm text-rose-600"
+            onClick={async () => {
+              const result = await onDeleteTag(tag.key);
+              if (!result.ok) {
+                setError(result.error ?? 'Unable to delete tag.');
+              }
+            }}
+          >
+            Delete
+          </button>
+        </div>
+      </div>
+      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-[minmax(0,1.1fr),140px,160px]">
+        <input value={label} onChange={(event) => setLabel(event.target.value)} className="fg-input" />
+        <input value={color} onChange={(event) => setColor(event.target.value)} className="fg-input" />
+        <select value={baselineDifficulty} onChange={(event) => setBaselineDifficulty(event.target.value)} className="fg-select">
+          <option value="1">1 · Routine</option>
+          <option value="2">2 · Light</option>
+          <option value="3">3 · Standard</option>
+          <option value="5">5 · Demanding</option>
+          <option value="8">8 · Deep</option>
+        </select>
+      </div>
+      <div className="mt-3 grid gap-3 md:grid-cols-3">
+        <input value={aliases} onChange={(event) => setAliases(event.target.value)} className="fg-input" />
+        <input value={alignedDomains} onChange={(event) => setAlignedDomains(event.target.value)} className="fg-input" />
+        <input value={supportiveDomains} onChange={(event) => setSupportiveDomains(event.target.value)} className="fg-input" />
+      </div>
+      {error ? <p className="mt-3 text-xs text-rose-600">{error}</p> : null}
+      <div className="mt-3 flex justify-end">
+        <button
+          className="fg-button-primary px-4 py-2.5 text-sm"
+          onClick={async () => {
+            setError('');
+            const result = await onSaveTag({
+              existingKey: tag.key,
+              label,
+              color,
+              aliases: splitCommaList(aliases),
+              baselineDifficulty: parseDifficultyRank(baselineDifficulty) ?? 3,
+              alignedDomains: splitDomains(alignedDomains),
+              supportiveDomains: splitDomains(supportiveDomains),
+              archivedAt: tag.archivedAt,
+            });
+            if (!result.ok) {
+              setError(result.error ?? 'Unable to save tag.');
+            }
+          }}
+        >
+          Save Tag
+        </button>
       </div>
     </div>
   );
@@ -1540,12 +2131,11 @@ function AnalyticsWorkspace({
 }): React.JSX.Element {
   const summary = analyticsSnapshot.summary7d;
   const recentSessions = analyticsSnapshot.recentSessions.slice(0, 12);
-  const dailyTrend = buildDailyTrend(analyticsSnapshot.recentSessions);
 
   return (
-    <div className="space-y-5">
-      <section className="fg-card p-5">
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+    <div className="space-y-4">
+      <section className="fg-card p-4">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
           <div>
             <h2 className="text-lg font-semibold tracking-[-0.02em] text-[var(--fg-text)]">Analytics</h2>
             <p className="mt-1 text-sm text-[var(--fg-muted)]">
@@ -1576,95 +2166,109 @@ function AnalyticsWorkspace({
           <AnalyticsMetricCard label="Supportive" value={formatMinutes(summary.supportiveMinutes)} />
           <AnalyticsMetricCard label="Distracted" value={formatMinutes(summary.distractedMinutes)} />
           <AnalyticsMetricCard label="Away" value={formatMinutes(summary.awayMinutes)} />
+          <AnalyticsMetricCard label="Sessions" value={String(summary.totalFocusSessions)} />
+          <AnalyticsMetricCard label="Left early" value={String(summary.leftEarlyCount)} />
         </div>
       </section>
 
-      <section className="grid gap-4 xl:grid-cols-[minmax(0,0.9fr),minmax(0,1.1fr)]">
-        <div className="fg-card p-5">
+      <section className="grid gap-4 xl:grid-cols-[minmax(0,1.08fr),minmax(0,0.92fr)]">
+        <div className="fg-card p-4">
           <div className="mb-3 flex items-center gap-2">
-            <h3 className="text-sm font-semibold text-[var(--fg-text)]">Weekly trend</h3>
-            <InfoTip text="Derived from recent focus sessions. Taller bars mean more productive minutes." />
+            <h3 className="text-sm font-semibold text-[var(--fg-text)]">Consumption graph</h3>
+            <InfoTip text="Daily lines built from recorded sites and pages during active focus blocks. Productive, supportive, and distracted time are shown separately." />
           </div>
-          <div className="grid gap-2">
-            {dailyTrend.length === 0 ? (
-              <EmptyCard text="No recent sessions yet." />
-            ) : (
-              dailyTrend.map((day) => (
-                <div key={day.label} className="grid grid-cols-[88px,minmax(0,1fr),72px] items-center gap-3">
-                  <span className="text-xs text-[var(--fg-muted)]">{day.label}</span>
-                  <div className="h-2 overflow-hidden rounded-full bg-[var(--fg-panel-soft)]">
-                    <div
-                      className="h-full rounded-full bg-[var(--fg-accent)]"
-                      style={{ width: `${day.percent}%` }}
-                    />
-                  </div>
-                  <span className="text-xs text-[var(--fg-text)]">{formatMinutes(day.productiveMinutes)}</span>
-                </div>
-              ))
-            )}
-          </div>
+          <ConsumptionTimelineChart points={analyticsSnapshot.consumptionTimeline7d} />
         </div>
 
-        <div className="fg-card p-5">
+        <div className="fg-card p-4">
           <div className="mb-3 flex items-center gap-2">
-            <h3 className="text-sm font-semibold text-[var(--fg-text)]">Time by tag</h3>
-            <InfoTip text="Grouped by the primary task tag on each focus session." />
+            <h3 className="text-sm font-semibold text-[var(--fg-text)]">Consumption map</h3>
+            <InfoTip text="Top domains come from local browsing telemetry during focus sessions. The tree groups related subdomains so reading, watching, and task pages cluster together." />
           </div>
-          <div className="space-y-2">
-            {analyticsSnapshot.tagBreakdown7d.length === 0 ? (
-              <EmptyCard text="No tagged focus sessions yet." />
-            ) : (
-              analyticsSnapshot.tagBreakdown7d.map((item) => (
-                <div
-                  key={item.tagKey}
-                  className="rounded-[20px] border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-4 py-3"
-                >
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-2">
-                      <span className="h-2.5 w-2.5 rounded-full" style={{ background: item.color }} />
-                      <p className="text-sm font-medium text-[var(--fg-text)]">{item.label}</p>
+          <div className="space-y-3">
+            <ConsumptionBreakdownList items={analyticsSnapshot.domainBreakdown7d.slice(0, 6)} />
+            <div className="border-t border-[var(--fg-border)] pt-3">
+              <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-[var(--fg-muted)]">
+                Domain tree
+              </p>
+              <div className="mt-2">
+                <ConsumptionTreeView nodes={analyticsSnapshot.consumptionTree7d.slice(0, 8)} />
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="grid gap-4 xl:grid-cols-[minmax(0,0.84fr),minmax(0,1.16fr)]">
+        <div className="space-y-4">
+          <div className="fg-card p-4">
+            <div className="mb-3 flex items-center gap-2">
+              <h3 className="text-sm font-semibold text-[var(--fg-text)]">Time by tag</h3>
+              <InfoTip text="Grouped by the primary task tag on each focus session so users can compare what categories actually get completed." />
+            </div>
+            <div className="space-y-2">
+              {analyticsSnapshot.tagBreakdown7d.length === 0 ? (
+                <EmptyCard text="No tagged focus sessions yet." />
+              ) : (
+                analyticsSnapshot.tagBreakdown7d.map((item) => (
+                  <div
+                    key={item.tagKey}
+                    className="rounded-[18px] border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-3.5 py-3"
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex min-w-0 items-center gap-2">
+                        <span className="h-2.5 w-2.5 rounded-full" style={{ background: item.color }} />
+                        <p className="truncate text-sm font-medium text-[var(--fg-text)]">{item.label}</p>
+                      </div>
+                      <p className="text-xs text-[var(--fg-muted)]">{formatMinutes(item.productiveMinutes)}</p>
                     </div>
-                    <p className="text-xs text-[var(--fg-muted)]">{formatMinutes(item.productiveMinutes)}</p>
+                    <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white">
+                      <div
+                        className="h-full rounded-full"
+                        style={{
+                          width: `${tagBreakdownWidth(item.productiveMinutes, analyticsSnapshot.tagBreakdown7d)}%`,
+                          background: item.color,
+                        }}
+                      />
+                    </div>
+                    <p className="mt-1 text-xs text-[var(--fg-muted)]">
+                      {item.sessions} session{item.sessions === 1 ? '' : 's'} · {formatMinutes(item.distractedMinutes)} distracted
+                    </p>
                   </div>
-                  <p className="mt-1 text-xs text-[var(--fg-muted)]">
-                    {item.sessions} session{item.sessions === 1 ? '' : 's'} · {formatMinutes(item.distractedMinutes)} distracted
-                  </p>
-                </div>
-              ))
-            )}
+                ))
+              )}
+            </div>
+          </div>
+
+          <div className="fg-card p-4">
+            <div className="mb-3 flex items-center gap-2">
+              <h3 className="text-sm font-semibold text-[var(--fg-text)]">Difficulty matrix</h3>
+              <InfoTip text="Difficulty is a five-rank scale. Focus score compares productive minutes against distracted and away time." />
+            </div>
+            <div className="space-y-2">
+              {analyticsSnapshot.difficultyBreakdown7d.length === 0 ? (
+                <EmptyCard text="No difficulty data yet." />
+              ) : (
+                analyticsSnapshot.difficultyBreakdown7d.map((item) => (
+                  <div
+                    key={item.difficultyRank}
+                    className="rounded-[18px] border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-3.5 py-3"
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="text-sm font-medium text-[var(--fg-text)]">Difficulty {item.difficultyRank}</p>
+                      <p className="text-xs text-[var(--fg-muted)]">{item.focusScore}% focus score</p>
+                    </div>
+                    <p className="mt-1 text-xs text-[var(--fg-muted)]">
+                      {formatMinutes(item.productiveMinutes)} productive · {formatMinutes(item.distractedMinutes)} distracted · {item.sessions} session{item.sessions === 1 ? '' : 's'}
+                    </p>
+                  </div>
+                ))
+              )}
+            </div>
           </div>
         </div>
-      </section>
 
-      <section className="grid gap-4 xl:grid-cols-[minmax(0,0.82fr),minmax(0,1.18fr)]">
-        <div className="fg-card p-5">
-          <div className="mb-3 flex items-center gap-2">
-            <h3 className="text-sm font-semibold text-[var(--fg-text)]">Difficulty matrix</h3>
-            <InfoTip text="Difficulty is a five-rank scale. Focus score measures productive minutes against distracted and away time." />
-          </div>
-          <div className="space-y-2">
-            {analyticsSnapshot.difficultyBreakdown7d.length === 0 ? (
-              <EmptyCard text="No difficulty data yet." />
-            ) : (
-              analyticsSnapshot.difficultyBreakdown7d.map((item) => (
-                <div
-                  key={item.difficultyRank}
-                  className="rounded-[20px] border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-4 py-3"
-                >
-                  <div className="flex items-center justify-between gap-3">
-                    <p className="text-sm font-medium text-[var(--fg-text)]">Difficulty {item.difficultyRank}</p>
-                    <p className="text-xs text-[var(--fg-muted)]">{item.focusScore}% focus score</p>
-                  </div>
-                  <p className="mt-1 text-xs text-[var(--fg-muted)]">
-                    {formatMinutes(item.productiveMinutes)} productive · {formatMinutes(item.distractedMinutes)} distracted · {item.sessions} session{item.sessions === 1 ? '' : 's'}
-                  </p>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
-
-        <div className="fg-card p-5">
+        <div className="fg-card p-4">
           <div className="mb-3 flex items-center gap-2">
             <h3 className="text-sm font-semibold text-[var(--fg-text)]">Recent sessions</h3>
             <InfoTip text="Override tag or difficulty here when Window inferred the wrong classification." />
@@ -1697,10 +2301,189 @@ function AnalyticsMetricCard({
   value: string;
 }): React.JSX.Element {
   return (
-    <div className="rounded-[22px] border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-4 py-3">
+    <div className="rounded-[18px] border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-3.5 py-3">
       <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-[var(--fg-muted)]">{label}</p>
-      <p className="mt-2 text-2xl font-semibold tracking-[-0.03em] text-[var(--fg-text)]">{value}</p>
+      <p className="mt-1.5 text-xl font-semibold tracking-[-0.03em] text-[var(--fg-text)]">{value}</p>
     </div>
+  );
+}
+
+function ConsumptionTimelineChart({
+  points,
+}: {
+  points: AnalyticsSnapshot['consumptionTimeline7d'];
+}): React.JSX.Element {
+  const max = Math.max(
+    0,
+    ...points.map((point) =>
+      Math.max(point.productiveMinutes, point.supportiveMinutes, point.distractedMinutes),
+    ),
+  );
+
+  if (points.length === 0 || max <= 0) {
+    return <EmptyCard text="No page-level consumption has been recorded yet." />;
+  }
+
+  const chartWidth = 560;
+  const chartHeight = 180;
+  const paddingX = 14;
+  const paddingY = 18;
+
+  return (
+    <div className="space-y-3">
+      <div className="rounded-[20px] border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-3 py-3">
+        <svg viewBox={`0 0 ${chartWidth} ${chartHeight}`} className="h-[180px] w-full">
+          {points.map((point, index) => {
+            const x = chartX(index, points.length, chartWidth, paddingX);
+            return (
+              <line
+                key={point.date}
+                x1={x}
+                x2={x}
+                y1={paddingY}
+                y2={chartHeight - paddingY}
+                stroke={index === points.length - 1 ? 'rgba(37,99,235,0.16)' : 'rgba(148,163,184,0.18)'}
+                strokeDasharray="3 6"
+              />
+            );
+          })}
+          <path d={buildLinePath(points, (point) => point.productiveMinutes, max, chartWidth, chartHeight, paddingX, paddingY)} fill="none" stroke="#2563eb" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+          <path d={buildLinePath(points, (point) => point.supportiveMinutes, max, chartWidth, chartHeight, paddingX, paddingY)} fill="none" stroke="#0f766e" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+          <path d={buildLinePath(points, (point) => point.distractedMinutes, max, chartWidth, chartHeight, paddingX, paddingY)} fill="none" stroke="#dc2626" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+          {points.map((point, index) => (
+            <circle
+              key={`${point.date}-productive`}
+              cx={chartX(index, points.length, chartWidth, paddingX)}
+              cy={chartY(point.productiveMinutes, max, chartHeight, paddingY)}
+              r="3.5"
+              fill="#2563eb"
+            />
+          ))}
+        </svg>
+      </div>
+
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap gap-3 text-xs text-[var(--fg-muted)]">
+          <ChartLegend color="#2563eb" label="Productive" />
+          <ChartLegend color="#0f766e" label="Supportive" />
+          <ChartLegend color="#dc2626" label="Distracted" />
+        </div>
+        <div className="flex flex-wrap gap-3 text-xs text-[var(--fg-muted)]">
+          {points.map((point) => (
+            <span key={point.date}>
+              {point.label} {formatMinutes(point.totalMinutes)}
+            </span>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ConsumptionBreakdownList({
+  items,
+}: {
+  items: AnalyticsSnapshot['domainBreakdown7d'];
+}): React.JSX.Element {
+  const max = Math.max(0, ...items.map((item) => item.totalMinutes));
+
+  if (items.length === 0) {
+    return <EmptyCard text="No domains have been tracked yet." />;
+  }
+
+  return (
+    <div className="space-y-2">
+      {items.map((item) => (
+        <div key={item.domain} className="rounded-[18px] border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-3.5 py-3">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="truncate text-sm font-medium text-[var(--fg-text)]">{item.label}</p>
+              <p className="mt-1 text-xs text-[var(--fg-muted)]">
+                {item.visits} visit{item.visits === 1 ? '' : 's'} · {humanizeActivityClass(item.primaryActivityClass)}
+              </p>
+            </div>
+            <span className="text-xs font-medium text-[var(--fg-muted)]">{formatMinutes(item.totalMinutes)}</span>
+          </div>
+          <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white">
+            <div
+              className={`h-full rounded-full ${activityBarClass(item.primaryActivityClass)}`}
+              style={{ width: `${max > 0 ? (item.totalMinutes / max) * 100 : 0}%` }}
+            />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function ConsumptionTreeView({
+  nodes,
+}: {
+  nodes: AnalyticsSnapshot['consumptionTree7d'];
+}): React.JSX.Element {
+  const max = Math.max(0, ...nodes.map((node) => node.totalMinutes));
+
+  if (nodes.length === 0) {
+    return <EmptyCard text="The domain tree will appear once page telemetry accumulates." />;
+  }
+
+  return (
+    <div className="space-y-1">
+      {nodes.map((node) => (
+        <ConsumptionTreeNodeRow key={node.id} node={node} max={max} />
+      ))}
+    </div>
+  );
+}
+
+function ConsumptionTreeNodeRow({
+  node,
+  max,
+}: {
+  node: AnalyticsSnapshot['consumptionTree7d'][number];
+  max: number;
+}): React.JSX.Element {
+  const activityClass = dominantTreeActivityClass(node);
+
+  return (
+    <div className="space-y-1">
+      <div
+        className="grid grid-cols-[minmax(0,1fr),84px] items-center gap-3 border-b border-[var(--fg-border)] py-2 last:border-b-0"
+        style={{ paddingLeft: `${node.depth * 14}px` }}
+      >
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <span className={`h-2 w-2 rounded-full ${activityBarClass(activityClass)}`} />
+            <p className="truncate text-sm font-medium text-[var(--fg-text)]">{node.label}</p>
+          </div>
+          <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-[var(--fg-panel-soft)]">
+            <div
+              className={`h-full rounded-full ${activityBarClass(activityClass)}`}
+              style={{ width: `${max > 0 ? (node.totalMinutes / max) * 100 : 0}%` }}
+            />
+          </div>
+        </div>
+        <span className="text-right text-xs text-[var(--fg-muted)]">{formatMinutes(node.totalMinutes)}</span>
+      </div>
+      {node.children.slice(0, 4).map((child) => (
+        <ConsumptionTreeNodeRow key={child.id} node={child} max={max} />
+      ))}
+    </div>
+  );
+}
+
+function ChartLegend({
+  color,
+  label,
+}: {
+  color: string;
+  label: string;
+}): React.JSX.Element {
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      <span className="h-2.5 w-2.5 rounded-full" style={{ background: color }} />
+      {label}
+    </span>
   );
 }
 
@@ -1748,7 +2531,7 @@ function SessionAnalyticsRow({
           className="fg-select"
         >
           <option value="">No tag</option>
-          {taskTags.map((tag) => (
+          {getSelectableTaskTags(taskTags, [tagKey]).map((tag) => (
             <option key={tag.key} value={tag.key}>
               {tag.label}
             </option>
@@ -1866,6 +2649,26 @@ function splitDomains(value: string): string[] {
     .filter(Boolean);
 }
 
+function splitCommaList(value: string): string[] {
+  return value
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function safeHostname(value: string): string | null {
+  try {
+    return new URL(value).hostname;
+  } catch {
+    return null;
+  }
+}
+
+function getSelectableTaskTags(taskTags: TaskTag[], selectedKeys: string[] = []): TaskTag[] {
+  const selected = new Set(selectedKeys.filter(Boolean));
+  return taskTags.filter((tag) => tag.archivedAt === null || selected.has(tag.key));
+}
+
 function resolveWorkspaceEvent(
   event: CalendarEvent,
   eventRules: EventRule[],
@@ -1878,7 +2681,30 @@ function resolveWorkspaceEvent(
   const keywordRule = settings?.keywordAutoMatchEnabled
     ? findBestKeywordRule(event.title, keywordRules)
     : null;
-  const inferredTagKey = exactRule?.tagKey ?? keywordRule?.tagKey ?? inferTaskTagKeyFromTitle(event.title, taskTags);
+  const treatExactRuleAsFallback =
+    exactRule !== undefined &&
+    exactRule.domains.length > 0 &&
+    keywordRule !== null &&
+    isRedundantExactRuleCopy(exactRule, keywordRule);
+  const titleMatches = inferTaskTagKeysFromText(event.title, taskTags);
+  const descriptionMatches = inferTaskTagKeysFromText(event.description ?? '', taskTags, {
+    excludeKeys: titleMatches,
+  });
+  const attendeeMatches = inferTaskTagKeysFromText(event.attendees.join(' '), taskTags, {
+    excludeKeys: [...titleMatches, ...descriptionMatches],
+  });
+  const inferredTagKey =
+    exactRule?.tagKey ??
+    keywordRule?.tagKey ??
+    titleMatches[0] ??
+    descriptionMatches[0] ??
+    attendeeMatches[0] ??
+    inferTaskTagKeyFromTitle(event.title, taskTags);
+  const secondaryTagKeys = exactRule
+    ? exactRule.secondaryTagKeys
+    : [...new Set([...titleMatches, ...descriptionMatches, ...attendeeMatches])]
+        .filter((key) => key !== inferredTagKey)
+        .slice(0, 2);
   const tag = findTaskTag(taskTags, inferredTagKey);
   const difficultyRank = inferredTagKey
     ? deriveDifficultyRank({
@@ -1890,13 +2716,15 @@ function resolveWorkspaceEvent(
       })
     : exactRule?.difficultyOverride ?? null;
 
-  if (exactRule) {
+  if (exactRule && !treatExactRuleAsFallback) {
     return {
       event,
       source: exactRule.domains.length > 0 ? 'event' : 'override',
       ruleName: exactRule.eventTitle,
       domains: exactRule.domains,
+      effectiveDomains: exactRule.domains,
       tagKey: inferredTagKey,
+      secondaryTagKeys,
       difficultyRank,
       fallbackKeyword: keywordRule?.keyword ?? null,
     };
@@ -1907,8 +2735,10 @@ function resolveWorkspaceEvent(
       event,
       source: 'keyword',
       ruleName: keywordRule.keyword,
-      domains: keywordRule.domains,
+      domains: [],
+      effectiveDomains: keywordRule.domains,
       tagKey: inferredTagKey,
+      secondaryTagKeys,
       difficultyRank,
       fallbackKeyword: null,
     };
@@ -1919,7 +2749,9 @@ function resolveWorkspaceEvent(
     source: 'none',
     ruleName: null,
     domains: [],
+    effectiveDomains: [],
     tagKey: inferredTagKey,
+    secondaryTagKeys,
     difficultyRank,
     fallbackKeyword: null,
   };
@@ -2002,23 +2834,81 @@ function formatSessionRange(session: FocusSessionRecord): string {
   })}`;
 }
 
-function buildDailyTrend(sessions: FocusSessionRecord[]): Array<{
-  label: string;
-  productiveMinutes: number;
-  percent: number;
-}> {
-  const byDay = new Map<string, number>();
-  for (const session of sessions.slice(0, 21)) {
-    const label = new Date(session.startedAt).toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' });
-    byDay.set(label, (byDay.get(label) ?? 0) + session.productiveMinutes);
-  }
+function chartX(
+  index: number,
+  count: number,
+  width: number,
+  paddingX: number,
+): number {
+  if (count <= 1) return width / 2;
+  const usableWidth = width - paddingX * 2;
+  return paddingX + (usableWidth / (count - 1)) * index;
+}
 
-  const max = Math.max(0, ...byDay.values());
-  return [...byDay.entries()].map(([label, productiveMinutes]) => ({
-    label,
-    productiveMinutes,
-    percent: max > 0 ? (productiveMinutes / max) * 100 : 0,
-  }));
+function chartY(
+  value: number,
+  max: number,
+  height: number,
+  paddingY: number,
+): number {
+  const usableHeight = height - paddingY * 2;
+  if (max <= 0) return height - paddingY;
+  return height - paddingY - (value / max) * usableHeight;
+}
+
+function buildLinePath<T>(
+  points: T[],
+  getValue: (point: T) => number,
+  max: number,
+  width: number,
+  height: number,
+  paddingX: number,
+  paddingY: number,
+): string {
+  return points
+    .map((point, index) => {
+      const x = chartX(index, points.length, width, paddingX);
+      const y = chartY(getValue(point), max, height, paddingY);
+      return `${index === 0 ? 'M' : 'L'} ${x} ${y}`;
+    })
+    .join(' ');
+}
+
+function tagBreakdownWidth(
+  productiveMinutes: number,
+  items: AnalyticsSnapshot['tagBreakdown7d'],
+): number {
+  const max = Math.max(0, ...items.map((item) => item.productiveMinutes));
+  return max > 0 ? (productiveMinutes / max) * 100 : 0;
+}
+
+function humanizeActivityClass(value: 'aligned' | 'supportive' | 'distracted' | 'away' | 'break'): string {
+  if (value === 'aligned') return 'Mostly productive';
+  if (value === 'supportive') return 'Mostly supportive';
+  if (value === 'distracted') return 'Mostly distracted';
+  if (value === 'away') return 'Mostly away';
+  return 'Mostly on break';
+}
+
+function activityBarClass(value: 'aligned' | 'supportive' | 'distracted' | 'away' | 'break'): string {
+  if (value === 'aligned') return 'bg-blue-600';
+  if (value === 'supportive') return 'bg-emerald-600';
+  if (value === 'distracted') return 'bg-rose-500';
+  if (value === 'away') return 'bg-slate-400';
+  return 'bg-amber-500';
+}
+
+function dominantTreeActivityClass(
+  node: AnalyticsSnapshot['consumptionTree7d'][number],
+): 'aligned' | 'supportive' | 'distracted' | 'away' | 'break' {
+  const entries: Array<['aligned' | 'supportive' | 'distracted' | 'away' | 'break', number]> = [
+    ['aligned', node.productiveMinutes],
+    ['supportive', node.supportiveMinutes],
+    ['distracted', node.distractedMinutes],
+    ['away', node.awayMinutes],
+    ['break', node.breakMinutes],
+  ];
+  return entries.sort((a, b) => b[1] - a[1])[0][0];
 }
 
 function formatMinutes(value: number): string {

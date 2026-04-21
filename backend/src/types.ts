@@ -51,6 +51,7 @@ export interface TaskTagPayload {
   alignedDomains: string[];
   supportiveDomains: string[];
   source: 'seed' | 'keyword' | 'auto' | 'user';
+  archivedAt: string | null;
   updatedAt: string;
 }
 
@@ -58,6 +59,7 @@ export interface EventRulePayload {
   eventTitle: string;
   domains: string[];
   tagKey: string | null;
+  secondaryTagKeys: string[];
   difficultyOverride: 1 | 2 | 3 | 5 | 8 | null;
 }
 
@@ -252,6 +254,7 @@ export interface FocusSessionPayload {
   sourceRuleType: 'event' | 'keyword' | 'none';
   sourceRuleName: string | null;
   tagKey: string | null;
+  secondaryTagKeys: string[];
   difficultyRank: 1 | 2 | 3 | 5 | 8 | null;
   productiveMinutes: number;
   supportiveMinutes: number;

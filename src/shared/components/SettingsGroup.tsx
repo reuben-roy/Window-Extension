@@ -9,7 +9,7 @@ export default function SettingsGroup({
   collapsible = false,
   defaultOpen = true,
   className = '',
-  bodyClassName = 'mt-3 space-y-2.5',
+  bodyClassName = 'mt-2 space-y-0',
   children,
 }: {
   title: string;

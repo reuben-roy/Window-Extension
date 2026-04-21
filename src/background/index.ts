@@ -18,16 +18,19 @@ import {
   getAssistantOptions,
   getAllTimeStats,
   getAnalyticsSnapshot,
+  getActivityHistory,
   getBackendSession,
   getBackendSyncState,
   getBlockedTabs,
   getCalendarState,
   getDownloadAllowances,
   getEventRules,
+  getEventPatternStats,
   getFocusSessionHistory,
   getGlobalAllowlist,
   getIdeaRecords,
   getKeywordRules,
+  getLaunchExecutionStates,
   getOpenClawState,
   getPointsHistory,
   getWeekKey,
@@ -42,6 +45,7 @@ import {
   setBlockedTabs,
   setCalendarState,
   setDownloadAllowances,
+  setLaunchExecutionStates,
   setPointsHistory,
   setSettings,
   setTabDocumentUrls,
@@ -53,6 +57,8 @@ import type {
   CalendarEvent,
   CalendarState,
   DownloadAllowance,
+  EventLaunchTarget,
+  LaunchExecutionState,
   Message,
   StateResponse,
   Task,
@@ -95,6 +101,10 @@ import {
   syncCalendar,
 } from './calendar';
 import {
+  normalizeLaunchUrl,
+  reconcileEventLaunchTargets,
+} from '../shared/launchTargets';
+import {
   isDomainAllowed,
   syncTemporaryUnlockRules,
   updateBlockingRules,
@@ -135,9 +145,19 @@ void ensureDemoStatsSeeded();
 void hydrateOpenTabsDocumentUrls();
 void syncActionSurfaceBehavior();
 void restoreAccountSession();
+void getCalendarState().then((calendarState) => maybeAutoLaunchActiveOccurrence(calendarState)).catch(console.error);
 
 chrome.storage.onChanged.addListener((changes, areaName) => {
-  if (areaName === 'sync' && ('settings' in changes || 'eventRules' in changes || 'keywordRules' in changes || 'globalAllowlist' in changes)) {
+  if (
+    areaName === 'sync' &&
+    (
+      'settings' in changes ||
+      'eventRules' in changes ||
+      'keywordRules' in changes ||
+      'globalAllowlist' in changes ||
+      'eventLaunchTargets' in changes
+    )
+  ) {
     void reconcileBlockingState();
   }
 
@@ -175,12 +195,14 @@ async function handleTick(): Promise<void> {
     await Promise.all([syncIdeaOutbox(), syncBreakTelemetryQueue(), syncAnalyticsQueues()]);
     await refreshAnalyticsState();
     await reconcileBlockedTabs(calendarState);
+    await maybeAutoLaunchActiveOccurrence(calendarState);
     return;
   }
 
   await Promise.all([syncIdeaOutbox(), syncBreakTelemetryQueue(), syncAnalyticsQueues()]);
   await refreshAnalyticsState();
   await applyBlockingState(calendarState);
+  await maybeAutoLaunchActiveOccurrence(calendarState);
 }
 
 async function handleSnoozeEnd(): Promise<void> {
@@ -303,6 +325,9 @@ async function handleMessage(
     case 'MARK_DONE':
       return handleMarkDone(message);
 
+    case 'OPEN_ACTIVE_LAUNCH_TARGET':
+      return openActiveLaunchTarget();
+
     case 'DISMISS_TASK':
       return { ok: true };
 
@@ -410,6 +435,7 @@ async function connectCalendar(): Promise<{ ok: boolean; error?: string }> {
     const calendarState = await syncCalendar();
     await syncTasksFromCalendarState(calendarState);
     await applyBlockingState(calendarState);
+    await maybeAutoLaunchActiveOccurrence(calendarState);
     return { ok: true };
   } catch (err) {
     return { ok: false, error: String(err) };
@@ -426,14 +452,17 @@ async function disconnectCalendar(): Promise<{ ok: boolean }> {
 
   const disconnected: CalendarState = {
     currentEvent: null,
+    activeLaunchTarget: null,
     allActiveEvents: [],
     todaysEvents: [],
     activeProfile: null,
     activeRuleSource: 'none',
     activeRuleName: null,
-    primaryTagKey: null,
-    primaryTagLabel: null,
-    difficultyRank: null,
+  primaryTagKey: null,
+  primaryTagLabel: null,
+  secondaryTagKeys: [],
+  secondaryTagLabels: [],
+  difficultyRank: null,
     allowedDomains: [],
     recentEventTitles: [],
     isRestricted: false,
@@ -490,8 +519,12 @@ async function reconcileBlockingState(): Promise<void> {
     calendarState,
     eventRules,
     keywordRules,
+    eventLaunchTargets,
     taskTags,
     focusHistory,
+    activityHistory,
+    taskQueue,
+    eventPatternStats,
     globalAllowlist,
     snoozed,
   ] = await Promise.all([
@@ -499,8 +532,12 @@ async function reconcileBlockingState(): Promise<void> {
     getCalendarState(),
     getEventRules(),
     getKeywordRules(),
+    reconcileEventLaunchTargets(),
     getTaskTags(),
     getFocusSessionHistory(),
+    getActivityHistory(),
+    getTaskQueue(),
+    getEventPatternStats(),
     getGlobalAllowlist(),
     isSnoozeActive(),
   ]);
@@ -513,6 +550,10 @@ async function reconcileBlockingState(): Promise<void> {
     settings,
     taskTags,
     focusHistory,
+    activityHistory,
+    taskQueue,
+    eventPatternStats,
+    eventLaunchTargets,
   );
 
   const nextCalendarState: CalendarState = {
@@ -533,6 +574,7 @@ async function reconcileBlockingState(): Promise<void> {
   }
 
   await handleAnalyticsHeartbeat(nextCalendarState);
+  await maybeAutoLaunchActiveOccurrence(nextCalendarState);
 }
 
 async function applyBlockingState(calendarState: CalendarState): Promise<void> {
@@ -548,6 +590,104 @@ async function applyBlockingState(calendarState: CalendarState): Promise<void> {
   );
   await syncTemporaryUnlockRules(unlocks, downloadAllowances);
   await reconcileBlockedTabs(calendarState, unlocks, downloadAllowances);
+}
+
+export async function maybeAutoLaunchActiveOccurrence(
+  calendarState: CalendarState,
+): Promise<void> {
+  const target = calendarState.activeLaunchTarget ?? null;
+  if (!isLaunchTargetActive(target)) return;
+
+  const executionStates = await getLaunchExecutionStates();
+  if (executionStates[target.calendarEventId] !== undefined) return;
+
+  await launchTargetInBrowser(target, executionStates);
+}
+
+export async function openActiveLaunchTarget(): Promise<{
+  ok: boolean;
+  status?: LaunchExecutionState['status'];
+  tabId?: number;
+  error?: string;
+}> {
+  const calendarState = await getCalendarState();
+  const target = calendarState.activeLaunchTarget ?? null;
+  if (!isLaunchTargetActive(target)) {
+    return { ok: false, error: 'No active task page is available right now.' };
+  }
+
+  const executionStates = await getLaunchExecutionStates();
+  const result = await launchTargetInBrowser(target, executionStates);
+
+  if (result.ok) {
+    return { ok: true, status: result.status, tabId: result.tabId };
+  }
+
+  return { ok: false, error: result.error };
+}
+
+function isLaunchTargetActive(target: EventLaunchTarget | null): target is EventLaunchTarget {
+  if (target === null) return false;
+  const now = Date.now();
+  return now >= new Date(target.start).getTime() && now < new Date(target.end).getTime();
+}
+
+async function launchTargetInBrowser(
+  target: EventLaunchTarget,
+  executionStates: Record<string, LaunchExecutionState>,
+): Promise<{
+  ok: boolean;
+  status?: LaunchExecutionState['status'];
+  tabId?: number;
+  error?: string;
+}> {
+  try {
+    const tabs = await chrome.tabs.query({});
+    const matchingTab = tabs.find(
+      (tab) =>
+        typeof tab.id === 'number' &&
+        typeof tab.url === 'string' &&
+        normalizeLaunchUrl(tab.url) === target.launchUrl,
+    );
+
+    if (matchingTab?.id !== undefined) {
+      if (typeof matchingTab.windowId === 'number') {
+        await chrome.windows.update(matchingTab.windowId, { focused: true });
+      }
+      await chrome.tabs.update(matchingTab.id, { active: true });
+      await persistLaunchExecutionState(target, executionStates, 'focused', matchingTab.id);
+      return { ok: true, status: 'focused', tabId: matchingTab.id };
+    }
+
+    const createdTab = await chrome.tabs.create({
+      url: target.launchUrl,
+      active: true,
+    });
+    await persistLaunchExecutionState(target, executionStates, 'created', createdTab.id);
+    return { ok: true, status: 'created', tabId: createdTab.id };
+  } catch (error) {
+    await persistLaunchExecutionState(target, executionStates, 'failed');
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : String(error),
+    };
+  }
+}
+
+async function persistLaunchExecutionState(
+  target: EventLaunchTarget,
+  executionStates: Record<string, LaunchExecutionState>,
+  status: LaunchExecutionState['status'],
+  tabId?: number,
+): Promise<void> {
+  await setLaunchExecutionStates({
+    ...executionStates,
+    [target.calendarEventId]: {
+      status,
+      handledAt: new Date().toISOString(),
+      ...(typeof tabId === 'number' ? { tabId } : {}),
+    },
+  });
 }
 
 // ─── Blocked page + unlock handling ──────────────────────────────────────────

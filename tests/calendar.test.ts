@@ -7,7 +7,13 @@ import {
   resolveActiveState,
   resolveRuleForEvent,
 } from '../src/background/calendar';
-import type { CalendarEvent, EventRule, KeywordRule, Settings } from '../src/shared/types';
+import type {
+  CalendarEvent,
+  EventLaunchTarget,
+  EventRule,
+  KeywordRule,
+  Settings,
+} from '../src/shared/types';
 
 function makeEvent(overrides: Partial<CalendarEvent> = {}): CalendarEvent {
   return {
@@ -16,6 +22,8 @@ function makeEvent(overrides: Partial<CalendarEvent> = {}): CalendarEvent {
     start: new Date(Date.now() - 30 * 60_000).toISOString(),
     end: new Date(Date.now() + 30 * 60_000).toISOString(),
     isAllDay: false,
+    description: null,
+    attendees: [],
     ...overrides,
   };
 }
@@ -49,6 +57,7 @@ const EVENT_RULE = (eventTitle: string, domains: string[]): EventRule => ({
   eventTitle,
   domains,
   tagKey: null,
+  secondaryTagKeys: [],
   difficultyOverride: null,
 });
 const KEYWORD_RULE = (keyword: string, domains: string[], createdAt: string): KeywordRule => ({
@@ -126,6 +135,20 @@ describe('resolveRuleForEvent', () => {
     });
     expect(rule?.source).toBe('keyword');
     expect(rule?.name).toBe('study');
+  });
+
+  it('treats an exact rule copied from keyword fallback as keyword fallback', () => {
+    const event = makeEvent({ title: 'Study Session' });
+    const rule = resolveRuleForEvent(
+      event,
+      [EVENT_RULE('Study Session', ['github.com', 'arxiv.org'])],
+      [KEYWORD_RULE('study', ['arxiv.org', 'github.com'], '2026-01-01T00:00:00.000Z')],
+      { ...DEFAULT_SETTINGS, keywordAutoMatchEnabled: true },
+    );
+
+    expect(rule?.source).toBe('keyword');
+    expect(rule?.name).toBe('study');
+    expect(rule?.domains).toEqual(['arxiv.org', 'github.com']);
   });
 });
 
@@ -305,6 +328,78 @@ describe('resolveActiveState', () => {
       DEFAULT_SETTINGS,
     );
     expect(state.recentEventTitles).toEqual(expect.arrayContaining(['Deep Work', 'Team Meeting']));
+  });
+
+  it('resolves the active launch target for the earliest active occurrence with a saved URL', () => {
+    const launchTargets: EventLaunchTarget[] = [
+      {
+        calendarEventId: '2',
+        eventTitle: 'Study Session',
+        start: new Date(Date.now() - 10 * 60_000).toISOString(),
+        end: new Date(Date.now() + 30 * 60_000).toISOString(),
+        launchUrl: 'https://leetcode.com/problems/two-sum/',
+        updatedAt: '2026-04-15T16:00:00.000Z',
+      },
+      {
+        calendarEventId: '1',
+        eventTitle: 'Deep Work',
+        start: new Date(Date.now() - 20 * 60_000).toISOString(),
+        end: new Date(Date.now() + 20 * 60_000).toISOString(),
+        launchUrl: 'https://github.com/reubenroy/window-extension',
+        updatedAt: '2026-04-15T16:00:00.000Z',
+      },
+    ];
+
+    const state = resolveActiveState(
+      [
+        makeEvent({ id: '2', title: 'Study Session', start: launchTargets[0].start, end: launchTargets[0].end }),
+        makeEvent({ id: '1', title: 'Deep Work', start: launchTargets[1].start, end: launchTargets[1].end }),
+      ],
+      eventRules,
+      keywordRules,
+      GLOBAL_ALLOWLIST,
+      DEFAULT_SETTINGS,
+      [],
+      [],
+      [],
+      [],
+      [],
+      launchTargets,
+    );
+
+    expect(state.activeLaunchTarget?.calendarEventId).toBe('1');
+    expect(state.activeLaunchTarget?.launchUrl).toBe('https://github.com/reubenroy/window-extension');
+  });
+
+  it('implicitly allows the active launch target host while blocking is active', () => {
+    const event = makeEvent({ id: 'launch-1', title: 'Deep Work' });
+    const launchTargets: EventLaunchTarget[] = [
+      {
+        calendarEventId: 'launch-1',
+        eventTitle: event.title,
+        start: event.start,
+        end: event.end,
+        launchUrl: 'https://leetcode.com/problems/two-sum/',
+        updatedAt: '2026-04-15T16:00:00.000Z',
+      },
+    ];
+
+    const state = resolveActiveState(
+      [event],
+      eventRules,
+      keywordRules,
+      GLOBAL_ALLOWLIST,
+      DEFAULT_SETTINGS,
+      [],
+      [],
+      [],
+      [],
+      [],
+      launchTargets,
+    );
+
+    expect(state.isRestricted).toBe(true);
+    expect(state.allowedDomains).toContain('leetcode.com');
   });
 });
 

@@ -1,6 +1,8 @@
 import type {
   ActiveActivitySessionState,
   ActiveFocusSessionState,
+  ActiveLocalActivityState,
+  ActivityClass,
   AccountConflict,
   AccountSyncState,
   AccountUser,
@@ -13,14 +15,24 @@ import type {
   BackendSyncState,
   BlockedTabState,
   BreakVisitEvent,
+  CalendarEvent,
   CalendarState,
+  ConsumptionDomainItem,
+  ConsumptionTimelinePoint,
+  ConsumptionTreeNode,
   DownloadAllowance,
+  DifficultyBreakdownItem,
+  DifficultyRank,
   EventPatternStat,
+  EventLaunchTarget,
   EventRule,
   EventBindings,
   FocusSessionRecord,
   IdeaRecord,
   KeywordRule,
+  LaunchExecutionState,
+  LocalActivityRecord,
+  LiveAnalyticsSession,
   OpenClawState,
   PointsHistory,
   Profiles,
@@ -45,6 +57,7 @@ import {
   DEFAULT_SNOOZE_STATE,
   DEFAULT_TASK_TAGS,
 } from './constants';
+import { ensureDefaultTaskTags, normalizeDifficultyRank } from './tags';
 
 // ─── Generic helpers ─────────────────────────────────────────────────────────
 
@@ -88,6 +101,388 @@ function setLocal<T>(key: string, value: T): Promise<void> {
   });
 }
 
+function normalizeStringArray(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return [...new Set(
+    value
+      .filter((item): item is string => typeof item === 'string')
+      .map((item) => item.trim())
+      .filter(Boolean),
+  )];
+}
+
+function normalizeNullableString(value: unknown): string | null {
+  return typeof value === 'string' && value.trim().length > 0 ? value : null;
+}
+
+function normalizeDifficultyRankOrNull(value: unknown): DifficultyRank | null {
+  return typeof value === 'number' ? normalizeDifficultyRank(value) : null;
+}
+
+function normalizeActiveRuleSource(value: unknown): ActiveRuleSource {
+  return value === 'event' || value === 'keyword' || value === 'none' ? value : 'none';
+}
+
+function normalizeActivityClass(value: unknown): ActivityClass {
+  return value === 'aligned' ||
+    value === 'supportive' ||
+    value === 'distracted' ||
+    value === 'away' ||
+    value === 'break'
+    ? value
+    : 'away';
+}
+
+function normalizeNumber(value: unknown): number {
+  return typeof value === 'number' && Number.isFinite(value) ? value : 0;
+}
+
+function normalizeCalendarEvent(event: Partial<CalendarEvent> | null | undefined): CalendarEvent | null {
+  if (!event || typeof event !== 'object') return null;
+
+  return {
+    id: typeof event.id === 'string' ? event.id : '',
+    title: typeof event.title === 'string' ? event.title : '',
+    start: typeof event.start === 'string' ? event.start : '',
+    end: typeof event.end === 'string' ? event.end : '',
+    isAllDay: Boolean(event.isAllDay),
+    description: normalizeNullableString(event.description),
+    attendees: normalizeStringArray(event.attendees),
+    googleColorId: typeof event.googleColorId === 'string' ? event.googleColorId : undefined,
+    backgroundColor: typeof event.backgroundColor === 'string' ? event.backgroundColor : null,
+    foregroundColor: typeof event.foregroundColor === 'string' ? event.foregroundColor : null,
+    colorSource:
+      event.colorSource === 'google-event' || event.colorSource === 'derived' || event.colorSource === 'default'
+        ? event.colorSource
+        : undefined,
+    recurringEventId: typeof event.recurringEventId === 'string' ? event.recurringEventId : undefined,
+    recurrenceHint: typeof event.recurrenceHint === 'string' ? event.recurrenceHint : null,
+  };
+}
+
+function normalizeCalendarEvents(events: unknown): CalendarEvent[] {
+  if (!Array.isArray(events)) return [];
+  return events
+    .map((event) => normalizeCalendarEvent(event as Partial<CalendarEvent>))
+    .filter((event): event is CalendarEvent => event !== null);
+}
+
+function normalizeEventRulesStored(rules: EventRule[]): EventRule[] {
+  return (Array.isArray(rules) ? rules : [])
+    .filter((rule) => Boolean(rule?.eventTitle))
+    .map((rule) => ({
+      eventTitle: rule.eventTitle,
+      domains: normalizeStringArray(rule.domains),
+      tagKey: normalizeNullableString(rule.tagKey),
+      secondaryTagKeys: normalizeStringArray(rule.secondaryTagKeys),
+      difficultyOverride: normalizeDifficultyRankOrNull(rule.difficultyOverride),
+    }));
+}
+
+function normalizeKeywordRulesStored(rules: KeywordRule[]): KeywordRule[] {
+  return (Array.isArray(rules) ? rules : [])
+    .filter((rule) => Boolean(rule?.keyword))
+    .map((rule) => ({
+      keyword: rule.keyword,
+      domains: normalizeStringArray(rule.domains),
+      createdAt: typeof rule.createdAt === 'string' ? rule.createdAt : new Date(0).toISOString(),
+      tagKey: normalizeNullableString(rule.tagKey),
+    }));
+}
+
+function normalizeFocusSessionRecord(
+  session: Partial<FocusSessionRecord> | null | undefined,
+): FocusSessionRecord | null {
+  if (!session || typeof session !== 'object') return null;
+
+  return {
+    id: typeof session.id === 'string' ? session.id : '',
+    calendarEventId: typeof session.calendarEventId === 'string' ? session.calendarEventId : '',
+    eventTitle: typeof session.eventTitle === 'string' ? session.eventTitle : '',
+    scheduledStart: typeof session.scheduledStart === 'string' ? session.scheduledStart : '',
+    scheduledEnd: typeof session.scheduledEnd === 'string' ? session.scheduledEnd : '',
+    startedAt: typeof session.startedAt === 'string' ? session.startedAt : '',
+    endedAt: typeof session.endedAt === 'string' ? session.endedAt : '',
+    sourceRuleType: normalizeActiveRuleSource(session.sourceRuleType),
+    sourceRuleName: normalizeNullableString(session.sourceRuleName),
+    tagKey: normalizeNullableString(session.tagKey),
+    secondaryTagKeys: normalizeStringArray(session.secondaryTagKeys),
+    difficultyRank: normalizeDifficultyRankOrNull(session.difficultyRank),
+    productiveMinutes: normalizeNumber(session.productiveMinutes),
+    supportiveMinutes: normalizeNumber(session.supportiveMinutes),
+    distractedMinutes: normalizeNumber(session.distractedMinutes),
+    awayMinutes: normalizeNumber(session.awayMinutes),
+    breakMinutes: normalizeNumber(session.breakMinutes),
+    totalTrackedMinutes: normalizeNumber(session.totalTrackedMinutes),
+    leftEarly: Boolean(session.leftEarly),
+  };
+}
+
+function normalizeFocusSessionRecords(items: unknown): FocusSessionRecord[] {
+  if (!Array.isArray(items)) return [];
+  return items
+    .map((item) => normalizeFocusSessionRecord(item as Partial<FocusSessionRecord>))
+    .filter((item): item is FocusSessionRecord => item !== null);
+}
+
+function normalizeActivitySessionRecord(
+  session: Partial<ActivitySessionRecord> | null | undefined,
+): ActivitySessionRecord | null {
+  if (!session || typeof session !== 'object') return null;
+
+  return {
+    id: typeof session.id === 'string' ? session.id : '',
+    focusSessionId: typeof session.focusSessionId === 'string' ? session.focusSessionId : '',
+    calendarEventId: typeof session.calendarEventId === 'string' ? session.calendarEventId : '',
+    eventTitle: typeof session.eventTitle === 'string' ? session.eventTitle : '',
+    domain: normalizeNullableString(session.domain),
+    startedAt: typeof session.startedAt === 'string' ? session.startedAt : '',
+    endedAt: typeof session.endedAt === 'string' ? session.endedAt : '',
+    activityClass: normalizeActivityClass(session.activityClass),
+    tagKey: normalizeNullableString(session.tagKey),
+    secondaryTagKeys: normalizeStringArray(session.secondaryTagKeys),
+    difficultyRank: normalizeDifficultyRankOrNull(session.difficultyRank),
+    sourceRuleType: normalizeActiveRuleSource(session.sourceRuleType),
+    sourceRuleName: normalizeNullableString(session.sourceRuleName),
+  };
+}
+
+function normalizeActivitySessionRecords(items: unknown): ActivitySessionRecord[] {
+  if (!Array.isArray(items)) return [];
+  return items
+    .map((item) => normalizeActivitySessionRecord(item as Partial<ActivitySessionRecord>))
+    .filter((item): item is ActivitySessionRecord => item !== null);
+}
+
+function normalizeLocalActivityRecord(
+  session: Partial<LocalActivityRecord> | null | undefined,
+): LocalActivityRecord | null {
+  if (!session || typeof session !== 'object') return null;
+
+  return {
+    id: typeof session.id === 'string' ? session.id : '',
+    focusSessionId: typeof session.focusSessionId === 'string' ? session.focusSessionId : '',
+    calendarEventId: typeof session.calendarEventId === 'string' ? session.calendarEventId : '',
+    eventTitle: typeof session.eventTitle === 'string' ? session.eventTitle : '',
+    domain: normalizeNullableString(session.domain),
+    tabTitle: normalizeNullableString(session.tabTitle),
+    startedAt: typeof session.startedAt === 'string' ? session.startedAt : '',
+    endedAt: typeof session.endedAt === 'string' ? session.endedAt : '',
+    activityClass: normalizeActivityClass(session.activityClass),
+    primaryTagKey: normalizeNullableString(session.primaryTagKey),
+    secondaryTagKeys: normalizeStringArray(session.secondaryTagKeys),
+  };
+}
+
+function normalizeLocalActivityRecords(items: unknown): LocalActivityRecord[] {
+  if (!Array.isArray(items)) return [];
+  return items
+    .map((item) => normalizeLocalActivityRecord(item as Partial<LocalActivityRecord>))
+    .filter((item): item is LocalActivityRecord => item !== null);
+}
+
+function normalizeLiveAnalyticsSession(
+  session: Partial<LiveAnalyticsSession> | null | undefined,
+): LiveAnalyticsSession | null {
+  if (!session || typeof session !== 'object') return null;
+
+  return {
+    focusSessionId: typeof session.focusSessionId === 'string' ? session.focusSessionId : '',
+    eventTitle: typeof session.eventTitle === 'string' ? session.eventTitle : '',
+    tagKey: normalizeNullableString(session.tagKey),
+    tagLabel: normalizeNullableString(session.tagLabel),
+    secondaryTagKeys: normalizeStringArray(session.secondaryTagKeys),
+    secondaryTagLabels: normalizeStringArray(session.secondaryTagLabels),
+    difficultyRank: normalizeDifficultyRankOrNull(session.difficultyRank),
+    sourceRuleType: normalizeActiveRuleSource(session.sourceRuleType),
+    sourceRuleName: normalizeNullableString(session.sourceRuleName),
+    currentActivityClass:
+      session.currentActivityClass == null ? null : normalizeActivityClass(session.currentActivityClass),
+    startedAt: typeof session.startedAt === 'string' ? session.startedAt : '',
+    scheduledEnd: typeof session.scheduledEnd === 'string' ? session.scheduledEnd : '',
+    productiveMinutes: normalizeNumber(session.productiveMinutes),
+    supportiveMinutes: normalizeNumber(session.supportiveMinutes),
+    distractedMinutes: normalizeNumber(session.distractedMinutes),
+    awayMinutes: normalizeNumber(session.awayMinutes),
+    breakMinutes: normalizeNumber(session.breakMinutes),
+  };
+}
+
+function normalizeActiveFocusSessionState(
+  session: Partial<ActiveFocusSessionState> | null | undefined,
+): ActiveFocusSessionState | null {
+  if (!session || typeof session !== 'object') return null;
+
+  const normalizedSession = normalizeFocusSessionRecord(
+    'session' in session ? session.session : (session as Partial<FocusSessionRecord>),
+  );
+  if (!normalizedSession) return null;
+
+  return {
+    session: normalizedSession,
+    lastProductiveAt: normalizeNullableString(session.lastProductiveAt),
+  };
+}
+
+function normalizeAnalyticsSummary(value: unknown, range: '7d' | '30d') {
+  const summary = typeof value === 'object' && value !== null ? value as Partial<AnalyticsSnapshot['summary7d']> : {};
+  return {
+    range,
+    productiveMinutes: normalizeNumber(summary.productiveMinutes),
+    supportiveMinutes: normalizeNumber(summary.supportiveMinutes),
+    distractedMinutes: normalizeNumber(summary.distractedMinutes),
+    awayMinutes: normalizeNumber(summary.awayMinutes),
+    breakMinutes: normalizeNumber(summary.breakMinutes),
+    totalFocusSessions: normalizeNumber(summary.totalFocusSessions),
+    leftEarlyCount: normalizeNumber(summary.leftEarlyCount),
+  };
+}
+
+function normalizeTagBreakdownItems(value: unknown): AnalyticsSnapshot['tagBreakdown7d'] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter((item) => item && typeof item === 'object')
+    .map((item) => {
+      const entry = item as Partial<AnalyticsSnapshot['tagBreakdown7d'][number]>;
+      return {
+        tagKey: typeof entry.tagKey === 'string' ? entry.tagKey : 'untagged',
+        label: typeof entry.label === 'string' ? entry.label : 'Untagged',
+        color: typeof entry.color === 'string' ? entry.color : '#64748b',
+        productiveMinutes: normalizeNumber(entry.productiveMinutes),
+        supportiveMinutes: normalizeNumber(entry.supportiveMinutes),
+        distractedMinutes: normalizeNumber(entry.distractedMinutes),
+        awayMinutes: normalizeNumber(entry.awayMinutes),
+        breakMinutes: normalizeNumber(entry.breakMinutes),
+        sessions: normalizeNumber(entry.sessions),
+      };
+    });
+}
+
+function normalizeDifficultyBreakdownItems(value: unknown): DifficultyBreakdownItem[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter((item) => item && typeof item === 'object')
+    .map((item) => {
+      const entry = item as Partial<DifficultyBreakdownItem>;
+      return {
+        difficultyRank: normalizeDifficultyRankOrNull(entry.difficultyRank) ?? 3,
+        focusScore: normalizeNumber(entry.focusScore),
+        productiveMinutes: normalizeNumber(entry.productiveMinutes),
+        distractedMinutes: normalizeNumber(entry.distractedMinutes),
+        awayMinutes: normalizeNumber(entry.awayMinutes),
+        sessions: normalizeNumber(entry.sessions),
+      };
+    });
+}
+
+function normalizeConsumptionDomainItems(value: unknown): ConsumptionDomainItem[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter((item) => item && typeof item === 'object')
+    .map((item) => {
+      const entry = item as Partial<ConsumptionDomainItem>;
+      return {
+        domain: typeof entry.domain === 'string' ? entry.domain : 'unknown',
+        label: typeof entry.label === 'string' ? entry.label : 'Unknown',
+        productiveMinutes: normalizeNumber(entry.productiveMinutes),
+        supportiveMinutes: normalizeNumber(entry.supportiveMinutes),
+        distractedMinutes: normalizeNumber(entry.distractedMinutes),
+        awayMinutes: normalizeNumber(entry.awayMinutes),
+        breakMinutes: normalizeNumber(entry.breakMinutes),
+        totalMinutes: normalizeNumber(entry.totalMinutes),
+        visits: normalizeNumber(entry.visits),
+        primaryActivityClass: normalizeActivityClass(entry.primaryActivityClass),
+      };
+    });
+}
+
+function normalizeConsumptionTimelineItems(value: unknown): ConsumptionTimelinePoint[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter((item) => item && typeof item === 'object')
+    .map((item) => {
+      const entry = item as Partial<ConsumptionTimelinePoint>;
+      return {
+        date: typeof entry.date === 'string' ? entry.date : '',
+        label: typeof entry.label === 'string' ? entry.label : '',
+        productiveMinutes: normalizeNumber(entry.productiveMinutes),
+        supportiveMinutes: normalizeNumber(entry.supportiveMinutes),
+        distractedMinutes: normalizeNumber(entry.distractedMinutes),
+        awayMinutes: normalizeNumber(entry.awayMinutes),
+        breakMinutes: normalizeNumber(entry.breakMinutes),
+        totalMinutes: normalizeNumber(entry.totalMinutes),
+      };
+    });
+}
+
+function normalizeConsumptionTreeNode(node: Partial<ConsumptionTreeNode> | null | undefined): ConsumptionTreeNode | null {
+  if (!node || typeof node !== 'object') return null;
+  return {
+    id: typeof node.id === 'string' ? node.id : '',
+    label: typeof node.label === 'string' ? node.label : '',
+    depth: normalizeNumber(node.depth),
+    productiveMinutes: normalizeNumber(node.productiveMinutes),
+    supportiveMinutes: normalizeNumber(node.supportiveMinutes),
+    distractedMinutes: normalizeNumber(node.distractedMinutes),
+    awayMinutes: normalizeNumber(node.awayMinutes),
+    breakMinutes: normalizeNumber(node.breakMinutes),
+    totalMinutes: normalizeNumber(node.totalMinutes),
+    children: Array.isArray(node.children)
+      ? node.children
+          .map((child) => normalizeConsumptionTreeNode(child as Partial<ConsumptionTreeNode>))
+          .filter((child): child is ConsumptionTreeNode => child !== null)
+      : [],
+  };
+}
+
+function normalizeConsumptionTree(value: unknown): ConsumptionTreeNode[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((node) => normalizeConsumptionTreeNode(node as Partial<ConsumptionTreeNode>))
+    .filter((node): node is ConsumptionTreeNode => node !== null);
+}
+
+function normalizeAnalyticsSnapshotStored(snapshot: AnalyticsSnapshot): AnalyticsSnapshot {
+  return {
+    ...DEFAULT_ANALYTICS_SNAPSHOT,
+    currentSession: normalizeLiveAnalyticsSession(snapshot?.currentSession),
+    summary7d: normalizeAnalyticsSummary(snapshot?.summary7d, '7d'),
+    summary30d: normalizeAnalyticsSummary(snapshot?.summary30d, '30d'),
+    tagBreakdown7d: normalizeTagBreakdownItems(snapshot?.tagBreakdown7d),
+    difficultyBreakdown7d: normalizeDifficultyBreakdownItems(snapshot?.difficultyBreakdown7d),
+    domainBreakdown7d: normalizeConsumptionDomainItems(snapshot?.domainBreakdown7d),
+    consumptionTimeline7d: normalizeConsumptionTimelineItems(snapshot?.consumptionTimeline7d),
+    consumptionTree7d: normalizeConsumptionTree(snapshot?.consumptionTree7d),
+    recentSessions: normalizeFocusSessionRecords(snapshot?.recentSessions),
+    lastCalculatedAt: normalizeNullableString(snapshot?.lastCalculatedAt),
+    lastSyncedAt: normalizeNullableString(snapshot?.lastSyncedAt),
+  };
+}
+
+function normalizeCalendarStateStored(state: CalendarState): CalendarState {
+  return {
+    ...DEFAULT_CALENDAR_STATE,
+    ...state,
+    currentEvent: normalizeCalendarEvent(state?.currentEvent),
+    activeLaunchTarget: state?.activeLaunchTarget ?? null,
+    allActiveEvents: normalizeCalendarEvents(state?.allActiveEvents),
+    todaysEvents: normalizeCalendarEvents(state?.todaysEvents),
+    activeProfile: normalizeNullableString(state?.activeProfile),
+    activeRuleSource: normalizeActiveRuleSource(state?.activeRuleSource),
+    activeRuleName: normalizeNullableString(state?.activeRuleName),
+    primaryTagKey: normalizeNullableString(state?.primaryTagKey),
+    primaryTagLabel: normalizeNullableString(state?.primaryTagLabel),
+    secondaryTagKeys: normalizeStringArray(state?.secondaryTagKeys),
+    secondaryTagLabels: normalizeStringArray(state?.secondaryTagLabels),
+    difficultyRank: normalizeDifficultyRankOrNull(state?.difficultyRank),
+    allowedDomains: normalizeStringArray(state?.allowedDomains),
+    recentEventTitles: normalizeStringArray(state?.recentEventTitles),
+    isRestricted: Boolean(state?.isRestricted),
+    lastSyncedAt: normalizeNullableString(state?.lastSyncedAt),
+    authError: normalizeNullableString(state?.authError),
+  };
+}
+
 // ─── Profiles ────────────────────────────────────────────────────────────────
 
 export const getProfiles = (): Promise<Profiles> =>
@@ -115,26 +510,26 @@ export const setEventBindings = (bindings: EventBindings): Promise<void> =>
 // ─── Event rules ─────────────────────────────────────────────────────────────
 
 export const getEventRules = (): Promise<EventRule[]> =>
-  get<EventRule[]>('eventRules', []);
+  get<EventRule[]>('eventRules', []).then(normalizeEventRulesStored);
 
 export const setEventRules = (rules: EventRule[]): Promise<void> =>
-  set('eventRules', rules);
+  set('eventRules', normalizeEventRulesStored(rules));
 
 // ─── Keyword rules ───────────────────────────────────────────────────────────
 
 export const getKeywordRules = (): Promise<KeywordRule[]> =>
-  get<KeywordRule[]>('keywordRules', []);
+  get<KeywordRule[]>('keywordRules', []).then(normalizeKeywordRulesStored);
 
 export const setKeywordRules = (rules: KeywordRule[]): Promise<void> =>
-  set('keywordRules', rules);
+  set('keywordRules', normalizeKeywordRulesStored(rules));
 
 // ─── Task tags ───────────────────────────────────────────────────────────────
 
 export const getTaskTags = (): Promise<TaskTag[]> =>
-  get<TaskTag[]>('taskTags', DEFAULT_TASK_TAGS);
+  get<TaskTag[]>('taskTags', DEFAULT_TASK_TAGS).then(ensureDefaultTaskTags);
 
 export const setTaskTags = (tags: TaskTag[]): Promise<void> =>
-  set('taskTags', tags);
+  set('taskTags', ensureDefaultTaskTags(tags));
 
 // ─── Settings ─────────────────────────────────────────────────────────────────
 
@@ -225,6 +620,7 @@ export async function updateCurrentWeekStats(update: Partial<WeeklyStats>): Prom
 
 const DEFAULT_CALENDAR_STATE: CalendarState = {
   currentEvent: null,
+  activeLaunchTarget: null,
   allActiveEvents: [],
   todaysEvents: [],
   activeProfile: null,
@@ -232,6 +628,8 @@ const DEFAULT_CALENDAR_STATE: CalendarState = {
   activeRuleName: null,
   primaryTagKey: null,
   primaryTagLabel: null,
+  secondaryTagKeys: [],
+  secondaryTagLabels: [],
   difficultyRank: null,
   allowedDomains: [],
   recentEventTitles: [],
@@ -241,10 +639,16 @@ const DEFAULT_CALENDAR_STATE: CalendarState = {
 };
 
 export const getCalendarState = (): Promise<CalendarState> =>
-  get<CalendarState>('calendarState', DEFAULT_CALENDAR_STATE);
+  get<CalendarState>('calendarState', DEFAULT_CALENDAR_STATE).then(normalizeCalendarStateStored);
 
 export const setCalendarState = (state: CalendarState): Promise<void> =>
-  set('calendarState', state);
+  set('calendarState', normalizeCalendarStateStored(state));
+
+export const getEventLaunchTargets = (): Promise<EventLaunchTarget[]> =>
+  get<EventLaunchTarget[]>('eventLaunchTargets', []);
+
+export const setEventLaunchTargets = (targets: EventLaunchTarget[]): Promise<void> =>
+  set('eventLaunchTargets', targets);
 
 // ─── Local backend state ─────────────────────────────────────────────────────
 
@@ -303,48 +707,78 @@ export const setActiveBreakVisits = (events: Record<string, BreakVisitEvent>): P
   setLocal('activeBreakVisits', events);
 
 export const getActiveFocusSession = (): Promise<ActiveFocusSessionState | null> =>
-  getLocal<ActiveFocusSessionState | null>('activeFocusSession', null);
+  getLocal<ActiveFocusSessionState | null>('activeFocusSession', null).then((session) =>
+    normalizeActiveFocusSessionState(session),
+  );
 
 export const setActiveFocusSession = (
   session: ActiveFocusSessionState | null,
-): Promise<void> => setLocal('activeFocusSession', session);
+): Promise<void> => setLocal(
+  'activeFocusSession',
+  session ? normalizeActiveFocusSessionState(session) : null,
+);
 
 export const getActiveActivitySession = (): Promise<ActiveActivitySessionState | null> =>
-  getLocal<ActiveActivitySessionState | null>('activeActivitySession', null);
+  getLocal<ActiveActivitySessionState | null>('activeActivitySession', null).then((session) =>
+    normalizeActivitySessionRecord(session) as ActiveActivitySessionState | null,
+  );
 
 export const setActiveActivitySession = (
   session: ActiveActivitySessionState | null,
-): Promise<void> => setLocal('activeActivitySession', session);
+): Promise<void> => setLocal(
+  'activeActivitySession',
+  session ? normalizeActivitySessionRecord(session) : null,
+);
+
+export const getActiveLocalActivity = (): Promise<ActiveLocalActivityState | null> =>
+  getLocal<ActiveLocalActivityState | null>('activeLocalActivity', null).then((session) =>
+    normalizeLocalActivityRecord(session) as ActiveLocalActivityState | null,
+  );
+
+export const setActiveLocalActivity = (
+  session: ActiveLocalActivityState | null,
+): Promise<void> => setLocal(
+  'activeLocalActivity',
+  session ? normalizeLocalActivityRecord(session) : null,
+);
 
 export const getActivitySessionQueue = (): Promise<ActivitySessionRecord[]> =>
-  getLocal<ActivitySessionRecord[]>('activitySessionQueue', []);
+  getLocal<ActivitySessionRecord[]>('activitySessionQueue', []).then(normalizeActivitySessionRecords);
 
 export const setActivitySessionQueue = (items: ActivitySessionRecord[]): Promise<void> =>
-  setLocal('activitySessionQueue', items);
+  setLocal('activitySessionQueue', normalizeActivitySessionRecords(items));
 
 export const getFocusSessionQueue = (): Promise<FocusSessionRecord[]> =>
-  getLocal<FocusSessionRecord[]>('focusSessionQueue', []);
+  getLocal<FocusSessionRecord[]>('focusSessionQueue', []).then(normalizeFocusSessionRecords);
 
 export const setFocusSessionQueue = (items: FocusSessionRecord[]): Promise<void> =>
-  setLocal('focusSessionQueue', items);
+  setLocal('focusSessionQueue', normalizeFocusSessionRecords(items));
 
 export const getActivityHistory = (): Promise<ActivitySessionRecord[]> =>
-  getLocal<ActivitySessionRecord[]>('activityHistory', []);
+  getLocal<ActivitySessionRecord[]>('activityHistory', []).then(normalizeActivitySessionRecords);
 
 export const setActivityHistory = (items: ActivitySessionRecord[]): Promise<void> =>
-  setLocal('activityHistory', items);
+  setLocal('activityHistory', normalizeActivitySessionRecords(items));
+
+export const getLocalActivityHistory = (): Promise<LocalActivityRecord[]> =>
+  getLocal<LocalActivityRecord[]>('localActivityHistory', []).then(normalizeLocalActivityRecords);
+
+export const setLocalActivityHistory = (items: LocalActivityRecord[]): Promise<void> =>
+  setLocal('localActivityHistory', normalizeLocalActivityRecords(items));
 
 export const getFocusSessionHistory = (): Promise<FocusSessionRecord[]> =>
-  getLocal<FocusSessionRecord[]>('focusSessionHistory', []);
+  getLocal<FocusSessionRecord[]>('focusSessionHistory', []).then(normalizeFocusSessionRecords);
 
 export const setFocusSessionHistory = (items: FocusSessionRecord[]): Promise<void> =>
-  setLocal('focusSessionHistory', items);
+  setLocal('focusSessionHistory', normalizeFocusSessionRecords(items));
 
 export const getAnalyticsSnapshot = (): Promise<AnalyticsSnapshot> =>
-  getLocal<AnalyticsSnapshot>('analyticsSnapshot', DEFAULT_ANALYTICS_SNAPSHOT);
+  getLocal<AnalyticsSnapshot>('analyticsSnapshot', DEFAULT_ANALYTICS_SNAPSHOT).then(
+    normalizeAnalyticsSnapshotStored,
+  );
 
 export const setAnalyticsSnapshot = (snapshot: AnalyticsSnapshot): Promise<void> =>
-  setLocal('analyticsSnapshot', snapshot);
+  setLocal('analyticsSnapshot', normalizeAnalyticsSnapshotStored(snapshot));
 
 export const getEventPatternStats = (): Promise<EventPatternStat[]> =>
   getLocal<EventPatternStat[]>('eventPatternStats', []);
@@ -357,6 +791,13 @@ export const getBlockedTabs = (): Promise<Record<string, BlockedTabState>> =>
 
 export const setBlockedTabs = (tabs: Record<string, BlockedTabState>): Promise<void> =>
   setLocal('blockedTabs', tabs);
+
+export const getLaunchExecutionStates = (): Promise<Record<string, LaunchExecutionState>> =>
+  getLocal<Record<string, LaunchExecutionState>>('launchExecutionStates', {});
+
+export const setLaunchExecutionStates = (
+  states: Record<string, LaunchExecutionState>,
+): Promise<void> => setLocal('launchExecutionStates', states);
 
 export const getTemporaryUnlocks = (): Promise<Record<string, TemporaryUnlockState>> =>
   getLocal<Record<string, TemporaryUnlockState>>('temporaryUnlocks', {});
