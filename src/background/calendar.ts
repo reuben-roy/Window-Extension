@@ -323,6 +323,9 @@ export function resolveActiveState(
       settings,
       taskTags,
       focusHistory,
+      activityHistory,
+      taskQueue,
+      eventPatternStats,
       eventLaunchTargets,
     );
   }
@@ -479,7 +482,7 @@ function resolveTagMetadataForEvent(
   const descriptionMatches = inferTaskTagKeysFromText(event.description ?? '', taskTags, {
     excludeKeys: titleMatches,
   });
-  const attendeeMatches = inferTaskTagKeysFromText(event.attendees.join(' '), taskTags, {
+  const attendeeMatches = inferTaskTagKeysFromText((event.attendees ?? []).join(' '), taskTags, {
     excludeKeys: [...titleMatches, ...descriptionMatches],
   });
   const inferredTagKey =
@@ -492,7 +495,7 @@ function resolveTagMetadataForEvent(
     inferTaskTagKeyFromTitle(event.title, taskTags) ??
     null;
   const secondaryTagKeys = exactRule
-    ? exactRule.secondaryTagKeys
+    ? exactRule.secondaryTagKeys ?? []
     : [...new Set([...titleMatches, ...descriptionMatches, ...attendeeMatches])]
         .filter((key) => key !== inferredTagKey)
         .slice(0, 2);

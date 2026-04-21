@@ -4,7 +4,11 @@ export function isRedundantExactRuleCopy(
   exactRule: EventRule,
   keywordRule: KeywordRule,
 ): boolean {
-  if (exactRule.tagKey !== null || exactRule.difficultyOverride !== null) {
+  if (
+    exactRule.tagKey !== null ||
+    (exactRule.secondaryTagKeys?.length ?? 0) > 0 ||
+    exactRule.difficultyOverride !== null
+  ) {
     return false;
   }
 

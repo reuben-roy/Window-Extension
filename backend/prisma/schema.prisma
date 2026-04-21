@@ -240,6 +240,7 @@ model TaskTag {
   alignedDomains     Json
   supportiveDomains  Json
   source             String
+  archivedAt         DateTime?
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
   user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -261,6 +262,7 @@ model FocusSession {
   sourceRuleType    String
   sourceRuleName    String?
   tagKey            String?
+  secondaryTagKeys  Json
   difficultyRank    Int?
   productiveMinutes Int      @default(0)
   supportiveMinutes Int      @default(0)
@@ -292,6 +294,7 @@ model ActivitySession {
   endedAt         DateTime
   activityClass   String
   tagKey          String?
+  secondaryTagKeys Json
   difficultyRank  Int?
   sourceRuleType  String
   sourceRuleName  String?

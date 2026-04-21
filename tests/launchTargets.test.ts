@@ -15,6 +15,8 @@ function makeEvent(overrides: Partial<CalendarEvent> = {}): CalendarEvent {
     start: '2026-04-20T16:00:00.000Z',
     end: '2026-04-20T17:00:00.000Z',
     isAllDay: false,
+    description: null,
+    attendees: [],
     ...overrides,
   };
 }
@@ -77,6 +79,7 @@ describe('launch target helpers', () => {
         eventTitle: 'Deep Work',
         domains: ['github.com'],
         tagKey: null,
+        secondaryTagKeys: [],
         difficultyOverride: null,
       },
     ];

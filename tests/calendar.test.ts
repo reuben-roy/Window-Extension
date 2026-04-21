@@ -22,6 +22,8 @@ function makeEvent(overrides: Partial<CalendarEvent> = {}): CalendarEvent {
     start: new Date(Date.now() - 30 * 60_000).toISOString(),
     end: new Date(Date.now() + 30 * 60_000).toISOString(),
     isAllDay: false,
+    description: null,
+    attendees: [],
     ...overrides,
   };
 }
@@ -55,6 +57,7 @@ const EVENT_RULE = (eventTitle: string, domains: string[]): EventRule => ({
   eventTitle,
   domains,
   tagKey: null,
+  secondaryTagKeys: [],
   difficultyOverride: null,
 });
 const KEYWORD_RULE = (keyword: string, domains: string[], createdAt: string): KeywordRule => ({
@@ -358,6 +361,9 @@ describe('resolveActiveState', () => {
       DEFAULT_SETTINGS,
       [],
       [],
+      [],
+      [],
+      [],
       launchTargets,
     );
 
@@ -384,6 +390,9 @@ describe('resolveActiveState', () => {
       keywordRules,
       GLOBAL_ALLOWLIST,
       DEFAULT_SETTINGS,
+      [],
+      [],
+      [],
       [],
       [],
       launchTargets,

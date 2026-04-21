@@ -7,6 +7,7 @@ function makeEventRule(overrides: Partial<EventRule> = {}): EventRule {
     eventTitle: 'Calling Friends',
     domains: ['github.com', 'leetcode.com'],
     tagKey: null,
+    secondaryTagKeys: [],
     difficultyOverride: null,
     ...overrides,
   };

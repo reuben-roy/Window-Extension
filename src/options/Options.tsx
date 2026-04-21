@@ -31,6 +31,7 @@ import {
   getKeywordRules,
   getSettings,
   getTaskTags,
+  setTaskTags,
   setSettings,
 } from '../shared/storage';
 import { isRedundantExactRuleCopy } from '../shared/ruleResolution';
@@ -39,7 +40,14 @@ import {
   removeEventLaunchTarget,
   upsertEventLaunchTarget,
 } from '../shared/launchTargets';
-import { findTaskTag, inferTaskTagKeyFromTitle } from '../shared/tags';
+import {
+  ensureDefaultTaskTags,
+  findTaskTag,
+  inferTaskTagKeyFromTitle,
+  inferTaskTagKeysFromText,
+  normalizeTaskTag,
+  slugifyTagKey,
+} from '../shared/tags';
 import type {
   AccountConflict,
   AccountSyncState,
@@ -69,6 +77,7 @@ interface ResolvedWorkspaceEvent {
   domains: string[];
   effectiveDomains: string[];
   tagKey: string | null;
+  secondaryTagKeys: string[];
   difficultyRank: DifficultyRank | null;
   fallbackKeyword: string | null;
 }
@@ -300,6 +309,29 @@ export default function Options(): React.JSX.Element {
       ? visibleEvents
       : todaysEvents;
   const recentAnalyticsSessions = analyticsSnapshot?.recentSessions ?? [];
+  const activeTaskTags = useMemo(
+    () => taskTags.filter((tag) => tag.archivedAt === null),
+    [taskTags],
+  );
+  const tagReferenceKeys = useMemo(() => {
+    const keys = new Set<string>();
+    for (const rule of eventRules) {
+      if (rule.tagKey) keys.add(rule.tagKey);
+      for (const secondaryTagKey of rule.secondaryTagKeys) {
+        keys.add(secondaryTagKey);
+      }
+    }
+    for (const rule of keywordRules) {
+      if (rule.tagKey) keys.add(rule.tagKey);
+    }
+    for (const session of recentAnalyticsSessions) {
+      if (session.tagKey) keys.add(session.tagKey);
+      for (const secondaryTagKey of session.secondaryTagKeys) {
+        keys.add(secondaryTagKey);
+      }
+    }
+    return keys;
+  }, [eventRules, keywordRules, recentAnalyticsSessions]);
 
   const workspaceEvents = useMemo(
     () =>
@@ -490,6 +522,76 @@ export default function Options(): React.JSX.Element {
       },
     });
     await loadData();
+  };
+
+  const saveTaskTagDefinition = async (input: {
+    existingKey?: string | null;
+    label: string;
+    color: string;
+    aliases: string[];
+    baselineDifficulty: DifficultyRank;
+    alignedDomains: string[];
+    supportiveDomains: string[];
+    archivedAt?: string | null;
+  }): Promise<{ ok: boolean; error?: string }> => {
+    const nextKey = slugifyTagKey(input.existingKey || input.label);
+    if (!nextKey) {
+      return { ok: false, error: 'Tag needs a label.' };
+    }
+
+    const duplicate = taskTags.find(
+      (tag) => tag.key === nextKey && tag.key !== (input.existingKey ?? null),
+    );
+    if (duplicate) {
+      return { ok: false, error: 'Another tag already uses that key.' };
+    }
+
+    const nextTag = normalizeTaskTag({
+      key: nextKey,
+      label: input.label,
+      color: input.color,
+      aliases: input.aliases,
+      baselineDifficulty: input.baselineDifficulty,
+      alignedDomains: input.alignedDomains,
+      supportiveDomains: input.supportiveDomains,
+      source: input.existingKey ? findTaskTag(taskTags, input.existingKey)?.source ?? 'user' : 'user',
+      archivedAt: input.archivedAt ?? null,
+      updatedAt: new Date().toISOString(),
+    });
+
+    const nextTags = ensureDefaultTaskTags([
+      ...taskTags.filter((tag) => tag.key !== (input.existingKey ?? null)),
+      nextTag,
+    ]);
+    await setTaskTags(nextTags);
+    await loadData();
+    return { ok: true };
+  };
+
+  const toggleTaskTagArchive = async (tagKey: string, archived: boolean) => {
+    const nextTags = ensureDefaultTaskTags(
+      taskTags.map((tag) =>
+        tag.key === tagKey
+          ? {
+              ...tag,
+              archivedAt: archived ? new Date().toISOString() : null,
+              updatedAt: new Date().toISOString(),
+            }
+          : tag,
+      ),
+    );
+    await setTaskTags(nextTags);
+    await loadData();
+  };
+
+  const deleteTaskTagDefinition = async (tagKey: string): Promise<{ ok: boolean; error?: string }> => {
+    if (tagReferenceKeys.has(tagKey)) {
+      return { ok: false, error: 'This tag is still referenced by a rule or session. Archive it or reassign those references first.' };
+    }
+
+    await setTaskTags(taskTags.filter((tag) => tag.key !== tagKey));
+    await loadData();
+    return { ok: true };
   };
 
   const addGlobalDomain = async () => {
@@ -1057,12 +1159,22 @@ export default function Options(): React.JSX.Element {
             </section>
           </>
         ) : (
-          <AnalyticsWorkspace
-            analyticsSnapshot={analyticsSnapshot}
-            taskTags={taskTags}
-            onRefresh={() => sendMessageAsync({ type: 'REFRESH_ANALYTICS_STATE' }).then(loadData)}
-            onSaveOverride={saveSessionOverride}
-          />
+          <div className="space-y-5">
+            <AnalyticsWorkspace
+              analyticsSnapshot={analyticsSnapshot}
+              taskTags={taskTags}
+              onRefresh={() => sendMessageAsync({ type: 'REFRESH_ANALYTICS_STATE' }).then(loadData)}
+              onSaveOverride={saveSessionOverride}
+            />
+            <TagManager
+              taskTags={taskTags}
+              activeTaskTags={activeTaskTags}
+              tagReferenceKeys={tagReferenceKeys}
+              onSaveTag={saveTaskTagDefinition}
+              onToggleArchive={toggleTaskTagArchive}
+              onDeleteTag={deleteTaskTagDefinition}
+            />
+          </div>
         )}
       </div>
 
@@ -1127,6 +1239,7 @@ const EventRuleTooltip = React.forwardRef<HTMLDivElement, {
     const [domainsInput, setDomainsInput] = useState(currentDomainsValue);
     const [launchUrlInput, setLaunchUrlInput] = useState(currentLaunchUrlValue);
     const [tagKey, setTagKey] = useState(resolvedEvent.tagKey ?? '');
+    const [secondaryTagKeys, setSecondaryTagKeys] = useState<string[]>(resolvedEvent.secondaryTagKeys);
     const [difficultyRank, setDifficultyRank] = useState<string>(
       resolvedEvent.difficultyRank ? String(resolvedEvent.difficultyRank) : '',
     );
@@ -1147,12 +1260,13 @@ const EventRuleTooltip = React.forwardRef<HTMLDivElement, {
       setDomainsInput(currentDomainsValue);
       setLaunchUrlInput(currentLaunchUrlValue);
       setTagKey(resolvedEvent.tagKey ?? '');
+      setSecondaryTagKeys(resolvedEvent.secondaryTagKeys);
       setDifficultyRank(resolvedEvent.difficultyRank ? String(resolvedEvent.difficultyRank) : '');
       setEditing(startsInEditing);
       setError('');
       setLaunchError('');
       setEditingLaunchTarget(false);
-    }, [currentDomainsValue, currentLaunchUrlValue, resolvedEvent.difficultyRank, resolvedEvent.event.id, resolvedEvent.tagKey, startsInEditing]);
+    }, [currentDomainsValue, currentLaunchUrlValue, resolvedEvent.difficultyRank, resolvedEvent.event.id, resolvedEvent.secondaryTagKeys, resolvedEvent.tagKey, startsInEditing]);
 
     const positioning = mode === 'modal'
       ? {
@@ -1279,7 +1393,7 @@ const EventRuleTooltip = React.forwardRef<HTMLDivElement, {
                   className="fg-select mt-2 w-full disabled:cursor-not-allowed disabled:bg-[rgba(248,250,252,0.92)] disabled:text-[var(--fg-muted)]"
                 >
                   <option value="">No explicit tag</option>
-                  {taskTags.map((tag) => (
+                  {getSelectableTaskTags(taskTags, [tagKey, ...secondaryTagKeys]).map((tag) => (
                     <option key={tag.key} value={tag.key}>
                       {tag.label}
                     </option>
@@ -1287,6 +1401,44 @@ const EventRuleTooltip = React.forwardRef<HTMLDivElement, {
                 </select>
                 <p className="text-xs text-[var(--fg-muted)]">
                   Exact rules can pin a tag instead of relying on keyword inference.
+                </p>
+              </div>
+
+              <div className="rounded-[22px] border border-[rgba(148,163,184,0.16)] bg-[var(--fg-panel-soft)] px-4 py-3">
+                <div className="flex items-center gap-2">
+                  <p className="text-sm font-medium text-[var(--fg-text)]">Secondary tags</p>
+                  <InfoTip text="Optional supporting tags for this exact title. Window stores them on the session, but the main charts still group by the primary tag." />
+                </div>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {getSelectableTaskTags(taskTags, [tagKey, ...secondaryTagKeys])
+                    .filter((tag) => tag.key !== tagKey)
+                    .map((tag) => {
+                      const selected = secondaryTagKeys.includes(tag.key);
+                      return (
+                        <button
+                          key={tag.key}
+                          type="button"
+                          disabled={!editing && !selected}
+                          onClick={() =>
+                            setSecondaryTagKeys((current) =>
+                              selected
+                                ? current.filter((key) => key !== tag.key)
+                                : [...current, tag.key].slice(0, 2),
+                            )
+                          }
+                          className={`rounded-full border px-3 py-1.5 text-xs font-medium transition ${
+                            selected
+                              ? 'border-[var(--fg-accent)] bg-[var(--fg-accent-soft)] text-[var(--fg-accent)]'
+                              : 'border-[var(--fg-border)] bg-white text-[var(--fg-muted)]'
+                          } disabled:cursor-not-allowed disabled:opacity-70`}
+                        >
+                          {tag.label}
+                        </button>
+                      );
+                    })}
+                </div>
+                <p className="mt-2 text-xs text-[var(--fg-muted)]">
+                  Select up to two. Archived tags stay hidden unless already attached here.
                 </p>
               </div>
 
@@ -1395,6 +1547,7 @@ const EventRuleTooltip = React.forwardRef<HTMLDivElement, {
                           splitDomains(domainsInput),
                           {
                             tagKey: tagKey || null,
+                            secondaryTagKeys,
                             difficultyOverride: parseDifficultyRank(difficultyRank),
                           },
                         );
@@ -1415,6 +1568,7 @@ const EventRuleTooltip = React.forwardRef<HTMLDivElement, {
                       onClick={() => {
                         setDomainsInput(currentDomainsValue);
                         setTagKey(resolvedEvent.tagKey ?? '');
+                        setSecondaryTagKeys(resolvedEvent.secondaryTagKeys);
                         setDifficultyRank(resolvedEvent.difficultyRank ? String(resolvedEvent.difficultyRank) : '');
                         setError('');
                         setEditing(false);
@@ -1741,13 +1895,243 @@ function KeywordRuleListItem({
             className="fg-select w-full"
           >
             <option value="">No linked tag</option>
-            {taskTags.map((tag) => (
+            {getSelectableTaskTags(taskTags, [rule.tagKey ?? '']).map((tag) => (
               <option key={tag.key} value={tag.key}>
                 {tag.label}
               </option>
             ))}
           </select>
         </div>
+      </div>
+    </div>
+  );
+}
+
+function TagManager({
+  taskTags,
+  activeTaskTags,
+  tagReferenceKeys,
+  onSaveTag,
+  onToggleArchive,
+  onDeleteTag,
+}: {
+  taskTags: TaskTag[];
+  activeTaskTags: TaskTag[];
+  tagReferenceKeys: Set<string>;
+  onSaveTag: (input: {
+    existingKey?: string | null;
+    label: string;
+    color: string;
+    aliases: string[];
+    baselineDifficulty: DifficultyRank;
+    alignedDomains: string[];
+    supportiveDomains: string[];
+    archivedAt?: string | null;
+  }) => Promise<{ ok: boolean; error?: string }>;
+  onToggleArchive: (tagKey: string, archived: boolean) => Promise<void>;
+  onDeleteTag: (tagKey: string) => Promise<{ ok: boolean; error?: string }>;
+}): React.JSX.Element {
+  const [label, setLabel] = useState('');
+  const [color, setColor] = useState('#2563eb');
+  const [aliases, setAliases] = useState('');
+  const [baselineDifficulty, setBaselineDifficulty] = useState<string>('3');
+  const [alignedDomains, setAlignedDomains] = useState('');
+  const [supportiveDomains, setSupportiveDomains] = useState('');
+  const [error, setError] = useState('');
+
+  const sortedTags = useMemo(
+    () => [...taskTags].sort((left, right) => Number(Boolean(left.archivedAt)) - Number(Boolean(right.archivedAt)) || left.label.localeCompare(right.label)),
+    [taskTags],
+  );
+
+  return (
+    <section className="fg-card p-4">
+      <div className="mb-4 flex items-center gap-2">
+        <h2 className="text-lg font-semibold tracking-[-0.02em] text-[var(--fg-text)]">Tag Manager</h2>
+        <InfoTip text="Manage reusable task tags, their default difficulty, and the domains Window should treat as aligned or supportive." />
+      </div>
+
+      <div className="mb-5 rounded-[24px] border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] p-4">
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <div>
+            <p className="text-sm font-medium text-[var(--fg-text)]">Create tag</p>
+            <p className="mt-1 text-xs text-[var(--fg-muted)]">
+              Active tags: {activeTaskTags.length} · Archived tags: {taskTags.length - activeTaskTags.length}
+            </p>
+          </div>
+        </div>
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-[minmax(0,1.1fr),140px,160px]">
+          <input value={label} onChange={(event) => setLabel(event.target.value)} placeholder="Research ops" className="fg-input" />
+          <input value={color} onChange={(event) => setColor(event.target.value)} placeholder="#2563eb" className="fg-input" />
+          <select value={baselineDifficulty} onChange={(event) => setBaselineDifficulty(event.target.value)} className="fg-select">
+            <option value="1">1 · Routine</option>
+            <option value="2">2 · Light</option>
+            <option value="3">3 · Standard</option>
+            <option value="5">5 · Demanding</option>
+            <option value="8">8 · Deep</option>
+          </select>
+        </div>
+        <div className="mt-3 grid gap-3 md:grid-cols-3">
+          <input value={aliases} onChange={(event) => setAliases(event.target.value)} placeholder="aliases: research, analyze" className="fg-input" />
+          <input value={alignedDomains} onChange={(event) => setAlignedDomains(event.target.value)} placeholder="aligned: github.com, figma.com" className="fg-input" />
+          <input value={supportiveDomains} onChange={(event) => setSupportiveDomains(event.target.value)} placeholder="supportive: docs.google.com" className="fg-input" />
+        </div>
+        {error ? <p className="mt-3 text-xs text-rose-600">{error}</p> : null}
+        <div className="mt-3 flex justify-end">
+          <button
+            className="fg-button-primary px-4 py-2.5 text-sm"
+            onClick={async () => {
+              setError('');
+              const result = await onSaveTag({
+                label,
+                color,
+                aliases: splitCommaList(aliases),
+                baselineDifficulty: parseDifficultyRank(baselineDifficulty) ?? 3,
+                alignedDomains: splitDomains(alignedDomains),
+                supportiveDomains: splitDomains(supportiveDomains),
+                archivedAt: null,
+              });
+              if (!result.ok) {
+                setError(result.error ?? 'Unable to save tag.');
+                return;
+              }
+              setLabel('');
+              setColor('#2563eb');
+              setAliases('');
+              setAlignedDomains('');
+              setSupportiveDomains('');
+              setBaselineDifficulty('3');
+            }}
+          >
+            Create Tag
+          </button>
+        </div>
+      </div>
+
+      <div className="space-y-3">
+        {sortedTags.map((tag) => (
+          <TagManagerRow
+            key={tag.key}
+            tag={tag}
+            isReferenced={tagReferenceKeys.has(tag.key)}
+            onSaveTag={onSaveTag}
+            onToggleArchive={onToggleArchive}
+            onDeleteTag={onDeleteTag}
+          />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function TagManagerRow({
+  tag,
+  isReferenced,
+  onSaveTag,
+  onToggleArchive,
+  onDeleteTag,
+}: {
+  tag: TaskTag;
+  isReferenced: boolean;
+  onSaveTag: (input: {
+    existingKey?: string | null;
+    label: string;
+    color: string;
+    aliases: string[];
+    baselineDifficulty: DifficultyRank;
+    alignedDomains: string[];
+    supportiveDomains: string[];
+    archivedAt?: string | null;
+  }) => Promise<{ ok: boolean; error?: string }>;
+  onToggleArchive: (tagKey: string, archived: boolean) => Promise<void>;
+  onDeleteTag: (tagKey: string) => Promise<{ ok: boolean; error?: string }>;
+}): React.JSX.Element {
+  const [label, setLabel] = useState(tag.label);
+  const [color, setColor] = useState(tag.color);
+  const [aliases, setAliases] = useState(tag.aliases.join(', '));
+  const [baselineDifficulty, setBaselineDifficulty] = useState<string>(String(tag.baselineDifficulty));
+  const [alignedDomains, setAlignedDomains] = useState(tag.alignedDomains.join(', '));
+  const [supportiveDomains, setSupportiveDomains] = useState(tag.supportiveDomains.join(', '));
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    setLabel(tag.label);
+    setColor(tag.color);
+    setAliases(tag.aliases.join(', '));
+    setBaselineDifficulty(String(tag.baselineDifficulty));
+    setAlignedDomains(tag.alignedDomains.join(', '));
+    setSupportiveDomains(tag.supportiveDomains.join(', '));
+    setError('');
+  }, [tag]);
+
+  return (
+    <div className="rounded-[22px] border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] p-4">
+      <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <span className="h-3 w-3 rounded-full" style={{ background: color }} />
+          <div>
+            <p className="text-sm font-medium text-[var(--fg-text)]">{tag.label}</p>
+            <p className="text-xs text-[var(--fg-muted)]">
+              `{tag.key}` · {tag.archivedAt ? 'Archived' : 'Active'} {isReferenced ? '· In use' : ''}
+            </p>
+          </div>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <button className="fg-button-secondary px-3 py-2 text-sm" onClick={() => onToggleArchive(tag.key, tag.archivedAt === null)}>
+            {tag.archivedAt ? 'Unarchive' : 'Archive'}
+          </button>
+          <button
+            className="fg-button-ghost px-3 py-2 text-sm text-rose-600"
+            onClick={async () => {
+              const result = await onDeleteTag(tag.key);
+              if (!result.ok) {
+                setError(result.error ?? 'Unable to delete tag.');
+              }
+            }}
+          >
+            Delete
+          </button>
+        </div>
+      </div>
+      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-[minmax(0,1.1fr),140px,160px]">
+        <input value={label} onChange={(event) => setLabel(event.target.value)} className="fg-input" />
+        <input value={color} onChange={(event) => setColor(event.target.value)} className="fg-input" />
+        <select value={baselineDifficulty} onChange={(event) => setBaselineDifficulty(event.target.value)} className="fg-select">
+          <option value="1">1 · Routine</option>
+          <option value="2">2 · Light</option>
+          <option value="3">3 · Standard</option>
+          <option value="5">5 · Demanding</option>
+          <option value="8">8 · Deep</option>
+        </select>
+      </div>
+      <div className="mt-3 grid gap-3 md:grid-cols-3">
+        <input value={aliases} onChange={(event) => setAliases(event.target.value)} className="fg-input" />
+        <input value={alignedDomains} onChange={(event) => setAlignedDomains(event.target.value)} className="fg-input" />
+        <input value={supportiveDomains} onChange={(event) => setSupportiveDomains(event.target.value)} className="fg-input" />
+      </div>
+      {error ? <p className="mt-3 text-xs text-rose-600">{error}</p> : null}
+      <div className="mt-3 flex justify-end">
+        <button
+          className="fg-button-primary px-4 py-2.5 text-sm"
+          onClick={async () => {
+            setError('');
+            const result = await onSaveTag({
+              existingKey: tag.key,
+              label,
+              color,
+              aliases: splitCommaList(aliases),
+              baselineDifficulty: parseDifficultyRank(baselineDifficulty) ?? 3,
+              alignedDomains: splitDomains(alignedDomains),
+              supportiveDomains: splitDomains(supportiveDomains),
+              archivedAt: tag.archivedAt,
+            });
+            if (!result.ok) {
+              setError(result.error ?? 'Unable to save tag.');
+            }
+          }}
+        >
+          Save Tag
+        </button>
       </div>
     </div>
   );
@@ -2171,7 +2555,7 @@ function SessionAnalyticsRow({
           className="fg-select"
         >
           <option value="">No tag</option>
-          {taskTags.map((tag) => (
+          {getSelectableTaskTags(taskTags, [tagKey]).map((tag) => (
             <option key={tag.key} value={tag.key}>
               {tag.label}
             </option>
@@ -2280,12 +2664,24 @@ function splitDomains(value: string): string[] {
     .filter(Boolean);
 }
 
+function splitCommaList(value: string): string[] {
+  return value
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
 function safeHostname(value: string): string | null {
   try {
     return new URL(value).hostname;
   } catch {
     return null;
   }
+}
+
+function getSelectableTaskTags(taskTags: TaskTag[], selectedKeys: string[] = []): TaskTag[] {
+  const selected = new Set(selectedKeys.filter(Boolean));
+  return taskTags.filter((tag) => tag.archivedAt === null || selected.has(tag.key));
 }
 
 function resolveWorkspaceEvent(
@@ -2305,7 +2701,25 @@ function resolveWorkspaceEvent(
     exactRule.domains.length > 0 &&
     keywordRule !== null &&
     isRedundantExactRuleCopy(exactRule, keywordRule);
-  const inferredTagKey = exactRule?.tagKey ?? keywordRule?.tagKey ?? inferTaskTagKeyFromTitle(event.title, taskTags);
+  const titleMatches = inferTaskTagKeysFromText(event.title, taskTags);
+  const descriptionMatches = inferTaskTagKeysFromText(event.description ?? '', taskTags, {
+    excludeKeys: titleMatches,
+  });
+  const attendeeMatches = inferTaskTagKeysFromText(event.attendees.join(' '), taskTags, {
+    excludeKeys: [...titleMatches, ...descriptionMatches],
+  });
+  const inferredTagKey =
+    exactRule?.tagKey ??
+    keywordRule?.tagKey ??
+    titleMatches[0] ??
+    descriptionMatches[0] ??
+    attendeeMatches[0] ??
+    inferTaskTagKeyFromTitle(event.title, taskTags);
+  const secondaryTagKeys = exactRule
+    ? exactRule.secondaryTagKeys
+    : [...new Set([...titleMatches, ...descriptionMatches, ...attendeeMatches])]
+        .filter((key) => key !== inferredTagKey)
+        .slice(0, 2);
   const tag = findTaskTag(taskTags, inferredTagKey);
   const difficultyRank = inferredTagKey
     ? deriveDifficultyRank({
@@ -2325,6 +2739,7 @@ function resolveWorkspaceEvent(
       domains: exactRule.domains,
       effectiveDomains: exactRule.domains,
       tagKey: inferredTagKey,
+      secondaryTagKeys,
       difficultyRank,
       fallbackKeyword: keywordRule?.keyword ?? null,
     };
@@ -2338,6 +2753,7 @@ function resolveWorkspaceEvent(
       domains: [],
       effectiveDomains: keywordRule.domains,
       tagKey: inferredTagKey,
+      secondaryTagKeys,
       difficultyRank,
       fallbackKeyword: null,
     };
@@ -2350,6 +2766,7 @@ function resolveWorkspaceEvent(
     domains: [],
     effectiveDomains: [],
     tagKey: inferredTagKey,
+    secondaryTagKeys,
     difficultyRank,
     fallbackKeyword: null,
   };
