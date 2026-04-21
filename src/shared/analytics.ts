@@ -240,8 +240,7 @@ export function buildAnalyticsSnapshot(input: {
     tagBreakdown7d,
     difficultyBreakdown7d,
     recentSessions: [...input.focusHistory]
-      .sort((a, b) => new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime())
-      .slice(0, 12),
+      .sort((a, b) => new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime()),
     lastCalculatedAt: input.lastCalculatedAt ?? new Date().toISOString(),
     lastSyncedAt: input.lastSyncedAt ?? null,
   };
