@@ -211,6 +211,7 @@ function normalizeEventRules(rules: EventRule[]): EventRule[] {
       eventTitle: rule.eventTitle,
       domains: normalizeStringArray(rule.domains),
       tagKey: typeof rule.tagKey === 'string' && rule.tagKey.trim().length > 0 ? rule.tagKey : null,
+      secondaryTagKeys: normalizeStringArray(rule.secondaryTagKeys ?? []),
       difficultyOverride: rule.difficultyOverride ?? null,
     }));
 }

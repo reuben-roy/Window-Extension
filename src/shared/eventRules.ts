@@ -16,6 +16,7 @@ export async function upsertEventRule(
   rawDomains: string[],
   options: {
     tagKey?: string | null;
+    secondaryTagKeys?: string[];
     difficultyOverride?: DifficultyRank | null;
   } = {},
 ): Promise<{ ok: boolean; error?: string }> {
@@ -37,6 +38,7 @@ export async function upsertEventRule(
     eventTitle: title,
     domains,
     tagKey: options.tagKey ?? existing?.tagKey ?? null,
+    secondaryTagKeys: [...new Set((options.secondaryTagKeys ?? existing?.secondaryTagKeys ?? []).filter(Boolean))],
     difficultyOverride: options.difficultyOverride ?? existing?.difficultyOverride ?? null,
   };
   const idx = rules.findIndex((rule) => rule.eventTitle === title);

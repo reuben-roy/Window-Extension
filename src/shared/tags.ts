@@ -44,25 +44,45 @@ export function findTaskTag(tags: TaskTag[], key: string | null | undefined): Ta
 }
 
 export function inferTaskTagKeyFromTitle(title: string, tags: TaskTag[]): string | null {
-  const pattern = normalizeEventPattern(title);
-  if (!pattern) return null;
+  return inferTaskTagKeysFromText(title, tags)[0] ?? null;
+}
 
-  for (const tag of tags) {
-    if (normalizeEventPattern(tag.label) === pattern) {
-      return tag.key;
-    }
+export function inferTaskTagKeysFromText(
+  value: string,
+  tags: TaskTag[],
+  options: {
+    excludeKeys?: string[];
+    includeArchived?: boolean;
+  } = {},
+): string[] {
+  const pattern = normalizeEventPattern(value);
+  if (!pattern) return [];
 
-    if (
-      tag.aliases.some((alias) => {
+  const excluded = new Set(options.excludeKeys ?? []);
+
+  return tags
+    .filter((tag) => (options.includeArchived ? true : tag.archivedAt === null))
+    .filter((tag) => !excluded.has(tag.key))
+    .filter((tag) => {
+      if (normalizeEventPattern(tag.label) === pattern) {
+        return true;
+      }
+
+      return tag.aliases.some((alias) => {
         const normalizedAlias = normalizeEventPattern(alias);
         return normalizedAlias.length > 0 && pattern.includes(normalizedAlias);
-      })
-    ) {
-      return tag.key;
-    }
-  }
+      });
+    })
+    .sort((left, right) => {
+      const leftScore = bestAliasLength(left, pattern);
+      const rightScore = bestAliasLength(right, pattern);
+      if (leftScore !== rightScore) {
+        return rightScore - leftScore;
+      }
 
-  return null;
+      return left.label.localeCompare(right.label);
+    })
+    .map((tag) => tag.key);
 }
 
 export function normalizeTaskTag(tag: TaskTag): TaskTag {
@@ -76,6 +96,7 @@ export function normalizeTaskTag(tag: TaskTag): TaskTag {
     supportiveDomains: normalizeStringArray(tag.supportiveDomains),
     baselineDifficulty: normalizeDifficultyRank(tag.baselineDifficulty),
     source: tag.source,
+    archivedAt: typeof tag.archivedAt === 'string' ? tag.archivedAt : null,
     updatedAt: tag.updatedAt || new Date().toISOString(),
   };
 }
@@ -125,12 +146,14 @@ export function ensureRuleMetadata(
       eventTitle: rule.eventTitle.trim(),
       domains: normalizeStringArray(rule.domains),
       tagKey: rule.tagKey ?? null,
+      secondaryTagKeys: normalizeStringArray(rule.secondaryTagKeys ?? []),
       difficultyOverride:
         rule.difficultyOverride == null ? null : normalizeDifficultyRank(rule.difficultyOverride),
     };
 
     if (
       normalized.tagKey !== rule.tagKey ||
+      normalized.secondaryTagKeys.length !== (rule.secondaryTagKeys ?? []).length ||
       normalized.difficultyOverride !== (rule.difficultyOverride ?? null) ||
       normalized.domains.length !== rule.domains.length
     ) {
@@ -165,6 +188,7 @@ export function ensureRuleMetadata(
           alignedDomains: normalized.domains,
           supportiveDomains: [],
           source: 'keyword',
+          archivedAt: null,
           updatedAt: new Date().toISOString(),
         },
       ]);
@@ -234,6 +258,7 @@ export function observeEventPatterns(
           alignedDomains: [],
           supportiveDomains: [],
           source: 'auto',
+          archivedAt: null,
           updatedAt: now,
         },
       ]);
@@ -331,4 +356,12 @@ function normalizeStringArray(values: string[]): string[] {
   return [...new Set(values.filter((value): value is string => typeof value === 'string' && value.trim().length > 0))]
     .map((value) => value.trim().toLowerCase())
     .sort();
+}
+
+function bestAliasLength(tag: TaskTag, pattern: string): number {
+  const candidates = [tag.label, ...tag.aliases]
+    .map((value) => normalizeEventPattern(value))
+    .filter((value) => value.length > 0 && pattern.includes(value));
+
+  return candidates.reduce((best, current) => Math.max(best, current.length), 0);
 }

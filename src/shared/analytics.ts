@@ -1,15 +1,21 @@
 import { DEFAULT_ANALYTICS_SNAPSHOT } from './constants';
 import type {
   ActivityClass,
+  LocalActivityRecord,
   ActivitySessionRecord,
   ActiveActivitySessionState,
+  ActiveLocalActivityState,
   AnalyticsRange,
   AnalyticsSnapshot,
   CalendarState,
+  ConsumptionDomainItem,
+  ConsumptionTimelinePoint,
+  ConsumptionTreeNode,
   DifficultyBreakdownItem,
   DifficultyRank,
   FocusSessionRecord,
   LiveAnalyticsSession,
+  Task,
   TagBreakdownItem,
   TaskTag,
 } from './types';
@@ -40,6 +46,7 @@ export function createEmptyFocusSession(
     sourceRuleType: calendarState.activeRuleSource,
     sourceRuleName: calendarState.activeRuleName,
     tagKey: calendarState.primaryTagKey,
+    secondaryTagKeys: calendarState.secondaryTagKeys,
     difficultyRank: calendarState.difficultyRank,
     productiveMinutes: 0,
     supportiveMinutes: 0,
@@ -56,6 +63,8 @@ export function deriveDifficultyRank(input: {
   scheduledStart: string;
   scheduledEnd: string;
   priorSessions: FocusSessionRecord[];
+  carryoverCount?: number;
+  recentDistinctDomains?: number;
   override: DifficultyRank | null;
 }): DifficultyRank | null {
   if (input.override !== null) {
@@ -85,6 +94,10 @@ export function deriveDifficultyRank(input: {
     if (distractionRate >= 0.35 || priorForSameTag.some((session) => session.leftEarly)) {
       offset = 1;
     }
+  }
+
+  if ((input.carryoverCount ?? 0) > 0 || (input.recentDistinctDomains ?? 0) >= 4) {
+    offset = 1;
   }
 
   return shiftDifficulty(baseline, offset);
@@ -153,6 +166,55 @@ export function upsertActivitySession(
   };
 }
 
+export function upsertLocalActivityRecord(
+  current: ActiveLocalActivityState | null,
+  next: Omit<LocalActivityRecord, 'id' | 'startedAt' | 'endedAt'> & {
+    id: string;
+    at: string;
+  },
+): {
+  current: ActiveLocalActivityState;
+  finalized: LocalActivityRecord | null;
+} {
+  if (
+    current &&
+    current.focusSessionId === next.focusSessionId &&
+    current.activityClass === next.activityClass &&
+    current.domain === next.domain &&
+    current.tabTitle === next.tabTitle
+  ) {
+    return {
+      current: {
+        ...current,
+        endedAt: next.at,
+      },
+      finalized: null,
+    };
+  }
+
+  const nextCurrent: ActiveLocalActivityState = {
+    ...next,
+    startedAt: next.at,
+    endedAt: next.at,
+  };
+
+  return {
+    current: nextCurrent,
+    finalized: current ? { ...current, endedAt: next.at } : null,
+  };
+}
+
+export function finalizeLocalActivityRecord(
+  current: ActiveLocalActivityState | null,
+  endedAt: string,
+): LocalActivityRecord | null {
+  if (!current) return null;
+  return {
+    ...current,
+    endedAt,
+  };
+}
+
 export function finalizeActivitySession(
   current: ActiveActivitySessionState | null,
   endedAt: string,
@@ -216,9 +278,38 @@ export function trimActivityHistory(
   return sessions.filter((session) => new Date(session.endedAt).getTime() >= cutoff);
 }
 
+export function trimLocalActivityHistory(
+  sessions: LocalActivityRecord[],
+  now: Date = new Date(),
+): LocalActivityRecord[] {
+  const cutoff = now.getTime() - LOCAL_ANALYTICS_RETENTION_DAYS * 24 * 60 * 60 * 1000;
+  return sessions.filter((session) => new Date(session.endedAt).getTime() >= cutoff);
+}
+
+export function getCarryoverCountForEvent(tasks: Task[], event: { id: string; title: string }): number {
+  return tasks.filter(
+    (task) =>
+      task.status === 'carryover' &&
+      (task.calendarEventId === event.id || normalizeEventTitle(task.eventTitle) === normalizeEventTitle(event.title)),
+  ).length;
+}
+
+export function getRecentDistinctDomainsForTag(
+  activities: ActivitySessionRecord[],
+  tagKey: string | null,
+): number {
+  if (!tagKey) return 0;
+  return new Set(
+    activities
+      .filter((activity) => activity.tagKey === tagKey && activity.domain)
+      .map((activity) => normalizeAnalyticsDomain(activity.domain!)),
+  ).size;
+}
+
 export function buildAnalyticsSnapshot(input: {
   taskTags: TaskTag[];
   focusHistory: FocusSessionRecord[];
+  activityHistory: ActivitySessionRecord[];
   currentSession: FocusSessionRecord | null;
   currentActivityClass: ActivityClass | null;
   lastCalculatedAt?: string | null;
@@ -228,6 +319,9 @@ export function buildAnalyticsSnapshot(input: {
   const summary30d = summarizeRange('30d', input.focusHistory);
   const tagBreakdown7d = buildTagBreakdown(input.focusHistory, input.taskTags, '7d');
   const difficultyBreakdown7d = buildDifficultyBreakdown(input.focusHistory, '7d');
+  const domainBreakdown7d = buildDomainBreakdown(input.activityHistory, '7d');
+  const consumptionTimeline7d = buildConsumptionTimeline(input.activityHistory, 7);
+  const consumptionTree7d = buildConsumptionTree(input.activityHistory, '7d');
   const currentSession = input.currentSession
     ? toLiveAnalyticsSession(input.currentSession, input.currentActivityClass, input.taskTags)
     : null;
@@ -239,6 +333,9 @@ export function buildAnalyticsSnapshot(input: {
     summary30d,
     tagBreakdown7d,
     difficultyBreakdown7d,
+    domainBreakdown7d,
+    consumptionTimeline7d,
+    consumptionTree7d,
     recentSessions: [...input.focusHistory]
       .sort((a, b) => new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime()),
     lastCalculatedAt: input.lastCalculatedAt ?? new Date().toISOString(),
@@ -279,6 +376,96 @@ function summarizeRange(range: AnalyticsRange, sessions: FocusSessionRecord[]) {
     totalFocusSessions: filtered.length,
     leftEarlyCount: filtered.filter((session) => session.leftEarly).length,
   };
+}
+
+function buildDomainBreakdown(
+  activities: ActivitySessionRecord[],
+  range: AnalyticsRange,
+): ConsumptionDomainItem[] {
+  const filtered = filterActivitiesForRange(range, activities).filter((activity) => activity.domain);
+  const map = new Map<string, ConsumptionDomainItem>();
+
+  for (const activity of filtered) {
+    const totalMinutes = getDurationMinutes(activity.startedAt, activity.endedAt);
+    if (totalMinutes <= 0) continue;
+
+    const domain = normalizeActivityDomainLabel(activity);
+    const existing = map.get(domain) ?? {
+      domain,
+      label: domain,
+      productiveMinutes: 0,
+      supportiveMinutes: 0,
+      distractedMinutes: 0,
+      awayMinutes: 0,
+      breakMinutes: 0,
+      totalMinutes: 0,
+      visits: 0,
+      primaryActivityClass: activity.activityClass,
+    };
+
+    applyActivityMinutes(existing, activity.activityClass, totalMinutes);
+    existing.totalMinutes += totalMinutes;
+    existing.visits += 1;
+    existing.primaryActivityClass = dominantActivityClass(existing);
+    map.set(domain, existing);
+  }
+
+  return [...map.values()].sort((a, b) => b.totalMinutes - a.totalMinutes);
+}
+
+function buildConsumptionTimeline(
+  activities: ActivitySessionRecord[],
+  days: number,
+): ConsumptionTimelinePoint[] {
+  const points: ConsumptionTimelinePoint[] = [];
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  for (let index = days - 1; index >= 0; index -= 1) {
+    const bucket = new Date(today);
+    bucket.setDate(today.getDate() - index);
+    points.push({
+      date: bucket.toISOString(),
+      label: bucket.toLocaleDateString([], { weekday: 'short' }),
+      productiveMinutes: 0,
+      supportiveMinutes: 0,
+      distractedMinutes: 0,
+      awayMinutes: 0,
+      breakMinutes: 0,
+      totalMinutes: 0,
+    });
+  }
+
+  const pointByDate = new Map(points.map((point) => [point.date.slice(0, 10), point]));
+
+  for (const activity of activities) {
+    const key = new Date(activity.startedAt).toISOString().slice(0, 10);
+    const point = pointByDate.get(key);
+    if (!point) continue;
+    const totalMinutes = getDurationMinutes(activity.startedAt, activity.endedAt);
+    if (totalMinutes <= 0) continue;
+    applyActivityMinutes(point, activity.activityClass, totalMinutes);
+    point.totalMinutes += totalMinutes;
+  }
+
+  return points;
+}
+
+function buildConsumptionTree(
+  activities: ActivitySessionRecord[],
+  range: AnalyticsRange,
+): ConsumptionTreeNode[] {
+  const filtered = filterActivitiesForRange(range, activities).filter((activity) => activity.domain);
+  const root: ConsumptionTreeNode[] = [];
+
+  for (const activity of filtered) {
+    const totalMinutes = getDurationMinutes(activity.startedAt, activity.endedAt);
+    if (totalMinutes <= 0) continue;
+
+    insertConsumptionPath(root, buildConsumptionPath(activity), activity.activityClass, totalMinutes);
+  }
+
+  return sortConsumptionNodes(root);
 }
 
 function buildTagBreakdown(
@@ -348,17 +535,162 @@ function buildDifficultyBreakdown(
   return DIFFICULTY_ORDER.map((rank) => map.get(rank)).filter(Boolean) as DifficultyBreakdownItem[];
 }
 
+function filterActivitiesForRange(
+  range: AnalyticsRange,
+  activities: ActivitySessionRecord[],
+): ActivitySessionRecord[] {
+  const now = Date.now();
+  const days = range === '7d' ? 7 : 30;
+  const cutoff = now - days * 24 * 60 * 60 * 1000;
+  return activities.filter((activity) => new Date(activity.endedAt).getTime() >= cutoff);
+}
+
+function normalizeActivityDomainLabel(activity: ActivitySessionRecord): string {
+  if (activity.domain) {
+    return normalizeAnalyticsDomain(activity.domain);
+  }
+
+  if (activity.activityClass === 'away') {
+    return 'Away from keyboard';
+  }
+
+  if (activity.activityClass === 'break') {
+    return 'Break time';
+  }
+
+  return 'Unknown page';
+}
+
+function buildConsumptionPath(activity: ActivitySessionRecord): string[] {
+  if (!activity.domain) {
+    return [normalizeActivityDomainLabel(activity)];
+  }
+
+  const normalizedDomain = normalizeAnalyticsDomain(activity.domain);
+  const parts = normalizedDomain.split('.').filter(Boolean);
+  if (parts.length <= 2) {
+    return [normalizedDomain];
+  }
+
+  const root = parts.slice(-2).join('.');
+  const subdomains = parts.slice(0, -2).reverse();
+  return [root, ...subdomains];
+}
+
+function applyActivityMinutes(
+  target: {
+    productiveMinutes: number;
+    supportiveMinutes: number;
+    distractedMinutes: number;
+    awayMinutes: number;
+    breakMinutes: number;
+  },
+  activityClass: ActivityClass,
+  minutes: number,
+): void {
+  if (activityClass === 'aligned') {
+    target.productiveMinutes += minutes;
+    return;
+  }
+  if (activityClass === 'supportive') {
+    target.supportiveMinutes += minutes;
+    return;
+  }
+  if (activityClass === 'distracted') {
+    target.distractedMinutes += minutes;
+    return;
+  }
+  if (activityClass === 'away') {
+    target.awayMinutes += minutes;
+    return;
+  }
+  target.breakMinutes += minutes;
+}
+
+function dominantActivityClass(target: {
+  productiveMinutes: number;
+  supportiveMinutes: number;
+  distractedMinutes: number;
+  awayMinutes: number;
+  breakMinutes: number;
+}): ActivityClass {
+  const entries: Array<[ActivityClass, number]> = [
+    ['aligned', target.productiveMinutes],
+    ['supportive', target.supportiveMinutes],
+    ['distracted', target.distractedMinutes],
+    ['away', target.awayMinutes],
+    ['break', target.breakMinutes],
+  ];
+
+  return entries.sort((a, b) => b[1] - a[1])[0][0];
+}
+
+function sortConsumptionNodes(nodes: ConsumptionTreeNode[]): ConsumptionTreeNode[] {
+  return [...nodes]
+    .sort((a, b) => b.totalMinutes - a.totalMinutes)
+    .map((node) => ({
+      ...node,
+      children: sortConsumptionNodes(node.children),
+    }));
+}
+
+function insertConsumptionPath(
+  nodes: ConsumptionTreeNode[],
+  path: string[],
+  activityClass: ActivityClass,
+  minutes: number,
+  depth = 0,
+  parentId = '',
+): void {
+  const [segment, ...rest] = path;
+  if (!segment) return;
+
+  const id = parentId ? `${parentId}/${segment}` : segment;
+  let node = nodes.find((candidate) => candidate.label === segment);
+  if (!node) {
+    node = {
+      id,
+      label: segment,
+      depth,
+      productiveMinutes: 0,
+      supportiveMinutes: 0,
+      distractedMinutes: 0,
+      awayMinutes: 0,
+      breakMinutes: 0,
+      totalMinutes: 0,
+      children: [],
+    };
+    nodes.push(node);
+  }
+
+  applyActivityMinutes(node, activityClass, minutes);
+  node.totalMinutes += minutes;
+
+  if (rest.length > 0) {
+    insertConsumptionPath(node.children, rest, activityClass, minutes, depth + 1, id);
+  }
+}
+
+function normalizeAnalyticsDomain(domain: string): string {
+  return domain.replace(/^www\./, '').toLowerCase();
+}
+
 function toLiveAnalyticsSession(
   session: FocusSessionRecord,
   currentActivityClass: ActivityClass | null,
   taskTags: TaskTag[],
 ): LiveAnalyticsSession {
   const tag = findTaskTag(taskTags, session.tagKey);
+  const secondaryTagLabels = session.secondaryTagKeys
+    .map((key) => findTaskTag(taskTags, key)?.label ?? null)
+    .filter((value): value is string => Boolean(value));
   return {
     focusSessionId: session.id,
     eventTitle: session.eventTitle,
     tagKey: session.tagKey,
     tagLabel: tag?.label ?? null,
+    secondaryTagKeys: session.secondaryTagKeys,
+    secondaryTagLabels,
     difficultyRank: session.difficultyRank,
     sourceRuleType: session.sourceRuleType,
     sourceRuleName: session.sourceRuleName,
@@ -394,4 +726,8 @@ function humanizeFallback(key: string): string {
     .filter(Boolean)
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(' ');
+}
+
+function normalizeEventTitle(value: string): string {
+  return value.trim().toLowerCase();
 }

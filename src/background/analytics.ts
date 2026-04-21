@@ -339,6 +339,9 @@ async function refreshLocalAnalyticsSnapshot(): Promise<void> {
       getAnalyticsSnapshot(),
       getActivityHistory(),
     ]);
+  const activityHistoryWithCurrent = activeActivitySession
+    ? [...activityHistory, activeActivitySession as ActivitySessionRecord]
+    : activityHistory;
 
   const currentSession = activeFocusSession
     ? summarizeFocusSession(
@@ -346,9 +349,7 @@ async function refreshLocalAnalyticsSnapshot(): Promise<void> {
           ...activeFocusSession.session,
           endedAt: activeActivitySession?.endedAt ?? new Date().toISOString(),
         },
-        activeActivitySession
-          ? [...activityHistory, activeActivitySession as ActivitySessionRecord]
-          : activityHistory,
+        activityHistoryWithCurrent,
         activeFocusSession.lastProductiveAt,
       )
     : null;
@@ -356,6 +357,7 @@ async function refreshLocalAnalyticsSnapshot(): Promise<void> {
   const next = buildAnalyticsSnapshot({
     taskTags,
     focusHistory,
+    activityHistory: activityHistoryWithCurrent,
     currentSession,
     currentActivityClass: activeActivitySession?.activityClass ?? null,
     lastCalculatedAt: new Date().toISOString(),

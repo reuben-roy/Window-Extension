@@ -52,6 +52,7 @@ describe('idea helpers', () => {
 describe('telemetry helpers', () => {
   it('parses domains only from http(s) URLs', () => {
     expect(parseDomainFromUrl('https://github.com/openai')).toBe('github.com');
+    expect(parseDomainFromUrl('https://LeetCode.com/problemset')).toBe('leetcode.com');
     expect(parseDomainFromUrl('chrome://extensions')).toBeNull();
   });
 

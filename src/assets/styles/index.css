@@ -4,13 +4,13 @@
 
 @layer base {
   :root {
-    --fg-bg: #f3f6fb;
-    --fg-panel-soft: #f8fafc;
-    --fg-border: rgba(15, 23, 42, 0.1);
+    --fg-bg: #f4f7fb;
+    --fg-panel-soft: #f7f9fc;
+    --fg-border: rgba(15, 23, 42, 0.09);
     --fg-text: #0f172a;
     --fg-muted: #64748b;
     --fg-accent: #2563eb;
-    --fg-shadow: 0 16px 44px rgba(15, 23, 42, 0.08);
+    --fg-shadow: 0 14px 38px rgba(15, 23, 42, 0.06);
   }
 
   html,
@@ -23,10 +23,12 @@
     margin: 0;
     color: var(--fg-text);
     background:
-      radial-gradient(circle at top left, rgba(99, 102, 241, 0.08), transparent 32%),
-      radial-gradient(circle at top right, rgba(16, 185, 129, 0.1), transparent 26%),
-      linear-gradient(180deg, #f9fbff 0%, #f4f7fb 100%);
+      radial-gradient(circle at top left, rgba(59, 130, 246, 0.07), transparent 32%),
+      radial-gradient(circle at top right, rgba(14, 165, 233, 0.08), transparent 26%),
+      linear-gradient(180deg, #fbfdff 0%, #f4f7fb 100%);
     font-family:
+      "SF Pro Text",
+      "SF Pro Display",
       Inter,
       ui-sans-serif,
       system-ui,
@@ -45,16 +47,16 @@
   .fg-shell {
     background:
       radial-gradient(circle at 0% 0%, rgba(59, 130, 246, 0.08), transparent 24%),
-      radial-gradient(circle at 100% 0%, rgba(139, 92, 246, 0.08), transparent 24%),
-      linear-gradient(180deg, #f8fbff 0%, #f5f7fb 100%);
+      radial-gradient(circle at 100% 0%, rgba(14, 165, 233, 0.08), transparent 24%),
+      linear-gradient(180deg, #fbfdff 0%, #f5f7fb 100%);
   }
 
   .fg-card {
     border: 1px solid var(--fg-border);
-    background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(255, 255, 255, 0.9));
-    border-radius: 30px;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(255, 255, 255, 0.92));
+    border-radius: 24px;
     box-shadow: var(--fg-shadow);
-    backdrop-filter: blur(14px);
+    backdrop-filter: blur(16px);
   }
 
   .fg-button-primary {
@@ -65,7 +67,7 @@
     border-radius: 999px;
     background: linear-gradient(135deg, #111827 0%, #2563eb 100%);
     color: white;
-    padding: 0.7rem 1rem;
+    padding: 0.62rem 0.95rem;
     font-size: 0.875rem;
     font-weight: 600;
     border: 0;
@@ -83,7 +85,7 @@
     align-items: center;
     justify-content: center;
     border-radius: 999px;
-    padding: 0.7rem 1rem;
+    padding: 0.58rem 0.9rem;
     font-size: 0.875rem;
     font-weight: 500;
     transition: background-color 140ms ease, border-color 140ms ease, color 140ms ease;
@@ -113,14 +115,26 @@
   .fg-select,
   .fg-input {
     width: 100%;
-    border-radius: 18px;
     border: 1px solid var(--fg-border);
-    background: white;
+    background: rgba(255, 255, 255, 0.96);
     color: var(--fg-text);
-    padding: 0.8rem 0.95rem;
+    padding: 0.72rem 0.9rem;
     font-size: 0.875rem;
     outline: none;
     transition: border-color 140ms ease, box-shadow 140ms ease;
+  }
+
+  .fg-select {
+    appearance: none;
+    border-radius: 999px;
+    padding-right: 2.2rem;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 14 14' fill='none'%3E%3Cpath d='M3.5 5.25L7 8.75L10.5 5.25' stroke='%2364748B' stroke-width='1.35' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-position: right 0.8rem center;
+    background-repeat: no-repeat;
+  }
+
+  .fg-input {
+    border-radius: 16px;
   }
 
   .fg-select:focus,
@@ -131,8 +145,8 @@
 
   .fg-segment,
   .fg-segment-active {
-    border-radius: 16px;
-    padding: 0.5rem 0.8rem;
+    border-radius: 999px;
+    padding: 0.42rem 0.78rem;
     font-size: 0.875rem;
     font-weight: 500;
     transition: background-color 140ms ease, color 140ms ease, box-shadow 140ms ease;
@@ -149,7 +163,7 @@
   .fg-segment-active {
     background: white;
     color: var(--fg-text);
-    box-shadow: 0 8px 20px rgba(15, 23, 42, 0.08);
+    box-shadow: 0 8px 18px rgba(15, 23, 42, 0.07);
   }
 
   .fg-calendar-wrap .fc {

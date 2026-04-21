@@ -19,8 +19,8 @@ export default function CompactSettingRow({
   className?: string;
 }): React.JSX.Element {
   return (
-    <div className={`rounded-[22px] border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-3.5 py-3 ${className}`}>
-      <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
+    <div className={`border-b border-[var(--fg-border)] py-2.5 last:border-b-0 ${className}`}>
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-[var(--fg-muted)]">
@@ -41,14 +41,14 @@ export default function CompactSettingRow({
         </div>
 
         {control ? (
-          <div className="shrink-0 self-start sm:self-center">
+          <div className="shrink-0 self-start sm:self-start">
             {control}
           </div>
         ) : null}
       </div>
 
       {footer ? (
-        <div className="mt-3 border-t border-[var(--fg-border)] pt-3">
+        <div className="mt-2 border-t border-[var(--fg-border)] pt-2">
           {footer}
         </div>
       ) : null}

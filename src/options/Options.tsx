@@ -153,6 +153,7 @@ const DOWNLOAD_RESCUE_TOGGLES: DownloadRescueToggleConfig[] = [
 export default function Options(): React.JSX.Element {
   const calendarRef = useRef<FullCalendar | null>(null);
   const tooltipRef = useRef<HTMLDivElement | null>(null);
+  const hoverOpenTimerRef = useRef<number | null>(null);
   const [calendarState, setCalendarState] = useState<CalendarState | null>(null);
   const [analyticsSnapshot, setAnalyticsSnapshotState] = useState<AnalyticsSnapshot | null>(null);
   const [visibleEvents, setVisibleEvents] = useState<CalendarEvent[]>([]);
@@ -330,6 +331,14 @@ export default function Options(): React.JSX.Element {
   }));
 
   useEffect(() => {
+    return () => {
+      if (hoverOpenTimerRef.current !== null) {
+        window.clearTimeout(hoverOpenTimerRef.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
     if (!selectedTooltip) return;
 
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -424,6 +433,21 @@ export default function Options(): React.JSX.Element {
     setTooltipMode(positioning.mode);
     setTooltipPlacement(positioning.placement);
   }, []);
+
+  const cancelHoveredTooltipOpen = useCallback(() => {
+    if (hoverOpenTimerRef.current !== null) {
+      window.clearTimeout(hoverOpenTimerRef.current);
+      hoverOpenTimerRef.current = null;
+    }
+  }, []);
+
+  const scheduleHoveredTooltipOpen = useCallback((eventId: string, anchorRect: DOMRect) => {
+    cancelHoveredTooltipOpen();
+    hoverOpenTimerRef.current = window.setTimeout(() => {
+      openTooltipAtRect(eventId, anchorRect);
+      hoverOpenTimerRef.current = null;
+    }, 90);
+  }, [cancelHoveredTooltipOpen, openTooltipAtRect]);
 
   const handleEventClick = (arg: EventClickArg) => {
     arg.jsEvent.preventDefault();
@@ -957,6 +981,15 @@ export default function Options(): React.JSX.Element {
                   arg.el.dataset.windowEventId = arg.event.id;
                   arg.el.tabIndex = 0;
                   arg.el.style.cursor = 'pointer';
+                  arg.el.onmouseenter = () => {
+                    scheduleHoveredTooltipOpen(arg.event.id, arg.el.getBoundingClientRect());
+                  };
+                  arg.el.onmouseleave = () => {
+                    cancelHoveredTooltipOpen();
+                  };
+                  arg.el.onfocus = () => {
+                    openTooltipAtRect(arg.event.id, arg.el.getBoundingClientRect());
+                  };
                   arg.el.onkeydown = (event: KeyboardEvent) => {
                     if (event.key === 'Enter' || event.key === ' ') {
                       event.preventDefault();
@@ -1740,9 +1773,9 @@ function AnalyticsWorkspace({
   const dailyTrend = buildDailyTrend(analyticsSnapshot.recentSessions);
 
   return (
-    <div className="space-y-5">
-      <section className="fg-card p-5">
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+    <div className="space-y-4">
+      <section className="fg-card p-4">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
           <div>
             <h2 className="text-lg font-semibold tracking-[-0.02em] text-[var(--fg-text)]">Analytics</h2>
             <p className="mt-1 text-sm text-[var(--fg-muted)]">
@@ -1773,95 +1806,109 @@ function AnalyticsWorkspace({
           <AnalyticsMetricCard label="Supportive" value={formatMinutes(summary.supportiveMinutes)} />
           <AnalyticsMetricCard label="Distracted" value={formatMinutes(summary.distractedMinutes)} />
           <AnalyticsMetricCard label="Away" value={formatMinutes(summary.awayMinutes)} />
+          <AnalyticsMetricCard label="Sessions" value={String(summary.totalFocusSessions)} />
+          <AnalyticsMetricCard label="Left early" value={String(summary.leftEarlyCount)} />
         </div>
       </section>
 
-      <section className="grid gap-4 xl:grid-cols-[minmax(0,0.9fr),minmax(0,1.1fr)]">
-        <div className="fg-card p-5">
+      <section className="grid gap-4 xl:grid-cols-[minmax(0,1.08fr),minmax(0,0.92fr)]">
+        <div className="fg-card p-4">
           <div className="mb-3 flex items-center gap-2">
-            <h3 className="text-sm font-semibold text-[var(--fg-text)]">Weekly trend</h3>
-            <InfoTip text="Derived from recent focus sessions. Taller bars mean more productive minutes." />
+            <h3 className="text-sm font-semibold text-[var(--fg-text)]">Consumption graph</h3>
+            <InfoTip text="Daily lines built from recorded sites and pages during active focus blocks. Productive, supportive, and distracted time are shown separately." />
           </div>
-          <div className="grid gap-2">
-            {dailyTrend.length === 0 ? (
-              <EmptyCard text="No recent sessions yet." />
-            ) : (
-              dailyTrend.map((day) => (
-                <div key={day.label} className="grid grid-cols-[88px,minmax(0,1fr),72px] items-center gap-3">
-                  <span className="text-xs text-[var(--fg-muted)]">{day.label}</span>
-                  <div className="h-2 overflow-hidden rounded-full bg-[var(--fg-panel-soft)]">
-                    <div
-                      className="h-full rounded-full bg-[var(--fg-accent)]"
-                      style={{ width: `${day.percent}%` }}
-                    />
-                  </div>
-                  <span className="text-xs text-[var(--fg-text)]">{formatMinutes(day.productiveMinutes)}</span>
-                </div>
-              ))
-            )}
-          </div>
+          <ConsumptionTimelineChart points={analyticsSnapshot.consumptionTimeline7d} />
         </div>
 
-        <div className="fg-card p-5">
+        <div className="fg-card p-4">
           <div className="mb-3 flex items-center gap-2">
-            <h3 className="text-sm font-semibold text-[var(--fg-text)]">Time by tag</h3>
-            <InfoTip text="Grouped by the primary task tag on each focus session." />
+            <h3 className="text-sm font-semibold text-[var(--fg-text)]">Consumption map</h3>
+            <InfoTip text="Top domains come from local browsing telemetry during focus sessions. The tree groups related subdomains so reading, watching, and task pages cluster together." />
           </div>
-          <div className="space-y-2">
-            {analyticsSnapshot.tagBreakdown7d.length === 0 ? (
-              <EmptyCard text="No tagged focus sessions yet." />
-            ) : (
-              analyticsSnapshot.tagBreakdown7d.map((item) => (
-                <div
-                  key={item.tagKey}
-                  className="rounded-[20px] border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-4 py-3"
-                >
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-2">
-                      <span className="h-2.5 w-2.5 rounded-full" style={{ background: item.color }} />
-                      <p className="text-sm font-medium text-[var(--fg-text)]">{item.label}</p>
+          <div className="space-y-3">
+            <ConsumptionBreakdownList items={analyticsSnapshot.domainBreakdown7d.slice(0, 6)} />
+            <div className="border-t border-[var(--fg-border)] pt-3">
+              <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-[var(--fg-muted)]">
+                Domain tree
+              </p>
+              <div className="mt-2">
+                <ConsumptionTreeView nodes={analyticsSnapshot.consumptionTree7d.slice(0, 8)} />
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="grid gap-4 xl:grid-cols-[minmax(0,0.84fr),minmax(0,1.16fr)]">
+        <div className="space-y-4">
+          <div className="fg-card p-4">
+            <div className="mb-3 flex items-center gap-2">
+              <h3 className="text-sm font-semibold text-[var(--fg-text)]">Time by tag</h3>
+              <InfoTip text="Grouped by the primary task tag on each focus session so users can compare what categories actually get completed." />
+            </div>
+            <div className="space-y-2">
+              {analyticsSnapshot.tagBreakdown7d.length === 0 ? (
+                <EmptyCard text="No tagged focus sessions yet." />
+              ) : (
+                analyticsSnapshot.tagBreakdown7d.map((item) => (
+                  <div
+                    key={item.tagKey}
+                    className="rounded-[18px] border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-3.5 py-3"
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex min-w-0 items-center gap-2">
+                        <span className="h-2.5 w-2.5 rounded-full" style={{ background: item.color }} />
+                        <p className="truncate text-sm font-medium text-[var(--fg-text)]">{item.label}</p>
+                      </div>
+                      <p className="text-xs text-[var(--fg-muted)]">{formatMinutes(item.productiveMinutes)}</p>
                     </div>
-                    <p className="text-xs text-[var(--fg-muted)]">{formatMinutes(item.productiveMinutes)}</p>
+                    <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white">
+                      <div
+                        className="h-full rounded-full"
+                        style={{
+                          width: `${tagBreakdownWidth(item.productiveMinutes, analyticsSnapshot.tagBreakdown7d)}%`,
+                          background: item.color,
+                        }}
+                      />
+                    </div>
+                    <p className="mt-1 text-xs text-[var(--fg-muted)]">
+                      {item.sessions} session{item.sessions === 1 ? '' : 's'} · {formatMinutes(item.distractedMinutes)} distracted
+                    </p>
                   </div>
-                  <p className="mt-1 text-xs text-[var(--fg-muted)]">
-                    {item.sessions} session{item.sessions === 1 ? '' : 's'} · {formatMinutes(item.distractedMinutes)} distracted
-                  </p>
-                </div>
-              ))
-            )}
+                ))
+              )}
+            </div>
+          </div>
+
+          <div className="fg-card p-4">
+            <div className="mb-3 flex items-center gap-2">
+              <h3 className="text-sm font-semibold text-[var(--fg-text)]">Difficulty matrix</h3>
+              <InfoTip text="Difficulty is a five-rank scale. Focus score compares productive minutes against distracted and away time." />
+            </div>
+            <div className="space-y-2">
+              {analyticsSnapshot.difficultyBreakdown7d.length === 0 ? (
+                <EmptyCard text="No difficulty data yet." />
+              ) : (
+                analyticsSnapshot.difficultyBreakdown7d.map((item) => (
+                  <div
+                    key={item.difficultyRank}
+                    className="rounded-[18px] border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-3.5 py-3"
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="text-sm font-medium text-[var(--fg-text)]">Difficulty {item.difficultyRank}</p>
+                      <p className="text-xs text-[var(--fg-muted)]">{item.focusScore}% focus score</p>
+                    </div>
+                    <p className="mt-1 text-xs text-[var(--fg-muted)]">
+                      {formatMinutes(item.productiveMinutes)} productive · {formatMinutes(item.distractedMinutes)} distracted · {item.sessions} session{item.sessions === 1 ? '' : 's'}
+                    </p>
+                  </div>
+                ))
+              )}
+            </div>
           </div>
         </div>
-      </section>
 
-      <section className="grid gap-4 xl:grid-cols-[minmax(0,0.82fr),minmax(0,1.18fr)]">
-        <div className="fg-card p-5">
-          <div className="mb-3 flex items-center gap-2">
-            <h3 className="text-sm font-semibold text-[var(--fg-text)]">Difficulty matrix</h3>
-            <InfoTip text="Difficulty is a five-rank scale. Focus score measures productive minutes against distracted and away time." />
-          </div>
-          <div className="space-y-2">
-            {analyticsSnapshot.difficultyBreakdown7d.length === 0 ? (
-              <EmptyCard text="No difficulty data yet." />
-            ) : (
-              analyticsSnapshot.difficultyBreakdown7d.map((item) => (
-                <div
-                  key={item.difficultyRank}
-                  className="rounded-[20px] border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-4 py-3"
-                >
-                  <div className="flex items-center justify-between gap-3">
-                    <p className="text-sm font-medium text-[var(--fg-text)]">Difficulty {item.difficultyRank}</p>
-                    <p className="text-xs text-[var(--fg-muted)]">{item.focusScore}% focus score</p>
-                  </div>
-                  <p className="mt-1 text-xs text-[var(--fg-muted)]">
-                    {formatMinutes(item.productiveMinutes)} productive · {formatMinutes(item.distractedMinutes)} distracted · {item.sessions} session{item.sessions === 1 ? '' : 's'}
-                  </p>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
-
-        <div className="fg-card p-5">
+        <div className="fg-card p-4">
           <div className="mb-3 flex items-center gap-2">
             <h3 className="text-sm font-semibold text-[var(--fg-text)]">Recent sessions</h3>
             <InfoTip text="Override tag or difficulty here when Window inferred the wrong classification." />
@@ -1894,10 +1941,189 @@ function AnalyticsMetricCard({
   value: string;
 }): React.JSX.Element {
   return (
-    <div className="rounded-[22px] border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-4 py-3">
+    <div className="rounded-[18px] border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-3.5 py-3">
       <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-[var(--fg-muted)]">{label}</p>
-      <p className="mt-2 text-2xl font-semibold tracking-[-0.03em] text-[var(--fg-text)]">{value}</p>
+      <p className="mt-1.5 text-xl font-semibold tracking-[-0.03em] text-[var(--fg-text)]">{value}</p>
     </div>
+  );
+}
+
+function ConsumptionTimelineChart({
+  points,
+}: {
+  points: AnalyticsSnapshot['consumptionTimeline7d'];
+}): React.JSX.Element {
+  const max = Math.max(
+    0,
+    ...points.map((point) =>
+      Math.max(point.productiveMinutes, point.supportiveMinutes, point.distractedMinutes),
+    ),
+  );
+
+  if (points.length === 0 || max <= 0) {
+    return <EmptyCard text="No page-level consumption has been recorded yet." />;
+  }
+
+  const chartWidth = 560;
+  const chartHeight = 180;
+  const paddingX = 14;
+  const paddingY = 18;
+
+  return (
+    <div className="space-y-3">
+      <div className="rounded-[20px] border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-3 py-3">
+        <svg viewBox={`0 0 ${chartWidth} ${chartHeight}`} className="h-[180px] w-full">
+          {points.map((point, index) => {
+            const x = chartX(index, points.length, chartWidth, paddingX);
+            return (
+              <line
+                key={point.date}
+                x1={x}
+                x2={x}
+                y1={paddingY}
+                y2={chartHeight - paddingY}
+                stroke={index === points.length - 1 ? 'rgba(37,99,235,0.16)' : 'rgba(148,163,184,0.18)'}
+                strokeDasharray="3 6"
+              />
+            );
+          })}
+          <path d={buildLinePath(points, (point) => point.productiveMinutes, max, chartWidth, chartHeight, paddingX, paddingY)} fill="none" stroke="#2563eb" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+          <path d={buildLinePath(points, (point) => point.supportiveMinutes, max, chartWidth, chartHeight, paddingX, paddingY)} fill="none" stroke="#0f766e" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+          <path d={buildLinePath(points, (point) => point.distractedMinutes, max, chartWidth, chartHeight, paddingX, paddingY)} fill="none" stroke="#dc2626" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+          {points.map((point, index) => (
+            <circle
+              key={`${point.date}-productive`}
+              cx={chartX(index, points.length, chartWidth, paddingX)}
+              cy={chartY(point.productiveMinutes, max, chartHeight, paddingY)}
+              r="3.5"
+              fill="#2563eb"
+            />
+          ))}
+        </svg>
+      </div>
+
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap gap-3 text-xs text-[var(--fg-muted)]">
+          <ChartLegend color="#2563eb" label="Productive" />
+          <ChartLegend color="#0f766e" label="Supportive" />
+          <ChartLegend color="#dc2626" label="Distracted" />
+        </div>
+        <div className="flex flex-wrap gap-3 text-xs text-[var(--fg-muted)]">
+          {points.map((point) => (
+            <span key={point.date}>
+              {point.label} {formatMinutes(point.totalMinutes)}
+            </span>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ConsumptionBreakdownList({
+  items,
+}: {
+  items: AnalyticsSnapshot['domainBreakdown7d'];
+}): React.JSX.Element {
+  const max = Math.max(0, ...items.map((item) => item.totalMinutes));
+
+  if (items.length === 0) {
+    return <EmptyCard text="No domains have been tracked yet." />;
+  }
+
+  return (
+    <div className="space-y-2">
+      {items.map((item) => (
+        <div key={item.domain} className="rounded-[18px] border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-3.5 py-3">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="truncate text-sm font-medium text-[var(--fg-text)]">{item.label}</p>
+              <p className="mt-1 text-xs text-[var(--fg-muted)]">
+                {item.visits} visit{item.visits === 1 ? '' : 's'} · {humanizeActivityClass(item.primaryActivityClass)}
+              </p>
+            </div>
+            <span className="text-xs font-medium text-[var(--fg-muted)]">{formatMinutes(item.totalMinutes)}</span>
+          </div>
+          <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white">
+            <div
+              className={`h-full rounded-full ${activityBarClass(item.primaryActivityClass)}`}
+              style={{ width: `${max > 0 ? (item.totalMinutes / max) * 100 : 0}%` }}
+            />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function ConsumptionTreeView({
+  nodes,
+}: {
+  nodes: AnalyticsSnapshot['consumptionTree7d'];
+}): React.JSX.Element {
+  const max = Math.max(0, ...nodes.map((node) => node.totalMinutes));
+
+  if (nodes.length === 0) {
+    return <EmptyCard text="The domain tree will appear once page telemetry accumulates." />;
+  }
+
+  return (
+    <div className="space-y-1">
+      {nodes.map((node) => (
+        <ConsumptionTreeNodeRow key={node.id} node={node} max={max} />
+      ))}
+    </div>
+  );
+}
+
+function ConsumptionTreeNodeRow({
+  node,
+  max,
+}: {
+  node: AnalyticsSnapshot['consumptionTree7d'][number];
+  max: number;
+}): React.JSX.Element {
+  const activityClass = dominantTreeActivityClass(node);
+
+  return (
+    <div className="space-y-1">
+      <div
+        className="grid grid-cols-[minmax(0,1fr),84px] items-center gap-3 border-b border-[var(--fg-border)] py-2 last:border-b-0"
+        style={{ paddingLeft: `${node.depth * 14}px` }}
+      >
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <span className={`h-2 w-2 rounded-full ${activityBarClass(activityClass)}`} />
+            <p className="truncate text-sm font-medium text-[var(--fg-text)]">{node.label}</p>
+          </div>
+          <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-[var(--fg-panel-soft)]">
+            <div
+              className={`h-full rounded-full ${activityBarClass(activityClass)}`}
+              style={{ width: `${max > 0 ? (node.totalMinutes / max) * 100 : 0}%` }}
+            />
+          </div>
+        </div>
+        <span className="text-right text-xs text-[var(--fg-muted)]">{formatMinutes(node.totalMinutes)}</span>
+      </div>
+      {node.children.slice(0, 4).map((child) => (
+        <ConsumptionTreeNodeRow key={child.id} node={child} max={max} />
+      ))}
+    </div>
+  );
+}
+
+function ChartLegend({
+  color,
+  label,
+}: {
+  color: string;
+  label: string;
+}): React.JSX.Element {
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      <span className="h-2.5 w-2.5 rounded-full" style={{ background: color }} />
+      {label}
+    </span>
   );
 }
 
@@ -2206,23 +2432,81 @@ function formatSessionRange(session: FocusSessionRecord): string {
   })}`;
 }
 
-function buildDailyTrend(sessions: FocusSessionRecord[]): Array<{
-  label: string;
-  productiveMinutes: number;
-  percent: number;
-}> {
-  const byDay = new Map<string, number>();
-  for (const session of sessions.slice(0, 21)) {
-    const label = new Date(session.startedAt).toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' });
-    byDay.set(label, (byDay.get(label) ?? 0) + session.productiveMinutes);
-  }
+function chartX(
+  index: number,
+  count: number,
+  width: number,
+  paddingX: number,
+): number {
+  if (count <= 1) return width / 2;
+  const usableWidth = width - paddingX * 2;
+  return paddingX + (usableWidth / (count - 1)) * index;
+}
 
-  const max = Math.max(0, ...byDay.values());
-  return [...byDay.entries()].map(([label, productiveMinutes]) => ({
-    label,
-    productiveMinutes,
-    percent: max > 0 ? (productiveMinutes / max) * 100 : 0,
-  }));
+function chartY(
+  value: number,
+  max: number,
+  height: number,
+  paddingY: number,
+): number {
+  const usableHeight = height - paddingY * 2;
+  if (max <= 0) return height - paddingY;
+  return height - paddingY - (value / max) * usableHeight;
+}
+
+function buildLinePath<T>(
+  points: T[],
+  getValue: (point: T) => number,
+  max: number,
+  width: number,
+  height: number,
+  paddingX: number,
+  paddingY: number,
+): string {
+  return points
+    .map((point, index) => {
+      const x = chartX(index, points.length, width, paddingX);
+      const y = chartY(getValue(point), max, height, paddingY);
+      return `${index === 0 ? 'M' : 'L'} ${x} ${y}`;
+    })
+    .join(' ');
+}
+
+function tagBreakdownWidth(
+  productiveMinutes: number,
+  items: AnalyticsSnapshot['tagBreakdown7d'],
+): number {
+  const max = Math.max(0, ...items.map((item) => item.productiveMinutes));
+  return max > 0 ? (productiveMinutes / max) * 100 : 0;
+}
+
+function humanizeActivityClass(value: 'aligned' | 'supportive' | 'distracted' | 'away' | 'break'): string {
+  if (value === 'aligned') return 'Mostly productive';
+  if (value === 'supportive') return 'Mostly supportive';
+  if (value === 'distracted') return 'Mostly distracted';
+  if (value === 'away') return 'Mostly away';
+  return 'Mostly on break';
+}
+
+function activityBarClass(value: 'aligned' | 'supportive' | 'distracted' | 'away' | 'break'): string {
+  if (value === 'aligned') return 'bg-blue-600';
+  if (value === 'supportive') return 'bg-emerald-600';
+  if (value === 'distracted') return 'bg-rose-500';
+  if (value === 'away') return 'bg-slate-400';
+  return 'bg-amber-500';
+}
+
+function dominantTreeActivityClass(
+  node: AnalyticsSnapshot['consumptionTree7d'][number],
+): 'aligned' | 'supportive' | 'distracted' | 'away' | 'break' {
+  const entries: Array<['aligned' | 'supportive' | 'distracted' | 'away' | 'break', number]> = [
+    ['aligned', node.productiveMinutes],
+    ['supportive', node.supportiveMinutes],
+    ['distracted', node.distractedMinutes],
+    ['away', node.awayMinutes],
+    ['break', node.breakMinutes],
+  ];
+  return entries.sort((a, b) => b[1] - a[1])[0][0];
 }
 
 function formatMinutes(value: number): string {

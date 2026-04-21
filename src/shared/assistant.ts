@@ -74,7 +74,7 @@ export function parseDomainFromUrl(url: string): string | null {
   try {
     const parsed = new URL(url);
     if (!/^https?:$/.test(parsed.protocol)) return null;
-    return parsed.hostname || null;
+    return parsed.hostname.toLowerCase() || null;
   } catch {
     return null;
   }

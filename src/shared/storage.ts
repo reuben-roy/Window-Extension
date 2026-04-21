@@ -1,6 +1,7 @@
 import type {
   ActiveActivitySessionState,
   ActiveFocusSessionState,
+  ActiveLocalActivityState,
   AccountConflict,
   AccountSyncState,
   AccountUser,
@@ -23,6 +24,7 @@ import type {
   IdeaRecord,
   KeywordRule,
   LaunchExecutionState,
+  LocalActivityRecord,
   OpenClawState,
   PointsHistory,
   Profiles,
@@ -235,6 +237,8 @@ const DEFAULT_CALENDAR_STATE: CalendarState = {
   activeRuleName: null,
   primaryTagKey: null,
   primaryTagLabel: null,
+  secondaryTagKeys: [],
+  secondaryTagLabels: [],
   difficultyRank: null,
   allowedDomains: [],
   recentEventTitles: [],
@@ -325,6 +329,13 @@ export const setActiveActivitySession = (
   session: ActiveActivitySessionState | null,
 ): Promise<void> => setLocal('activeActivitySession', session);
 
+export const getActiveLocalActivity = (): Promise<ActiveLocalActivityState | null> =>
+  getLocal<ActiveLocalActivityState | null>('activeLocalActivity', null);
+
+export const setActiveLocalActivity = (
+  session: ActiveLocalActivityState | null,
+): Promise<void> => setLocal('activeLocalActivity', session);
+
 export const getActivitySessionQueue = (): Promise<ActivitySessionRecord[]> =>
   getLocal<ActivitySessionRecord[]>('activitySessionQueue', []);
 
@@ -342,6 +353,12 @@ export const getActivityHistory = (): Promise<ActivitySessionRecord[]> =>
 
 export const setActivityHistory = (items: ActivitySessionRecord[]): Promise<void> =>
   setLocal('activityHistory', items);
+
+export const getLocalActivityHistory = (): Promise<LocalActivityRecord[]> =>
+  getLocal<LocalActivityRecord[]>('localActivityHistory', []);
+
+export const setLocalActivityHistory = (items: LocalActivityRecord[]): Promise<void> =>
+  setLocal('localActivityHistory', items);
 
 export const getFocusSessionHistory = (): Promise<FocusSessionRecord[]> =>
   getLocal<FocusSessionRecord[]>('focusSessionHistory', []);

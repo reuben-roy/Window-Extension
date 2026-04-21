@@ -34,6 +34,7 @@ export interface TaskTag {
   alignedDomains: string[];
   supportiveDomains: string[];
   source: TaskTagSource;
+  archivedAt: string | null;
   updatedAt: string;
 }
 
@@ -41,6 +42,7 @@ export interface EventRule {
   eventTitle: string;
   domains: string[];
   tagKey: string | null;
+  secondaryTagKeys: string[];
   difficultyOverride: DifficultyRank | null;
 }
 
@@ -301,6 +303,7 @@ export interface ActivitySessionRecord {
   endedAt: string;
   activityClass: ActivityClass;
   tagKey: string | null;
+  secondaryTagKeys: string[];
   difficultyRank: DifficultyRank | null;
   sourceRuleType: ActiveRuleSource;
   sourceRuleName: string | null;
@@ -317,6 +320,7 @@ export interface FocusSessionRecord {
   sourceRuleType: ActiveRuleSource;
   sourceRuleName: string | null;
   tagKey: string | null;
+  secondaryTagKeys: string[];
   difficultyRank: DifficultyRank | null;
   productiveMinutes: number;
   supportiveMinutes: number;
@@ -366,11 +370,50 @@ export interface AnalyticsSummary {
   leftEarlyCount: number;
 }
 
+export interface ConsumptionDomainItem {
+  domain: string;
+  label: string;
+  productiveMinutes: number;
+  supportiveMinutes: number;
+  distractedMinutes: number;
+  awayMinutes: number;
+  breakMinutes: number;
+  totalMinutes: number;
+  visits: number;
+  primaryActivityClass: ActivityClass;
+}
+
+export interface ConsumptionTimelinePoint {
+  date: string;
+  label: string;
+  productiveMinutes: number;
+  supportiveMinutes: number;
+  distractedMinutes: number;
+  awayMinutes: number;
+  breakMinutes: number;
+  totalMinutes: number;
+}
+
+export interface ConsumptionTreeNode {
+  id: string;
+  label: string;
+  depth: number;
+  productiveMinutes: number;
+  supportiveMinutes: number;
+  distractedMinutes: number;
+  awayMinutes: number;
+  breakMinutes: number;
+  totalMinutes: number;
+  children: ConsumptionTreeNode[];
+}
+
 export interface LiveAnalyticsSession {
   focusSessionId: string;
   eventTitle: string;
   tagKey: string | null;
   tagLabel: string | null;
+  secondaryTagKeys: string[];
+  secondaryTagLabels: string[];
   difficultyRank: DifficultyRank | null;
   sourceRuleType: ActiveRuleSource;
   sourceRuleName: string | null;
@@ -390,6 +433,9 @@ export interface AnalyticsSnapshot {
   summary30d: AnalyticsSummary;
   tagBreakdown7d: TagBreakdownItem[];
   difficultyBreakdown7d: DifficultyBreakdownItem[];
+  domainBreakdown7d: ConsumptionDomainItem[];
+  consumptionTimeline7d: ConsumptionTimelinePoint[];
+  consumptionTree7d: ConsumptionTreeNode[];
   recentSessions: FocusSessionRecord[];
   lastCalculatedAt: string | null;
   lastSyncedAt: string | null;
@@ -400,6 +446,22 @@ export interface AnalyticsOverrideInput {
   tagKey: string | null;
   difficultyRank: DifficultyRank | null;
 }
+
+export interface LocalActivityRecord {
+  id: string;
+  focusSessionId: string;
+  calendarEventId: string;
+  eventTitle: string;
+  domain: string | null;
+  tabTitle: string | null;
+  startedAt: string;
+  endedAt: string;
+  activityClass: ActivityClass;
+  primaryTagKey: string | null;
+  secondaryTagKeys: string[];
+}
+
+export interface ActiveLocalActivityState extends LocalActivityRecord {}
 
 export interface RecommendationCard {
   id: string;
@@ -472,6 +534,8 @@ export interface CalendarEvent {
   start: string; // ISO string
   end: string;   // ISO string
   isAllDay: boolean;
+  description: string | null;
+  attendees: string[];
   googleColorId?: string;
   backgroundColor?: string | null;
   foregroundColor?: string | null;
@@ -508,6 +572,10 @@ export interface CalendarState {
   primaryTagKey: string | null;
   /** Human-friendly label for the resolved primary tag. */
   primaryTagLabel: string | null;
+  /** Secondary tags inferred for the active event. */
+  secondaryTagKeys: string[];
+  /** Human-friendly labels for the inferred secondary tags. */
+  secondaryTagLabels: string[];
   /** Resolved difficulty rank for the active event. */
   difficultyRank: DifficultyRank | null;
   /**

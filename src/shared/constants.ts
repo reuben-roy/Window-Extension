@@ -70,6 +70,7 @@ export const DEFAULT_TASK_TAGS: TaskTag[] = [
     alignedDomains: ['github.com', 'gitlab.com', 'localhost', 'linear.app'],
     supportiveDomains: ['stackoverflow.com', 'developer.mozilla.org', 'docs.google.com'],
     source: 'seed',
+    archivedAt: null,
     updatedAt: DEFAULT_TAG_UPDATED_AT,
   },
   {
@@ -81,6 +82,7 @@ export const DEFAULT_TASK_TAGS: TaskTag[] = [
     alignedDomains: ['arxiv.org', 'scholar.google.com', 'semanticscholar.org'],
     supportiveDomains: ['google.com', 'wikipedia.org', 'youtube.com'],
     source: 'seed',
+    archivedAt: null,
     updatedAt: DEFAULT_TAG_UPDATED_AT,
   },
   {
@@ -92,6 +94,7 @@ export const DEFAULT_TASK_TAGS: TaskTag[] = [
     alignedDomains: ['docs.google.com', 'notion.so', 'quip.com'],
     supportiveDomains: ['grammarly.com', 'dictionary.com'],
     source: 'seed',
+    archivedAt: null,
     updatedAt: DEFAULT_TAG_UPDATED_AT,
   },
   {
@@ -103,6 +106,7 @@ export const DEFAULT_TASK_TAGS: TaskTag[] = [
     alignedDomains: ['mail.google.com', 'calendar.google.com', 'drive.google.com'],
     supportiveDomains: ['docs.google.com', 'sheets.google.com'],
     source: 'seed',
+    archivedAt: null,
     updatedAt: DEFAULT_TAG_UPDATED_AT,
   },
   {
@@ -114,6 +118,7 @@ export const DEFAULT_TASK_TAGS: TaskTag[] = [
     alignedDomains: ['coursera.org', 'udemy.com', 'leetcode.com'],
     supportiveDomains: ['youtube.com', 'docs.google.com'],
     source: 'seed',
+    archivedAt: null,
     updatedAt: DEFAULT_TAG_UPDATED_AT,
   },
   {
@@ -125,6 +130,7 @@ export const DEFAULT_TASK_TAGS: TaskTag[] = [
     alignedDomains: ['figma.com', 'miro.com', 'canva.com'],
     supportiveDomains: ['dribbble.com', 'behance.net'],
     source: 'seed',
+    archivedAt: null,
     updatedAt: DEFAULT_TAG_UPDATED_AT,
   },
   {
@@ -136,6 +142,7 @@ export const DEFAULT_TASK_TAGS: TaskTag[] = [
     alignedDomains: ['meet.google.com', 'zoom.us', 'slack.com'],
     supportiveDomains: ['calendar.google.com', 'docs.google.com'],
     source: 'seed',
+    archivedAt: null,
     updatedAt: DEFAULT_TAG_UPDATED_AT,
   },
 ];
@@ -159,6 +166,9 @@ export const DEFAULT_ANALYTICS_SNAPSHOT: AnalyticsSnapshot = {
   summary30d: createEmptyAnalyticsSummary('30d'),
   tagBreakdown7d: [],
   difficultyBreakdown7d: [],
+  domainBreakdown7d: [],
+  consumptionTimeline7d: [],
+  consumptionTree7d: [],
   recentSessions: [],
   lastCalculatedAt: null,
   lastSyncedAt: null,
