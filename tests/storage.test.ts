@@ -3,8 +3,19 @@ import {
   getActiveFocusSession,
   getAnalyticsSnapshot,
   getCalendarState,
+  getExtendedTaskAssignments,
+  getExtendedTaskSets,
   getEventRules,
 } from '../src/shared/storage';
+
+function getStorageAreaValue<T>(
+  area: chrome.storage.StorageArea,
+  key: string,
+): Promise<T | undefined> {
+  return new Promise((resolve) => {
+    area.get(key, (result) => resolve(result[key] as T | undefined));
+  });
+}
 
 describe('storage normalization', () => {
   beforeEach(() => {
@@ -130,5 +141,116 @@ describe('storage normalization', () => {
     expect(snapshot.summary30d.totalFocusSessions).toBe(0);
     expect(snapshot.recentSessions[0].secondaryTagKeys).toEqual([]);
     expect(activeSession?.session.secondaryTagKeys).toEqual([]);
+  });
+
+  it('normalizes and migrates extended task sets and assignments from sync storage into local storage', async () => {
+    chrome.storage.sync.set({
+      extendedTaskSets: [
+        {
+          id: 'set-1',
+          title: 'Late code sprint',
+          items: [
+            { id: 'item-1', label: 'Question 1', url: 'https://leetcode.com/q1' },
+          ],
+          createdAt: '2026-04-21T16:00:00.000Z',
+          updatedAt: '2026-04-21T16:00:00.000Z',
+        },
+      ],
+      extendedTaskAssignments: [
+        {
+          id: 'assignment-1',
+          calendarEventId: 'evt-1',
+          eventTitle: 'Late code sprint',
+          start: '2026-04-21T16:00:00.000Z',
+          end: '2026-04-21T17:00:00.000Z',
+          setId: 'set-1',
+          setTitle: 'Late code sprint',
+          items: [
+            {
+              id: 'assignment-item-1',
+              label: 'Question 1',
+              url: 'https://leetcode.com/q1',
+            },
+          ],
+          createdAt: '2026-04-21T16:00:00.000Z',
+          updatedAt: '2026-04-21T16:00:00.000Z',
+        },
+      ],
+    });
+
+    expect(await getStorageAreaValue(chrome.storage.local, 'extendedTaskSets')).toBeUndefined();
+    expect(await getStorageAreaValue(chrome.storage.local, 'extendedTaskAssignments')).toBeUndefined();
+
+    expect(await getExtendedTaskSets()).toEqual([
+      {
+        id: 'set-1',
+        title: 'Late code sprint',
+        items: [
+          { id: 'item-1', label: 'Question 1', url: 'https://leetcode.com/q1' },
+        ],
+        createdAt: '2026-04-21T16:00:00.000Z',
+        updatedAt: '2026-04-21T16:00:00.000Z',
+        archivedAt: null,
+      },
+    ]);
+
+    expect(await getStorageAreaValue(chrome.storage.sync, 'extendedTaskSets')).toBeUndefined();
+    expect(await getStorageAreaValue(chrome.storage.local, 'extendedTaskSets')).toEqual([
+      {
+        id: 'set-1',
+        title: 'Late code sprint',
+        items: [
+          { id: 'item-1', label: 'Question 1', url: 'https://leetcode.com/q1' },
+        ],
+        createdAt: '2026-04-21T16:00:00.000Z',
+        updatedAt: '2026-04-21T16:00:00.000Z',
+        archivedAt: null,
+      },
+    ]);
+
+    expect(await getExtendedTaskAssignments()).toEqual([
+      {
+        id: 'assignment-1',
+        calendarEventId: 'evt-1',
+        eventTitle: 'Late code sprint',
+        start: '2026-04-21T16:00:00.000Z',
+        end: '2026-04-21T17:00:00.000Z',
+        setId: 'set-1',
+        setTitle: 'Late code sprint',
+        items: [
+          {
+            id: 'assignment-item-1',
+            label: 'Question 1',
+            url: 'https://leetcode.com/q1',
+            completedAt: null,
+          },
+        ],
+        createdAt: '2026-04-21T16:00:00.000Z',
+        updatedAt: '2026-04-21T16:00:00.000Z',
+      },
+    ]);
+
+    expect(await getStorageAreaValue(chrome.storage.sync, 'extendedTaskAssignments')).toBeUndefined();
+    expect(await getStorageAreaValue(chrome.storage.local, 'extendedTaskAssignments')).toEqual([
+      {
+        id: 'assignment-1',
+        calendarEventId: 'evt-1',
+        eventTitle: 'Late code sprint',
+        start: '2026-04-21T16:00:00.000Z',
+        end: '2026-04-21T17:00:00.000Z',
+        setId: 'set-1',
+        setTitle: 'Late code sprint',
+        items: [
+          {
+            id: 'assignment-item-1',
+            label: 'Question 1',
+            url: 'https://leetcode.com/q1',
+            completedAt: null,
+          },
+        ],
+        createdAt: '2026-04-21T16:00:00.000Z',
+        updatedAt: '2026-04-21T16:00:00.000Z',
+      },
+    ]);
   });
 });

@@ -68,22 +68,22 @@ export default function CalendarConnect({
   // ── Never connected: show the initial connect CTA ──────────────────────────
   if (neverConnected) {
     return (
-      <div className="rounded-xl bg-blue-50 border border-blue-100 px-3 py-3">
-        <p className="text-xs font-semibold text-blue-800 mb-1">
+      <div className="rounded-lg bg-blue-50 border border-blue-100 px-2.5 py-2">
+        <p className="text-[11px] font-semibold text-blue-800 mb-0.5">
           Connect your Google Calendar
         </p>
-        <p className="text-[10px] text-blue-600 leading-relaxed mb-2.5">
+        <p className="text-[9px] text-blue-600 leading-relaxed mb-2">
           Window reads your calendar to know when to block distracting websites.
           No events are modified — only read access is requested.
         </p>
         <button
           onClick={handleConnect}
           disabled={connecting}
-          className="w-full py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+          className="fg-button-primary w-full text-[11px]"
         >
           {connecting ? 'Connecting…' : 'Connect Calendar'}
         </button>
-        {error && <p className="text-[10px] text-red-500 mt-1.5">{error}</p>}
+        {error && <p className="text-[9px] text-red-500 mt-1">{error}</p>}
       </div>
     );
   }
@@ -91,21 +91,21 @@ export default function CalendarConnect({
   // ── Auth error: was connected, token expired or revoked ────────────────────
   if (hasError) {
     return (
-      <div className="rounded-xl bg-red-50 border border-red-100 px-3 py-2.5">
-        <p className="text-[10px] font-semibold text-red-400 uppercase tracking-wide mb-0.5">
+      <div className="rounded-lg bg-red-50 border border-red-100 px-2.5 py-2">
+        <p className="text-[9px] font-semibold text-red-400 uppercase tracking-wide mb-0.5">
           Calendar disconnected
         </p>
-        <p className="text-xs text-red-600 leading-relaxed mb-2">
+        <p className="text-[11px] text-red-600 leading-relaxed mb-1.5">
           {authError}
         </p>
         <button
           onClick={handleConnect}
           disabled={connecting}
-          className="w-full py-1.5 bg-red-600 text-white text-xs font-semibold rounded-lg hover:bg-red-700 disabled:opacity-50 transition-colors"
+          className="fg-button-primary w-full text-[11px] bg-red-600 hover:bg-red-700"
         >
           {connecting ? 'Reconnecting…' : 'Reconnect Calendar'}
         </button>
-        {error && <p className="text-[10px] text-red-500 mt-1.5">{error}</p>}
+        {error && <p className="text-[9px] text-red-500 mt-1">{error}</p>}
       </div>
     );
   }

@@ -51,6 +51,39 @@ describe('account snapshot helpers', () => {
           tagKey: 'research',
         },
       ],
+      extendedTaskSets: [
+        {
+          id: 'set-1',
+          title: 'Late code sprint',
+          items: [
+            { id: 'item-1', label: 'Question 1', url: 'https://leetcode.com/q1' },
+          ],
+          createdAt: '2026-04-21T16:00:00.000Z',
+          updatedAt: '2026-04-21T16:00:00.000Z',
+          archivedAt: null,
+        },
+      ],
+      extendedTaskAssignments: [
+        {
+          id: 'assignment-1',
+          calendarEventId: 'evt-1',
+          eventTitle: 'Late code sprint',
+          start: '2026-04-21T16:00:00.000Z',
+          end: '2026-04-21T17:00:00.000Z',
+          setId: 'set-1',
+          setTitle: 'Late code sprint',
+          items: [
+            {
+              id: 'assignment-item-1',
+              label: 'Question 1',
+              url: 'https://leetcode.com/q1',
+              completedAt: null,
+            },
+          ],
+          createdAt: '2026-04-21T16:00:00.000Z',
+          updatedAt: '2026-04-21T16:00:00.000Z',
+        },
+      ],
       globalAllowlist: ['accounts.google.com', 'calendar.google.com'],
     });
 
@@ -59,6 +92,8 @@ describe('account snapshot helpers', () => {
     expect(snapshot.allTimeStats.totalPoints).toBe(120);
     expect(snapshot.pointsHistory['2026-W15']?.earned).toBe(80);
     expect(snapshot.profiles['Deep Work']).toEqual(['docs.google.com', 'github.com']);
+    expect(snapshot.extendedTaskSets).toHaveLength(1);
+    expect(snapshot.extendedTaskAssignments).toHaveLength(1);
     expect(snapshot.globalAllowlist).toEqual(['accounts.google.com', 'calendar.google.com']);
     expect(accountSnapshotHasUserData(snapshot)).toBe(true);
   });
@@ -91,6 +126,39 @@ describe('account snapshot helpers', () => {
       eventBindings: {},
       eventRules: [],
       keywordRules: [],
+      extendedTaskSets: [
+        {
+          id: 'set-1',
+          title: 'Late code sprint',
+          items: [
+            { id: 'item-1', label: 'Question 1', url: 'https://leetcode.com/q1' },
+          ],
+          createdAt: '2026-04-21T16:00:00.000Z',
+          updatedAt: '2026-04-21T16:00:00.000Z',
+          archivedAt: null,
+        },
+      ],
+      extendedTaskAssignments: [
+        {
+          id: 'assignment-1',
+          calendarEventId: 'evt-1',
+          eventTitle: 'Late code sprint',
+          start: '2026-04-21T16:00:00.000Z',
+          end: '2026-04-21T17:00:00.000Z',
+          setId: 'set-1',
+          setTitle: 'Late code sprint',
+          items: [
+            {
+              id: 'assignment-item-1',
+              label: 'Question 1',
+              url: 'https://leetcode.com/q1',
+              completedAt: null,
+            },
+          ],
+          createdAt: '2026-04-21T16:00:00.000Z',
+          updatedAt: '2026-04-21T16:00:00.000Z',
+        },
+      ],
       globalAllowlist: ['accounts.google.com'],
     });
 
@@ -102,5 +170,13 @@ describe('account snapshot helpers', () => {
 
   it('treats the default empty snapshot as no user data', () => {
     expect(accountSnapshotHasUserData(createEmptyAccountSnapshot())).toBe(false);
+  });
+
+  it('does not include built-in roadmap templates in account snapshots unless the user duplicates them', async () => {
+    const snapshot = await buildAccountSnapshotFromStorage();
+
+    expect(snapshot.extendedTaskSets).toEqual([]);
+    expect(snapshot.extendedTaskAssignments).toEqual([]);
+    expect(snapshot.extendedTaskSets.find((taskSet) => taskSet.id === 'neetcode-150-master')).toBeUndefined();
   });
 });

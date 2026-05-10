@@ -31,55 +31,57 @@ export default function TaskQueue({ tasks }: Props): React.JSX.Element | null {
       : `${active.length} active task${active.length === 1 ? '' : 's'}`;
 
   return (
-    <div className="overflow-hidden rounded-[20px] border border-violet-100 bg-violet-50/70">
+    <div className="overflow-hidden rounded-lg border border-[var(--fg-border)] bg-white">
       <button
-        className="flex w-full items-center justify-between px-3 py-1.5 text-left"
+        className="flex w-full items-center justify-between px-3 py-2 text-left"
         onClick={() => setExpanded((v) => !v)}
         aria-expanded={expanded}
       >
-        <span className="text-sm font-semibold text-violet-700">{headerText}</span>
-        <span className="text-[10px] font-medium text-violet-400">
+        <span className="text-xs font-semibold text-[var(--fg-text)]">{headerText}</span>
+        <span className="rounded-md bg-[var(--fg-panel-soft)] px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-[var(--fg-muted)]">
           {expanded ? 'hide ▲' : 'show ▼'}
         </span>
       </button>
 
       {expanded && (
-        <ul className="space-y-2 border-t border-violet-100 px-3 pb-2.5 pt-2">
+        <ul className="space-y-1.5 border-t border-[var(--fg-border)] px-3 pb-3 pt-2">
           {pending.map((task) => {
             const daysLeft = task.expiresAt ? daysUntilExpiry(task.expiresAt) : null;
             const isUrgent = daysLeft !== null && daysLeft <= 2;
 
             return (
               <li key={task.id}>
-                <div className="flex items-start justify-between gap-2">
-                  <p className="truncate text-[11px] font-semibold leading-snug text-slate-900">
-                    {task.eventTitle}
-                  </p>
-                  {task.status === 'carryover' && (
-                    <span className="flex-shrink-0 rounded bg-violet-200 px-1.5 py-0.5 text-[10px] font-medium text-violet-700">
-                      carryover
+                <div className="rounded-md border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-2.5 py-2">
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="truncate text-xs font-semibold leading-snug text-[var(--fg-text)]">
+                      {task.eventTitle}
+                    </p>
+                    {task.status === 'carryover' && (
+                      <span className="flex-shrink-0 rounded-md bg-[var(--fg-accent-soft)] px-1.5 py-0.5 text-[10px] font-medium text-[var(--fg-accent)]">
+                        carryover
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                    <span className="rounded-md border border-[var(--fg-border)] bg-white px-1.5 py-0.5 text-[10px] font-medium text-[var(--fg-text)]">
+                      {task.profile}
                     </span>
-                  )}
-                </div>
 
-                <div className="mt-0.5 flex flex-wrap items-center gap-2">
-                  <span className="rounded-full bg-white px-1.5 py-0.5 text-[10px] text-violet-600">
-                    {task.profile}
-                  </span>
-
-                  <span className="text-[10px] text-[var(--fg-muted)]">
-                    {formatScheduledDate(task.scheduledStart)}
-                  </span>
-
-                  {daysLeft !== null && (
-                    <span
-                      className={`text-[10px] font-medium ${
-                        isUrgent ? 'text-rose-500' : 'text-[var(--fg-muted)]'
-                      }`}
-                    >
-                      {isUrgent ? `urgent · ${daysLeft}d left` : `expires in ${daysLeft}d`}
+                    <span className="text-[10px] text-[var(--fg-muted)]">
+                      {formatScheduledDate(task.scheduledStart)}
                     </span>
-                  )}
+
+                    {daysLeft !== null && (
+                      <span
+                        className={`text-[10px] font-medium ${
+                          isUrgent ? 'text-rose-500' : 'text-[var(--fg-muted)]'
+                        }`}
+                      >
+                        {isUrgent ? `urgent · ${daysLeft}d left` : `expires in ${daysLeft}d`}
+                      </span>
+                    )}
+                  </div>
                 </div>
               </li>
             );

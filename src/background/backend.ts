@@ -76,6 +76,12 @@ import type {
 import { getAuthToken } from './calendar';
 
 const BACKEND_REQUEST_TIMEOUT_MS = 15_000;
+const AUTH_BACKEND_REQUEST_TIMEOUT_MS = 45_000;
+const BACKEND_RETRY_DELAY_MS = 2_000;
+const BACKEND_TIMEOUT_MESSAGE =
+  'Window could not reach the backend before the request timed out. The service may still be waking up. Please try again.';
+const BACKEND_UNREACHABLE_MESSAGE =
+  'Window could not reach the backend. Check that the deployed service is healthy, then try again.';
 const BACKEND_BASE_URL =
   (import.meta.env.VITE_WINDOW_BACKEND_URL as string | undefined)?.trim() ||
   DEFAULT_WINDOW_BACKEND_URL;
@@ -99,6 +105,15 @@ interface AccountSnapshotResponse {
 interface BackendErrorPayload {
   error?: string;
   snapshot?: AccountSnapshotResponse;
+}
+
+interface BackendRequestInit {
+  method?: 'GET' | 'POST' | 'PUT';
+  body?: unknown;
+  auth?: 'required' | 'none';
+  timeoutMs?: number;
+  retryTransientOnce?: boolean;
+  transientErrorMessage?: string;
 }
 
 interface RemoteIdeaRecord {
@@ -203,7 +218,11 @@ export async function restoreAccountSession(): Promise<void> {
       throw new Error('Your account session expired. Please sign in again.');
     }
 
-    const response = await backendRequest<{ user: AccountUser }>('/v1/auth/me');
+    const response = await backendRequest<{ user: AccountUser }>('/v1/auth/me', {
+      timeoutMs: AUTH_BACKEND_REQUEST_TIMEOUT_MS,
+      retryTransientOnce: true,
+      transientErrorMessage: BACKEND_TIMEOUT_MESSAGE,
+    });
     await Promise.all([
       setAccountUser(response.user),
       setAccountSyncState({
@@ -438,10 +457,17 @@ export async function handleSyncedStorageChanges(
   changes: Record<string, chrome.storage.StorageChange>,
   areaName: string,
 ): Promise<void> {
-  if (areaName !== 'sync' || applyingRemoteSnapshot) return;
+  if (applyingRemoteSnapshot) return;
 
-  const changedSyncedKey = Object.keys(changes).some((key) => isAccountSyncedStorageKey(key));
-  if (!changedSyncedKey) return;
+  const changedKeys = Object.keys(changes);
+  const changedAccountKey = changedKeys.some((key) => isAccountSyncedStorageKey(key));
+  if (!changedAccountKey) return;
+
+  const localExtendedTaskChange =
+    areaName === 'local' &&
+    changedKeys.some((key) => key === 'extendedTaskSets' || key === 'extendedTaskAssignments');
+
+  if (areaName !== 'sync' && !localExtendedTaskChange) return;
 
   scheduleAccountSnapshotSync();
 }
@@ -899,6 +925,9 @@ async function exchangeGoogleTokenForBackend(
   return backendRequest<AuthSessionResponse>('/v1/auth/google/exchange', {
     method: 'POST',
     auth: 'none',
+    timeoutMs: AUTH_BACKEND_REQUEST_TIMEOUT_MS,
+    retryTransientOnce: true,
+    transientErrorMessage: BACKEND_TIMEOUT_MESSAGE,
     body: {
       googleAccessToken,
     },
@@ -1120,11 +1149,7 @@ async function invalidateAccountSession(reason: string): Promise<void> {
 
 async function backendRequest<T>(
   path: string,
-  init: {
-    method?: 'GET' | 'POST' | 'PUT';
-    body?: unknown;
-    auth?: 'required' | 'none';
-  } = {},
+  init: BackendRequestInit = {},
 ): Promise<T> {
   const response = await backendRequestDetailed<T>(path, init);
   if (!response.ok) {
@@ -1136,18 +1161,52 @@ async function backendRequest<T>(
 
 async function backendRequestDetailed<T>(
   path: string,
-  init: {
-    method?: 'GET' | 'POST' | 'PUT';
-    body?: unknown;
-    auth?: 'required' | 'none';
-  } = {},
+  init: BackendRequestInit = {},
+): Promise<{
+  ok: boolean;
+  status: number;
+  data: (T & BackendErrorPayload) | BackendErrorPayload | undefined;
+}> {
+  const maxAttempts = init.retryTransientOnce ? 2 : 1;
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    try {
+      const response = await executeBackendRequest<T>(path, init);
+      if (attempt < maxAttempts && isRetryableResponseStatus(response.status)) {
+        await sleep(BACKEND_RETRY_DELAY_MS);
+        continue;
+      }
+
+      return response;
+    } catch (error) {
+      if (attempt < maxAttempts && isRetryableRequestError(error)) {
+        await sleep(BACKEND_RETRY_DELAY_MS);
+        continue;
+      }
+
+      throw normalizeBackendRequestError(
+        error,
+        init.transientErrorMessage,
+      );
+    }
+  }
+
+  throw new Error(init.transientErrorMessage ?? BACKEND_UNREACHABLE_MESSAGE);
+}
+
+async function executeBackendRequest<T>(
+  path: string,
+  init: BackendRequestInit,
 ): Promise<{
   ok: boolean;
   status: number;
   data: (T & BackendErrorPayload) | BackendErrorPayload | undefined;
 }> {
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), BACKEND_REQUEST_TIMEOUT_MS);
+  const timeout = setTimeout(
+    () => controller.abort(),
+    init.timeoutMs ?? BACKEND_REQUEST_TIMEOUT_MS,
+  );
 
   try {
     const headers: Record<string, string> = {
@@ -1189,6 +1248,45 @@ async function backendRequestDetailed<T>(
   } finally {
     clearTimeout(timeout);
   }
+}
+
+function isRetryableResponseStatus(status: number): boolean {
+  return status === 502 || status === 503 || status === 504;
+}
+
+function isRetryableRequestError(error: unknown): boolean {
+  return isAbortError(error) || isNetworkError(error);
+}
+
+function isAbortError(error: unknown): boolean {
+  return error instanceof DOMException && error.name === 'AbortError';
+}
+
+function isNetworkError(error: unknown): boolean {
+  return error instanceof TypeError;
+}
+
+function normalizeBackendRequestError(
+  error: unknown,
+  transientErrorMessage?: string,
+): Error {
+  if (isAbortError(error)) {
+    return new Error(transientErrorMessage ?? BACKEND_TIMEOUT_MESSAGE);
+  }
+
+  if (isNetworkError(error)) {
+    return new Error(transientErrorMessage ?? BACKEND_UNREACHABLE_MESSAGE);
+  }
+
+  if (error instanceof Error) {
+    return error;
+  }
+
+  return new Error(String(error));
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 function reconcileIdeaRecords(

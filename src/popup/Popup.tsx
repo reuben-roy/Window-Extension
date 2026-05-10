@@ -64,6 +64,10 @@ export default function Popup({
   const [panelCollapsed, setPanelCollapsed] = useState<Record<PanelSectionId, boolean>>(DEFAULT_PANEL_COLLAPSED);
   const [draggedSection, setDraggedSection] = useState<PanelSectionId | null>(null);
   const [dropTargetSection, setDropTargetSection] = useState<PanelSectionId | null>(null);
+  const [breakStarting, setBreakStarting] = useState(false);
+  const [endBreakBusy, setEndBreakBusy] = useState(false);
+  const [breakActionError, setBreakActionError] = useState<string | null>(null);
+  const [, setBreakCountdownTick] = useState(0);
 
   const loadState = useCallback(() => {
     chrome.runtime.sendMessage({ type: 'GET_STATE' }, (response: unknown) => {
@@ -109,6 +113,13 @@ export default function Popup({
     });
   }, []);
 
+  useEffect(() => {
+    const snooze = state?.snoozeState;
+    if (!snooze?.active || !snooze.expiresAt) return;
+    const id = window.setInterval(() => setBreakCountdownTick((n) => n + 1), 1000);
+    return () => window.clearInterval(id);
+  }, [state?.snoozeState?.active, state?.snoozeState?.expiresAt]);
+
   const movePanelSection = useCallback((source: PanelSectionId, target: PanelSectionId) => {
     setPanelOrder((current) => {
       const next = [...current];
@@ -140,6 +151,32 @@ export default function Popup({
     chrome.runtime.sendMessage({ type: 'TOGGLE_PERSISTENT_PANEL', payload: { enabled } }, () => {
       loadState();
     });
+  }, [loadState]);
+
+  const startBreak = useCallback(async () => {
+    setBreakActionError(null);
+    setBreakStarting(true);
+    try {
+      await sendMessageAsync<{ ok: boolean }>({ type: 'SNOOZE' });
+      loadState();
+    } catch (err) {
+      setBreakActionError(err instanceof Error ? err.message : 'Could not start break.');
+    } finally {
+      setBreakStarting(false);
+    }
+  }, [loadState]);
+
+  const endBreak = useCallback(async () => {
+    setBreakActionError(null);
+    setEndBreakBusy(true);
+    try {
+      await sendMessageAsync<{ ok: boolean }>({ type: 'END_SNOOZE' });
+      loadState();
+    } catch (err) {
+      setBreakActionError(err instanceof Error ? err.message : 'Could not end break.');
+    } finally {
+      setEndBreakBusy(false);
+    }
   }, [loadState]);
 
   const updateSettings = useCallback((nextSettings: StateResponse['settings']) => {
@@ -223,12 +260,12 @@ export default function Popup({
     return (
       <div
         style={mode === 'popup' ? { width: POPUP_WIDTH_PX, minWidth: POPUP_WIDTH_PX, minHeight: POPUP_MIN_HEIGHT_PX } : undefined}
-        className={`${mode === 'panel' ? 'min-h-screen w-full' : 'w-[460px]'} bg-[var(--fg-bg)] p-5`}
+        className={`${mode === 'panel' ? 'min-h-screen w-full' : 'w-[460px]'} bg-[var(--fg-bg)] p-4`}
       >
-        <div className="fg-card p-5">
-          <p className="text-xs uppercase tracking-[0.16em] text-rose-600">Window</p>
-          <p className="mt-2 text-lg font-semibold tracking-[-0.03em] text-[var(--fg-text)]">Unable to load the dashboard</p>
-          <p className="mt-2 text-sm text-[var(--fg-muted)]">
+        <div className="fg-card p-4">
+          <p className="text-[10px] uppercase tracking-wide text-rose-600">Window</p>
+          <p className="mt-2 text-base font-semibold tracking-[-0.02em] text-[var(--fg-text)]">Unable to load the dashboard</p>
+          <p className="mt-2 text-xs text-[var(--fg-muted)]">
             {loadError ?? 'The extension state is temporarily unavailable.'}
           </p>
         </div>
@@ -270,14 +307,6 @@ export default function Popup({
     : openClawState.status.connected
       ? 'OpenClaw ready'
       : 'OpenClaw offline';
-  const headerTitle = calendarState.currentEvent?.title ?? 'Window';
-  const blockingBadgeLabel = !settings.enableBlocking
-    ? 'Blocking off'
-    : quietHoursActive
-      ? 'Quiet hours'
-      : effectivelyBlocking
-        ? 'Locked in'
-        : 'Browsing open';
   const headerCaption = calendarConnected
     ? calendarState.currentEvent
       ? `${formatEventRange(calendarState.currentEvent)} · ${effectivelyBlocking
@@ -299,24 +328,10 @@ export default function Popup({
       style={mode === 'popup' ? { width: POPUP_WIDTH_PX, minWidth: POPUP_WIDTH_PX, maxWidth: POPUP_WIDTH_PX, minHeight: POPUP_MIN_HEIGHT_PX } : undefined}
       className={`${mode === 'panel' ? 'min-h-screen w-full' : 'max-h-[760px] w-[460px]'} overflow-x-hidden overflow-y-auto bg-[var(--fg-bg)] font-sans select-none`}
     >
-      <header className="sticky top-0 z-20 border-b border-[var(--fg-border)] bg-[var(--fg-bg)]/84 px-3 py-3 backdrop-blur-xl">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="rounded-full bg-[var(--fg-accent-soft)] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--fg-accent)]">
-                Window
-              </span>
-              <span className="rounded-full border border-[var(--fg-border)] bg-white/82 px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.14em] text-[var(--fg-muted)]">
-                {blockingBadgeLabel}
-              </span>
-            </div>
-            <h1 className="mt-2 truncate text-[18px] font-semibold tracking-[-0.04em] text-[var(--fg-text)]">
-              {headerTitle}
-            </h1>
-            <p className="mt-1 text-[11px] leading-4 text-[var(--fg-muted)]">{headerCaption}</p>
-          </div>
-
-          <div className="flex flex-wrap items-center justify-end gap-1.5">
+      <header className="sticky top-0 z-20 border-b border-[var(--fg-border)] bg-[var(--fg-bg)]/95 px-3 py-2.5 backdrop-blur-md">
+        {/* Stack title above toolbar so the text column never shares a row with wide controls (avoids squeeze/overlap). */}
+        <div className="flex flex-col gap-2">
+          <div className="flex min-w-0 flex-wrap items-center justify-end gap-1.5 gap-y-1">
             <PointsBubble
               points={allTimeStats.totalPoints}
               level={allTimeStats.level}
@@ -325,17 +340,19 @@ export default function Popup({
             />
             {mode === 'panel' && settings.persistentPanelEnabled && (
               <button
+                type="button"
                 onClick={() => togglePersistentPanel(false)}
-                className="fg-button-ghost px-3 py-1.5 text-[11px]"
+                className="fg-button-ghost px-2 py-1 text-[11px]"
               >
                 Undock
               </button>
             )}
             <button
+              type="button"
               onClick={handleToggle}
               disabled={toggling || !calendarConnected}
-              className={`rounded-full px-3 py-1.5 text-[11px] font-medium transition ${settings.enableBlocking
-                ? 'bg-[var(--fg-accent)] text-white shadow-[0_12px_24px_rgba(0,102,255,0.18)]'
+              className={`rounded-md px-2.5 py-1 text-[11px] font-medium transition ${settings.enableBlocking
+                ? 'bg-[var(--fg-accent)] text-white'
                 : 'border border-[var(--fg-border)] bg-white text-[var(--fg-muted)]'
                 } ${toggling || !calendarConnected ? 'cursor-not-allowed opacity-50' : ''}`}
             >
@@ -366,10 +383,14 @@ export default function Popup({
               }
             />
           </div>
+
+          <div className="min-w-0 w-full text-right">
+            <p className="mt-0.5 break-words text-[11px] leading-snug text-[var(--fg-muted)]">{headerCaption}</p>
+          </div>
         </div>
       </header>
 
-      <div className="space-y-2 px-3 py-3">
+      <div className="space-y-1.5 px-2.5 py-2">
         {panelOrder.map((sectionId) => {
           const sectionSubtitle =
             sectionId === 'focus'
@@ -401,7 +422,7 @@ export default function Popup({
               onDragEnd={() => { setDraggedSection(null); setDropTargetSection(null); }}
             >
               {sectionId === 'focus' && (
-                <div className="space-y-1.5">
+                <div className="space-y-1">
                   <PointsDisplay stats={allTimeStats} />
 
                   <CompactSettingRow
@@ -416,34 +437,44 @@ export default function Popup({
                             ? 'Focus restrictions are active for this calendar block.'
                             : 'No active restriction is limiting browsing right now.'
                     }
-                    className="px-3 py-2.5"
+                    className="px-2 py-1"
                   />
 
                   <CompactSettingRow
                     label="Next up"
                     value={nextEvent?.title ?? 'Nothing queued'}
                     meta={nextEvent ? formatEventRange(nextEvent) : 'You are clear after this block.'}
-                    className="px-3 py-2.5"
+                    className="px-2 py-1"
                   />
 
                   {snoozeState.active && snoozeState.expiresAt ? (
-                    <div className="rounded-[20px] border border-amber-200 bg-amber-50/90 px-4 py-3 text-xs text-amber-800 shadow-[0_10px_24px_rgba(217,119,6,0.08)]">
-                      Break active. Blocking resumes in {formatCountdown(snoozeState.expiresAt)}.
+                    <div className="flex items-start justify-between gap-2 rounded-lg border border-amber-200 bg-amber-50/90 px-3 py-2 text-[11px] leading-snug text-amber-800">
+                      <p className="min-w-0 flex-1">
+                        Break active. Blocking resumes in {formatCountdown(snoozeState.expiresAt)}.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => void endBreak()}
+                        disabled={endBreakBusy}
+                        className="fg-button-secondary shrink-0 px-2 py-1 text-[11px] disabled:opacity-50"
+                      >
+                        {endBreakBusy ? 'Ending…' : 'Resume'}
+                      </button>
                     </div>
                   ) : null}
 
                   {actionableTasks.length > 0 ? (
-                    <div className="space-y-1.5">
+                    <div className="space-y-1">
                       <div className="flex items-center justify-between gap-2">
-                        <div className="flex items-center gap-2">
-                          <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-[var(--fg-muted)]">
+                        <div className="flex items-center gap-1.5">
+                          <p className="text-[10px] font-medium uppercase tracking-wide text-[var(--fg-muted)]">
                             Tasks
                           </p>
                           <InfoTip text="Active and carryover tasks stay compact until you expand the queue." />
                         </div>
                         <button
                           onClick={() => setCompletionModalOpen(true)}
-                          className="fg-button-primary px-3.5 py-1.5 text-[11px]"
+                          className="fg-button-primary px-2.5 py-1 text-[11px]"
                         >
                           Mark Task Done
                         </button>
@@ -455,7 +486,7 @@ export default function Popup({
                       label="Tasks"
                       value="Nothing to complete"
                       meta="Active focus tasks will surface here automatically."
-                      className="px-3 py-2.5"
+                      className="px-2 py-1"
                     />
                   )}
                 </div>
@@ -469,7 +500,7 @@ export default function Popup({
               )}
 
               {sectionId === 'controls' && (
-                <div className="space-y-2">
+                <div className="space-y-1">
                   <CompactSettingRow
                     label="Break length"
                     control={
@@ -482,14 +513,14 @@ export default function Popup({
                           );
                           updateSettings({ ...settings, breakDurationMinutes: next });
                         }}
-                        className="fg-select w-[112px] px-3 py-2 text-sm"
+                        className="fg-select w-[100px] text-xs"
                       >
                         <option value={5}>5 min</option>
                         <option value={10}>10 min</option>
                         <option value={15}>15 min</option>
                       </select>
                     }
-                    className="px-3 py-2.5"
+                    className="px-2 py-1"
                   />
 
                   <CompactSettingRow
@@ -500,29 +531,56 @@ export default function Popup({
                         onChange={(checked) => togglePersistentPanel(checked)}
                       />
                     }
-                    className="px-3 py-2.5"
+                    className="px-2 py-1"
                   />
 
                   <CompactSettingRow
                     label="Quick actions"
                     control={
-                      <div className="flex flex-wrap gap-2">
+                      <div className="flex flex-wrap justify-end gap-1">
                         <button
+                          type="button"
                           onClick={() => chrome.runtime.openOptionsPage()}
-                          className="fg-button-secondary px-3 py-2 text-xs"
+                          className="fg-button-secondary text-xs"
                         >
                           Settings
                         </button>
                         <button
-                          onClick={() => chrome.runtime.sendMessage({ type: 'SNOOZE' })}
-                          className="fg-button-secondary px-3 py-2 text-xs"
+                          type="button"
+                          onClick={() => void startBreak()}
+                          disabled={
+                            breakStarting || !!(snoozeState.active && snoozeState.expiresAt)
+                          }
+                          className="fg-button-secondary text-xs disabled:opacity-50"
                         >
-                          Break
+                          {breakStarting ? 'Starting…' : 'Break'}
                         </button>
                       </div>
                     }
-                    className="px-3 py-2.5"
+                    className="px-2 py-1"
                   />
+
+                  {snoozeState.active && snoozeState.expiresAt ? (
+                    <div className="flex items-start justify-between gap-2 rounded-lg border border-amber-200 bg-amber-50/90 px-2.5 py-2 text-[11px] leading-snug text-amber-800">
+                      <p className="min-w-0 flex-1">
+                        Break active — resumes in {formatCountdown(snoozeState.expiresAt)}.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => void endBreak()}
+                        disabled={endBreakBusy}
+                        className="fg-button-secondary shrink-0 px-2 py-1 text-[11px] disabled:opacity-50"
+                      >
+                        {endBreakBusy ? 'Ending…' : 'Resume'}
+                      </button>
+                    </div>
+                  ) : null}
+
+                  {breakActionError ? (
+                    <p className="rounded-md border border-rose-200 bg-rose-50 px-2.5 py-1.5 text-[11px] text-rose-800">
+                      {breakActionError}
+                    </p>
+                  ) : null}
                 </div>
               )}
 
@@ -634,10 +692,10 @@ function PanelSectionCard({
       onDragOver={onDragOver}
       onDragLeave={onDragLeave}
       onDrop={onDrop}
-      className={`fg-card overflow-hidden transition-all duration-150 ${isDropTarget ? 'ring-2 ring-[var(--fg-accent)]/50 ring-offset-1' : ''
+      className={`fg-card overflow-hidden transition-all duration-150 ${isDropTarget ? 'ring-1 ring-[var(--fg-accent)]/40' : ''
         } ${dragging ? 'opacity-50 scale-[0.99]' : ''}`}
     >
-      <div className="flex items-center gap-2 px-4 py-2.5">
+      <div className="flex items-center gap-1.5 px-3 py-2">
         <div
           draggable
           onDragStart={onDragStart}
@@ -655,24 +713,24 @@ function PanelSectionCard({
           </svg>
         </div>
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
-            <h2 className="text-[13px] font-semibold tracking-[-0.02em] text-[var(--fg-text)]">{title}</h2>
+          <div className="flex items-center gap-1.5">
+            <h2 className="text-xs font-semibold tracking-[-0.02em] text-[var(--fg-text)]">{title}</h2>
             {hint ? <InfoTip text={hint} /> : null}
           </div>
           {subtitle && !collapsed ? (
-            <p className="mt-0.5 truncate text-[11px] leading-4 text-[var(--fg-muted)]">{subtitle}</p>
+            <p className="mt-0.5 truncate text-[10px] leading-snug text-[var(--fg-muted)]">{subtitle}</p>
           ) : null}
         </div>
         <button
           type="button"
           onClick={onToggleCollapse}
-          className="shrink-0 rounded-full border border-[var(--fg-border)] bg-white/80 px-2.5 py-1 text-[11px] font-medium text-[var(--fg-muted)] transition hover:text-[var(--fg-text)]"
+          className="shrink-0 rounded-md border border-[var(--fg-border)] bg-white px-2 py-0.5 text-[10px] font-medium text-[var(--fg-muted)] transition hover:text-[var(--fg-text)]"
         >
           {collapsed ? 'Show' : 'Hide'}
         </button>
       </div>
       {!collapsed && (
-        <div className="border-t border-[var(--fg-border)] px-4 pb-4 pt-3">
+        <div className="border-t border-[var(--fg-border)] px-3 pb-3 pt-2">
           {children}
         </div>
       )}
@@ -731,6 +789,7 @@ function AssistantPanel({
   onDiscard: (localId: string) => void;
   onRetry: (localId: string) => void;
 }): React.JSX.Element {
+  const [inputMode, setInputMode] = useState<'handoff' | 'idea'>('handoff');
   const sessions = Array.isArray(openClawState.sessions) ? openClawState.sessions : [];
   const connectors = Array.isArray(openClawState.connectors) ? openClawState.connectors : [];
   const tasks = Array.isArray(openClawState.tasks) ? openClawState.tasks : [];
@@ -743,11 +802,11 @@ function AssistantPanel({
     null;
   const visibleTasks = tasks.slice(0, mode === 'panel' ? 6 : 4);
   const visibleSessions = sessions.slice(0, mode === 'panel' ? 4 : 3);
-  const toolbarButtonClass = 'fg-button-secondary px-3 py-1.5 text-[11px]';
+  const toolbarButtonClass = 'fg-button-secondary px-2 py-1 text-[11px]';
 
   return (
-    <div className="space-y-3">
-      <div className="flex flex-wrap gap-1.5">
+    <div className="space-y-2">
+      <div className="flex flex-wrap gap-1">
         <button onClick={onRefresh} className={toolbarButtonClass}>Refresh</button>
         <button onClick={onStartSession} className={toolbarButtonClass}>New Session</button>
         {reusableSession && (
@@ -762,149 +821,154 @@ function AssistantPanel({
         )}
       </div>
 
-      <div className="grid gap-2 sm:grid-cols-2">
-        <CompactSettingRow
-          label="Current handoff"
-          value={currentTask ? formatTaskStatusLabel(currentTask.status) : 'Idle'}
-          meta={currentTask?.title ?? 'No background task is running right now.'}
-          className="px-3 py-2.5"
-        />
-        <CompactSettingRow
-          label="Idea job"
-          value={currentJob ? formatTaskStatusLabel(currentJob.status) : 'Idle'}
-          meta={currentJob?.title ?? 'No idea capture job running right now.'}
-          className="px-3 py-2.5"
-        />
-      </div>
-
-      <div className="rounded-[24px] border border-[var(--fg-border-strong)] bg-[linear-gradient(180deg,rgba(246,250,255,0.94),rgba(255,255,255,0.9))] px-4 py-4 shadow-[0_16px_32px_rgba(31,52,94,0.08)]">
-        <div className="flex items-center justify-between gap-2">
-          <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-[var(--fg-muted)]">
-                Handoff task
-              </p>
-              <InfoTip text="Send a longer-running task to OpenClaw so it can work in parallel while you stay in the browser." />
-            </div>
-            <p className="mt-1 text-[11px] leading-4 text-[var(--fg-muted)]">
-              {selectedConnector
-                ? `${selectedConnector.label} · ${openClawState.status.connected ? 'Connected' : openClawState.status.message ?? 'Offline'}`
-                : 'Select a connector to start handing off work.'}
-            </p>
-          </div>
+      <div className="rounded-lg border border-[var(--fg-border)] bg-white p-3">
+        <div className="flex items-center gap-3 border-b border-[var(--fg-border)] pb-2.5 mb-2.5">
           <button
-            onClick={onAssistantTaskSubmit}
-            disabled={submittingAssistantTask || connectors.length === 0}
-            className="fg-button-primary shrink-0 px-3.5 py-2 text-xs"
+            onClick={() => setInputMode('handoff')}
+            className={`text-[10px] font-semibold uppercase tracking-wide transition ${
+              inputMode === 'handoff' ? 'text-[var(--fg-accent)]' : 'text-[var(--fg-muted)] hover:text-[var(--fg-text)]'
+            }`}
           >
-            {submittingAssistantTask ? 'Sending…' : 'Send Task'}
+            Handoff Task
+          </button>
+          <button
+            onClick={() => setInputMode('idea')}
+            className={`text-[10px] font-semibold uppercase tracking-wide transition ${
+              inputMode === 'idea' ? 'text-[var(--fg-accent)]' : 'text-[var(--fg-muted)] hover:text-[var(--fg-text)]'
+            }`}
+          >
+            Capture Idea
           </button>
         </div>
 
-        <textarea
-          rows={mode === 'panel' ? 4 : 3}
-          value={assistantTaskInput}
-          onChange={(event) => onAssistantTaskInputChange(event.target.value)}
-          placeholder="Research API options for our billing sync, sketch the best approach, and return an implementation plan with risks."
-          className="fg-input mt-3 min-h-[84px] resize-none px-3 py-2.5 text-sm"
-        />
-        {assistantTaskError && <p className="mt-2 text-xs text-rose-600">{assistantTaskError}</p>}
+        {inputMode === 'handoff' ? (
+          <div>
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <p className="text-[11px] leading-snug text-[var(--fg-muted)]">
+                  {selectedConnector
+                    ? `${selectedConnector.label} · ${openClawState.status.connected ? 'Connected' : openClawState.status.message ?? 'Offline'}`
+                    : 'Select a connector to start handing off work.'}
+                </p>
+              </div>
+              <button
+                onClick={onAssistantTaskSubmit}
+                disabled={submittingAssistantTask || connectors.length === 0}
+                className="fg-button-primary shrink-0 self-start px-2.5 py-1 text-[11px]"
+              >
+                {submittingAssistantTask ? 'Sending…' : 'Send Task'}
+              </button>
+            </div>
+
+            <textarea
+              rows={mode === 'panel' ? 12 : 9}
+              value={assistantTaskInput}
+              onChange={(event) => onAssistantTaskInputChange(event.target.value)}
+              placeholder="Research API options for our billing sync, sketch the best approach, and return an implementation plan with risks."
+              className="fg-input mt-2.5 min-h-[192px] resize-y text-xs"
+            />
+            {assistantTaskError && <p className="mt-1.5 text-[11px] text-rose-600">{assistantTaskError}</p>}
+          </div>
+        ) : (
+          <div>
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <p className="text-[11px] leading-snug text-[var(--fg-muted)]">
+                  {backendSyncState.connected
+                    ? `Synced${accountUser?.email ? ` as ${accountUser.email}` : backendSession ? ` as ${backendSession.userId}` : ''}.`
+                    : backendSyncState.lastError ?? 'Queued locally until you sign in.'}
+                </p>
+              </div>
+              <button
+                onClick={onIdeaSubmit}
+                disabled={submittingIdea}
+                className="fg-button-primary shrink-0 self-start px-2.5 py-1 text-[11px]"
+              >
+                {submittingIdea ? 'Submitting…' : 'Capture'}
+              </button>
+            </div>
+
+            <textarea
+              rows={mode === 'panel' ? 9 : 6}
+              value={ideaInput}
+              onChange={(event) => onIdeaInputChange(event.target.value)}
+              placeholder="I want to build a marketplace for horse breeders. Is this viable?"
+              className="fg-input mt-2.5 min-h-[168px] resize-y text-xs"
+            />
+            {ideaError && <p className="mt-1.5 text-[11px] text-rose-600">{ideaError}</p>}
+          </div>
+        )}
       </div>
 
       {visibleTasks.length > 0 ? (
-        <div className="space-y-2">
+        <div className="space-y-1.5">
           <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2">
-              <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-[var(--fg-muted)]">
+            <div className="flex items-center gap-1.5">
+              <p className="text-[10px] font-medium uppercase tracking-wide text-[var(--fg-muted)]">
                 Recent handoffs
               </p>
               <InfoTip text="Completed tasks stay here so you can review results even if notifications are deferred or suppressed." />
             </div>
-            <span className="text-[11px] text-[var(--fg-muted)]">{tasks.length} total</span>
+            <span className="text-[10px] text-[var(--fg-muted)]">{tasks.length} total</span>
           </div>
-          <AssistantTaskList tasks={visibleTasks} onCancelTask={onCancelTask} />
+          <div className="max-h-48 overflow-y-auto pr-1">
+            <AssistantTaskList tasks={visibleTasks} onCancelTask={onCancelTask} />
+          </div>
         </div>
       ) : (
-        <p className="text-[11px] leading-4 text-[var(--fg-muted)]">
+        <p className="text-[11px] leading-snug text-[var(--fg-muted)]">
           No background handoffs yet.
         </p>
       )}
 
-      <div className="rounded-[24px] border border-[var(--fg-border-strong)] bg-[linear-gradient(180deg,rgba(246,250,255,0.94),rgba(255,255,255,0.9))] px-4 py-4 shadow-[0_16px_32px_rgba(31,52,94,0.08)]">
-        <div className="flex items-center justify-between gap-2">
-          <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-[var(--fg-muted)]">
-                Capture idea
-              </p>
-              <InfoTip text="Ideas can sync live or queue locally until the backend reconnects." />
-            </div>
-            <p className="mt-1 text-[11px] leading-4 text-[var(--fg-muted)]">
-              {backendSyncState.connected
-                ? `Synced${accountUser?.email ? ` as ${accountUser.email}` : backendSession ? ` as ${backendSession.userId}` : ''}.`
-                : backendSyncState.lastError ?? 'Queued locally until you sign in.'}
-            </p>
-          </div>
-          <button
-            onClick={onIdeaSubmit}
-            disabled={submittingIdea}
-            className="fg-button-primary shrink-0 px-3.5 py-2 text-xs"
-          >
-            {submittingIdea ? 'Submitting…' : 'Capture'}
-          </button>
-        </div>
-
-        <textarea
-          rows={mode === 'panel' ? 3 : 2}
-          value={ideaInput}
-          onChange={(event) => onIdeaInputChange(event.target.value)}
-          placeholder="I want to build a marketplace for horse breeders. Is this viable?"
-          className="fg-input mt-3 min-h-[68px] resize-none px-3 py-2.5 text-sm"
-        />
-        {ideaError && <p className="mt-2 text-xs text-rose-600">{ideaError}</p>}
-      </div>
-
       {visibleSessions.length > 0 && (
-        <div className="space-y-2">
+        <div className="space-y-1.5">
           <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2">
-              <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-[var(--fg-muted)]">
+            <div className="flex items-center gap-1.5">
+              <p className="text-[10px] font-medium uppercase tracking-wide text-[var(--fg-muted)]">
                 Recent sessions
               </p>
               <InfoTip text="Only shown when OpenClaw has reusable history, which keeps the panel lighter by default." />
             </div>
-            <span className="text-[11px] text-[var(--fg-muted)]">{sessions.length} saved</span>
+            <span className="text-[10px] text-[var(--fg-muted)]">{sessions.length} saved</span>
           </div>
-          <div className="space-y-1.5">
-            {visibleSessions.map((session) => (
-              <SessionRow
-                key={session.id}
-                session={session}
-                active={session.id === openClawState.activeSessionId}
-                onReuse={() => onReuseSession(session.id)}
-              />
-            ))}
+          <div className="max-h-40 overflow-y-auto space-y-1 pr-1">
+            {visibleSessions.map((session) => {
+              const isRunning =
+                (currentTask?.sessionId === session.id && currentTask.status === 'running');
+              return (
+                <SessionRow
+                  key={session.id}
+                  session={session}
+                  active={session.id === openClawState.activeSessionId}
+                  isRunning={!!isRunning}
+                  onReuse={() => onReuseSession(session.id)}
+                />
+              );
+            })}
           </div>
         </div>
       )}
 
       {inboxIdeas.length > 0 ? (
-        <div className="space-y-2">
-          <div className="flex items-center gap-2">
-            <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-[var(--fg-muted)]">
+        <div className="space-y-1.5">
+          <div className="flex items-center gap-1.5">
+            <p className="text-[10px] font-medium uppercase tracking-wide text-[var(--fg-muted)]">
               Idea inbox
             </p>
             <InfoTip text="Queued idea reports only expand when something needs your review." />
           </div>
-          <IdeaInbox
-            ideas={inboxIdeas}
-            onKeep={onKeep}
-            onDiscard={onDiscard}
-            onRetry={onRetry}
-          />
+          <div className="max-h-48 overflow-y-auto pr-1">
+            <IdeaInbox
+              ideas={inboxIdeas}
+              onKeep={onKeep}
+              onDiscard={onDiscard}
+              onRetry={onRetry}
+            />
+          </div>
         </div>
       ) : (
-        <p className="text-[11px] leading-4 text-[var(--fg-muted)]">
+        <p className="text-[11px] leading-snug text-[var(--fg-muted)]">
           No queued idea reports right now.
         </p>
       )}
@@ -920,7 +984,7 @@ function AssistantTaskList({
   onCancelTask: (taskId: string) => void;
 }): React.JSX.Element {
   return (
-    <div className="space-y-2">
+    <div className="space-y-1.5">
       {tasks.map((task) => (
         <AssistantTaskRow key={task.id} task={task} onCancel={() => onCancelTask(task.id)} />
       ))}
@@ -939,49 +1003,49 @@ function AssistantTaskRow({
   const detailPreview = task.result?.output?.trim() ?? '';
 
   return (
-    <div className="rounded-[20px] border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-3 py-2.5">
-      <div className="flex items-start justify-between gap-3">
+    <div className="rounded-lg border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-2.5 py-2">
+      <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <p className="truncate text-[13px] font-medium leading-5 text-[var(--fg-text)]">{task.title}</p>
+          <div className="flex flex-wrap items-center gap-1.5">
+            <p className="truncate text-xs font-medium leading-snug text-[var(--fg-text)]">{task.title}</p>
             <TaskStatusBadge status={task.status} />
             {task.unread && (
-              <span className="rounded-full bg-blue-100 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-blue-700">
+              <span className="rounded-md bg-blue-100 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-blue-700">
                 New
               </span>
             )}
           </div>
-          <p className="mt-1 text-xs leading-4 text-[var(--fg-muted)]">
+          <p className="mt-0.5 text-[11px] leading-snug text-[var(--fg-muted)]">
             {formatRelativeTime(task.updatedAt)} · {formatNotificationModeLabel(task.notificationMode)}
           </p>
         </div>
         {canCancel ? (
-          <button onClick={onCancel} className="fg-button-secondary shrink-0 px-3 py-1.5 text-xs">
+          <button onClick={onCancel} className="fg-button-secondary shrink-0 px-2 py-1 text-[11px]">
             Cancel
           </button>
         ) : null}
       </div>
 
-      <p className="mt-2 text-xs leading-4 text-[var(--fg-muted)]">{truncateText(task.prompt, 180)}</p>
+      <p className="mt-1.5 text-[11px] leading-snug text-[var(--fg-muted)]">{truncateText(task.prompt, 180)}</p>
 
       {task.result ? (
-        <div className="mt-2.5 space-y-2">
-          <p className="text-xs leading-4 text-[var(--fg-muted)]">{task.result.summary}</p>
+        <div className="mt-2 space-y-1.5">
+          <p className="text-[11px] leading-snug text-[var(--fg-muted)]">{task.result.summary}</p>
           {detailPreview ? (
-            <details className="rounded-[16px] border border-[var(--fg-border)] bg-white px-3 py-2">
-              <summary className="cursor-pointer text-[11px] font-medium uppercase tracking-[0.12em] text-[var(--fg-muted)]">
+            <details className="rounded-md border border-[var(--fg-border)] bg-white px-2 py-1.5">
+              <summary className="cursor-pointer text-[10px] font-medium uppercase tracking-wide text-[var(--fg-muted)]">
                 Review output
               </summary>
-              <p className="mt-2 whitespace-pre-wrap text-xs leading-5 text-[var(--fg-text)]">
+              <p className="mt-1.5 whitespace-pre-wrap text-[11px] leading-snug text-[var(--fg-text)]">
                 {truncateText(detailPreview, 900)}
               </p>
             </details>
           ) : null}
         </div>
       ) : task.error ? (
-        <p className="mt-2.5 text-xs leading-4 text-rose-600">{task.error}</p>
+        <p className="mt-2 text-[11px] leading-snug text-rose-600">{task.error}</p>
       ) : canCancel ? (
-        <p className="mt-2.5 text-xs leading-4 text-[var(--fg-muted)]">
+        <p className="mt-2 text-[11px] leading-snug text-[var(--fg-muted)]">
           OpenClaw is still working on this handoff.
         </p>
       ) : null}
@@ -1006,7 +1070,7 @@ function TaskStatusBadge({
             : 'bg-rose-100 text-rose-700';
 
   return (
-    <span className={`rounded-full px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] ${className}`}>
+    <span className={`rounded-md px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide ${className}`}>
       {formatTaskStatusLabel(status)}
     </span>
   );
@@ -1024,46 +1088,54 @@ function IdeaInbox({
   onRetry: (localId: string) => void;
 }): React.JSX.Element {
   return (
-    <div className="space-y-2">
+    <div className="space-y-1.5">
       {ideas.map((idea) => (
         <div
           key={idea.localId}
-          className="rounded-[20px] border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-3 py-2.5"
+          className="min-w-0 max-w-full overflow-hidden rounded-lg border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-2.5 py-2"
         >
-          <div className="flex items-start justify-between gap-3">
-            <div className="space-y-1">
-              <p className="text-[13px] font-medium leading-5 text-[var(--fg-text)]">{idea.prompt}</p>
-              <p className="text-xs uppercase tracking-[0.14em] text-[var(--fg-muted)]">{idea.status}</p>
+          <div className="flex items-start justify-between gap-2">
+            <div className="space-y-0.5 min-w-0 flex-1">
+              <div className="flex items-center gap-1.5">
+                {(idea.status === 'running' || idea.status === 'syncing') && (
+                  <svg className="h-3 w-3 animate-spin text-[var(--fg-accent)] shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 01.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                )}
+                <p className="text-xs font-medium leading-snug text-[var(--fg-text)] truncate">{idea.prompt}</p>
+              </div>
+              <p className="text-[10px] uppercase tracking-wide text-[var(--fg-muted)]">{idea.status}</p>
             </div>
             {idea.unread && (
-              <span className="rounded-full bg-blue-100 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-blue-700">
+              <span className="rounded-md bg-blue-100 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-blue-700">
                 New
               </span>
             )}
           </div>
 
           {idea.report ? (
-            <div className="mt-2.5 space-y-1.5">
-              <p className="text-xs leading-4 text-[var(--fg-muted)]">{idea.report.summary}</p>
-              <div className="grid grid-cols-3 gap-2 text-xs text-[var(--fg-muted)]">
+            <div className="mt-2 space-y-1">
+              <p className="break-words text-[11px] leading-snug text-[var(--fg-muted)]">{idea.report.summary}</p>
+              <div className="grid grid-cols-3 gap-1 text-[10px] text-[var(--fg-muted)]">
                 <span>Viability: {idea.report.viability}</span>
                 <span>Build: {idea.report.buildEffort}</span>
                 <span>Revenue: {idea.report.revenuePotential}</span>
               </div>
               {!idea.saved && !idea.archived && (
-                <div className="flex flex-wrap gap-2 pt-1">
-                  <button onClick={() => onKeep(idea.localId)} className="fg-button-primary px-3 py-2 text-xs">
+                <div className="flex flex-wrap gap-1 pt-1">
+                  <button onClick={() => onKeep(idea.localId)} className="fg-button-primary text-[11px]">
                     Keep
                   </button>
-                  <button onClick={() => onDiscard(idea.localId)} className="fg-button-secondary px-3 py-2 text-xs">
+                  <button onClick={() => onDiscard(idea.localId)} className="fg-button-secondary text-[11px]">
                     Discard
                   </button>
                 </div>
               )}
             </div>
           ) : (
-            <div className="mt-2.5 flex items-center justify-between gap-3">
-              <p className="text-xs leading-4 text-[var(--fg-muted)]">
+            <div className="mt-2 flex min-w-0 items-start justify-between gap-2">
+              <p className="min-w-0 flex-1 break-words text-[11px] leading-snug text-[var(--fg-muted)] [overflow-wrap:anywhere]">
                 {idea.error
                   ? `Last error: ${idea.error}`
                   : idea.status === 'queued' || idea.status === 'syncing'
@@ -1071,7 +1143,7 @@ function IdeaInbox({
                     : 'OpenClaw is still working on this one.'}
               </p>
               {(idea.status === 'failed' || idea.error) && (
-                <button onClick={() => onRetry(idea.localId)} className="fg-button-secondary px-3 py-2 text-xs">
+                <button onClick={() => onRetry(idea.localId)} className="fg-button-secondary mt-0.5 shrink-0 self-start text-[11px]">
                   Retry
                 </button>
               )}
@@ -1086,27 +1158,37 @@ function IdeaInbox({
 function SessionRow({
   session,
   active,
+  isRunning,
   onReuse,
 }: {
   session: OpenClawSessionSummary;
   active: boolean;
+  isRunning?: boolean;
   onReuse: () => void;
 }): React.JSX.Element {
   return (
-    <div className="flex items-center justify-between gap-3 rounded-[20px] border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-3 py-2">
-      <div>
-        <p className="text-[13px] font-medium leading-5 text-[var(--fg-text)]">{session.title}</p>
-        <p className="text-[11px] leading-4 text-[var(--fg-muted)]">
-          {session.status} · {session.modelLabel ?? 'OpenClaw default'}
-        </p>
+    <div className="flex items-center justify-between gap-2 rounded-lg border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-2.5 py-1.5">
+      <div className="min-w-0 flex items-center gap-1.5">
+        {isRunning && (
+          <svg className="h-3 w-3 animate-spin text-[var(--fg-accent)] shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 01.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+        )}
+        <div className="min-w-0">
+          <p className="truncate text-xs font-medium leading-snug text-[var(--fg-text)]">{session.title}</p>
+          <p className="text-[10px] leading-snug text-[var(--fg-muted)]">
+            {session.status} · {session.modelLabel ?? 'OpenClaw default'}
+          </p>
+        </div>
       </div>
-      <div className="flex items-center gap-2">
+      <div className="flex shrink-0 items-center gap-1.5">
         {active && (
-          <span className="rounded-full bg-emerald-100 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-emerald-700">
+          <span className="rounded-md bg-emerald-100 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-emerald-700">
             Active
           </span>
         )}
-        <button onClick={onReuse} className="fg-button-ghost px-2.5 py-1.5 text-xs">
+        <button onClick={onReuse} className="fg-button-ghost px-2 py-1 text-[11px]">
           Use
         </button>
       </div>
@@ -1143,7 +1225,7 @@ function AnalyticsSummaryCard({
   const total = segments.reduce((sum, segment) => sum + segment.value, 0);
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-1.5">
       <div className="grid gap-1.5 sm:grid-cols-2">
         <CompactSettingRow
           label="Status"
@@ -1157,23 +1239,23 @@ function AnalyticsSummaryCard({
               ? `${current.eventTitle}${current.difficultyRank ? ` · Difficulty ${current.difficultyRank}` : ''}`
               : 'No active focus session right now.'
           }
-          className="px-3 py-2.5"
+          className="px-2 py-1"
         />
         <CompactSettingRow
           label="Primary tag"
           value={currentTag?.label ?? 'None'}
           meta={currentTag ? `Baseline difficulty ${currentTag.baselineDifficulty}` : 'Waiting for a resolved task tag.'}
-          className="px-3 py-2.5"
+          className="px-2 py-1"
         />
       </div>
 
-      <div className="rounded-[20px] border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-3 py-3">
+      <div className="rounded-lg border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-2.5 py-2">
         <div className="flex items-center justify-between gap-2">
           <div>
-            <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-[var(--fg-muted)]">
+            <p className="text-[10px] font-medium uppercase tracking-wide text-[var(--fg-muted)]">
               {current ? 'Current session' : 'Last 7 days'}
             </p>
-            <p className="mt-1 text-xs text-[var(--fg-muted)]">
+            <p className="mt-0.5 text-[11px] text-[var(--fg-muted)]">
               {current
                 ? `${formatMinutes(current.productiveMinutes)} productive · ${formatMinutes(current.distractedMinutes)} distracted`
                 : `${formatMinutes(summary.productiveMinutes)} productive across ${summary.totalFocusSessions} session${summary.totalFocusSessions === 1 ? '' : 's'}`}
@@ -1182,14 +1264,14 @@ function AnalyticsSummaryCard({
           {current?.difficultyRank ? (
             <span
               title="Difficulty score"
-              className="rounded-full border border-[var(--fg-border)] bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--fg-muted)]"
+              className="rounded-md border border-[var(--fg-border)] bg-white px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-[var(--fg-muted)]"
             >
               D{current.difficultyRank}
             </span>
           ) : null}
         </div>
 
-        <div className="mt-3 h-2 overflow-hidden rounded-full bg-white">
+        <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white">
           {total > 0 ? (
             <div className="flex h-full w-full">
               {segments.map((segment) => (
@@ -1208,7 +1290,7 @@ function AnalyticsSummaryCard({
           )}
         </div>
 
-        <div className="mt-3 grid grid-cols-4 gap-2 text-[11px] text-[var(--fg-muted)]">
+        <div className="mt-2 grid grid-cols-4 gap-1.5 text-[10px] text-[var(--fg-muted)]">
           <MetricChip label="Prod" value={formatMinutes(current?.productiveMinutes ?? summary.productiveMinutes)} />
           <MetricChip label="Help" value={formatMinutes(current?.supportiveMinutes ?? summary.supportiveMinutes)} />
           <MetricChip label="Distract" value={formatMinutes(current?.distractedMinutes ?? summary.distractedMinutes)} />
@@ -1227,9 +1309,9 @@ function MetricChip({
   value: string;
 }): React.JSX.Element {
   return (
-    <div className="rounded-[16px] border border-[var(--fg-border)] bg-white px-2.5 py-2 text-center">
-      <p className="text-[10px] font-medium uppercase tracking-[0.12em] text-[var(--fg-muted)]">{label}</p>
-      <p className="mt-1 text-xs font-medium text-[var(--fg-text)]">{value}</p>
+    <div className="rounded-md border border-[var(--fg-border)] bg-white px-1.5 py-1.5 text-center">
+      <p className="text-[9px] font-medium uppercase tracking-wide text-[var(--fg-muted)]">{label}</p>
+      <p className="mt-0.5 text-[10px] font-medium leading-tight text-[var(--fg-text)]">{value}</p>
     </div>
   );
 }

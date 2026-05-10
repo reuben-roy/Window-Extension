@@ -73,6 +73,8 @@ export function toAccountSnapshotPayload(value: unknown): AccountSnapshotPayload
     eventRules: coerceEventRules(snapshot.eventRules),
     keywordRules: coerceKeywordRules(snapshot.keywordRules),
     taskTags: coerceTaskTags(snapshot.taskTags),
+    extendedTaskSets: coerceExtendedTaskSets(snapshot.extendedTaskSets),
+    extendedTaskAssignments: coerceExtendedTaskAssignments(snapshot.extendedTaskAssignments),
     globalAllowlist: coerceStringArray(snapshot.globalAllowlist),
   };
 }
@@ -399,6 +401,115 @@ function coerceTaskTags(value: unknown): AccountSnapshotPayload['taskTags'] {
           : new Date(0).toISOString(),
     }))
     .filter((item) => item.key.length > 0);
+}
+
+function coerceExtendedTaskSets(value: unknown): AccountSnapshotPayload['extendedTaskSets'] {
+  if (!Array.isArray(value)) return [];
+
+  return value
+    .filter(
+      (item): item is {
+        id?: unknown;
+        title?: unknown;
+        items?: unknown;
+        createdAt?: unknown;
+        updatedAt?: unknown;
+        archivedAt?: unknown;
+      } => Boolean(item && typeof item === 'object'),
+    )
+    .map((item) => ({
+      id: typeof item.id === 'string' ? item.id : '',
+      title: typeof item.title === 'string' ? item.title : '',
+      items: coerceExtendedTaskSetItems(item.items),
+      createdAt:
+        typeof item.createdAt === 'string'
+          ? item.createdAt
+          : new Date(0).toISOString(),
+      updatedAt:
+        typeof item.updatedAt === 'string'
+          ? item.updatedAt
+          : new Date(0).toISOString(),
+      archivedAt: typeof item.archivedAt === 'string' ? item.archivedAt : null,
+    }))
+    .filter((item) => item.id.length > 0 && item.title.length > 0);
+}
+
+function coerceExtendedTaskSetItems(
+  value: unknown,
+): AccountSnapshotPayload['extendedTaskSets'][number]['items'] {
+  if (!Array.isArray(value)) return [];
+
+  return value
+    .filter(
+      (item): item is { id?: unknown; label?: unknown; url?: unknown } =>
+        Boolean(item && typeof item === 'object'),
+    )
+    .map((item) => ({
+      id: typeof item.id === 'string' ? item.id : '',
+      label: typeof item.label === 'string' ? item.label : '',
+      url: typeof item.url === 'string' ? item.url : '',
+    }))
+    .filter((item) => item.id.length > 0 && item.label.length > 0 && item.url.length > 0);
+}
+
+function coerceExtendedTaskAssignments(
+  value: unknown,
+): AccountSnapshotPayload['extendedTaskAssignments'] {
+  if (!Array.isArray(value)) return [];
+
+  return value
+    .filter(
+      (item): item is {
+        id?: unknown;
+        calendarEventId?: unknown;
+        eventTitle?: unknown;
+        start?: unknown;
+        end?: unknown;
+        setId?: unknown;
+        setTitle?: unknown;
+        items?: unknown;
+        createdAt?: unknown;
+        updatedAt?: unknown;
+      } => Boolean(item && typeof item === 'object'),
+    )
+    .map((item) => ({
+      id: typeof item.id === 'string' ? item.id : '',
+      calendarEventId: typeof item.calendarEventId === 'string' ? item.calendarEventId : '',
+      eventTitle: typeof item.eventTitle === 'string' ? item.eventTitle : '',
+      start: typeof item.start === 'string' ? item.start : '',
+      end: typeof item.end === 'string' ? item.end : '',
+      setId: typeof item.setId === 'string' ? item.setId : '',
+      setTitle: typeof item.setTitle === 'string' ? item.setTitle : '',
+      items: coerceExtendedTaskAssignmentItems(item.items),
+      createdAt:
+        typeof item.createdAt === 'string'
+          ? item.createdAt
+          : new Date(0).toISOString(),
+      updatedAt:
+        typeof item.updatedAt === 'string'
+          ? item.updatedAt
+          : new Date(0).toISOString(),
+    }))
+    .filter((item) => item.id.length > 0 && item.calendarEventId.length > 0);
+}
+
+function coerceExtendedTaskAssignmentItems(
+  value: unknown,
+): AccountSnapshotPayload['extendedTaskAssignments'][number]['items'] {
+  if (!Array.isArray(value)) return [];
+
+  return value
+    .filter(
+      (item): item is { id?: unknown; label?: unknown; url?: unknown; completedAt?: unknown } =>
+        Boolean(item && typeof item === 'object'),
+    )
+    .map((item) => ({
+      id: typeof item.id === 'string' ? item.id : '',
+      label: typeof item.label === 'string' ? item.label : '',
+      url: typeof item.url === 'string' ? item.url : '',
+      completedAt: typeof item.completedAt === 'string' ? item.completedAt : null,
+    }))
+    .filter((item) => item.id.length > 0 && item.label.length > 0 && item.url.length > 0);
 }
 
 function coercePointsHistory(value: unknown): AccountSnapshotPayload['pointsHistory'] {

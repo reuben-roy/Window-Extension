@@ -161,6 +161,8 @@ const emptyAccountSnapshot = (): AccountSnapshotPayload => ({
   eventRules: [],
   keywordRules: [],
   taskTags: [],
+  extendedTaskSets: [],
+  extendedTaskAssignments: [],
   globalAllowlist: ['accounts.google.com'],
 });
 

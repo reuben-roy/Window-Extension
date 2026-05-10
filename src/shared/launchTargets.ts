@@ -5,6 +5,7 @@ import {
 import type {
   CalendarEvent,
   EventLaunchTarget,
+  LaunchExecutionState,
 } from './types';
 
 const EVENT_LAUNCH_TARGET_RETENTION_MS = 7 * 24 * 60 * 60 * 1000;
@@ -22,6 +23,10 @@ export function normalizeLaunchUrl(raw: string): string | null {
   } catch {
     return null;
   }
+}
+
+export function getLaunchExecutionKey(target: Pick<EventLaunchTarget, 'calendarEventId' | 'launchKey'>): string {
+  return target.launchKey ?? target.calendarEventId;
 }
 
 export function getLaunchTargetHost(launchUrl: string): string | null {
@@ -59,6 +64,23 @@ export function pruneExpiredEventLaunchTargets(
   return [...deduped.values()].sort(
     (left, right) => new Date(left.start).getTime() - new Date(right.start).getTime(),
   );
+}
+
+export function pruneStaleLaunchExecutionStates(
+  states: Record<string, LaunchExecutionState>,
+  now: number = Date.now(),
+): Record<string, LaunchExecutionState> {
+  return Object.entries(states).reduce<Record<string, LaunchExecutionState>>((acc, [key, state]) => {
+    const expiresAt = typeof state.expiresAt === 'string'
+      ? new Date(state.expiresAt).getTime()
+      : new Date(state.handledAt).getTime() + EVENT_LAUNCH_TARGET_RETENTION_MS;
+    if (Number.isNaN(expiresAt) || expiresAt <= now) {
+      return acc;
+    }
+
+    acc[key] = state;
+    return acc;
+  }, {});
 }
 
 export async function reconcileEventLaunchTargets(): Promise<EventLaunchTarget[]> {

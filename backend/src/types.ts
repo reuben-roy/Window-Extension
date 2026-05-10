@@ -55,6 +55,41 @@ export interface TaskTagPayload {
   updatedAt: string;
 }
 
+export interface ExtendedTaskSetItemPayload {
+  id: string;
+  label: string;
+  url: string;
+}
+
+export interface ExtendedTaskSetPayload {
+  id: string;
+  title: string;
+  items: ExtendedTaskSetItemPayload[];
+  createdAt: string;
+  updatedAt: string;
+  archivedAt: string | null;
+}
+
+export interface ExtendedTaskAssignmentItemPayload {
+  id: string;
+  label: string;
+  url: string;
+  completedAt: string | null;
+}
+
+export interface ExtendedTaskAssignmentPayload {
+  id: string;
+  calendarEventId: string;
+  eventTitle: string;
+  start: string;
+  end: string;
+  setId: string;
+  setTitle: string;
+  items: ExtendedTaskAssignmentItemPayload[];
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface EventRulePayload {
   eventTitle: string;
   domains: string[];
@@ -71,6 +106,8 @@ export interface AccountSnapshotPayload {
   eventRules: EventRulePayload[];
   keywordRules: KeywordRulePayload[];
   taskTags: TaskTagPayload[];
+  extendedTaskSets: ExtendedTaskSetPayload[];
+  extendedTaskAssignments: ExtendedTaskAssignmentPayload[];
   globalAllowlist: string[];
 }
 

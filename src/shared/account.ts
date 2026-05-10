@@ -1,11 +1,17 @@
 import {
   DEFAULT_ACCOUNT_SYNC_STATE,
   DEFAULT_ALL_TIME_STATS,
+  DEFAULT_EXTENDED_TASK_ASSIGNMENTS,
+  DEFAULT_EXTENDED_TASK_SETS,
   DEFAULT_GLOBAL_ALLOWLIST,
   DEFAULT_TASK_TAGS,
 } from './constants';
 import {
   getAllTimeStats,
+  setExtendedTaskAssignments,
+  setExtendedTaskSets,
+  getExtendedTaskAssignments,
+  getExtendedTaskSets,
   getEventBindings,
   getEventRules,
   getGlobalAllowlist,
@@ -23,6 +29,8 @@ import type {
   KeywordRule,
   PointsHistory,
   Profiles,
+  ExtendedTaskAssignment,
+  ExtendedTaskSet,
   TaskTag,
 } from './types';
 
@@ -34,6 +42,8 @@ export const ACCOUNT_SYNCED_STORAGE_KEYS = [
   'eventRules',
   'keywordRules',
   'taskTags',
+  'extendedTaskSets',
+  'extendedTaskAssignments',
   'globalAllowlist',
 ] as const;
 
@@ -46,6 +56,8 @@ export function createEmptyAccountSnapshot(): AccountSnapshot {
     eventRules: [],
     keywordRules: [],
     taskTags: [...DEFAULT_TASK_TAGS],
+    extendedTaskSets: [...DEFAULT_EXTENDED_TASK_SETS],
+    extendedTaskAssignments: [...DEFAULT_EXTENDED_TASK_ASSIGNMENTS],
     globalAllowlist: [...DEFAULT_GLOBAL_ALLOWLIST],
   };
 }
@@ -63,6 +75,8 @@ export async function buildAccountSnapshotFromStorage(): Promise<AccountSnapshot
     eventRules,
     keywordRules,
     taskTags,
+    extendedTaskSets,
+    extendedTaskAssignments,
     globalAllowlist,
   ] = await Promise.all([
     getAllTimeStats(),
@@ -72,6 +86,8 @@ export async function buildAccountSnapshotFromStorage(): Promise<AccountSnapshot
     getEventRules(),
     getKeywordRules(),
     getTaskTags(),
+    getExtendedTaskSets(),
+    getExtendedTaskAssignments(),
     getGlobalAllowlist(),
   ]);
 
@@ -83,6 +99,8 @@ export async function buildAccountSnapshotFromStorage(): Promise<AccountSnapshot
     eventRules,
     keywordRules,
     taskTags,
+    extendedTaskSets,
+    extendedTaskAssignments,
     globalAllowlist,
   });
 }
@@ -112,6 +130,10 @@ export async function applyAccountSnapshotToStorage(
       },
     );
   });
+  await Promise.all([
+    setExtendedTaskSets(normalized.extendedTaskSets),
+    setExtendedTaskAssignments(normalized.extendedTaskAssignments),
+  ]);
 }
 
 export function normalizeAccountSnapshot(
@@ -135,6 +157,10 @@ export function normalizeAccountSnapshot(
     eventRules: normalizeEventRules(migrated.eventRules),
     keywordRules: normalizeKeywordRules(migrated.keywordRules),
     taskTags: normalizeTaskTags(migrated.taskTags),
+    extendedTaskSets: normalizeExtendedTaskSets(snapshot?.extendedTaskSets ?? empty.extendedTaskSets),
+    extendedTaskAssignments: normalizeExtendedTaskAssignments(
+      snapshot?.extendedTaskAssignments ?? empty.extendedTaskAssignments,
+    ),
     globalAllowlist: normalizeStringArray(snapshot?.globalAllowlist ?? empty.globalAllowlist),
   };
 }
@@ -151,6 +177,8 @@ export function accountSnapshotHasUserData(snapshot: AccountSnapshot): boolean {
     normalized.eventRules.length > 0 ||
     normalized.keywordRules.length > 0 ||
     JSON.stringify(normalized.taskTags) !== JSON.stringify(empty.taskTags) ||
+    normalized.extendedTaskSets.length > 0 ||
+    normalized.extendedTaskAssignments.length > 0 ||
     JSON.stringify(normalized.globalAllowlist) !== JSON.stringify(empty.globalAllowlist)
   );
 }
@@ -178,6 +206,10 @@ function serializeAccountSnapshot(snapshot: AccountSnapshot): string {
     eventRules: [...normalized.eventRules].sort((a, b) => a.eventTitle.localeCompare(b.eventTitle)),
     keywordRules: [...normalized.keywordRules].sort((a, b) => a.keyword.localeCompare(b.keyword)),
     taskTags: [...normalized.taskTags].sort((a, b) => a.key.localeCompare(b.key)),
+    extendedTaskSets: [...normalized.extendedTaskSets].sort((a, b) => a.id.localeCompare(b.id)),
+    extendedTaskAssignments: [...normalized.extendedTaskAssignments].sort(
+      (a, b) => a.calendarEventId.localeCompare(b.calendarEventId),
+    ),
     globalAllowlist: [...normalized.globalAllowlist].sort(),
   });
 }
@@ -229,6 +261,55 @@ function normalizeKeywordRules(rules: KeywordRule[]): KeywordRule[] {
 
 function normalizeTaskTags(tags: TaskTag[]): TaskTag[] {
   return ensureDefaultTaskTags(tags);
+}
+
+function normalizeExtendedTaskSets(taskSets: ExtendedTaskSet[]): ExtendedTaskSet[] {
+  return taskSets
+    .filter((taskSet) => Boolean(taskSet?.id) && Boolean(taskSet?.title))
+    .map((taskSet) => ({
+      id: taskSet.id,
+      title: taskSet.title,
+      items: Array.isArray(taskSet.items)
+        ? taskSet.items
+            .filter((item) => Boolean(item?.id) && Boolean(item?.label) && Boolean(item?.url))
+            .map((item) => ({
+              id: item.id,
+              label: item.label,
+              url: item.url,
+            }))
+        : [],
+      createdAt: taskSet.createdAt,
+      updatedAt: taskSet.updatedAt,
+      archivedAt: taskSet.archivedAt ?? null,
+    }));
+}
+
+function normalizeExtendedTaskAssignments(
+  assignments: ExtendedTaskAssignment[],
+): ExtendedTaskAssignment[] {
+  return assignments
+    .filter((assignment) => Boolean(assignment?.id) && Boolean(assignment?.calendarEventId))
+    .map((assignment) => ({
+      id: assignment.id,
+      calendarEventId: assignment.calendarEventId,
+      eventTitle: assignment.eventTitle,
+      start: assignment.start,
+      end: assignment.end,
+      setId: assignment.setId,
+      setTitle: assignment.setTitle,
+      items: Array.isArray(assignment.items)
+        ? assignment.items
+            .filter((item) => Boolean(item?.id) && Boolean(item?.label) && Boolean(item?.url))
+            .map((item) => ({
+              id: item.id,
+              label: item.label,
+              url: item.url,
+              completedAt: item.completedAt ?? null,
+            }))
+        : [],
+      createdAt: assignment.createdAt,
+      updatedAt: assignment.updatedAt,
+    }));
 }
 
 function normalizeStringArray(values: string[]): string[] {

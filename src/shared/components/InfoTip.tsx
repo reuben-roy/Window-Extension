@@ -28,7 +28,7 @@ export default function InfoTip({
       <span
         id={tooltipId}
         role="tooltip"
-        className={`pointer-events-none absolute bottom-[calc(100%+8px)] left-1/2 z-30 w-[220px] -translate-x-1/2 rounded-[14px] border border-[rgba(15,23,42,0.08)] bg-[rgba(15,23,42,0.96)] px-3 py-2 text-[11px] leading-4 text-white shadow-[0_18px_44px_rgba(15,23,42,0.22)] transition duration-150 ${
+        className={`pointer-events-none absolute bottom-[calc(100%+8px)] left-1/2 z-30 w-[200px] -translate-x-1/2 rounded-md border border-[rgba(15,23,42,0.08)] bg-[rgba(15,23,42,0.96)] px-2.5 py-1.5 text-[10px] leading-snug text-white shadow-lg transition duration-150 ${
           open ? 'translate-y-0 opacity-100' : 'translate-y-1 opacity-0'
         }`}
       >

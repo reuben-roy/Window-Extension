@@ -9,6 +9,7 @@ import {
 } from '../src/background/calendar';
 import type {
   CalendarEvent,
+  ExtendedTaskAssignment,
   EventLaunchTarget,
   EventRule,
   KeywordRule,
@@ -24,6 +25,37 @@ function makeEvent(overrides: Partial<CalendarEvent> = {}): CalendarEvent {
     isAllDay: false,
     description: null,
     attendees: [],
+    ...overrides,
+  };
+}
+
+function makeExtendedTaskAssignment(
+  overrides: Partial<ExtendedTaskAssignment> = {},
+): ExtendedTaskAssignment {
+  return {
+    id: 'assignment-1',
+    calendarEventId: 'evt-1',
+    eventTitle: 'Deep Work',
+    start: new Date(Date.now() - 30 * 60_000).toISOString(),
+    end: new Date(Date.now() + 30 * 60_000).toISOString(),
+    setId: 'set-1',
+    setTitle: 'Late code sprint',
+    items: [
+      {
+        id: 'assignment-item-1',
+        label: 'Question 1',
+        url: 'https://leetcode.com/problems/two-sum/',
+        completedAt: null,
+      },
+      {
+        id: 'assignment-item-2',
+        label: 'Question 2',
+        url: 'https://leetcode.com/problems/add-two-numbers/',
+        completedAt: null,
+      },
+    ],
+    createdAt: '2026-04-21T16:00:00.000Z',
+    updatedAt: '2026-04-21T16:00:00.000Z',
     ...overrides,
   };
 }
@@ -192,6 +224,116 @@ describe('resolveActiveState', () => {
     expect(state.difficultyRank).toBe(5);
     expect(state.allowedDomains).toContain('github.com');
     expect(state.allowedDomains).toContain('accounts.google.com');
+  });
+
+  it('prefers extended task launches over saved launch pages for the active occurrence', () => {
+    const event = makeEvent({ title: 'Deep Work' });
+    const state = resolveActiveState(
+      [event],
+      eventRules,
+      keywordRules,
+      GLOBAL_ALLOWLIST,
+      DEFAULT_SETTINGS,
+      [],
+      [],
+      [],
+      [],
+      [],
+      [
+        {
+          calendarEventId: event.id,
+          eventTitle: event.title,
+          start: event.start,
+          end: event.end,
+          launchUrl: 'https://github.com/window',
+          updatedAt: '2026-04-21T16:00:00.000Z',
+        },
+      ],
+      [makeExtendedTaskAssignment()],
+    );
+
+    expect(state.activeLaunchTarget?.source).toBe('extended-task');
+    expect(state.activeLaunchTarget?.launchUrl).toBe('https://leetcode.com/problems/two-sum/');
+    expect(state.allowedDomains).toContain('leetcode.com');
+  });
+
+  it('falls back to the saved launch page when all extended task items are completed', () => {
+    const event = makeEvent({ title: 'Deep Work' });
+    const state = resolveActiveState(
+      [event],
+      eventRules,
+      keywordRules,
+      GLOBAL_ALLOWLIST,
+      DEFAULT_SETTINGS,
+      [],
+      [],
+      [],
+      [],
+      [],
+      [
+        {
+          calendarEventId: event.id,
+          eventTitle: event.title,
+          start: event.start,
+          end: event.end,
+          launchUrl: 'https://github.com/window',
+          updatedAt: '2026-04-21T16:00:00.000Z',
+        },
+      ],
+      [
+        makeExtendedTaskAssignment({
+          items: [
+            {
+              id: 'assignment-item-1',
+              label: 'Question 1',
+              url: 'https://leetcode.com/problems/two-sum/',
+              completedAt: '2026-04-21T16:15:00.000Z',
+            },
+          ],
+        }),
+      ],
+    );
+
+    expect(state.activeLaunchTarget?.source).not.toBe('extended-task');
+    expect(state.activeLaunchTarget?.launchUrl).toBe('https://github.com/window');
+  });
+
+  it('advances the active launch target to the next incomplete extended task item', () => {
+    const event = makeEvent({ title: 'Deep Work' });
+    const state = resolveActiveState(
+      [event],
+      eventRules,
+      keywordRules,
+      GLOBAL_ALLOWLIST,
+      DEFAULT_SETTINGS,
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [
+        makeExtendedTaskAssignment({
+          items: [
+            {
+              id: 'assignment-item-1',
+              label: 'Question 1',
+              url: 'https://leetcode.com/problems/two-sum/',
+              completedAt: '2026-04-21T16:15:00.000Z',
+            },
+            {
+              id: 'assignment-item-2',
+              label: 'Question 2',
+              url: 'https://leetcode.com/problems/add-two-numbers/',
+              completedAt: null,
+            },
+          ],
+        }),
+      ],
+    );
+
+    expect(state.activeLaunchTarget?.source).toBe('extended-task');
+    expect(state.activeLaunchTarget?.launchUrl).toBe('https://leetcode.com/problems/add-two-numbers/');
   });
 
   it('pauses blocking after the configured daily cutoff time', () => {

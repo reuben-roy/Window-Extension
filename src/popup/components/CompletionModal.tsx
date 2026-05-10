@@ -69,10 +69,10 @@ export default function CompletionModal({ tasks, onClose, onDone }: Props): Reac
 
   return (
     <div className="fixed inset-0 bg-black/40 flex items-end justify-center z-50">
-      <div className="bg-white w-full rounded-t-2xl p-4 shadow-xl">
+      <div className="bg-white w-full rounded-t-xl p-3 shadow-xl">
         {/* Header */}
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-sm font-bold text-gray-900">Mark task done</h2>
+        <div className="flex items-center justify-between mb-2">
+          <h2 className="text-xs font-bold text-gray-900">Mark task done</h2>
           <button
             onClick={onClose}
             className="text-gray-400 hover:text-gray-600 text-lg leading-none"
@@ -85,7 +85,7 @@ export default function CompletionModal({ tasks, onClose, onDone }: Props): Reac
         {/* Task selector */}
         {tasks.length > 1 && (
           <select
-            className="w-full text-sm border border-gray-200 rounded-lg px-2 py-1.5 mb-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="fg-select mb-2 text-xs"
             value={selectedTaskId}
             onChange={(e) => setSelectedTaskId(e.target.value)}
           >
@@ -100,7 +100,7 @@ export default function CompletionModal({ tasks, onClose, onDone }: Props): Reac
 
         {/* Anti-gaming warning */}
         {!eligibility.allowed && eligibility.reason && (
-          <div className="mb-3 px-3 py-2 bg-amber-50 border border-amber-100 rounded-lg">
+          <div className="mb-2 px-2.5 py-1.5 bg-amber-50 border border-amber-100 rounded-md">
             <p className="text-[10px] text-amber-600">{eligibility.reason}</p>
           </div>
         )}
@@ -109,7 +109,7 @@ export default function CompletionModal({ tasks, onClose, onDone }: Props): Reac
           {/* Completion note */}
           <textarea
             ref={textareaRef}
-            className="w-full text-sm border border-gray-200 rounded-lg px-2 py-1.5 mb-1 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="fg-input mb-1 w-full resize-none text-xs"
             rows={2}
             placeholder="What did you finish? (required)"
             value={note}
@@ -117,24 +117,24 @@ export default function CompletionModal({ tasks, onClose, onDone }: Props): Reac
             onKeyDown={handleKeyDown}
             disabled={submitting}
           />
-          <p className="text-[10px] text-gray-400 mb-3">
+          <p className="text-[9px] text-gray-400 mb-2">
             ⌘ Enter to submit · Esc to cancel
           </p>
-          {error && <p className="mb-3 text-xs text-rose-600">{error}</p>}
+          {error && <p className="mb-2 text-[10px] text-rose-600">{error}</p>}
 
           {/* Actions */}
-          <div className="flex gap-2">
+          <div className="flex gap-1.5">
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 py-2 text-sm text-gray-600 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors"
+              className="fg-button-secondary flex-1 py-1.5 text-xs"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={!canSubmit}
-              className="flex-1 py-2 text-sm font-semibold text-white bg-blue-600 rounded-xl disabled:opacity-40 hover:bg-blue-700 disabled:cursor-not-allowed transition-colors"
+              className="fg-button-primary flex-1 py-1.5 text-xs"
             >
               {submitting ? 'Saving…' : 'Done'}
             </button>

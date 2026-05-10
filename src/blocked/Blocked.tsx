@@ -43,6 +43,7 @@ export default function Blocked(): React.JSX.Element {
   const [stateError, setStateError] = useState<string | null>(null);
   const [contextError, setContextError] = useState<string | null>(null);
   const [unlockSuccess, setUnlockSuccess] = useState<UnlockSuccessState | null>(null);
+  const [endingBreak, setEndingBreak] = useState(false);
   const currentTabIdRef = useRef<number | null>(null);
   const [, setTick] = useState(0);
 
@@ -123,7 +124,7 @@ export default function Blocked(): React.JSX.Element {
 
   if (!state) {
     return (
-      <div className="fg-shell min-h-screen px-4 py-8">
+      <div className="fg-shell min-h-screen px-4 py-6">
         <div className="mx-auto max-w-5xl">
           <StatusCard
             title={stateError ? 'Blocked page unavailable' : 'Loading your focus dashboard…'}
@@ -153,7 +154,7 @@ export default function Blocked(): React.JSX.Element {
   const rankLabel = currentEntry ? `#${currentEntry.rank}` : 'Unranked';
 
   return (
-    <div className="fg-shell min-h-screen px-4 py-8">
+    <div className="fg-shell min-h-screen px-4 py-6">
       <div className="mx-auto max-w-6xl space-y-6">
         <header className="space-y-2">
           <div className="inline-flex items-center gap-2 rounded-full border border-[var(--fg-border)] bg-white/85 px-3 py-1 text-[11px] font-medium text-[var(--fg-muted)] shadow-sm">
@@ -180,7 +181,7 @@ export default function Blocked(): React.JSX.Element {
           </div>
 
           <div className="space-y-4">
-            <div className="fg-card relative overflow-visible p-5">
+            <div className="fg-card relative overflow-visible p-4">
               <div className="mb-4 lg:hidden">
                 <PointsBubble
                   points={allTimeStats.totalPoints}
@@ -240,7 +241,7 @@ export default function Blocked(): React.JSX.Element {
 
               {(unlockSuccess || contextError) && (
                 <div
-                  className={`mt-4 rounded-2xl border px-4 py-3 ${
+                  className={`mt-4 rounded-lg border px-3 py-2.5 ${
                     unlockSuccess
                       ? 'border-violet-200 bg-violet-50'
                       : 'border-amber-200 bg-amber-50'
@@ -264,7 +265,7 @@ export default function Blocked(): React.JSX.Element {
             </div>
 
             <div className="grid gap-4 md:grid-cols-2">
-              <div className="fg-card p-5">
+              <div className="fg-card p-4">
                 <p className="text-xs uppercase tracking-[0.18em] text-[var(--fg-muted)]">Temporary unlock</p>
                 <p className="mt-2 text-lg font-semibold tracking-[-0.03em] text-[var(--fg-text)]">
                   Spend points to peek at this site
@@ -274,7 +275,7 @@ export default function Blocked(): React.JSX.Element {
                 </p>
 
                 {context?.unlock && unlockCountdown ? (
-                  <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3">
+                  <div className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2.5">
                     <p className="text-xs uppercase tracking-[0.16em] text-emerald-600">Unlock active</p>
                     <p className="mt-1 text-3xl font-semibold tracking-[-0.03em] tabular-nums text-emerald-950">
                       {unlockCountdown}
@@ -285,7 +286,7 @@ export default function Blocked(): React.JSX.Element {
                   </div>
                 ) : (
                   <div className="mt-4 space-y-4">
-                    <div className="rounded-2xl border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-4 py-3">
+                    <div className="rounded-lg border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-3 py-2.5">
                       <p className="text-xs uppercase tracking-[0.16em] text-[var(--fg-muted)]">Next unlock cost</p>
                       <p className="mt-1 text-3xl font-semibold tracking-[-0.03em] text-[var(--fg-text)]">
                         {context?.nextUnlockCost ?? 25} pts
@@ -343,12 +344,32 @@ export default function Blocked(): React.JSX.Element {
                 )}
               </div>
 
-              <div className="fg-card p-5">
+              <div className="fg-card p-4">
                 <p className="text-xs uppercase tracking-[0.18em] text-[var(--fg-muted)]">Break timer</p>
                 {breakActive && breakCountdown ? (
-                  <div className="mt-3 space-y-2">
+                  <div className="mt-3 space-y-3">
                     <p className="text-4xl font-semibold tracking-[-0.03em] tabular-nums text-amber-950">{breakCountdown}</p>
-                    <p className="text-sm text-amber-700">Blocking resumes automatically when your break ends.</p>
+                    <p className="text-sm text-amber-700">Blocking resumes automatically when your break ends — or end it early.</p>
+                    <button
+                      type="button"
+                      disabled={endingBreak}
+                      onClick={() => {
+                        setEndingBreak(true);
+                        chrome.runtime.sendMessage({ type: 'END_SNOOZE' }, (response: { ok?: boolean; error?: string } | undefined) => {
+                          setEndingBreak(false);
+                          if (chrome.runtime.lastError) {
+                            return;
+                          }
+                          if (response && typeof response === 'object' && response.error) {
+                            return;
+                          }
+                          loadState(currentTabIdRef.current);
+                        });
+                      }}
+                      className="fg-button-secondary w-full disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {endingBreak ? 'Ending…' : 'Resume blocking now'}
+                    </button>
                   </div>
                 ) : (
                   <div className="mt-3 space-y-4">
@@ -357,7 +378,7 @@ export default function Blocked(): React.JSX.Element {
                         <button
                           key={minutes}
                           onClick={() => setSelectedDuration(minutes)}
-                          className={`flex-1 rounded-2xl px-3 py-2.5 text-sm font-medium transition-colors ${
+                          className={`flex-1 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
                             selectedDuration === minutes
                               ? 'bg-[var(--fg-accent)] text-white shadow-[0_12px_24px_rgba(0,102,255,0.18)]'
                               : 'border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] text-[var(--fg-muted)] hover:bg-white'
@@ -385,7 +406,7 @@ export default function Blocked(): React.JSX.Element {
           </div>
 
           <div className="flex h-full flex-col lg:-mt-[7.5rem]">
-            <div className="fg-card flex min-h-0 flex-1 flex-col p-5">
+            <div className="fg-card flex min-h-0 flex-1 flex-col p-4">
               <div className="mb-3">
                 <p className="text-xs uppercase tracking-[0.18em] text-[var(--fg-muted)]">Leaderboard</p>
                 <p className="mt-1 text-sm text-[var(--fg-muted)]">
@@ -397,7 +418,7 @@ export default function Blocked(): React.JSX.Element {
                 {leaderboard.map((entry) => (
                   <div
                     key={entry.name}
-                    className={`flex items-center justify-between rounded-2xl border px-3 py-3 ${
+                    className={`flex items-center justify-between rounded-lg border px-3 py-3 ${
                       entry.isCurrentUser
                         ? 'border-violet-200 bg-violet-50'
                         : 'border-[var(--fg-border)] bg-[var(--fg-panel-soft)]'
@@ -433,7 +454,7 @@ function StatusCard({
   tone: 'neutral' | 'error';
 }): React.JSX.Element {
   return (
-    <div className="fg-card px-6 py-5">
+    <div className="fg-card px-4 py-4">
       <p className={`text-xs uppercase tracking-[0.16em] ${tone === 'error' ? 'text-rose-600' : 'text-[var(--fg-muted)]'}`}>
         Window
       </p>
@@ -469,7 +490,7 @@ function LevelDial({
   const strokeOffset = circumference * (1 - progress);
 
   return (
-    <div className="flex items-center gap-3 rounded-[26px] border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-4 py-3">
+    <div className="flex items-center gap-3 rounded-lg border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-3 py-2.5">
       <div className="relative h-[84px] w-[84px]">
         <svg viewBox="0 0 84 84" className="h-full w-full -rotate-90">
           <circle

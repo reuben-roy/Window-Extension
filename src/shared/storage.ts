@@ -23,6 +23,10 @@ import type {
   DownloadAllowance,
   DifficultyBreakdownItem,
   DifficultyRank,
+  ExtendedTaskAssignment,
+  ExtendedTaskAssignmentItem,
+  ExtendedTaskSet,
+  ExtendedTaskSetItem,
   EventPatternStat,
   EventLaunchTarget,
   EventRule,
@@ -51,6 +55,8 @@ import {
   DEFAULT_ALL_TIME_STATS,
   DEFAULT_ASSISTANT_OPTIONS,
   DEFAULT_BACKEND_SYNC_STATE,
+  DEFAULT_EXTENDED_TASK_ASSIGNMENTS,
+  DEFAULT_EXTENDED_TASK_SETS,
   DEFAULT_GLOBAL_ALLOWLIST,
   DEFAULT_OPENCLAW_STATE,
   DEFAULT_SETTINGS,
@@ -81,10 +87,34 @@ function set<T>(key: string, value: T): Promise<void> {
   });
 }
 
+function remove(key: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    chrome.storage.sync.remove(key, () => {
+      if (chrome.runtime.lastError) {
+        reject(new Error(chrome.runtime.lastError.message));
+      } else {
+        resolve();
+      }
+    });
+  });
+}
+
 function getLocal<T>(key: string, defaultValue: T): Promise<T> {
   return new Promise((resolve) => {
     chrome.storage.local.get(key, (result) => {
       resolve(result[key] !== undefined ? (result[key] as T) : defaultValue);
+    });
+  });
+}
+
+function removeLocal(key: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    chrome.storage.local.remove(key, () => {
+      if (chrome.runtime.lastError) {
+        reject(new Error(chrome.runtime.lastError.message));
+      } else {
+        resolve();
+      }
     });
   });
 }
@@ -188,6 +218,109 @@ function normalizeKeywordRulesStored(rules: KeywordRule[]): KeywordRule[] {
       createdAt: typeof rule.createdAt === 'string' ? rule.createdAt : new Date(0).toISOString(),
       tagKey: normalizeNullableString(rule.tagKey),
     }));
+}
+
+function normalizeExtendedTaskSetItem(
+  item: Partial<ExtendedTaskSetItem> | null | undefined,
+): ExtendedTaskSetItem | null {
+  if (!item || typeof item !== 'object') return null;
+
+  const id = typeof item.id === 'string' && item.id.trim().length > 0 ? item.id : '';
+  const label = typeof item.label === 'string' ? item.label.trim() : '';
+  const url = typeof item.url === 'string' ? item.url.trim() : '';
+
+  if (!id || !label || !url) return null;
+
+  return {
+    id,
+    label,
+    url,
+  };
+}
+
+function normalizeExtendedTaskSetStored(
+  taskSet: Partial<ExtendedTaskSet> | null | undefined,
+): ExtendedTaskSet | null {
+  if (!taskSet || typeof taskSet !== 'object') return null;
+
+  const id = typeof taskSet.id === 'string' && taskSet.id.trim().length > 0 ? taskSet.id : '';
+  const title = typeof taskSet.title === 'string' ? taskSet.title.trim() : '';
+  if (!id || !title) return null;
+
+  return {
+    id,
+    title,
+    items: Array.isArray(taskSet.items)
+      ? taskSet.items
+          .map((item) => normalizeExtendedTaskSetItem(item))
+          .filter((item): item is ExtendedTaskSetItem => item !== null)
+      : [],
+    createdAt: typeof taskSet.createdAt === 'string' ? taskSet.createdAt : new Date(0).toISOString(),
+    updatedAt: typeof taskSet.updatedAt === 'string' ? taskSet.updatedAt : new Date(0).toISOString(),
+    archivedAt: normalizeNullableString(taskSet.archivedAt),
+  };
+}
+
+function normalizeExtendedTaskSetsStored(taskSets: unknown): ExtendedTaskSet[] {
+  if (!Array.isArray(taskSets)) return [];
+  return taskSets
+    .map((taskSet) => normalizeExtendedTaskSetStored(taskSet as Partial<ExtendedTaskSet>))
+    .filter((taskSet): taskSet is ExtendedTaskSet => taskSet !== null);
+}
+
+function normalizeExtendedTaskAssignmentItem(
+  item: Partial<ExtendedTaskAssignmentItem> | null | undefined,
+): ExtendedTaskAssignmentItem | null {
+  if (!item || typeof item !== 'object') return null;
+
+  const id = typeof item.id === 'string' && item.id.trim().length > 0 ? item.id : '';
+  const label = typeof item.label === 'string' ? item.label.trim() : '';
+  const url = typeof item.url === 'string' ? item.url.trim() : '';
+  if (!id || !label || !url) return null;
+
+  return {
+    id,
+    label,
+    url,
+    completedAt: normalizeNullableString(item.completedAt),
+  };
+}
+
+function normalizeExtendedTaskAssignmentStored(
+  assignment: Partial<ExtendedTaskAssignment> | null | undefined,
+): ExtendedTaskAssignment | null {
+  if (!assignment || typeof assignment !== 'object') return null;
+
+  const id = typeof assignment.id === 'string' && assignment.id.trim().length > 0 ? assignment.id : '';
+  const calendarEventId =
+    typeof assignment.calendarEventId === 'string' && assignment.calendarEventId.trim().length > 0
+      ? assignment.calendarEventId
+      : '';
+  if (!id || !calendarEventId) return null;
+
+  return {
+    id,
+    calendarEventId,
+    eventTitle: typeof assignment.eventTitle === 'string' ? assignment.eventTitle : '',
+    start: typeof assignment.start === 'string' ? assignment.start : '',
+    end: typeof assignment.end === 'string' ? assignment.end : '',
+    setId: typeof assignment.setId === 'string' ? assignment.setId : '',
+    setTitle: typeof assignment.setTitle === 'string' ? assignment.setTitle : '',
+    items: Array.isArray(assignment.items)
+      ? assignment.items
+          .map((item) => normalizeExtendedTaskAssignmentItem(item))
+          .filter((item): item is ExtendedTaskAssignmentItem => item !== null)
+      : [],
+    createdAt: typeof assignment.createdAt === 'string' ? assignment.createdAt : new Date(0).toISOString(),
+    updatedAt: typeof assignment.updatedAt === 'string' ? assignment.updatedAt : new Date(0).toISOString(),
+  };
+}
+
+function normalizeExtendedTaskAssignmentsStored(assignments: unknown): ExtendedTaskAssignment[] {
+  if (!Array.isArray(assignments)) return [];
+  return assignments
+    .map((assignment) => normalizeExtendedTaskAssignmentStored(assignment as Partial<ExtendedTaskAssignment>))
+    .filter((assignment): assignment is ExtendedTaskAssignment => assignment !== null);
 }
 
 function normalizeFocusSessionRecord(
@@ -483,6 +616,62 @@ function normalizeCalendarStateStored(state: CalendarState): CalendarState {
   };
 }
 
+function normalizeAssistantOptionsStored(options: Partial<AssistantOptions> | null | undefined): AssistantOptions {
+  return {
+    ...DEFAULT_ASSISTANT_OPTIONS,
+    ...options,
+    preferredModel: {
+      ...DEFAULT_ASSISTANT_OPTIONS.preferredModel,
+      ...(options?.preferredModel ?? {}),
+      value:
+        typeof options?.preferredModel?.value === 'string' && options.preferredModel.value.trim().length > 0
+          ? options.preferredModel.value
+          : DEFAULT_ASSISTANT_OPTIONS.preferredModel.value,
+      updatedAt: normalizeNullableString(options?.preferredModel?.updatedAt),
+    },
+    autoCreateSession: options?.autoCreateSession ?? DEFAULT_ASSISTANT_OPTIONS.autoCreateSession,
+    reuseActiveSession: options?.reuseActiveSession ?? DEFAULT_ASSISTANT_OPTIONS.reuseActiveSession,
+    selectedConnectorId: normalizeNullableString(options?.selectedConnectorId),
+    taskNotificationMode:
+      options?.taskNotificationMode === 'immediate' ||
+      options?.taskNotificationMode === 'after_focus' ||
+      options?.taskNotificationMode === 'inbox_only'
+        ? options.taskNotificationMode
+        : DEFAULT_ASSISTANT_OPTIONS.taskNotificationMode,
+    notes: typeof options?.notes === 'string' ? options.notes : DEFAULT_ASSISTANT_OPTIONS.notes,
+  };
+}
+
+function normalizeOpenClawStateStored(state: Partial<OpenClawState> | null | undefined): OpenClawState {
+  return {
+    ...DEFAULT_OPENCLAW_STATE,
+    ...state,
+    status: {
+      ...DEFAULT_OPENCLAW_STATE.status,
+      ...(state?.status ?? {}),
+      connected: Boolean(state?.status?.connected),
+      healthy: Boolean(state?.status?.healthy),
+      transport:
+        state?.status?.transport === 'ssh' ||
+        state?.status?.transport === 'http' ||
+        state?.status?.transport === 'unknown'
+          ? state.status.transport
+          : DEFAULT_OPENCLAW_STATE.status.transport,
+      label: normalizeNullableString(state?.status?.label),
+      message: normalizeNullableString(state?.status?.message),
+      lastCheckedAt: normalizeNullableString(state?.status?.lastCheckedAt),
+    },
+    connectors: Array.isArray(state?.connectors) ? state.connectors : [],
+    selectedConnectorId: normalizeNullableString(state?.selectedConnectorId),
+    sessions: Array.isArray(state?.sessions) ? state.sessions : [],
+    activeSessionId: normalizeNullableString(state?.activeSessionId),
+    currentJob: state?.currentJob ?? null,
+    currentTask: state?.currentTask ?? null,
+    tasks: Array.isArray(state?.tasks) ? state.tasks : [],
+    lastError: normalizeNullableString(state?.lastError),
+  };
+}
+
 // ─── Profiles ────────────────────────────────────────────────────────────────
 
 export const getProfiles = (): Promise<Profiles> =>
@@ -531,6 +720,78 @@ export const getTaskTags = (): Promise<TaskTag[]> =>
 export const setTaskTags = (tags: TaskTag[]): Promise<void> =>
   set('taskTags', ensureDefaultTaskTags(tags));
 
+export const getExtendedTaskSets = async (): Promise<ExtendedTaskSet[]> => {
+  const local = normalizeExtendedTaskSetsStored(
+    await getLocal<ExtendedTaskSet[]>('extendedTaskSets', DEFAULT_EXTENDED_TASK_SETS),
+  );
+  if (local.length > 0) {
+    return local;
+  }
+
+  const legacySync = normalizeExtendedTaskSetsStored(
+    await get<ExtendedTaskSet[]>('extendedTaskSets', DEFAULT_EXTENDED_TASK_SETS),
+  );
+  if (legacySync.length > 0) {
+    await Promise.all([
+      setLocal('extendedTaskSets', legacySync),
+      remove('extendedTaskSets'),
+    ]);
+    return legacySync;
+  }
+
+  return local;
+};
+
+export const setExtendedTaskSets = async (taskSets: ExtendedTaskSet[]): Promise<void> => {
+  const normalized = normalizeExtendedTaskSetsStored(taskSets);
+  await Promise.all([
+    setLocal('extendedTaskSets', normalized),
+    remove('extendedTaskSets'),
+  ]);
+};
+
+export const clearExtendedTaskSets = (): Promise<void> =>
+  Promise.all([
+    removeLocal('extendedTaskSets'),
+    remove('extendedTaskSets'),
+  ]).then(() => undefined);
+
+export const getExtendedTaskAssignments = async (): Promise<ExtendedTaskAssignment[]> => {
+  const local = normalizeExtendedTaskAssignmentsStored(
+    await getLocal<ExtendedTaskAssignment[]>('extendedTaskAssignments', DEFAULT_EXTENDED_TASK_ASSIGNMENTS),
+  );
+  if (local.length > 0) {
+    return local;
+  }
+
+  const legacySync = normalizeExtendedTaskAssignmentsStored(
+    await get<ExtendedTaskAssignment[]>('extendedTaskAssignments', DEFAULT_EXTENDED_TASK_ASSIGNMENTS),
+  );
+  if (legacySync.length > 0) {
+    await Promise.all([
+      setLocal('extendedTaskAssignments', legacySync),
+      remove('extendedTaskAssignments'),
+    ]);
+    return legacySync;
+  }
+
+  return local;
+};
+
+export const setExtendedTaskAssignments = async (assignments: ExtendedTaskAssignment[]): Promise<void> => {
+  const normalized = normalizeExtendedTaskAssignmentsStored(assignments);
+  await Promise.all([
+    setLocal('extendedTaskAssignments', normalized),
+    remove('extendedTaskAssignments'),
+  ]);
+};
+
+export const clearExtendedTaskAssignments = (): Promise<void> =>
+  Promise.all([
+    removeLocal('extendedTaskAssignments'),
+    remove('extendedTaskAssignments'),
+  ]).then(() => undefined);
+
 // ─── Settings ─────────────────────────────────────────────────────────────────
 
 export const getSettings = (): Promise<Settings> =>
@@ -545,7 +806,7 @@ export const setSettings = (settings: Settings): Promise<void> =>
 // ─── Assistant options ───────────────────────────────────────────────────────
 
 export const getAssistantOptions = (): Promise<AssistantOptions> =>
-  get<AssistantOptions>('assistantOptions', DEFAULT_ASSISTANT_OPTIONS);
+  get<Partial<AssistantOptions>>('assistantOptions', DEFAULT_ASSISTANT_OPTIONS).then(normalizeAssistantOptionsStored);
 
 export const setAssistantOptions = (options: AssistantOptions): Promise<void> =>
   set('assistantOptions', options);
@@ -689,7 +950,7 @@ export const setIdeaRecords = (items: IdeaRecord[]): Promise<void> =>
   setLocal('ideaRecords', items);
 
 export const getOpenClawState = (): Promise<OpenClawState> =>
-  getLocal<OpenClawState>('openClawState', DEFAULT_OPENCLAW_STATE);
+  getLocal<Partial<OpenClawState>>('openClawState', DEFAULT_OPENCLAW_STATE).then(normalizeOpenClawStateStored);
 
 export const setOpenClawState = (state: OpenClawState): Promise<void> =>
   setLocal('openClawState', state);

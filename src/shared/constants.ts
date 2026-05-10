@@ -4,6 +4,8 @@ import type {
   AllTimeStats,
   AssistantOptions,
   BackendSyncState,
+  ExtendedTaskAssignment,
+  ExtendedTaskSet,
   OpenClawState,
   Settings,
   SnoozeState,
@@ -23,7 +25,7 @@ export const DEFAULT_SETTINGS: Settings = {
   breakDurationMinutes: 5,
   keywordAutoMatchEnabled: false,
   breakTelemetryEnabled: false,
-  persistentPanelEnabled: false,
+  persistentPanelEnabled: true,
   dailyBlockingPauseEnabled: false,
   dailyBlockingPauseStartTime: '22:00',
   downloadRedirectFallbackSeconds: 2,
@@ -146,6 +148,10 @@ export const DEFAULT_TASK_TAGS: TaskTag[] = [
     updatedAt: DEFAULT_TAG_UPDATED_AT,
   },
 ];
+
+export const DEFAULT_EXTENDED_TASK_SETS: ExtendedTaskSet[] = [];
+
+export const DEFAULT_EXTENDED_TASK_ASSIGNMENTS: ExtendedTaskAssignment[] = [];
 
 function createEmptyAnalyticsSummary(range: '7d' | '30d') {
   return {

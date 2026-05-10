@@ -16,6 +16,10 @@ import {
   setTaskTags,
 } from '../shared/storage';
 import {
+  reconcileExtendedTaskAssignments,
+  resolveActiveExtendedTaskLaunchTarget,
+} from '../shared/extendedTasks';
+import {
   deriveDifficultyRank,
   getCarryoverCountForEvent,
   getRecentDistinctDomainsForTag,
@@ -45,6 +49,7 @@ import type {
   CalendarEvent,
   CalendarState,
   DifficultyRank,
+  ExtendedTaskAssignment,
   EventPatternStat,
   EventLaunchTarget,
   EventRule,
@@ -95,6 +100,7 @@ export async function syncCalendar(): Promise<CalendarState> {
     activityHistory,
     taskQueue,
     eventLaunchTargets,
+    extendedTaskAssignments,
   ] = await Promise.all([
     getEventRules(),
     getKeywordRules(),
@@ -106,6 +112,7 @@ export async function syncCalendar(): Promise<CalendarState> {
     getActivityHistory(),
     getTaskQueue(),
     reconcileEventLaunchTargets(),
+    reconcileExtendedTaskAssignments(),
   ]);
 
   const migrated = ensureRuleMetadata(eventRules, keywordRules, taskTags);
@@ -165,6 +172,7 @@ export async function syncCalendar(): Promise<CalendarState> {
     taskQueue,
     observed.stats,
     eventLaunchTargets,
+    extendedTaskAssignments,
   );
   await setCalendarState(state);
   return state;
@@ -265,6 +273,7 @@ export function resolveActiveState(
   taskQueue: Task[] = [],
   eventPatternStats: EventPatternStat[] = [],
   eventLaunchTargets: EventLaunchTarget[] = [],
+  extendedTaskAssignments: ExtendedTaskAssignment[] = [],
 ): CalendarState {
   const allActiveEvents = getAllActiveEvents(events);
   const recentEventTitles = [...new Set(events.map((event) => event.title.trim()).filter(Boolean))];
@@ -286,6 +295,7 @@ export function resolveActiveState(
       taskQueue,
       eventPatternStats,
       eventLaunchTargets,
+      extendedTaskAssignments,
     );
   }
 
@@ -303,6 +313,7 @@ export function resolveActiveState(
       taskQueue,
       eventPatternStats,
       eventLaunchTargets,
+      extendedTaskAssignments,
     );
   }
 
@@ -327,6 +338,7 @@ export function resolveActiveState(
       taskQueue,
       eventPatternStats,
       eventLaunchTargets,
+      extendedTaskAssignments,
     );
   }
 
@@ -365,6 +377,7 @@ export function resolveActiveState(
     },
     allActiveEvents,
     eventLaunchTargets,
+    extendedTaskAssignments,
   );
 }
 
@@ -381,6 +394,7 @@ function buildUnrestrictedState(
   taskQueue: Task[],
   eventPatternStats: EventPatternStat[],
   eventLaunchTargets: EventLaunchTarget[],
+  extendedTaskAssignments: ExtendedTaskAssignment[],
 ): CalendarState {
   const currentEvent = allActiveEvents[0] ?? null;
   const tagResolution = currentEvent
@@ -424,6 +438,7 @@ function buildUnrestrictedState(
     },
     allActiveEvents,
     eventLaunchTargets,
+    extendedTaskAssignments,
   );
 }
 
@@ -431,8 +446,11 @@ function attachActiveLaunchTarget(
   state: Omit<CalendarState, 'activeLaunchTarget'>,
   allActiveEvents: CalendarEvent[],
   eventLaunchTargets: EventLaunchTarget[],
+  extendedTaskAssignments: ExtendedTaskAssignment[],
 ): CalendarState {
-  const activeLaunchTarget = resolveActiveLaunchTarget(allActiveEvents, eventLaunchTargets);
+  const activeLaunchTarget =
+    resolveActiveExtendedTaskLaunchTarget(allActiveEvents, extendedTaskAssignments) ??
+    resolveActiveLaunchTarget(allActiveEvents, eventLaunchTargets);
   const launchHost = activeLaunchTarget ? getLaunchTargetHost(activeLaunchTarget.launchUrl) : null;
   const allowedDomains =
     state.isRestricted && launchHost !== null && !isAllowedHost(launchHost, state.allowedDomains)

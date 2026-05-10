@@ -31,6 +31,18 @@ export async function activateSnooze(
   return { durationMinutes };
 }
 
+export function clearSnoozeAlarm(): Promise<boolean> {
+  return new Promise((resolve, reject) => {
+    chrome.alarms.clear(ALARM_SNOOZE_END, (wasCleared) => {
+      if (chrome.runtime.lastError) {
+        reject(new Error(chrome.runtime.lastError.message));
+        return;
+      }
+      resolve(wasCleared);
+    });
+  });
+}
+
 /** Re-enables blocking when the snooze alarm fires. */
 export async function deactivateSnooze(): Promise<void> {
   const state = await getSnoozeState();

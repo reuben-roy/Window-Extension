@@ -106,6 +106,54 @@ export interface Task {
   maxSnoozes: number;
 }
 
+export interface ExtendedTaskSetItem {
+  id: string;
+  label: string;
+  url: string;
+}
+
+export interface ExtendedTaskSetDefinition {
+  id: string;
+  title: string;
+  items: ExtendedTaskSetItem[];
+}
+
+export interface ExtendedTaskTemplate extends ExtendedTaskSetDefinition {
+  source: 'built-in';
+}
+
+export type ExtendedTaskLibraryEntrySource = 'built-in' | 'user';
+
+export interface ExtendedTaskLibraryEntry extends ExtendedTaskSetDefinition {
+  source: ExtendedTaskLibraryEntrySource;
+}
+
+export interface ExtendedTaskSet extends ExtendedTaskSetDefinition {
+  createdAt: string;
+  updatedAt: string;
+  archivedAt: string | null;
+}
+
+export interface ExtendedTaskAssignmentItem {
+  id: string;
+  label: string;
+  url: string;
+  completedAt: string | null;
+}
+
+export interface ExtendedTaskAssignment {
+  id: string;
+  calendarEventId: string;
+  eventTitle: string;
+  start: string;
+  end: string;
+  setId: string;
+  setTitle: string;
+  items: ExtendedTaskAssignmentItem[];
+  createdAt: string;
+  updatedAt: string;
+}
+
 // Snooze session state
 export interface SnoozeState {
   active: boolean;
@@ -167,6 +215,8 @@ export interface AccountSnapshot {
   eventRules: EventRule[];
   keywordRules: KeywordRule[];
   taskTags: TaskTag[];
+  extendedTaskSets: ExtendedTaskSet[];
+  extendedTaskAssignments: ExtendedTaskAssignment[];
   globalAllowlist: string[];
 }
 
@@ -565,6 +615,12 @@ export interface EventLaunchTarget {
   end: string;
   launchUrl: string;
   updatedAt: string;
+  source?: 'saved' | 'extended-task';
+  launchKey?: string;
+  setId?: string | null;
+  setTitle?: string | null;
+  itemId?: string | null;
+  itemLabel?: string | null;
 }
 
 export type LaunchExecutionStatus = 'focused' | 'created' | 'failed';
@@ -573,6 +629,7 @@ export interface LaunchExecutionState {
   status: LaunchExecutionStatus;
   handledAt: string;
   tabId?: number;
+  expiresAt?: string;
 }
 
 // Google Calendar event (normalized from API response)
@@ -650,6 +707,8 @@ export interface StorageData {
   keywordRules: KeywordRule[];
   eventLaunchTargets: EventLaunchTarget[];
   taskTags: TaskTag[];
+  extendedTaskSets: ExtendedTaskSet[];
+  extendedTaskAssignments: ExtendedTaskAssignment[];
   settings: Settings;
   taskQueue: Task[];
   snoozeState: SnoozeState;
@@ -674,6 +733,7 @@ export type MessageType =
   | 'CONNECT_CALENDAR'
   | 'DISCONNECT_CALENDAR'
   | 'SNOOZE'
+  | 'END_SNOOZE'
   | 'SPEND_POINTS_UNLOCK'
   | 'SUBMIT_IDEA'
   | 'SUBMIT_ASSISTANT_TASK'
@@ -685,6 +745,7 @@ export type MessageType =
   | 'CANCEL_ASSISTANT_TASK'
   | 'UPDATE_ASSISTANT_OPTIONS'
   | 'MARK_DONE'
+  | 'MARK_EXTENDED_TASK_ITEM_COMPLETE'
   | 'DISMISS_TASK'
   | 'OPEN_ACTIVE_LAUNCH_TARGET'
   | 'SAVE_ANALYTICS_OVERRIDE'

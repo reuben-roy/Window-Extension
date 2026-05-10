@@ -971,14 +971,14 @@ export default function Options(): React.JSX.Element {
   if (!settings || !calendarState || !analyticsSnapshot) {
     return (
       <div className="fg-shell min-h-screen flex items-center justify-center">
-        <div className="fg-card px-6 py-5 text-sm text-[var(--fg-muted)]">Loading calendar workspace…</div>
+        <div className="fg-card px-4 py-4 text-sm text-[var(--fg-muted)]">Loading calendar workspace…</div>
       </div>
     );
   }
 
   return (
     <div className="fg-shell min-h-screen">
-      <div className="mx-auto max-w-7xl px-6 py-8">
+      <div className="mx-auto max-w-7xl px-4 py-6">
         <header className="mb-5 flex flex-wrap items-center justify-between gap-4">
           <div className="space-y-1">
             <h1 className="text-3xl font-semibold tracking-[-0.03em] text-[var(--fg-text)]">
@@ -1022,7 +1022,7 @@ export default function Options(): React.JSX.Element {
           </div>
         </header>
 
-        <div className="mb-5 inline-flex rounded-[20px] border border-[var(--fg-border)] bg-white p-1 shadow-sm">
+        <div className="mb-5 inline-flex rounded-md border border-[var(--fg-border)] bg-white p-1 shadow-sm">
           <button
             onClick={() => setSurfaceTab('workspace')}
             className={surfaceTab === 'workspace' ? 'fg-segment-active' : 'fg-segment'}
@@ -1052,7 +1052,7 @@ export default function Options(): React.JSX.Element {
                 </span>
               </div>
 
-              <div className="mt-4 overflow-hidden rounded-[24px] border border-[var(--fg-border)] bg-[var(--fg-panel-soft)]/55">
+              <div className="mt-4 overflow-hidden rounded-lg border border-[var(--fg-border)] bg-[var(--fg-panel-soft)]/55">
                 <div className="grid gap-0 md:grid-cols-2 xl:grid-cols-3">
                   <CompactSettingRow
                     className="px-4"
@@ -1177,7 +1177,7 @@ export default function Options(): React.JSX.Element {
               />
 
               <SettingsGroup
-                className="rounded-[24px] border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-4 py-3"
+                className="rounded-lg border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-3 py-2.5"
                 title="Global whitelist"
                 subtitle={`${globalAllowlist.length} domain${globalAllowlist.length === 1 ? '' : 's'} always allowed`}
                 hint="Domains here stay reachable even when an event-specific rule is active."
@@ -1231,7 +1231,7 @@ export default function Options(): React.JSX.Element {
               </SettingsGroup>
 
               <SettingsGroup
-                className="rounded-[24px] border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-4 py-3"
+                className="rounded-lg border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-3 py-2.5"
                 title="Download rescue"
                 subtitle="Short-lived rules that help real downloads complete without opening browsing holes."
                 hint="Use the preset buttons for testing, then fine-tune the individual rescue paths if needed."
@@ -1274,7 +1274,7 @@ export default function Options(): React.JSX.Element {
               </SettingsGroup>
 
               <SettingsGroup
-                className="rounded-[24px] border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-4 py-3"
+                className="rounded-lg border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-3 py-2.5"
                 title="Assistant settings"
                 subtitle="Configure the OpenClaw assistant and capture behaviors."
                 hint="These settings control how Window interacts with the backend assistant."
@@ -1380,7 +1380,7 @@ export default function Options(): React.JSX.Element {
               </SettingsGroup>
 
               <SettingsGroup
-                className="rounded-[24px] border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-4 py-3"
+                className="rounded-lg border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-3 py-2.5"
                 title="Keyword rules"
                 subtitle={`${keywordRules.length} saved fallback rule${keywordRules.length === 1 ? '' : 's'}`}
                 hint="Longest keyword match wins. Exact Event Rules always override these fallbacks."
@@ -1453,8 +1453,8 @@ export default function Options(): React.JSX.Element {
 
         {surfaceTab === 'workspace' ? (
           <>
-            <section className="grid gap-5 xl:grid-cols-[minmax(0,1fr),340px]">
-              <div className="fg-card relative overflow-hidden p-5">
+            <section className="grid gap-4 xl:grid-cols-[minmax(0,1fr),340px]">
+              <div className="fg-card relative overflow-hidden p-4">
                 <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
                   <div className="flex items-center gap-2">
                     <h2 className="text-lg font-semibold tracking-[-0.02em] text-[var(--fg-text)]">
@@ -1603,7 +1603,7 @@ export default function Options(): React.JSX.Element {
                     />
                   </div>
                 ) : (
-                  <div className="rounded-[28px] border border-dashed border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-8 py-12 text-center">
+                  <div className="rounded-xl border border-dashed border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-8 py-12 text-center">
                     <p className="text-lg font-medium text-[var(--fg-text)]">Connect your calendar to unlock the workspace.</p>
                     <p className="mt-2 text-sm text-[var(--fg-muted)]">
                       Once connected, you’ll get a Google-Calendar-like view where each event can own its whitelist.
@@ -1612,14 +1612,14 @@ export default function Options(): React.JSX.Element {
                 )}
               </div>
 
-              <div className="space-y-5">
-                <div className="fg-card p-5">
+              <div className="space-y-4">
+                <div className="fg-card p-4">
                   <div className="mb-3 flex items-center gap-2">
                     <h2 className="text-sm font-semibold text-[var(--fg-text)]">Current / Selected Occurrence</h2>
                     <InfoTip text="If nothing is selected, this rail falls back to the current active event. Checking an item complete advances the next link for that occurrence." />
                   </div>
 
-                  <div className="rounded-[22px] border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-4 py-3">
+                  <div className="rounded-md border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-3 py-2.5">
                     {occurrenceExtendedTaskEvent ? (
                       <>
                         <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--fg-muted)]">
@@ -1720,7 +1720,7 @@ export default function Options(): React.JSX.Element {
                       </div>
                     </div>
                   ) : occurrenceExtendedTaskEvent ? (
-                    <div className="mt-4 rounded-[22px] border border-dashed border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-4 py-4">
+                    <div className="mt-4 rounded-md border border-dashed border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-4 py-4">
                       <p className="text-sm font-medium text-[var(--fg-text)]">No extended tasks on this occurrence yet.</p>
                       <p className="mt-1 text-xs leading-5 text-[var(--fg-muted)]">
                         Drag a roadmap onto this calendar event or use Apply from the library to bind an ordered checklist.
@@ -1733,7 +1733,7 @@ export default function Options(): React.JSX.Element {
                   )}
                 </div>
 
-                <div className="fg-card p-5">
+                <div className="fg-card p-4">
                   <div className="mb-3 flex items-center justify-between gap-3">
                     <div className="flex items-center gap-2">
                       <h2 className="text-sm font-semibold text-[var(--fg-text)]">Extended Tasks</h2>
@@ -1767,7 +1767,7 @@ export default function Options(): React.JSX.Element {
                         <div className="flex min-w-max gap-3">
                           {neetcodeMasterEntry ? (
                             <div
-                              className={`min-w-[292px] max-w-[292px] rounded-[24px] border px-4 py-4 transition ${
+                              className={`min-w-[292px] max-w-[292px] rounded-lg border px-4 py-4 transition ${
                                 draggingExtendedTaskEntry?.id === neetcodeMasterEntry.id &&
                                 draggingExtendedTaskEntry.source === neetcodeMasterEntry.source
                                   ? 'border-blue-300 bg-blue-50/70'
@@ -1811,7 +1811,7 @@ export default function Options(): React.JSX.Element {
                                 </button>
                               </div>
 
-                              <div className="mt-4 rounded-[20px] border border-white/70 bg-white/75 px-3.5 py-3">
+                              <div className="mt-4 rounded-md border border-white/70 bg-white/75 px-3.5 py-3">
                                 <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--fg-muted)]">
                                   Subgroups
                                 </p>
@@ -1943,7 +1943,7 @@ export default function Options(): React.JSX.Element {
                           ))
                         ) : (
                           <div className="min-w-[272px] max-w-[272px]">
-                            <div className="rounded-[24px] border border-dashed border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-4 py-5 text-center">
+                            <div className="rounded-lg border border-dashed border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-4 py-5 text-center">
                               <p className="text-sm font-medium text-[var(--fg-text)]">No saved task sets yet</p>
                               <p className="mt-1 text-xs leading-5 text-[var(--fg-muted)]">Duplicate a default roadmap to customise it, or click <strong>+ New task set</strong> to build from scratch.</p>
                             </div>
@@ -1955,7 +1955,7 @@ export default function Options(): React.JSX.Element {
                   </div>
 
                   {showExtendedTaskEditor ? (
-                    <div className="mt-4 rounded-[24px] border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-4 py-4">
+                    <div className="mt-4 rounded-lg border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-4 py-4">
                       <div className="flex items-center justify-between gap-3">
                         <div>
                           <p className="text-sm font-medium text-[var(--fg-text)]">
@@ -2085,7 +2085,7 @@ export default function Options(): React.JSX.Element {
                       </div>
                     </div>
                   ) : (
-                    <div className="mt-4 rounded-[22px] border border-dashed border-[var(--fg-border)] bg-[var(--fg-panel-soft)]/60 px-4 py-3">
+                    <div className="mt-4 rounded-md border border-dashed border-[var(--fg-border)] bg-[var(--fg-panel-soft)]/60 px-3 py-2.5">
                       <p className="text-[11px] text-[var(--fg-muted)]">
                         Drag any roadmap card onto a calendar event to attach it as a checklist, or click <strong>+ New task set</strong> to build a custom one.
                       </p>
@@ -2096,7 +2096,7 @@ export default function Options(): React.JSX.Element {
             </section>
 
             <section className="mt-5">
-              <div className="fg-card p-5">
+              <div className="fg-card p-4">
                 <div className="mb-3 flex items-center gap-2">
                   <h2 className="text-sm font-semibold text-[var(--fg-text)]">Exact Event Rules</h2>
                   <InfoTip text="These rules are created from the calendar tooltip and always take precedence over keyword fallback matches." />
@@ -2126,7 +2126,7 @@ export default function Options(): React.JSX.Element {
             </section>
           </>
         ) : (
-          <div className="space-y-5">
+          <div className="space-y-4">
             <AnalyticsWorkspace
               analyticsSnapshot={analyticsSnapshot}
               taskTags={taskTags}
@@ -2306,7 +2306,7 @@ const EventRuleTooltip = React.forwardRef<HTMLDivElement, {
         ) : null}
         <div
           ref={ref}
-          className={`fixed z-50 w-[min(392px,calc(100vw-24px))] rounded-[28px] border border-white/80 bg-[rgba(255,255,255,0.98)] p-5 shadow-[0_26px_80px_rgba(15,23,42,0.18)] ring-1 ring-[rgba(148,163,184,0.12)] ${
+          className={`fixed z-50 w-[min(392px,calc(100vw-24px))] rounded-xl border border-white/80 bg-[rgba(255,255,255,0.98)] p-4 shadow-2xl ring-1 ring-[rgba(148,163,184,0.12)] ${
             mode === 'modal' ? 'max-h-[min(620px,calc(100vh-40px))] overflow-auto' : 'max-h-[min(620px,calc(100vh-32px))] overflow-auto'
           }`}
           style={positioning}
@@ -2340,7 +2340,7 @@ const EventRuleTooltip = React.forwardRef<HTMLDivElement, {
             </button>
           </div>
 
-          <div className="mb-4 rounded-[22px] border border-[rgba(148,163,184,0.18)] bg-[linear-gradient(180deg,rgba(248,250,252,0.96),rgba(241,245,249,0.9))] px-4 py-3.5">
+          <div className="mb-4 rounded-md border border-[rgba(148,163,184,0.18)] bg-[linear-gradient(180deg,rgba(248,250,252,0.96),rgba(241,245,249,0.9))] px-3 py-2.5.5">
             <p className="text-sm font-medium text-[var(--fg-text)]">
               {summaryTitle}
             </p>
@@ -2351,7 +2351,7 @@ const EventRuleTooltip = React.forwardRef<HTMLDivElement, {
 
           <div className="space-y-4">
             <div className="grid gap-3 md:grid-cols-2">
-              <div className="rounded-[22px] border border-[rgba(148,163,184,0.16)] bg-[var(--fg-panel-soft)] px-4 py-3">
+              <div className="rounded-md border border-[rgba(148,163,184,0.16)] bg-[var(--fg-panel-soft)] px-3 py-2.5">
                 <p className="text-sm font-medium text-[var(--fg-text)]">Primary tag</p>
                 <select
                   value={tagKey}
@@ -2371,7 +2371,7 @@ const EventRuleTooltip = React.forwardRef<HTMLDivElement, {
                 </p>
               </div>
 
-              <div className="rounded-[22px] border border-[rgba(148,163,184,0.16)] bg-[var(--fg-panel-soft)] px-4 py-3">
+              <div className="rounded-md border border-[rgba(148,163,184,0.16)] bg-[var(--fg-panel-soft)] px-3 py-2.5">
                 <div className="flex items-center gap-2">
                   <p className="text-sm font-medium text-[var(--fg-text)]">Secondary tags</p>
                   <InfoTip text="Optional supporting tags for this exact title. Window stores them on the session, but the main charts still group by the primary tag." />
@@ -2409,7 +2409,7 @@ const EventRuleTooltip = React.forwardRef<HTMLDivElement, {
                 </p>
               </div>
 
-              <div className="rounded-[22px] border border-[rgba(148,163,184,0.16)] bg-[var(--fg-panel-soft)] px-4 py-3">
+              <div className="rounded-md border border-[rgba(148,163,184,0.16)] bg-[var(--fg-panel-soft)] px-3 py-2.5">
                 <p className="text-sm font-medium text-[var(--fg-text)]">Difficulty</p>
                 <select
                   value={difficultyRank}
@@ -2430,7 +2430,7 @@ const EventRuleTooltip = React.forwardRef<HTMLDivElement, {
               </div>
             </div>
 
-            <div className="rounded-[24px] border border-[rgba(148,163,184,0.16)] bg-white px-4 py-4 shadow-[0_10px_30px_rgba(15,23,42,0.04)]">
+            <div className="rounded-lg border border-[rgba(148,163,184,0.16)] bg-white px-4 py-4 shadow-sm">
               <div className="mb-3 flex items-center justify-between gap-3">
                 <div>
                   <p className="text-sm font-medium text-[var(--fg-text)]">Allowed sites</p>
@@ -2455,7 +2455,7 @@ const EventRuleTooltip = React.forwardRef<HTMLDivElement, {
               {editing ? (
                 <>
                 {canCopyFallbackDomains ? (
-                  <div className="mb-3 rounded-[20px] border border-[rgba(59,130,246,0.14)] bg-[rgba(239,246,255,0.78)] px-3.5 py-3">
+                  <div className="mb-3 rounded-md border border-[rgba(59,130,246,0.14)] bg-[rgba(239,246,255,0.78)] px-3.5 py-3">
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div className="max-w-[22rem]">
                         <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-sky-700">
@@ -2609,7 +2609,7 @@ const EventRuleTooltip = React.forwardRef<HTMLDivElement, {
               )}
             </div>
 
-            <div className="rounded-[24px] border border-[rgba(148,163,184,0.16)] bg-white px-4 py-4 shadow-[0_10px_30px_rgba(15,23,42,0.04)]">
+            <div className="rounded-lg border border-[rgba(148,163,184,0.16)] bg-white px-4 py-4 shadow-sm">
               <div className="mb-3 flex items-center justify-between gap-3">
                 <div>
                   <p className="text-sm font-medium text-[var(--fg-text)]">Launch page</p>
@@ -2697,7 +2697,7 @@ const EventRuleTooltip = React.forwardRef<HTMLDivElement, {
                 </>
               ) : hasLaunchTarget ? (
                 <div className="space-y-3">
-                  <div className="rounded-[20px] border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-3.5 py-3">
+                  <div className="rounded-md border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-3.5 py-3">
                     <p className="truncate text-sm font-medium text-[var(--fg-text)]">
                       {launchTargetHost}
                     </p>
@@ -2749,7 +2749,7 @@ function ExtendedTaskLibraryCard({
 }): React.JSX.Element {
   return (
     <div
-      className={`${className ?? ''} rounded-[20px] border px-4 py-3 transition ${
+      className={`${className ?? ''} rounded-md border px-3 py-2.5 transition ${
         dragging
           ? 'border-blue-300 bg-blue-50/70'
           : 'border-[var(--fg-border)] bg-[var(--fg-panel-soft)] hover:border-blue-200'
@@ -2866,7 +2866,7 @@ function RuleListItem({
   onDelete: () => void;
 }): React.JSX.Element {
   return (
-    <div className="rounded-[22px] border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-4 py-3">
+    <div className="rounded-md border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-3 py-2.5">
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-sm font-medium text-[var(--fg-text)]">{title}</p>
@@ -2922,7 +2922,7 @@ function KeywordRuleListItem({
   onDelete: () => void;
 }): React.JSX.Element {
   return (
-    <div className="rounded-[22px] border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-4 py-3">
+    <div className="rounded-md border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-3 py-2.5">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="text-sm font-medium text-[var(--fg-text)]">{rule.keyword}</p>
@@ -3015,7 +3015,7 @@ function TagManager({
         <InfoTip text="Manage reusable task tags, their default difficulty, and the domains Window should treat as aligned or supportive." />
       </div>
 
-      <div className="mb-5 rounded-[24px] border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] p-4">
+      <div className="mb-5 rounded-lg border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] p-4">
         <div className="mb-3 flex items-center justify-between gap-3">
           <div>
             <p className="text-sm font-medium text-[var(--fg-text)]">Create tag</p>
@@ -3129,7 +3129,7 @@ function TagManagerRow({
   }, [tag]);
 
   return (
-    <div className="rounded-[22px] border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] p-4">
+    <div className="rounded-md border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] p-4">
       <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
         <div className="flex items-center gap-2">
           <span className="h-3 w-3 rounded-full" style={{ background: color }} />
@@ -3235,7 +3235,7 @@ function AnalyticsWorkspace({
         </div>
 
         <div className="mb-3 grid gap-3 xl:grid-cols-[minmax(0,1.45fr),repeat(3,minmax(0,0.55fr))]">
-          <div className="rounded-[22px] border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-4 py-3">
+          <div className="rounded-md border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-3 py-2.5">
             <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-[var(--fg-muted)]">
               What We Track
             </p>
@@ -3418,7 +3418,7 @@ function ConsumptionTimelineChart({
 
   return (
     <div className="space-y-3">
-      <div className="rounded-[20px] border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-3 py-3">
+      <div className="rounded-md border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-3 py-3">
         <svg viewBox={`0 0 ${chartWidth} ${chartHeight}`} className="h-[180px] w-full">
           {points.map((point, index) => {
             const x = chartX(index, points.length, chartWidth, paddingX);
@@ -3596,7 +3596,7 @@ function SessionAnalyticsRow({
   }, [session.difficultyRank, session.id, session.tagKey]);
 
   return (
-    <div className="rounded-[20px] border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-4 py-3">
+    <div className="rounded-md border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-3 py-2.5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="text-sm font-medium text-[var(--fg-text)]">{session.eventTitle}</p>
@@ -3651,7 +3651,7 @@ function SessionAnalyticsRow({
 
 function EmptyCard({ text }: { text: string }): React.JSX.Element {
   return (
-    <div className="rounded-[22px] border border-dashed border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-4 py-5 text-sm text-[var(--fg-muted)]">
+    <div className="rounded-md border border-dashed border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-4 py-5 text-sm text-[var(--fg-muted)]">
       {text}
     </div>
   );

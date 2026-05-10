@@ -33,6 +33,13 @@ function createStorageArea() {
       state = { ...state, ...items };
       callback?.();
     }),
+    remove: vi.fn((key: string | string[], callback?: () => void) => {
+      const keys = Array.isArray(key) ? key : [key];
+      for (const item of keys) {
+        delete state[item];
+      }
+      callback?.();
+    }),
     clear: vi.fn(() => {
       state = {};
     }),

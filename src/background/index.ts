@@ -45,6 +45,7 @@ import {
   setBlockedTabs,
   setCalendarState,
   setDownloadAllowances,
+  setExtendedTaskAssignments,
   setLaunchExecutionStates,
   setPointsHistory,
   setSettings,
@@ -54,9 +55,11 @@ import {
 } from '../shared/storage';
 import type {
   BlockedTabState,
+  BreakDurationMinutes,
   CalendarEvent,
   CalendarState,
   DownloadAllowance,
+  ExtendedTaskAssignment,
   EventLaunchTarget,
   LaunchExecutionState,
   Message,
@@ -101,7 +104,13 @@ import {
   syncCalendar,
 } from './calendar';
 import {
+  markExtendedTaskAssignmentItemCompleted,
+  reconcileExtendedTaskAssignments,
+} from '../shared/extendedTasks';
+import {
   normalizeLaunchUrl,
+  getLaunchExecutionKey,
+  pruneStaleLaunchExecutionStates,
   reconcileEventLaunchTargets,
 } from '../shared/launchTargets';
 import {
@@ -112,7 +121,7 @@ import {
 import { applyPointsToStats } from './levels';
 import { ensureDemoStatsSeeded } from './demoSeed';
 import { calculatePoints } from './points';
-import { activateSnooze, deactivateSnooze, isSnoozeActive } from './snooze';
+import { activateSnooze, clearSnoozeAlarm, deactivateSnooze, isSnoozeActive } from './snooze';
 import { finalizeTrackedBreakVisits, registerTelemetryListeners } from './telemetry';
 import { markTaskCompleted, syncTasksFromCalendarState } from './taskQueue';
 
@@ -149,13 +158,20 @@ void getCalendarState().then((calendarState) => maybeAutoLaunchActiveOccurrence(
 
 chrome.storage.onChanged.addListener((changes, areaName) => {
   if (
-    areaName === 'sync' &&
     (
-      'settings' in changes ||
-      'eventRules' in changes ||
-      'keywordRules' in changes ||
-      'globalAllowlist' in changes ||
-      'eventLaunchTargets' in changes
+      areaName === 'sync' &&
+      (
+        'settings' in changes ||
+        'eventRules' in changes ||
+        'keywordRules' in changes ||
+        'globalAllowlist' in changes ||
+        'eventLaunchTargets' in changes ||
+        'extendedTaskAssignments' in changes
+      )
+    ) ||
+    (
+      areaName === 'local' &&
+      'extendedTaskAssignments' in changes
     )
   ) {
     void reconcileBlockingState();
@@ -276,6 +292,9 @@ async function handleMessage(
     case 'SNOOZE':
       return handleSnooze(message);
 
+    case 'END_SNOOZE':
+      return handleEndSnoozeEarly();
+
     case 'SPEND_POINTS_UNLOCK':
       return spendPointsForTemporaryUnlock(sender, message);
 
@@ -324,6 +343,9 @@ async function handleMessage(
 
     case 'MARK_DONE':
       return handleMarkDone(message);
+
+    case 'MARK_EXTENDED_TASK_ITEM_COMPLETE':
+      return handleMarkExtendedTaskItemComplete(message);
 
     case 'OPEN_ACTIVE_LAUNCH_TARGET':
       return openActiveLaunchTarget();
@@ -527,6 +549,7 @@ async function reconcileBlockingState(): Promise<void> {
     eventPatternStats,
     globalAllowlist,
     snoozed,
+    extendedTaskAssignments,
   ] = await Promise.all([
     getSettings(),
     getCalendarState(),
@@ -540,6 +563,7 @@ async function reconcileBlockingState(): Promise<void> {
     getEventPatternStats(),
     getGlobalAllowlist(),
     isSnoozeActive(),
+    reconcileExtendedTaskAssignments(),
   ]);
 
   const recalculated = resolveActiveState(
@@ -554,6 +578,7 @@ async function reconcileBlockingState(): Promise<void> {
     taskQueue,
     eventPatternStats,
     eventLaunchTargets,
+    extendedTaskAssignments,
   );
 
   const nextCalendarState: CalendarState = {
@@ -598,8 +623,9 @@ export async function maybeAutoLaunchActiveOccurrence(
   const target = calendarState.activeLaunchTarget ?? null;
   if (!isLaunchTargetActive(target)) return;
 
-  const executionStates = await getLaunchExecutionStates();
-  if (executionStates[target.calendarEventId] !== undefined) return;
+  const executionStates = await getPrunedLaunchExecutionStates();
+  const executionKey = getLaunchExecutionKey(target);
+  if (executionStates[executionKey] !== undefined) return;
 
   await launchTargetInBrowser(target, executionStates);
 }
@@ -616,7 +642,7 @@ export async function openActiveLaunchTarget(): Promise<{
     return { ok: false, error: 'No active task page is available right now.' };
   }
 
-  const executionStates = await getLaunchExecutionStates();
+  const executionStates = await getPrunedLaunchExecutionStates();
   const result = await launchTargetInBrowser(target, executionStates);
 
   if (result.ok) {
@@ -680,14 +706,27 @@ async function persistLaunchExecutionState(
   status: LaunchExecutionState['status'],
   tabId?: number,
 ): Promise<void> {
-  await setLaunchExecutionStates({
-    ...executionStates,
-    [target.calendarEventId]: {
-      status,
-      handledAt: new Date().toISOString(),
-      ...(typeof tabId === 'number' ? { tabId } : {}),
-    },
-  });
+  const executionKey = getLaunchExecutionKey(target);
+  await setLaunchExecutionStates(
+    pruneStaleLaunchExecutionStates({
+      ...executionStates,
+      [executionKey]: {
+        status,
+        handledAt: new Date().toISOString(),
+        expiresAt: new Date(new Date(target.end).getTime() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+        ...(typeof tabId === 'number' ? { tabId } : {}),
+      },
+    }),
+  );
+}
+
+async function getPrunedLaunchExecutionStates(): Promise<Record<string, LaunchExecutionState>> {
+  const executionStates = await getLaunchExecutionStates();
+  const pruned = pruneStaleLaunchExecutionStates(executionStates);
+  if (JSON.stringify(pruned) !== JSON.stringify(executionStates)) {
+    await setLaunchExecutionStates(pruned);
+  }
+  return pruned;
 }
 
 // ─── Blocked page + unlock handling ──────────────────────────────────────────
@@ -1721,6 +1760,42 @@ async function handleMarkDone(
   return { ok: true, pointsAwarded };
 }
 
+async function handleMarkExtendedTaskItemComplete(
+  message: Message,
+): Promise<{ ok: boolean; assignment?: ExtendedTaskAssignment | null; error?: string }> {
+  const payload = message.payload as { assignmentId?: string; itemId?: string } | undefined;
+  const assignmentId = payload?.assignmentId?.trim();
+  const itemId = payload?.itemId?.trim();
+
+  if (!assignmentId || !itemId) {
+    return { ok: false, error: 'Missing extended task item details.' };
+  }
+
+  const assignments = await reconcileExtendedTaskAssignments();
+  const assignment = assignments.find((candidate) => candidate.id === assignmentId) ?? null;
+  if (!assignment) {
+    return { ok: false, error: 'Extended task assignment not found.' };
+  }
+
+  const item = assignment.items.find((candidate) => candidate.id === itemId) ?? null;
+  if (!item) {
+    return { ok: false, error: 'Extended task item not found.' };
+  }
+
+  if (item.completedAt !== null) {
+    return { ok: true, assignment };
+  }
+
+  const updated = markExtendedTaskAssignmentItemCompleted(assignments, assignmentId, itemId);
+  if (!updated.changed) {
+    return { ok: false, error: 'Extended task item could not be completed.' };
+  }
+
+  await setExtendedTaskAssignments(updated.assignments);
+  await reconcileBlockingState();
+  return { ok: true, assignment: updated.assignment };
+}
+
 function canMarkDone(task: Task): { allowed: boolean; reason?: string } {
   const scheduledStart = new Date(task.scheduledStart).getTime();
   const scheduledEnd = new Date(task.scheduledEnd).getTime();
@@ -1813,13 +1888,22 @@ function countCurrentWeekStreak(
 
 // ─── Snooze / assistant / calendar range ─────────────────────────────────────
 
-async function handleSnooze(message: Message): Promise<{ ok: boolean; error?: string }> {
+async function handleSnooze(message: Message): Promise<{ ok: true; durationMinutes: BreakDurationMinutes }> {
   const payload = message.payload as { durationMinutes?: 5 | 10 | 15 } | undefined;
   const settings = await getSettings();
   const durationMinutes = payload?.durationMinutes ?? settings.breakDurationMinutes;
   const result = await activateSnooze(durationMinutes);
   await reconcileBlockingState();
   return { ok: true, ...result };
+}
+
+async function handleEndSnoozeEarly(): Promise<{ ok: boolean; error?: string }> {
+  if (!(await isSnoozeActive())) {
+    return { ok: false, error: 'No active break.' };
+  }
+  await clearSnoozeAlarm();
+  await handleSnoozeEnd();
+  return { ok: true };
 }
 
 async function handleIdeaSubmission(
