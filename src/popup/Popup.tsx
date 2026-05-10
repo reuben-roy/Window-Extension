@@ -11,6 +11,7 @@ import { formatBlockingPauseTimeLabel, isDailyBlockingPauseActive } from '../sha
 import AccountStatusControl from '../shared/components/AccountStatusControl';
 import CompactSettingRow from '../shared/components/CompactSettingRow';
 import InfoTip from '../shared/components/InfoTip';
+import Toggle from '../shared/components/Toggle';
 import PointsBubble from '../shared/components/PointsBubble';
 import CompletionModal from './components/CompletionModal';
 import PointsDisplay from './components/PointsDisplay';
@@ -405,7 +406,6 @@ export default function Popup({
 
                   <CompactSettingRow
                     label="Status"
-                    hint="How Window is resolving restrictions for the current block."
                     value={effectivelyBlocking ? 'Locked in' : 'Open browsing'}
                     meta={
                       calendarState.activeRuleSource === 'event' && calendarState.activeRuleName
@@ -421,7 +421,6 @@ export default function Popup({
 
                   <CompactSettingRow
                     label="Next up"
-                    hint="The next upcoming calendar block that Window can react to."
                     value={nextEvent?.title ?? 'Nothing queued'}
                     meta={nextEvent ? formatEventRange(nextEvent) : 'You are clear after this block.'}
                     className="px-3 py-2.5"
@@ -454,7 +453,6 @@ export default function Popup({
                   ) : (
                     <CompactSettingRow
                       label="Tasks"
-                      hint="Tasks appear automatically from active and carryover calendar blocks."
                       value="Nothing to complete"
                       meta="Active focus tasks will surface here automatically."
                       className="px-3 py-2.5"
@@ -474,9 +472,6 @@ export default function Popup({
                 <div className="space-y-2">
                   <CompactSettingRow
                     label="Break length"
-                    hint="Default duration used when starting a break from a blocked page."
-                    // value={`${settings.breakDurationMinutes} min`}
-                    meta="The same duration is reused by quick break actions."
                     control={
                       <select
                         value={settings.breakDurationMinutes}
@@ -498,41 +493,31 @@ export default function Popup({
                   />
 
                   <CompactSettingRow
-                    label="Surface mode"
-                    hint="Choose whether Window opens as a popup or a persistent right-side panel."
-                    value={settings.persistentPanelEnabled ? 'Docked panel' : 'Popup'}
-                    meta="Switch modes without changing the rest of the dashboard."
+                    label="Panel Docking"
                     control={
-                      <div className="w-[172px]">
-                        <BinarySelector
-                          leftLabel="Popup"
-                          rightLabel="Docked"
-                          selected={settings.persistentPanelEnabled ? 'right' : 'left'}
-                          onSelect={(selection) => togglePersistentPanel(selection === 'right')}
-                        />
-                      </div>
+                      <Toggle
+                        checked={settings.persistentPanelEnabled}
+                        onChange={(checked) => togglePersistentPanel(checked)}
+                      />
                     }
                     className="px-3 py-2.5"
                   />
 
                   <CompactSettingRow
                     label="Quick actions"
-                    hint="Shortcuts for the two most common actions outside task completion."
-                    value="Settings and breaks"
-                    meta="Open the full workspace or start a manual break."
-                    footer={
+                    control={
                       <div className="flex flex-wrap gap-2">
                         <button
                           onClick={() => chrome.runtime.openOptionsPage()}
                           className="fg-button-secondary px-3 py-2 text-xs"
                         >
-                          Open Settings
+                          Settings
                         </button>
                         <button
                           onClick={() => chrome.runtime.sendMessage({ type: 'SNOOZE' })}
                           className="fg-button-secondary px-3 py-2 text-xs"
                         >
-                          Start Break
+                          Break
                         </button>
                       </div>
                     }
@@ -780,14 +765,12 @@ function AssistantPanel({
       <div className="grid gap-2 sm:grid-cols-2">
         <CompactSettingRow
           label="Current handoff"
-          hint="The current async task running in the background, independent from idea capture."
           value={currentTask ? formatTaskStatusLabel(currentTask.status) : 'Idle'}
           meta={currentTask?.title ?? 'No background task is running right now.'}
           className="px-3 py-2.5"
         />
         <CompactSettingRow
           label="Idea job"
-          hint="The active OpenClaw research request for idea capture, if one is currently running."
           value={currentJob ? formatTaskStatusLabel(currentJob.status) : 'Idle'}
           meta={currentJob?.title ?? 'No idea capture job running right now.'}
           className="px-3 py-2.5"
@@ -1029,41 +1012,6 @@ function TaskStatusBadge({
   );
 }
 
-function BinarySelector({
-  leftLabel,
-  rightLabel,
-  selected,
-  onSelect,
-}: {
-  leftLabel: string;
-  rightLabel: string;
-  selected: 'left' | 'right';
-  onSelect: (selection: 'left' | 'right') => void;
-}): React.JSX.Element {
-  return (
-    <div className="inline-flex w-full rounded-[18px] border border-[var(--fg-border)] bg-white p-0.5">
-      <button
-        onClick={() => onSelect('left')}
-        className={`flex-1 rounded-[14px] px-2.5 py-1.5 text-[11px] font-medium transition ${selected === 'left'
-          ? 'bg-[var(--fg-panel-soft)] text-[var(--fg-text)] shadow-[0_8px_16px_rgba(15,23,42,0.08)]'
-          : 'text-[var(--fg-muted)]'
-          }`}
-      >
-        {leftLabel}
-      </button>
-      <button
-        onClick={() => onSelect('right')}
-        className={`flex-1 rounded-[14px] px-2.5 py-1.5 text-[11px] font-medium transition ${selected === 'right'
-          ? 'bg-[var(--fg-panel-soft)] text-[var(--fg-text)] shadow-[0_8px_16px_rgba(15,23,42,0.08)]'
-          : 'text-[var(--fg-muted)]'
-          }`}
-      >
-        {rightLabel}
-      </button>
-    </div>
-  );
-}
-
 function IdeaInbox({
   ideas,
   onKeep,
@@ -1199,7 +1147,6 @@ function AnalyticsSummaryCard({
       <div className="grid gap-1.5 sm:grid-cols-2">
         <CompactSettingRow
           label="Status"
-          hint="What Window thinks is happening right now."
           value={
             current?.currentActivityClass
               ? current.currentActivityClass.charAt(0).toUpperCase() + current.currentActivityClass.slice(1)
@@ -1214,7 +1161,6 @@ function AnalyticsSummaryCard({
         />
         <CompactSettingRow
           label="Primary tag"
-          hint="The task tag currently linked to the active session."
           value={currentTag?.label ?? 'None'}
           meta={currentTag ? `Baseline difficulty ${currentTag.baselineDifficulty}` : 'Waiting for a resolved task tag.'}
           className="px-3 py-2.5"

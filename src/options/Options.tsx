@@ -18,6 +18,7 @@ import {
 import AccountStatusControl from '../shared/components/AccountStatusControl';
 import CompactSettingRow from '../shared/components/CompactSettingRow';
 import InfoTip from '../shared/components/InfoTip';
+import Toggle from '../shared/components/Toggle';
 import SettingsGroup from '../shared/components/SettingsGroup';
 import {
   getAccountConflict,
@@ -1056,7 +1057,6 @@ export default function Options(): React.JSX.Element {
                   <CompactSettingRow
                     className="px-4"
                     label="Blocking"
-                    hint="Master switch for focus blocking."
                     meta={
                       quietHoursActive
                         ? `Daily cutoff active after ${formatBlockingPauseTimeLabel(settings.dailyBlockingPauseStartTime)}`
@@ -1068,7 +1068,6 @@ export default function Options(): React.JSX.Element {
                   <CompactSettingRow
                     className="border-t border-[var(--fg-border)] px-4 md:border-l md:border-t-0"
                     label="Break duration"
-                    hint="Default duration used when starting a break."
                     control={
                       <select
                         value={settings.breakDurationMinutes}
@@ -1089,7 +1088,6 @@ export default function Options(): React.JSX.Element {
                   <CompactSettingRow
                     className="border-t border-[var(--fg-border)] px-4 md:border-l-0 xl:border-l xl:border-t-0"
                     label="Active event"
-                    hint="The focus block currently driving your allowed domains."
                     value={activeEvent ? truncate(activeEvent.title, 30) : 'No focus block live'}
                     meta={activeEvent ? formatEventRange(activeEvent) : 'Browsing is unrestricted until the next matching event.'}
                   />
@@ -1097,7 +1095,6 @@ export default function Options(): React.JSX.Element {
                   <CompactSettingRow
                     className="border-t border-[var(--fg-border)] px-4 md:border-l xl:border-l-0"
                     label="Daily cutoff"
-                    hint="After this time, blocking pauses for the rest of the day."
                     meta={
                       settings.dailyBlockingPauseEnabled
                         ? `Pauses restrictions nightly after ${formatBlockingPauseTimeLabel(settings.dailyBlockingPauseStartTime)} and resumes tomorrow.`
@@ -1131,7 +1128,6 @@ export default function Options(): React.JSX.Element {
                   <CompactSettingRow
                     className="border-t border-[var(--fg-border)] px-4 xl:border-l"
                     label="Next event"
-                    hint="The next focus block coming up on your calendar."
                     value={nextEvent ? truncate(nextEvent.title, 30) : 'Nothing upcoming'}
                     meta={nextEvent ? formatEventRange(nextEvent) : 'Today looks clear.'}
                   />
@@ -1139,7 +1135,6 @@ export default function Options(): React.JSX.Element {
                   <CompactSettingRow
                     className="border-t border-[var(--fg-border)] px-4 md:border-l xl:border-l"
                     label="Download fallback"
-                    hint="Retry window used only when a blocked download redirect needs a short assist."
                     control={
                       <select
                         value={settings.downloadRedirectFallbackSeconds}
@@ -1172,8 +1167,6 @@ export default function Options(): React.JSX.Element {
             >
               <CompactSettingRow
                 label="Keyword auto-match"
-                hint="Only used when an event does not already have an exact Event Rule."
-                value={settings.keywordAutoMatchEnabled ? 'On' : 'Off'}
                 meta="Automatically checks your fallback keyword rules against unmatched events."
                 control={
                   <Toggle
@@ -1266,8 +1259,6 @@ export default function Options(): React.JSX.Element {
                     <CompactSettingRow
                       key={toggle.key}
                       label={toggle.title}
-                      hint={toggle.description}
-                      value={toggle.checked ? 'On' : 'Off'}
                       meta={toggle.description}
                       control={
                         <Toggle
@@ -1295,7 +1286,6 @@ export default function Options(): React.JSX.Element {
                   <div className="grid gap-2">
                     <CompactSettingRow
                       label="Connector"
-                      hint="Choose which backend-managed assistant connector this panel should route through."
                       meta="Select the backend target for your handoff tasks."
                       control={
                         <select
@@ -1319,7 +1309,6 @@ export default function Options(): React.JSX.Element {
                     
                     <CompactSettingRow
                       label="Model selector"
-                      hint="Placeholder choices for the future provider switcher."
                       meta="Display-only today, but ready for future routing."
                       control={
                         <select
@@ -1338,7 +1327,6 @@ export default function Options(): React.JSX.Element {
 
                     <CompactSettingRow
                       label="Notification timing"
-                      hint="Control when completed handoff tasks should surface a browser notification."
                       meta={TASK_NOTIFICATION_MODE_OPTIONS.find((option) => option.value === assistantOptions.taskNotificationMode)?.description}
                       control={
                         <select
@@ -1357,9 +1345,7 @@ export default function Options(): React.JSX.Element {
 
                     <CompactSettingRow
                       label="Session behavior"
-                      hint="Reuse the current thread when you want continuity, or always start fresh."
-                      value={assistantOptions.reuseActiveSession ? 'Reuse current' : 'Fresh thread'}
-                      meta="Choose whether capture actions continue the latest reusable session."
+                      meta="Reuse the current thread when you want continuity, or always start fresh."
                       control={
                         <Toggle
                           checked={assistantOptions.reuseActiveSession}
@@ -1370,9 +1356,7 @@ export default function Options(): React.JSX.Element {
 
                     <CompactSettingRow
                       label="New session fallback"
-                      hint="Automatically create a new session when nothing reusable exists, or require manual starts."
-                      value={assistantOptions.autoCreateSession ? 'Auto-create' : 'Manual'}
-                      meta="Useful when you want capture to keep moving without opening the assistant first."
+                      meta="Automatically create a new session when nothing reusable exists, or require manual starts."
                       control={
                         <Toggle
                           checked={assistantOptions.autoCreateSession}
@@ -1383,9 +1367,7 @@ export default function Options(): React.JSX.Element {
 
                     <CompactSettingRow
                       label="Break telemetry"
-                      hint="Share domain-only break telemetry during active breaks."
-                      value={settings.breakTelemetryEnabled ? 'On' : 'Off'}
-                      meta="Used only for break analytics and trend summaries."
+                      meta="Share domain-only break telemetry during active breaks."
                       control={
                         <Toggle
                           checked={settings.breakTelemetryEnabled}
@@ -3687,31 +3669,6 @@ function LegendDot({
       <span className={`h-2.5 w-2.5 rounded-full ${tone === 'emerald' ? 'bg-emerald-500' : tone === 'amber' ? 'bg-amber-500' : 'bg-slate-400'}`} />
       {label}
     </span>
-  );
-}
-
-function Toggle({
-  checked,
-  onChange,
-}: {
-  checked: boolean;
-  onChange: (checked: boolean) => void;
-}): React.JSX.Element {
-  return (
-    <button
-      role="switch"
-      aria-checked={checked}
-      onClick={() => onChange(!checked)}
-      className={`inline-flex h-7 w-12 shrink-0 items-center rounded-full p-[2px] transition-colors ${
-        checked ? 'bg-[var(--fg-accent)]' : 'bg-slate-300'
-      }`}
-    >
-      <span
-        className={`h-6 w-6 rounded-full bg-white shadow-[0_6px_16px_rgba(15,23,42,0.18)] transition-transform ${
-          checked ? 'translate-x-5' : 'translate-x-0'
-        }`}
-      />
-    </button>
   );
 }
 
