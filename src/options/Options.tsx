@@ -24,16 +24,38 @@ import {
   getAccountSyncState,
   getAccountUser,
   getAnalyticsSnapshot,
+  getAssistantOptions,
   getCalendarState,
+  getExtendedTaskAssignments,
+  getExtendedTaskSets,
   getEventLaunchTargets,
   getEventRules,
   getGlobalAllowlist,
   getKeywordRules,
+  getOpenClawState,
   getSettings,
   getTaskTags,
+  setAssistantOptions,
+  setExtendedTaskSets,
   setTaskTags,
   setSettings,
 } from '../shared/storage';
+import {
+  assignExtendedTaskSetToEvent,
+  findExtendedTaskAssignment,
+  normalizeExtendedTaskUrl,
+  removeExtendedTaskAssignment,
+} from '../shared/extendedTasks';
+import {
+  BUILT_IN_NEETCODE_MASTER_TEMPLATE_ID,
+  BUILT_IN_EXTENDED_TASK_TEMPLATES,
+  duplicateExtendedTaskTemplate,
+  encodeExtendedTaskLibraryEntryDragPayload,
+  EXTENDED_TASK_LIBRARY_DRAG_MIME,
+  resolveDraggedExtendedTaskLibraryEntry,
+  toExtendedTaskLibraryEntry,
+} from '../shared/extendedTaskLibrary';
+import { MODEL_PLACEHOLDER_OPTIONS } from '../shared/constants';
 import { isRedundantExactRuleCopy } from '../shared/ruleResolution';
 import {
   findEventLaunchTarget,
@@ -53,16 +75,22 @@ import type {
   AccountSyncState,
   AccountUser,
   AnalyticsSnapshot,
+  AssistantOptions,
   BreakDurationMinutes,
   CalendarEvent,
   CalendarState,
   DifficultyRank,
   DownloadRedirectFallbackSeconds,
+  ExtendedTaskAssignment,
+  ExtendedTaskLibraryEntry,
+  ExtendedTaskSet,
   EventLaunchTarget,
   EventRule,
   FocusSessionRecord,
   KeywordRule,
+  OpenClawState,
   Settings,
+  TaskNotificationMode,
   TaskTag,
 } from '../shared/types';
 
@@ -85,6 +113,12 @@ interface ResolvedWorkspaceEvent {
 interface SelectedTooltipState {
   eventId: string;
   anchorRect: DOMRect;
+}
+
+interface ExtendedTaskSetDraftItem {
+  id: string;
+  label: string;
+  url: string;
 }
 
 interface DownloadRescueToggleConfig {
@@ -121,6 +155,35 @@ const DOWNLOAD_RESCUE_BALANCED_PATCH: Partial<Settings> = {
   downloadRedirectAllowAcrossTabsEnabled: false,
   downloadRedirectProgrammaticDownloadEnabled: true,
 };
+const DEFAULT_TIME_GRID_START_MINUTES = 7 * 60;
+const DEFAULT_TIME_GRID_END_MINUTES = 21 * 60;
+const MIN_TIME_GRID_SPAN_MINUTES = 8 * 60;
+const TIME_GRID_ROUNDING_MINUTES = 30;
+const TIME_GRID_TOP_PADDING_MINUTES = 45;
+const TIME_GRID_BOTTOM_PADDING_MINUTES = 60;
+
+const TASK_NOTIFICATION_MODE_OPTIONS: Array<{
+  value: TaskNotificationMode;
+  label: string;
+  description: string;
+}> = [
+  {
+    value: 'after_focus',
+    label: 'After focus',
+    description: 'Hold completion notifications until the current Window focus context ends.',
+  },
+  {
+    value: 'immediate',
+    label: 'Immediate',
+    description: 'Notify as soon as the remote assistant finishes the task.',
+  },
+  {
+    value: 'inbox_only',
+    label: 'Inbox only',
+    description: 'Keep completed handoffs in the assistant inbox without a browser notification.',
+  },
+];
+
 const DOWNLOAD_RESCUE_TOGGLES: DownloadRescueToggleConfig[] = [
   {
     key: 'downloadRedirectProgrammaticDownloadEnabled',
@@ -164,6 +227,8 @@ export default function Options(): React.JSX.Element {
   const tooltipRef = useRef<HTMLDivElement | null>(null);
   const tooltipRefreshFrameRef = useRef<number | null>(null);
   const [calendarState, setCalendarState] = useState<CalendarState | null>(null);
+  const [assistantOptions, setAssistantOptionsState] = useState<AssistantOptions | null>(null);
+  const [openClawState, setOpenClawStateState] = useState<OpenClawState | null>(null);
   const [analyticsSnapshot, setAnalyticsSnapshotState] = useState<AnalyticsSnapshot | null>(null);
   const [visibleEvents, setVisibleEvents] = useState<CalendarEvent[]>([]);
   const [hasLoadedVisibleRange, setHasLoadedVisibleRange] = useState(false);
@@ -172,12 +237,17 @@ export default function Options(): React.JSX.Element {
   const [eventLaunchTargets, setEventLaunchTargetsState] = useState<EventLaunchTarget[]>([]);
   const [keywordRules, setLocalKeywordRules] = useState<KeywordRule[]>([]);
   const [taskTags, setTaskTagsState] = useState<TaskTag[]>([]);
+  const [extendedTaskSets, setExtendedTaskSetsState] = useState<ExtendedTaskSet[]>([]);
+  const [extendedTaskAssignments, setExtendedTaskAssignmentsState] = useState<ExtendedTaskAssignment[]>([]);
   const [calendarView, setCalendarView] = useState<CalendarView>('timeGridWeek');
   const [calendarTitle, setCalendarTitle] = useState('');
   const [surfaceTab, setSurfaceTab] = useState<'workspace' | 'analytics'>('workspace');
   const [selectedTooltip, setSelectedTooltip] = useState<SelectedTooltipState | null>(null);
   const [tooltipMode, setTooltipMode] = useState<TooltipMode>('anchored');
   const [tooltipPlacement, setTooltipPlacement] = useState<TooltipPlacement>('bottom');
+  const [expandedDefaultRoadmapId, setExpandedDefaultRoadmapId] = useState<string | null>(
+    BUILT_IN_NEETCODE_MASTER_TEMPLATE_ID,
+  );
   const [accountUser, setAccountUserState] = useState<AccountUser | null>(null);
   const [accountSyncState, setAccountSyncStateState] = useState<AccountSyncState | null>(null);
   const [accountConflict, setAccountConflictState] = useState<AccountConflict | null>(null);
@@ -189,6 +259,20 @@ export default function Options(): React.JSX.Element {
   const [globalDomainInput, setGlobalDomainInput] = useState('');
   const [globalAllowlistError, setGlobalAllowlistError] = useState('');
   const [savingRule, setSavingRule] = useState(false);
+  const [draggingExtendedTaskEntry, setDraggingExtendedTaskEntry] = useState<ExtendedTaskLibraryEntry | null>(null);
+  const [editingExtendedTaskSetId, setEditingExtendedTaskSetId] = useState<string | null>(null);
+  const [extendedTaskSetTitle, setExtendedTaskSetTitle] = useState('');
+  const [extendedTaskSetItems, setExtendedTaskSetItems] = useState<ExtendedTaskSetDraftItem[]>([
+    createEmptyExtendedTaskSetDraftItem(),
+  ]);
+  const [extendedTaskSetError, setExtendedTaskSetError] = useState('');
+  const [savingExtendedTaskSet, setSavingExtendedTaskSet] = useState(false);
+  const [showExtendedTaskEditor, setShowExtendedTaskEditor] = useState(false);
+  const [completingExtendedTaskItemId, setCompletingExtendedTaskItemId] = useState<string | null>(null);
+  const [extendedTaskActionError, setExtendedTaskActionError] = useState('');
+  const workspaceEventsRef = useRef<ResolvedWorkspaceEvent[]>([]);
+  const extendedTaskSetsRef = useRef<ExtendedTaskSet[]>([]);
+  const draggingExtendedTaskEntryRef = useRef<ExtendedTaskLibraryEntry | null>(null);
 
   const loadVisibleRange = useCallback((start: string, end: string) => {
     chrome.runtime.sendMessage(
@@ -222,11 +306,15 @@ export default function Options(): React.JSX.Element {
       nextEventLaunchTargets,
       nextKeywordRules,
       nextTaskTags,
+      nextExtendedTaskSets,
+      nextExtendedTaskAssignments,
       nextAnalyticsSnapshot,
       nextGlobalAllowlist,
       nextAccountUser,
       nextAccountSyncState,
       nextAccountConflict,
+      nextAssistantOptions,
+      nextOpenClawState,
     ] = await Promise.all([
       getCalendarState(),
       getSettings(),
@@ -234,11 +322,15 @@ export default function Options(): React.JSX.Element {
       getEventLaunchTargets(),
       getKeywordRules(),
       getTaskTags(),
+      getExtendedTaskSets(),
+      getExtendedTaskAssignments(),
       getAnalyticsSnapshot(),
       getGlobalAllowlist(),
       getAccountUser(),
       getAccountSyncState(),
       getAccountConflict(),
+      getAssistantOptions(),
+      getOpenClawState(),
     ]);
     setCalendarState(calendar);
     setLocalSettings(nextSettings);
@@ -246,11 +338,15 @@ export default function Options(): React.JSX.Element {
     setEventLaunchTargetsState(nextEventLaunchTargets);
     setLocalKeywordRules(nextKeywordRules);
     setTaskTagsState(nextTaskTags);
+    setExtendedTaskSetsState(nextExtendedTaskSets);
+    setExtendedTaskAssignmentsState(nextExtendedTaskAssignments);
     setAnalyticsSnapshotState(nextAnalyticsSnapshot);
     setGlobalAllowlistState(nextGlobalAllowlist);
     setAccountUserState(nextAccountUser);
     setAccountSyncStateState(nextAccountSyncState);
     setAccountConflictState(nextAccountConflict);
+    setAssistantOptionsState(nextAssistantOptions);
+    setOpenClawStateState(nextOpenClawState);
     setVisibleEvents((prev) => {
       if (!calendar.lastSyncedAt || calendar.authError) {
         return [];
@@ -271,12 +367,16 @@ export default function Options(): React.JSX.Element {
         'eventLaunchTargets' in changes ||
         'keywordRules' in changes ||
         'taskTags' in changes ||
+        'extendedTaskSets' in changes ||
+        'extendedTaskAssignments' in changes ||
         'analyticsSnapshot' in changes ||
         'globalAllowlist' in changes ||
         'accountUser' in changes ||
         'accountSyncState' in changes ||
         'accountConflict' in changes ||
-        'backendSession' in changes
+        'backendSession' in changes ||
+        'assistantOptions' in changes ||
+        'openClawState' in changes
       ) {
         loadData();
       }
@@ -308,6 +408,10 @@ export default function Options(): React.JSX.Element {
     : visibleEvents.length > 0
       ? visibleEvents
       : todaysEvents;
+  const calendarTimeBounds = useMemo(
+    () => deriveTimeGridWindow(workspaceSourceEvents),
+    [workspaceSourceEvents],
+  );
   const recentAnalyticsSessions = analyticsSnapshot?.recentSessions ?? [];
   const activeTaskTags = useMemo(
     () => taskTags.filter((tag) => tag.archivedAt === null),
@@ -347,6 +451,48 @@ export default function Options(): React.JSX.Element {
   const selectedEventLaunchTarget = selectedResolvedEvent
     ? findEventLaunchTarget(selectedResolvedEvent.event.id, eventLaunchTargets)
     : null;
+  const activeEvent = calendarState?.currentEvent ?? null;
+  const selectedExtendedTaskAssignment = selectedResolvedEvent
+    ? findExtendedTaskAssignment(selectedResolvedEvent.event.id, extendedTaskAssignments)
+    : null;
+  const fallbackActiveExtendedTaskAssignment = activeEvent
+    ? findExtendedTaskAssignment(activeEvent.id, extendedTaskAssignments)
+    : null;
+  const occurrenceExtendedTaskEvent = selectedResolvedEvent?.event
+    ?? (fallbackActiveExtendedTaskAssignment ? activeEvent : null);
+  const occurrenceExtendedTaskAssignment = selectedResolvedEvent
+    ? selectedExtendedTaskAssignment
+    : fallbackActiveExtendedTaskAssignment;
+  const activeExtendedTaskSets = useMemo(
+    () =>
+      [...extendedTaskSets]
+        .filter((taskSet) => taskSet.archivedAt === null)
+        .sort((left, right) => new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime()),
+    [extendedTaskSets],
+  );
+  const defaultExtendedTaskEntries = useMemo(
+    () => BUILT_IN_EXTENDED_TASK_TEMPLATES,
+    [],
+  );
+  const neetcodeMasterEntry = useMemo(
+    () =>
+      defaultExtendedTaskEntries.find(
+        (entry) => entry.id === BUILT_IN_NEETCODE_MASTER_TEMPLATE_ID,
+      ) ?? null,
+    [defaultExtendedTaskEntries],
+  );
+  const neetcodeSubgroupEntries = useMemo(
+    () =>
+      defaultExtendedTaskEntries.filter(
+        (entry) => entry.id !== BUILT_IN_NEETCODE_MASTER_TEMPLATE_ID,
+      ),
+    [defaultExtendedTaskEntries],
+  );
+  const userExtendedTaskEntries = useMemo(
+    () => activeExtendedTaskSets.map((taskSet) => toExtendedTaskLibraryEntry(taskSet)),
+    [activeExtendedTaskSets],
+  );
+  const occurrenceApplyButtonLabel = selectedResolvedEvent ? 'Apply to selected' : 'Apply to current';
 
   const nextEvent = useMemo(() => {
     const now = Date.now();
@@ -355,12 +501,26 @@ export default function Options(): React.JSX.Element {
       .sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime())[0] ?? null;
   }, [todaysEvents]);
 
-  const activeEvent = calendarState?.currentEvent ?? null;
   const quietHoursActive = settings ? isDailyBlockingPauseActive(new Date(), settings) : false;
   const downloadRescueRows = DOWNLOAD_RESCUE_TOGGLES.map((toggle) => ({
     ...toggle,
     checked: settings ? settings[toggle.key] : false,
   }));
+
+  useEffect(() => {
+    workspaceEventsRef.current = workspaceEvents;
+  }, [workspaceEvents]);
+
+  useEffect(() => {
+    extendedTaskSetsRef.current = extendedTaskSets;
+  }, [extendedTaskSets]);
+
+  useEffect(() => {
+    draggingExtendedTaskEntryRef.current = draggingExtendedTaskEntry;
+    if (draggingExtendedTaskEntry === null) {
+      clearExtendedTaskDropTargets();
+    }
+  }, [draggingExtendedTaskEntry]);
 
   useEffect(() => {
     if (!selectedTooltip) return;
@@ -436,6 +596,13 @@ export default function Options(): React.JSX.Element {
     const next = { ...settings, ...patch };
     setLocalSettings(next);
     await setSettings(next);
+  };
+
+  const updateAssistantOptions = async (patch: Partial<AssistantOptions>) => {
+    if (!assistantOptions) return;
+    const next = { ...assistantOptions, ...patch };
+    setAssistantOptionsState(next);
+    await setAssistantOptions(next);
   };
 
   const updateBlockingEnabled = (enabled: boolean) => {
@@ -601,6 +768,205 @@ export default function Options(): React.JSX.Element {
     setGlobalDomainInput('');
   };
 
+  const resetExtendedTaskSetDraft = useCallback(() => {
+    setEditingExtendedTaskSetId(null);
+    setExtendedTaskSetTitle('');
+    setExtendedTaskSetItems([createEmptyExtendedTaskSetDraftItem()]);
+    setExtendedTaskSetError('');
+    setShowExtendedTaskEditor(true);
+  }, []);
+
+  const closeExtendedTaskEditor = useCallback(() => {
+    setEditingExtendedTaskSetId(null);
+    setExtendedTaskSetTitle('');
+    setExtendedTaskSetItems([createEmptyExtendedTaskSetDraftItem()]);
+    setExtendedTaskSetError('');
+    setShowExtendedTaskEditor(false);
+  }, []);
+
+  const loadExtendedTaskSetDraft = useCallback((taskSet: ExtendedTaskSet) => {
+    setEditingExtendedTaskSetId(taskSet.id);
+    setExtendedTaskSetTitle(taskSet.title);
+    setExtendedTaskSetItems(
+      taskSet.items.length > 0
+        ? taskSet.items.map((item) => ({
+            id: item.id,
+            label: item.label,
+            url: item.url,
+          }))
+        : [createEmptyExtendedTaskSetDraftItem()],
+    );
+    setExtendedTaskSetError('');
+    setShowExtendedTaskEditor(true);
+  }, []);
+
+  const saveExtendedTaskSetDefinition = useCallback(async () => {
+    const title = extendedTaskSetTitle.trim();
+    if (!title) {
+      setExtendedTaskSetError('Task set title is required.');
+      return;
+    }
+
+    const normalizedItems = extendedTaskSetItems
+      .map((item) => ({
+        id: item.id || safeId(),
+        label: item.label.trim(),
+        url: normalizeExtendedTaskUrl(item.url) ?? '',
+      }))
+      .filter((item) => item.label.length > 0 || item.url.length > 0);
+
+    if (normalizedItems.length === 0) {
+      setExtendedTaskSetError('Add at least one link.');
+      return;
+    }
+
+    if (normalizedItems.some((item) => !item.label || !item.url)) {
+      setExtendedTaskSetError('Each link needs both a label and a valid http:// or https:// URL.');
+      return;
+    }
+
+    const now = new Date().toISOString();
+    const existing = editingExtendedTaskSetId
+      ? extendedTaskSets.find((taskSet) => taskSet.id === editingExtendedTaskSetId) ?? null
+      : null;
+    const nextTaskSet: ExtendedTaskSet = {
+      id: existing?.id ?? safeId(),
+      title,
+      items: normalizedItems,
+      createdAt: existing?.createdAt ?? now,
+      updatedAt: now,
+      archivedAt: existing?.archivedAt ?? null,
+    };
+
+    setSavingExtendedTaskSet(true);
+    try {
+      await setExtendedTaskSets([
+        ...extendedTaskSets.filter((taskSet) => taskSet.id !== nextTaskSet.id),
+        nextTaskSet,
+      ]);
+      closeExtendedTaskEditor();
+      await loadData();
+    } catch (error) {
+      setExtendedTaskSetError(error instanceof Error ? error.message : 'Unable to save the task set.');
+    } finally {
+      setSavingExtendedTaskSet(false);
+    }
+  }, [
+    editingExtendedTaskSetId,
+    extendedTaskSetItems,
+    extendedTaskSetTitle,
+    extendedTaskSets,
+    loadData,
+    closeExtendedTaskEditor,
+  ]);
+
+  const deleteExtendedTaskSetDefinition = useCallback(async (taskSetId: string) => {
+    try {
+      await setExtendedTaskSets(extendedTaskSets.filter((taskSet) => taskSet.id !== taskSetId));
+      if (editingExtendedTaskSetId === taskSetId) {
+        closeExtendedTaskEditor();
+      }
+      await loadData();
+    } catch (error) {
+      setExtendedTaskActionError(error instanceof Error ? error.message : 'Unable to delete the task set.');
+    }
+  }, [editingExtendedTaskSetId, extendedTaskSets, loadData, closeExtendedTaskEditor]);
+
+  const duplicateBuiltInExtendedTaskTemplateDefinition = useCallback(async (templateId: string) => {
+    setExtendedTaskActionError('');
+    const template = BUILT_IN_EXTENDED_TASK_TEMPLATES.find((candidate) => candidate.id === templateId) ?? null;
+    if (!template) {
+      setExtendedTaskActionError('The default roadmap could not be found.');
+      return;
+    }
+
+    const duplicatedTaskSet = duplicateExtendedTaskTemplate(template);
+
+    try {
+      await setExtendedTaskSets([
+        ...extendedTaskSets,
+        duplicatedTaskSet,
+      ]);
+      loadExtendedTaskSetDraft(duplicatedTaskSet);
+      await loadData();
+    } catch (error) {
+      setExtendedTaskActionError(error instanceof Error ? error.message : 'Unable to duplicate the roadmap.');
+    }
+  }, [extendedTaskSets, loadData, loadExtendedTaskSetDraft]);
+
+  const startExtendedTaskEntryDrag = useCallback((
+    draggedEntry: ExtendedTaskLibraryEntry,
+    event: React.DragEvent<HTMLElement>,
+  ) => {
+    draggingExtendedTaskEntryRef.current = draggedEntry;
+    setDraggingExtendedTaskEntry(draggedEntry);
+    if (event.dataTransfer) {
+      const payload = encodeExtendedTaskLibraryEntryDragPayload(draggedEntry);
+      event.dataTransfer.setData(EXTENDED_TASK_LIBRARY_DRAG_MIME, payload);
+      event.dataTransfer.setData('text/plain', payload);
+      event.dataTransfer.effectAllowed = 'copy';
+    }
+  }, []);
+
+  const assignExtendedTaskLibraryEntryToEvent = useCallback(async (
+    calendarEventId: string,
+    entry: ExtendedTaskLibraryEntry | null,
+  ) => {
+    setExtendedTaskActionError('');
+    const calendarEvent =
+      workspaceEventsRef.current.find((candidate) => candidate.event.id === calendarEventId)?.event ?? null;
+    if (!entry || !calendarEvent) {
+      setExtendedTaskActionError('The task set or calendar event could not be found.');
+      return;
+    }
+
+    try {
+      await assignExtendedTaskSetToEvent(calendarEvent, entry);
+      await loadData();
+    } catch (error) {
+      setExtendedTaskActionError(error instanceof Error ? error.message : 'Unable to assign the extended task set.');
+    }
+  }, [loadData]);
+
+  const applyExtendedTaskLibraryEntryToOccurrence = useCallback(async (entry: ExtendedTaskLibraryEntry) => {
+    if (!occurrenceExtendedTaskEvent) {
+      setExtendedTaskActionError('Select or wait for a calendar occurrence before applying a task set.');
+      return;
+    }
+
+    await assignExtendedTaskLibraryEntryToEvent(occurrenceExtendedTaskEvent.id, entry);
+  }, [assignExtendedTaskLibraryEntryToEvent, occurrenceExtendedTaskEvent]);
+
+  const removeOccurrenceExtendedTaskAssignment = useCallback(async (calendarEventId: string) => {
+    setExtendedTaskActionError('');
+    try {
+      await removeExtendedTaskAssignment(calendarEventId);
+      await loadData();
+    } catch (error) {
+      setExtendedTaskActionError(error instanceof Error ? error.message : 'Unable to remove the occurrence assignment.');
+    }
+  }, [loadData]);
+
+  const completeExtendedTaskAssignmentItem = useCallback(async (assignmentId: string, itemId: string) => {
+    setExtendedTaskActionError('');
+    setCompletingExtendedTaskItemId(itemId);
+    try {
+      const response = await sendMessageAsync<{ ok: boolean; error?: string }>({
+        type: 'MARK_EXTENDED_TASK_ITEM_COMPLETE',
+        payload: { assignmentId, itemId },
+      });
+      if (!response?.ok) {
+        setExtendedTaskActionError(response?.error ?? 'Unable to complete the extended task item.');
+        return;
+      }
+      await loadData();
+    } catch (error) {
+      setExtendedTaskActionError(error instanceof Error ? error.message : 'Unable to complete the extended task item.');
+    } finally {
+      setCompletingExtendedTaskItemId(null);
+    }
+  }, [loadData]);
+
   if (!settings || !calendarState || !analyticsSnapshot) {
     return (
       <div className="fg-shell min-h-screen flex items-center justify-center">
@@ -614,16 +980,9 @@ export default function Options(): React.JSX.Element {
       <div className="mx-auto max-w-7xl px-6 py-8">
         <header className="mb-5 flex flex-wrap items-center justify-between gap-4">
           <div className="space-y-1">
-            <div className="inline-flex items-center gap-2 rounded-full border border-[var(--fg-border)] bg-white/70 px-3 py-1 text-xs font-medium text-[var(--fg-muted)] shadow-sm backdrop-blur">
-              <span className="h-2 w-2 rounded-full bg-emerald-500" />
-              Window workspace
-            </div>
             <h1 className="text-3xl font-semibold tracking-[-0.03em] text-[var(--fg-text)]">
               Window
             </h1>
-            <p className="max-w-2xl text-sm leading-6 text-[var(--fg-muted)]">
-              Keep focus controls compact and edit event-specific allowlists directly from the calendar.
-            </p>
           </div>
 
           <div className="flex flex-wrap items-start justify-end gap-3">
@@ -686,117 +1045,120 @@ export default function Options(): React.JSX.Element {
                     <h2 className="text-sm font-semibold text-[var(--fg-text)]">Focus controls</h2>
                     <InfoTip text="These are the quickest settings to understand the extension at a glance." />
                   </div>
-                  <p className="mt-0.5 text-xs text-[var(--fg-muted)]">
-                    Keep the essentials close, and let the calendar do the explaining.
-                  </p>
                 </div>
                 <span className="rounded-full border border-[var(--fg-border)] bg-white px-3 py-1 text-[11px] font-medium text-[var(--fg-muted)]">
                   {isConnected ? 'Calendar connected' : 'Calendar disconnected'}
                 </span>
               </div>
 
-              <div className="mt-3 grid gap-2 md:grid-cols-2 xl:grid-cols-3">
-                <CompactSettingRow
-                  label="Blocking"
-                  hint="Master switch for focus blocking."
-                  meta={
-                    quietHoursActive
-                      ? `Daily cutoff active after ${formatBlockingPauseTimeLabel(settings.dailyBlockingPauseStartTime)}`
-                      : 'Turns restriction rules on or off instantly.'
-                  }
-                  control={<Toggle checked={settings.enableBlocking} onChange={updateBlockingEnabled} />}
-                />
+              <div className="mt-4 overflow-hidden rounded-[24px] border border-[var(--fg-border)] bg-[var(--fg-panel-soft)]/55">
+                <div className="grid gap-0 md:grid-cols-2 xl:grid-cols-3">
+                  <CompactSettingRow
+                    className="px-4"
+                    label="Blocking"
+                    hint="Master switch for focus blocking."
+                    meta={
+                      quietHoursActive
+                        ? `Daily cutoff active after ${formatBlockingPauseTimeLabel(settings.dailyBlockingPauseStartTime)}`
+                        : 'Turns restriction rules on or off instantly.'
+                    }
+                    control={<Toggle checked={settings.enableBlocking} onChange={updateBlockingEnabled} />}
+                  />
 
-                <CompactSettingRow
-                  label="Break duration"
-                  hint="Default duration used when starting a break."
-                  meta="Used by the blocked page and quick break actions."
-                  control={
-                    <select
-                      value={settings.breakDurationMinutes}
-                      onChange={(event) =>
-                        updateSettings({
-                          breakDurationMinutes: Number(event.target.value) as BreakDurationMinutes,
-                        })
-                      }
-                      className="fg-select w-[112px] px-3 py-2 text-sm"
-                    >
-                      <option value={5}>5 min</option>
-                      <option value={10}>10 min</option>
-                      <option value={15}>15 min</option>
-                    </select>
-                  }
-                />
-
-                <CompactSettingRow
-                  label="Active event"
-                  hint="The focus block currently driving your allowed domains."
-                  value={activeEvent ? truncate(activeEvent.title, 30) : 'No focus block live'}
-                  meta={activeEvent ? formatEventRange(activeEvent) : 'Browsing is unrestricted until the next matching event.'}
-                />
-
-                <CompactSettingRow
-                  label="Daily cutoff"
-                  hint="After this time, blocking pauses for the rest of the day."
-                  meta={
-                    settings.dailyBlockingPauseEnabled
-                      ? `Pauses restrictions nightly after ${formatBlockingPauseTimeLabel(settings.dailyBlockingPauseStartTime)} and resumes tomorrow.`
-                      : 'Blocking stays available all day.'
-                  }
-                  control={
-                    <div className="flex items-center gap-2">
-                      <Toggle
-                        checked={settings.dailyBlockingPauseEnabled}
-                        onChange={(checked) =>
-                          updateSettings({
-                            dailyBlockingPauseEnabled: checked,
-                          })
-                        }
-                      />
-                      <input
-                        type="time"
-                        value={settings.dailyBlockingPauseStartTime}
-                        disabled={!settings.dailyBlockingPauseEnabled}
+                  <CompactSettingRow
+                    className="border-t border-[var(--fg-border)] px-4 md:border-l md:border-t-0"
+                    label="Break duration"
+                    hint="Default duration used when starting a break."
+                    control={
+                      <select
+                        value={settings.breakDurationMinutes}
                         onChange={(event) =>
                           updateSettings({
-                            dailyBlockingPauseStartTime: event.target.value,
+                            breakDurationMinutes: Number(event.target.value) as BreakDurationMinutes,
                           })
                         }
-                        className="fg-input w-[116px] px-3 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-50"
-                      />
-                    </div>
-                  }
-                />
+                        className="fg-select w-[112px] px-3 py-2 text-sm"
+                      >
+                        <option value={5}>5 min</option>
+                        <option value={10}>10 min</option>
+                        <option value={15}>15 min</option>
+                      </select>
+                    }
+                  />
 
-                <CompactSettingRow
-                  label="Next event"
-                  hint="The next focus block coming up on your calendar."
-                  value={nextEvent ? truncate(nextEvent.title, 30) : 'Nothing upcoming'}
-                  meta={nextEvent ? formatEventRange(nextEvent) : 'Today looks clear.'}
-                />
+                  <CompactSettingRow
+                    className="border-t border-[var(--fg-border)] px-4 md:border-l-0 xl:border-l xl:border-t-0"
+                    label="Active event"
+                    hint="The focus block currently driving your allowed domains."
+                    value={activeEvent ? truncate(activeEvent.title, 30) : 'No focus block live'}
+                    meta={activeEvent ? formatEventRange(activeEvent) : 'Browsing is unrestricted until the next matching event.'}
+                  />
 
-                <CompactSettingRow
-                  label="Download fallback"
-                  hint="Retry window used only when a blocked download redirect needs a short assist."
-                  meta="Only affects rescue retries, not normal browsing."
-                  control={
-                    <select
-                      value={settings.downloadRedirectFallbackSeconds}
-                      onChange={(event) =>
-                        updateSettings({
-                          downloadRedirectFallbackSeconds: Number(event.target.value) as DownloadRedirectFallbackSeconds,
-                        })
-                      }
-                      className="fg-select w-[124px] px-3 py-2 text-sm"
-                    >
-                      <option value={1}>1 second</option>
-                      <option value={2}>2 seconds</option>
-                      <option value={3}>3 seconds</option>
-                      <option value={4}>4 seconds</option>
-                      <option value={5}>5 seconds</option>
-                    </select>
-                  }
-                />
+                  <CompactSettingRow
+                    className="border-t border-[var(--fg-border)] px-4 md:border-l xl:border-l-0"
+                    label="Daily cutoff"
+                    hint="After this time, blocking pauses for the rest of the day."
+                    meta={
+                      settings.dailyBlockingPauseEnabled
+                        ? `Pauses restrictions nightly after ${formatBlockingPauseTimeLabel(settings.dailyBlockingPauseStartTime)} and resumes tomorrow.`
+                        : 'Blocking stays available all day.'
+                    }
+                    control={
+                      <div className="flex items-center gap-2">
+                        <Toggle
+                          checked={settings.dailyBlockingPauseEnabled}
+                          onChange={(checked) =>
+                            updateSettings({
+                              dailyBlockingPauseEnabled: checked,
+                            })
+                          }
+                        />
+                        <input
+                          type="time"
+                          value={settings.dailyBlockingPauseStartTime}
+                          disabled={!settings.dailyBlockingPauseEnabled}
+                          onChange={(event) =>
+                            updateSettings({
+                              dailyBlockingPauseStartTime: event.target.value,
+                            })
+                          }
+                          className="fg-input w-[116px] px-3 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-50"
+                        />
+                      </div>
+                    }
+                  />
+
+                  <CompactSettingRow
+                    className="border-t border-[var(--fg-border)] px-4 xl:border-l"
+                    label="Next event"
+                    hint="The next focus block coming up on your calendar."
+                    value={nextEvent ? truncate(nextEvent.title, 30) : 'Nothing upcoming'}
+                    meta={nextEvent ? formatEventRange(nextEvent) : 'Today looks clear.'}
+                  />
+
+                  <CompactSettingRow
+                    className="border-t border-[var(--fg-border)] px-4 md:border-l xl:border-l"
+                    label="Download fallback"
+                    hint="Retry window used only when a blocked download redirect needs a short assist."
+                    control={
+                      <select
+                        value={settings.downloadRedirectFallbackSeconds}
+                        onChange={(event) =>
+                          updateSettings({
+                            downloadRedirectFallbackSeconds: Number(event.target.value) as DownloadRedirectFallbackSeconds,
+                          })
+                        }
+                        className="fg-select w-[124px] px-3 py-2 text-sm"
+                      >
+                        <option value={1}>1 second</option>
+                        <option value={2}>2 seconds</option>
+                        <option value={3}>3 seconds</option>
+                        <option value={4}>4 seconds</option>
+                        <option value={5}>5 seconds</option>
+                      </select>
+                    }
+                  />
+                </div>
               </div>
             </div>
 
@@ -922,6 +1284,121 @@ export default function Options(): React.JSX.Element {
 
               <SettingsGroup
                 className="rounded-[24px] border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-4 py-3"
+                title="Assistant settings"
+                subtitle="Configure the OpenClaw assistant and capture behaviors."
+                hint="These settings control how Window interacts with the backend assistant."
+                collapsible
+                defaultOpen={false}
+                bodyClassName="mt-3 space-y-3"
+              >
+                {assistantOptions && openClawState && (
+                  <div className="grid gap-2">
+                    <CompactSettingRow
+                      label="Connector"
+                      hint="Choose which backend-managed assistant connector this panel should route through."
+                      meta="Select the backend target for your handoff tasks."
+                      control={
+                        <select
+                          value={assistantOptions.selectedConnectorId ?? ''}
+                          onChange={(event) => updateAssistantOptions({ selectedConnectorId: event.target.value })}
+                          disabled={openClawState.connectors.length === 0}
+                          className="fg-select w-[188px] px-3 py-2 text-sm"
+                        >
+                          {openClawState.connectors.length === 0 ? (
+                            <option value="">No connector</option>
+                          ) : (
+                            openClawState.connectors.map((connector) => (
+                              <option key={connector.id} value={connector.id}>
+                                {connector.label}
+                              </option>
+                            ))
+                          )}
+                        </select>
+                      }
+                    />
+                    
+                    <CompactSettingRow
+                      label="Model selector"
+                      hint="Placeholder choices for the future provider switcher."
+                      meta="Display-only today, but ready for future routing."
+                      control={
+                        <select
+                          value={MODEL_PLACEHOLDER_OPTIONS.includes(assistantOptions.preferredModel.value as any) ? assistantOptions.preferredModel.value : MODEL_PLACEHOLDER_OPTIONS[0]}
+                          onChange={(event) => updateAssistantOptions({ preferredModel: { value: event.target.value, updatedAt: null } })}
+                          className="fg-select w-[172px] px-3 py-2 text-sm"
+                        >
+                          {MODEL_PLACEHOLDER_OPTIONS.map((option) => (
+                            <option key={option} value={option}>
+                              {option}
+                            </option>
+                          ))}
+                        </select>
+                      }
+                    />
+
+                    <CompactSettingRow
+                      label="Notification timing"
+                      hint="Control when completed handoff tasks should surface a browser notification."
+                      meta={TASK_NOTIFICATION_MODE_OPTIONS.find((option) => option.value === assistantOptions.taskNotificationMode)?.description}
+                      control={
+                        <select
+                          value={assistantOptions.taskNotificationMode}
+                          onChange={(event) => updateAssistantOptions({ taskNotificationMode: event.target.value as TaskNotificationMode })}
+                          className="fg-select w-[188px] px-3 py-2 text-sm"
+                        >
+                          {TASK_NOTIFICATION_MODE_OPTIONS.map((option) => (
+                            <option key={option.value} value={option.value}>
+                              {option.label}
+                            </option>
+                          ))}
+                        </select>
+                      }
+                    />
+
+                    <CompactSettingRow
+                      label="Session behavior"
+                      hint="Reuse the current thread when you want continuity, or always start fresh."
+                      value={assistantOptions.reuseActiveSession ? 'Reuse current' : 'Fresh thread'}
+                      meta="Choose whether capture actions continue the latest reusable session."
+                      control={
+                        <Toggle
+                          checked={assistantOptions.reuseActiveSession}
+                          onChange={(checked) => updateAssistantOptions({ reuseActiveSession: checked })}
+                        />
+                      }
+                    />
+
+                    <CompactSettingRow
+                      label="New session fallback"
+                      hint="Automatically create a new session when nothing reusable exists, or require manual starts."
+                      value={assistantOptions.autoCreateSession ? 'Auto-create' : 'Manual'}
+                      meta="Useful when you want capture to keep moving without opening the assistant first."
+                      control={
+                        <Toggle
+                          checked={assistantOptions.autoCreateSession}
+                          onChange={(checked) => updateAssistantOptions({ autoCreateSession: checked })}
+                        />
+                      }
+                    />
+
+                    <CompactSettingRow
+                      label="Break telemetry"
+                      hint="Share domain-only break telemetry during active breaks."
+                      value={settings.breakTelemetryEnabled ? 'On' : 'Off'}
+                      meta="Used only for break analytics and trend summaries."
+                      control={
+                        <Toggle
+                          checked={settings.breakTelemetryEnabled}
+                          onChange={(checked) => updateSettings({ breakTelemetryEnabled: checked })}
+                        />
+                      }
+                    />
+                  </div>
+                )}
+              </SettingsGroup>
+
+              <SettingsGroup
+                className="rounded-[24px] border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-4 py-3"
                 title="Keyword rules"
                 subtitle={`${keywordRules.length} saved fallback rule${keywordRules.length === 1 ? '' : 's'}`}
                 hint="Longest keyword match wins. Exact Event Rules always override these fallbacks."
@@ -994,115 +1471,646 @@ export default function Options(): React.JSX.Element {
 
         {surfaceTab === 'workspace' ? (
           <>
-            <section className="fg-card relative overflow-hidden p-5">
-              <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-                <div className="flex items-center gap-2">
-                  <h2 className="text-lg font-semibold tracking-[-0.02em] text-[var(--fg-text)]">
-                    Calendar Workspace
-                  </h2>
-                  <InfoTip text="Click an event to edit its exact allowlist. Exact Event Rules override keyword fallbacks immediately." />
-                </div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <button onClick={() => navigateCalendar('today')} className="fg-button-secondary">
-                    Today
-                  </button>
-                  <button onClick={() => navigateCalendar('prev')} className="fg-button-ghost">
-                    Prev
-                  </button>
-                  <button onClick={() => navigateCalendar('next')} className="fg-button-ghost">
-                    Next
-                  </button>
-                  <div className="ml-1 inline-flex rounded-2xl border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] p-1">
-                    {(['dayGridMonth', 'timeGridWeek', 'timeGridDay'] as CalendarView[]).map((view) => (
-                      <button
-                        key={view}
-                        onClick={() => changeView(view)}
-                        className={calendarView === view ? 'fg-segment-active' : 'fg-segment'}
-                      >
-                        {view === 'dayGridMonth' ? 'Month' : view === 'timeGridWeek' ? 'Week' : 'Day'}
-                      </button>
-                    ))}
+            <section className="grid gap-5 xl:grid-cols-[minmax(0,1fr),340px]">
+              <div className="fg-card relative overflow-hidden p-5">
+                <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-lg font-semibold tracking-[-0.02em] text-[var(--fg-text)]">
+                      Calendar Workspace
+                    </h2>
+                    <InfoTip text="Click an event to edit its exact allowlist. Drag an extended task set onto an occurrence to bind a sequenced checklist." />
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button onClick={() => navigateCalendar('today')} className="fg-button-secondary">
+                      Today
+                    </button>
+                    <button onClick={() => navigateCalendar('prev')} className="fg-button-ghost">
+                      Prev
+                    </button>
+                    <button onClick={() => navigateCalendar('next')} className="fg-button-ghost">
+                      Next
+                    </button>
+                    <div className="ml-1 inline-flex rounded-2xl border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] p-1">
+                      {(['dayGridMonth', 'timeGridWeek', 'timeGridDay'] as CalendarView[]).map((view) => (
+                        <button
+                          key={view}
+                          onClick={() => changeView(view)}
+                          className={calendarView === view ? 'fg-segment-active' : 'fg-segment'}
+                        >
+                          {view === 'dayGridMonth' ? 'Month' : view === 'timeGridWeek' ? 'Week' : 'Day'}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              <div className="mb-4 flex items-center justify-between gap-3">
-                <p className="text-xl font-semibold tracking-[-0.03em] text-[var(--fg-text)]">
-                  {calendarTitle || 'Today'}
-                </p>
-                <div className="flex items-center gap-2 text-xs text-[var(--fg-muted)]">
-                  <LegendDot tone="emerald" label="Exact rule" />
-                  <LegendDot tone="amber" label="Keyword fallback" />
-                  <LegendDot tone="slate" label="Unrestricted" />
-                </div>
-              </div>
-
-              {isConnected ? (
-                <div className="fg-calendar-wrap">
-                  <FullCalendar
-                    ref={calendarRef}
-                    plugins={[dayGridPlugin, timeGridPlugin]}
-                    initialView={calendarView}
-                    headerToolbar={false}
-                    height="auto"
-                    dayMaxEvents={3}
-                    events={workspaceEvents.map((item) => ({
-                      ...calendarEventAppearance(item.event),
-                      id: item.event.id,
-                      title: item.event.title,
-                      start: item.event.start,
-                      end: item.event.end,
-                      allDay: item.event.isAllDay,
-                      extendedProps: {
-                        ruleSource: item.source,
-                        ruleName: item.ruleName,
-                        domains: item.domains,
-                        recurrenceHint: item.event.recurrenceHint,
-                      },
-                    }))}
-                    datesSet={handleDatesSet}
-                    eventClick={handleEventClick}
-                eventDidMount={(arg: EventMountArg) => {
-                  arg.el.dataset.windowEventId = arg.event.id;
-                  arg.el.tabIndex = 0;
-                  arg.el.style.cursor = 'pointer';
-                  arg.el.onfocus = () => {
-                    openTooltipAtRect(arg.event.id, arg.el.getBoundingClientRect());
-                  };
-                  arg.el.onkeydown = (event: KeyboardEvent) => {
-                    if (event.key === 'Enter' || event.key === ' ') {
-                      event.preventDefault();
-                      openTooltipAtRect(arg.event.id, arg.el.getBoundingClientRect());
-                    }
-                  };
-                  if (selectedTooltip?.eventId === arg.event.id) {
-                    arg.el.dataset.windowSelected = 'true';
-                  } else {
-                    delete arg.el.dataset.windowSelected;
-                  }
-                }}
-                eventContent={(arg: EventContentArg) => (
-                  <CalendarEventChip
-                    eventId={arg.event.id}
-                    title={arg.event.title}
-                    timeText={arg.timeText}
-                    backgroundColor={arg.event.backgroundColor}
-                    foregroundColor={arg.event.textColor}
-                    onQuickOpen={(eventId, element) => {
-                      openTooltipAtRect(eventId, element.getBoundingClientRect());
-                    }}
-                  />
-                )}
-                  />
-                </div>
-              ) : (
-                <div className="rounded-[28px] border border-dashed border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-8 py-12 text-center">
-                  <p className="text-lg font-medium text-[var(--fg-text)]">Connect your calendar to unlock the workspace.</p>
-                  <p className="mt-2 text-sm text-[var(--fg-muted)]">
-                    Once connected, you’ll get a Google-Calendar-like view where each event can own its whitelist.
+                <div className="mb-4 flex items-center justify-between gap-3">
+                  <p className="text-xl font-semibold tracking-[-0.03em] text-[var(--fg-text)]">
+                    {calendarTitle || 'Today'}
                   </p>
+                  <div className="flex items-center gap-2 text-xs text-[var(--fg-muted)]">
+                    <LegendDot tone="emerald" label="Exact rule" />
+                    <LegendDot tone="amber" label="Keyword fallback" />
+                    <LegendDot tone="slate" label="Unrestricted" />
+                  </div>
                 </div>
-              )}
+
+                {isConnected ? (
+                  <div className="fg-calendar-wrap">
+                    <FullCalendar
+                      ref={calendarRef}
+                      plugins={[dayGridPlugin, timeGridPlugin]}
+                      initialView={calendarView}
+                      headerToolbar={false}
+                      height="auto"
+                      dayMaxEvents={3}
+                      slotMinTime={calendarTimeBounds.slotMinTime}
+                      slotMaxTime={calendarTimeBounds.slotMaxTime}
+                      scrollTime={calendarTimeBounds.scrollTime}
+                      events={workspaceEvents.map((item) => ({
+                        ...calendarEventAppearance(item.event),
+                        id: item.event.id,
+                        title: item.event.title,
+                        start: item.event.start,
+                        end: item.event.end,
+                        allDay: item.event.isAllDay,
+                        extendedProps: {
+                          ruleSource: item.source,
+                          ruleName: item.ruleName,
+                          domains: item.domains,
+                          recurrenceHint: item.event.recurrenceHint,
+                        },
+                      }))}
+                      datesSet={handleDatesSet}
+                      eventClick={handleEventClick}
+                      eventDidMount={(arg: EventMountArg) => {
+                        arg.el.dataset.windowEventId = arg.event.id;
+                        arg.el.tabIndex = 0;
+                        arg.el.style.cursor = 'pointer';
+                        const chipElement = arg.el.querySelector<HTMLElement>('.fg-event-chip');
+                        const dropTargets = uniqueElements([arg.el, chipElement]);
+                        const setDropTargetActive = (active: boolean) => {
+                          setExtendedTaskDropTargetState(dropTargets, active);
+                        };
+                        const isInternalDropTransition = (nextTarget: Node | null) =>
+                          nextTarget !== null && dropTargets.some((target) => target.contains(nextTarget));
+                        const bindDropHandlers = (element: HTMLElement) => {
+                          element.ondragenter = (event: DragEvent) => {
+                            if (!draggingExtendedTaskEntryRef.current) return;
+                            event.preventDefault();
+                            setDropTargetActive(true);
+                          };
+                          element.ondragover = (event: DragEvent) => {
+                            if (!draggingExtendedTaskEntryRef.current) return;
+                            event.preventDefault();
+                            if (event.dataTransfer) {
+                              event.dataTransfer.dropEffect = 'copy';
+                            }
+                            setDropTargetActive(true);
+                          };
+                          element.ondragleave = (event: DragEvent) => {
+                            const nextTarget = event.relatedTarget as Node | null;
+                            if (isInternalDropTransition(nextTarget)) {
+                              return;
+                            }
+                            setDropTargetActive(false);
+                          };
+                          element.ondrop = (event: DragEvent) => {
+                            event.preventDefault();
+                            const draggedEntry = resolveDraggedExtendedTaskLibraryEntry({
+                              draggingEntry: draggingExtendedTaskEntryRef.current,
+                              plainTextPayload: event.dataTransfer?.getData('text/plain') ?? null,
+                              customPayload: event.dataTransfer?.getData(EXTENDED_TASK_LIBRARY_DRAG_MIME) ?? null,
+                              builtInTemplates: BUILT_IN_EXTENDED_TASK_TEMPLATES,
+                              taskSets: extendedTaskSetsRef.current,
+                            });
+                            setDropTargetActive(false);
+                            setDraggingExtendedTaskEntry(null);
+                            if (!draggedEntry) return;
+                            void assignExtendedTaskLibraryEntryToEvent(arg.event.id, draggedEntry);
+                          };
+                        };
+                        dropTargets.forEach(bindDropHandlers);
+                        arg.el.onfocus = () => {
+                          openTooltipAtRect(arg.event.id, arg.el.getBoundingClientRect());
+                        };
+                        arg.el.onkeydown = (event: KeyboardEvent) => {
+                          if (event.key === 'Enter' || event.key === ' ') {
+                            event.preventDefault();
+                            openTooltipAtRect(arg.event.id, arg.el.getBoundingClientRect());
+                          }
+                        };
+                        if (selectedTooltip?.eventId === arg.event.id) {
+                          arg.el.dataset.windowSelected = 'true';
+                        } else {
+                          delete arg.el.dataset.windowSelected;
+                        }
+                      }}
+                      eventContent={(arg: EventContentArg) => (
+                        <CalendarEventChip
+                          eventId={arg.event.id}
+                          title={arg.event.title}
+                          timeText={arg.timeText}
+                          backgroundColor={arg.event.backgroundColor}
+                          foregroundColor={arg.event.textColor}
+                          onQuickOpen={(eventId, element) => {
+                            openTooltipAtRect(eventId, element.getBoundingClientRect());
+                          }}
+                        />
+                      )}
+                    />
+                  </div>
+                ) : (
+                  <div className="rounded-[28px] border border-dashed border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-8 py-12 text-center">
+                    <p className="text-lg font-medium text-[var(--fg-text)]">Connect your calendar to unlock the workspace.</p>
+                    <p className="mt-2 text-sm text-[var(--fg-muted)]">
+                      Once connected, you’ll get a Google-Calendar-like view where each event can own its whitelist.
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-5">
+                <div className="fg-card p-5">
+                  <div className="mb-3 flex items-center gap-2">
+                    <h2 className="text-sm font-semibold text-[var(--fg-text)]">Current / Selected Occurrence</h2>
+                    <InfoTip text="If nothing is selected, this rail falls back to the current active event. Checking an item complete advances the next link for that occurrence." />
+                  </div>
+
+                  <div className="rounded-[22px] border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-4 py-3">
+                    {occurrenceExtendedTaskEvent ? (
+                      <>
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--fg-muted)]">
+                          {selectedResolvedEvent ? 'Selected occurrence' : 'Current active occurrence'}
+                        </p>
+                        <p className="mt-2 text-sm font-semibold text-[var(--fg-text)]">
+                          {occurrenceExtendedTaskEvent.title}
+                        </p>
+                        <p className="mt-1 text-xs leading-5 text-[var(--fg-muted)]">
+                          {formatEventRange(occurrenceExtendedTaskEvent)}
+                        </p>
+                      </>
+                    ) : (
+                      <>
+                        <p className="text-sm font-medium text-[var(--fg-text)]">No occurrence selected</p>
+                        <p className="mt-1 text-xs leading-5 text-[var(--fg-muted)]">
+                          Click a calendar event or wait for an active occurrence with an assigned extended task set.
+                        </p>
+                      </>
+                    )}
+                  </div>
+
+                  {extendedTaskActionError ? (
+                    <p className="mt-3 text-xs text-rose-600">{extendedTaskActionError}</p>
+                  ) : null}
+
+                  {occurrenceExtendedTaskAssignment ? (
+                    <div className="mt-4 space-y-3">
+                      <div className="flex items-center justify-between gap-3">
+                        <div>
+                          <p className="text-sm font-medium text-[var(--fg-text)]">
+                            {occurrenceExtendedTaskAssignment.setTitle}
+                          </p>
+                          <p className="text-xs text-[var(--fg-muted)]">
+                            {occurrenceExtendedTaskAssignment.items.length} linked step{occurrenceExtendedTaskAssignment.items.length === 1 ? '' : 's'}
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => {
+                            void removeOccurrenceExtendedTaskAssignment(occurrenceExtendedTaskAssignment.calendarEventId);
+                          }}
+                          className="fg-button-ghost px-3 py-1.5 text-[11px]"
+                        >
+                          Remove
+                        </button>
+                      </div>
+
+                      <div className="space-y-2">
+                        {occurrenceExtendedTaskAssignment.items.map((item, index) => {
+                          const completed = item.completedAt !== null;
+                          const loading = completingExtendedTaskItemId === item.id;
+                          return (
+                            <div
+                              key={item.id}
+                              className={`flex items-start gap-3 rounded-[18px] border px-3 py-3 ${
+                                completed
+                                  ? 'border-emerald-200 bg-emerald-50/70'
+                                  : 'border-[var(--fg-border)] bg-white'
+                              }`}
+                            >
+                              <button
+                                type="button"
+                                disabled={completed || loading}
+                                onClick={() => {
+                                  void completeExtendedTaskAssignmentItem(occurrenceExtendedTaskAssignment.id, item.id);
+                                }}
+                                className={`mt-0.5 flex h-5 w-5 items-center justify-center rounded-full border text-[10px] font-semibold ${
+                                  completed
+                                    ? 'border-emerald-500 bg-emerald-500 text-white'
+                                    : 'border-[var(--fg-border)] text-[var(--fg-muted)]'
+                                } ${loading ? 'opacity-50' : ''}`}
+                              >
+                                {completed ? '✓' : loading ? '…' : index + 1}
+                              </button>
+                              <div className="min-w-0 flex-1">
+                                <div className="flex items-start justify-between gap-3">
+                                  <div className="min-w-0">
+                                    <p className={`text-sm font-medium ${completed ? 'text-emerald-900 line-through' : 'text-[var(--fg-text)]'}`}>
+                                      {item.label}
+                                    </p>
+                                    <p className="mt-1 break-all text-xs leading-5 text-[var(--fg-muted)]">
+                                      {item.url}
+                                    </p>
+                                  </div>
+                                  <a
+                                    href={item.url}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="fg-button-ghost px-3 py-1.5 text-[11px]"
+                                  >
+                                    Open
+                                  </a>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ) : occurrenceExtendedTaskEvent ? (
+                    <div className="mt-4 rounded-[22px] border border-dashed border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-4 py-4">
+                      <p className="text-sm font-medium text-[var(--fg-text)]">No extended tasks on this occurrence yet.</p>
+                      <p className="mt-1 text-xs leading-5 text-[var(--fg-muted)]">
+                        Drag a roadmap onto this calendar event or use Apply from the library to bind an ordered checklist.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="mt-4">
+                      <EmptyCard text="No occurrence checklist to show yet." />
+                    </div>
+                  )}
+                </div>
+
+                <div className="fg-card p-5">
+                  <div className="mb-3 flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2">
+                      <h2 className="text-sm font-semibold text-[var(--fg-text)]">Extended Tasks</h2>
+                      <InfoTip text="Drag a roadmap card onto any calendar event to bind a sequenced checklist to that occurrence. Duplicate a default roadmap to make it editable." />
+                    </div>
+                    <button
+                      onClick={showExtendedTaskEditor ? closeExtendedTaskEditor : resetExtendedTaskSetDraft}
+                      className="fg-button-secondary px-3 py-1.5 text-[11px]"
+                    >
+                      {showExtendedTaskEditor ? 'Close editor' : '+ New task set'}
+                    </button>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div>
+                      <div className="mb-2 flex items-center justify-between gap-3">
+                        <div>
+                          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--fg-muted)]">
+                            Default Roadmaps
+                          </p>
+                          <p className="mt-1 text-xs leading-5 text-[var(--fg-muted)]">
+                            Tap a roadmap to open its subgroup blocks. Both rows scroll horizontally.
+                          </p>
+                        </div>
+                        <span className="rounded-full border border-[var(--fg-border)] bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--fg-muted)]">
+                          {neetcodeSubgroupEntries.length} blocks
+                        </span>
+                      </div>
+
+                      <div className="overflow-x-auto pb-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                        <div className="flex min-w-max gap-3">
+                          {neetcodeMasterEntry ? (
+                            <div
+                              className={`min-w-[292px] max-w-[292px] rounded-[24px] border px-4 py-4 transition ${
+                                draggingExtendedTaskEntry?.id === neetcodeMasterEntry.id &&
+                                draggingExtendedTaskEntry.source === neetcodeMasterEntry.source
+                                  ? 'border-blue-300 bg-blue-50/70'
+                                  : 'border-[var(--fg-border)] bg-[var(--fg-panel-soft)] hover:border-blue-200'
+                              }`}
+                            >
+                              <div className="flex items-start justify-between gap-3">
+                                <div className="flex min-w-0 items-start gap-3">
+                                  <div
+                                    draggable
+                                    onDragStart={(event) => startExtendedTaskEntryDrag(neetcodeMasterEntry, event)}
+                                    onDragEnd={() => setDraggingExtendedTaskEntry(null)}
+                                    className="mt-0.5 inline-flex cursor-grab select-none items-center rounded-full border border-[var(--fg-border)] bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--fg-muted)] active:cursor-grabbing"
+                                    title="Drag onto a calendar occurrence"
+                                  >
+                                    Drag
+                                  </div>
+                                  <div className="min-w-0">
+                                    <div className="flex flex-wrap items-center gap-2">
+                                      <p className="truncate text-sm font-medium text-[var(--fg-text)]">
+                                        {neetcodeMasterEntry.title}
+                                      </p>
+                                      <span className="rounded-full border border-[var(--fg-border)] bg-white px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--fg-muted)]">
+                                        Roadmap
+                                      </span>
+                                    </div>
+                                    <p className="mt-1 text-xs leading-5 text-[var(--fg-muted)]">
+                                      {neetcodeMasterEntry.items.length} total links across {neetcodeSubgroupEntries.length} subgroup blocks
+                                    </p>
+                                  </div>
+                                </div>
+                                <button
+                                  onClick={() =>
+                                    setExpandedDefaultRoadmapId((current) =>
+                                      current === neetcodeMasterEntry.id ? null : neetcodeMasterEntry.id,
+                                    )
+                                  }
+                                  className="fg-button-ghost px-3 py-1.5 text-[11px]"
+                                >
+                                  {expandedDefaultRoadmapId === neetcodeMasterEntry.id ? 'Collapse' : 'Expand'}
+                                </button>
+                              </div>
+
+                              <div className="mt-4 rounded-[20px] border border-white/70 bg-white/75 px-3.5 py-3">
+                                <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--fg-muted)]">
+                                  Subgroups
+                                </p>
+                                <div className="mt-2 flex flex-wrap gap-2">
+                                  {neetcodeSubgroupEntries.slice(0, 6).map((entry) => (
+                                    <span
+                                      key={entry.id}
+                                      className="rounded-full border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-2.5 py-1 text-[11px] font-medium text-[var(--fg-muted)]"
+                                    >
+                                      {entry.title}
+                                    </span>
+                                  ))}
+                                  {neetcodeSubgroupEntries.length > 6 ? (
+                                    <span className="rounded-full border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-2.5 py-1 text-[11px] font-medium text-[var(--fg-muted)]">
+                                      +{neetcodeSubgroupEntries.length - 6} more
+                                    </span>
+                                  ) : null}
+                                </div>
+                              </div>
+
+                              <div className="mt-4 flex flex-wrap items-center gap-2">
+                                {occurrenceExtendedTaskEvent ? (
+                                  <button
+                                    onClick={() => {
+                                      void applyExtendedTaskLibraryEntryToOccurrence(neetcodeMasterEntry);
+                                    }}
+                                    className="fg-button-secondary px-3 py-1.5 text-[11px]"
+                                  >
+                                    {occurrenceApplyButtonLabel}
+                                  </button>
+                                ) : null}
+                                <button
+                                  onClick={() => {
+                                    void duplicateBuiltInExtendedTaskTemplateDefinition(neetcodeMasterEntry.id);
+                                  }}
+                                  className="fg-button-ghost px-3 py-1.5 text-[11px]"
+                                >
+                                  Duplicate
+                                </button>
+                              </div>
+                            </div>
+                          ) : null}
+                        </div>
+                      </div>
+
+                      {expandedDefaultRoadmapId === BUILT_IN_NEETCODE_MASTER_TEMPLATE_ID ? (
+                        <div className="mt-3">
+                          <div className="mb-2 flex items-center justify-between gap-3">
+                            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--fg-muted)]">
+                              NeetCode Blocks
+                            </p>
+                            <p className="text-[11px] text-[var(--fg-muted)]">
+                              Scroll sideways to browse subgroup cards.
+                            </p>
+                          </div>
+                          <div className="overflow-x-auto pb-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                            <div className="flex min-w-max gap-3">
+                              {neetcodeSubgroupEntries.map((entry) => (
+                                <ExtendedTaskLibraryCard
+                                  key={`${entry.source}:${entry.id}`}
+                                  entry={entry}
+                                  dragging={
+                                    draggingExtendedTaskEntry?.id === entry.id &&
+                                    draggingExtendedTaskEntry.source === entry.source
+                                  }
+                                  applyLabel={occurrenceApplyButtonLabel}
+                                  canApply={occurrenceExtendedTaskEvent !== null}
+                                  className="min-w-[272px] max-w-[272px] snap-start"
+                                  onApply={() => {
+                                    void applyExtendedTaskLibraryEntryToOccurrence(entry);
+                                  }}
+                                  onDragStart={startExtendedTaskEntryDrag}
+                                  onDragEnd={() => setDraggingExtendedTaskEntry(null)}
+                                  onDuplicate={() => {
+                                    void duplicateBuiltInExtendedTaskTemplateDefinition(entry.id);
+                                  }}
+                                />
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      ) : null}
+                    </div>
+
+                    <div>
+                      <div className="mb-2 flex items-center justify-between gap-3">
+                        <div>
+                          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--fg-muted)]">
+                            Your Task Sets
+                          </p>
+                          <p className="mt-1 text-xs leading-5 text-[var(--fg-muted)]">
+                            Editable sets you have saved. This rail also scrolls horizontally.
+                          </p>
+                        </div>
+                        <span className="rounded-full border border-[var(--fg-border)] bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--fg-muted)]">
+                          {userExtendedTaskEntries.length} saved
+                        </span>
+                      </div>
+
+                      <div className="overflow-x-auto pb-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                        <div className="flex min-w-max gap-3">
+                        {userExtendedTaskEntries.length > 0 ? (
+                          userExtendedTaskEntries.map((entry) => (
+                            <ExtendedTaskLibraryCard
+                              key={`${entry.source}:${entry.id}`}
+                              entry={entry}
+                              dragging={
+                                draggingExtendedTaskEntry?.id === entry.id &&
+                                draggingExtendedTaskEntry.source === entry.source
+                              }
+                              applyLabel={occurrenceApplyButtonLabel}
+                              canApply={occurrenceExtendedTaskEvent !== null}
+                              className="min-w-[272px] max-w-[272px] snap-start"
+                              onApply={() => {
+                                void applyExtendedTaskLibraryEntryToOccurrence(entry);
+                              }}
+                              onDragStart={startExtendedTaskEntryDrag}
+                              onDragEnd={() => setDraggingExtendedTaskEntry(null)}
+                              onEdit={() => {
+                                const taskSet = activeExtendedTaskSets.find((candidate) => candidate.id === entry.id);
+                                if (taskSet) {
+                                  loadExtendedTaskSetDraft(taskSet);
+                                }
+                              }}
+                              onDelete={() => {
+                                void deleteExtendedTaskSetDefinition(entry.id);
+                              }}
+                            />
+                          ))
+                        ) : (
+                          <div className="min-w-[272px] max-w-[272px]">
+                            <div className="rounded-[24px] border border-dashed border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-4 py-5 text-center">
+                              <p className="text-sm font-medium text-[var(--fg-text)]">No saved task sets yet</p>
+                              <p className="mt-1 text-xs leading-5 text-[var(--fg-muted)]">Duplicate a default roadmap to customise it, or click <strong>+ New task set</strong> to build from scratch.</p>
+                            </div>
+                          </div>
+                        )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {showExtendedTaskEditor ? (
+                    <div className="mt-4 rounded-[24px] border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-4 py-4">
+                      <div className="flex items-center justify-between gap-3">
+                        <div>
+                          <p className="text-sm font-medium text-[var(--fg-text)]">
+                            {editingExtendedTaskSetId ? 'Edit task set' : 'Create task set'}
+                          </p>
+                          <p className="mt-1 text-xs leading-5 text-[var(--fg-muted)]">
+                            Add ordered links. Window opens them one-by-one for a calendar occurrence.
+                          </p>
+                        </div>
+                        <button onClick={closeExtendedTaskEditor} className="fg-button-ghost px-3 py-1.5 text-[11px]">
+                          Cancel
+                        </button>
+                      </div>
+
+                      <div className="mt-3 space-y-3">
+                        <input
+                          type="text"
+                          value={extendedTaskSetTitle}
+                          onChange={(event) => {
+                            setExtendedTaskSetTitle(event.target.value);
+                            setExtendedTaskSetError('');
+                          }}
+                          placeholder="e.g. Late code sprint"
+                          className="fg-input"
+                        />
+
+                        <div className="space-y-2">
+                          {extendedTaskSetItems.map((item, index) => (
+                            <div key={item.id} className="rounded-[18px] border border-[var(--fg-border)] bg-white px-3 py-3">
+                              <div className="grid gap-2">
+                                <div className="flex items-center gap-2">
+                                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-[var(--fg-border)] text-[10px] font-semibold text-[var(--fg-muted)]">
+                                    {index + 1}
+                                  </span>
+                                  <input
+                                    type="text"
+                                    value={item.label}
+                                    onChange={(event) => {
+                                      setExtendedTaskSetItems((current) =>
+                                        current.map((candidate) =>
+                                          candidate.id === item.id
+                                            ? { ...candidate, label: event.target.value }
+                                            : candidate,
+                                        ),
+                                      );
+                                      setExtendedTaskSetError('');
+                                    }}
+                                    placeholder="Label (e.g. Two Sum)"
+                                    className="fg-input flex-1"
+                                  />
+                                </div>
+                                <input
+                                  type="url"
+                                  value={item.url}
+                                  onChange={(event) => {
+                                    setExtendedTaskSetItems((current) =>
+                                      current.map((candidate) =>
+                                        candidate.id === item.id
+                                          ? { ...candidate, url: event.target.value }
+                                          : candidate,
+                                      ),
+                                    );
+                                    setExtendedTaskSetError('');
+                                  }}
+                                  placeholder="https://leetcode.com/problems/two-sum/"
+                                  className="fg-input"
+                                />
+                                <div className="flex justify-end gap-2">
+                                  <button
+                                    onClick={() => {
+                                      setExtendedTaskSetItems((current) => moveDraftArrayItem(current, index, index - 1));
+                                    }}
+                                    disabled={index === 0}
+                                    className="fg-button-ghost px-2.5 py-1 text-[11px] disabled:opacity-30"
+                                  >
+                                    ↑
+                                  </button>
+                                  <button
+                                    onClick={() => {
+                                      setExtendedTaskSetItems((current) => moveDraftArrayItem(current, index, index + 1));
+                                    }}
+                                    disabled={index === extendedTaskSetItems.length - 1}
+                                    className="fg-button-ghost px-2.5 py-1 text-[11px] disabled:opacity-30"
+                                  >
+                                    ↓
+                                  </button>
+                                  <button
+                                    onClick={() => {
+                                      setExtendedTaskSetItems((current) =>
+                                        current.length > 1
+                                          ? current.filter((candidate) => candidate.id !== item.id)
+                                          : [createEmptyExtendedTaskSetDraftItem()],
+                                      );
+                                    }}
+                                    className="fg-button-ghost px-2.5 py-1 text-[11px] text-rose-500"
+                                  >
+                                    ×
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+
+                        <button
+                          onClick={() => {
+                            setExtendedTaskSetItems((current) => [...current, createEmptyExtendedTaskSetDraftItem()]);
+                          }}
+                          className="fg-button-secondary px-3 py-2 text-[11px]"
+                        >
+                          + Add link
+                        </button>
+
+                        {extendedTaskSetError ? (
+                          <p className="text-xs text-rose-600">{extendedTaskSetError}</p>
+                        ) : null}
+
+                        <button
+                          onClick={() => {
+                            void saveExtendedTaskSetDefinition();
+                          }}
+                          disabled={savingExtendedTaskSet}
+                          className="fg-button-primary w-full px-4 py-2.5 text-sm"
+                        >
+                          {savingExtendedTaskSet ? 'Saving…' : editingExtendedTaskSetId ? 'Save changes' : 'Create task set'}
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="mt-4 rounded-[22px] border border-dashed border-[var(--fg-border)] bg-[var(--fg-panel-soft)]/60 px-4 py-3">
+                      <p className="text-[11px] text-[var(--fg-muted)]">
+                        Drag any roadmap card onto a calendar event to attach it as a checklist, or click <strong>+ New task set</strong> to build a custom one.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
             </section>
 
             <section className="mt-5">
@@ -1731,6 +2739,103 @@ const EventRuleTooltip = React.forwardRef<HTMLDivElement, {
 );
 
 EventRuleTooltip.displayName = 'EventRuleTooltip';
+
+function ExtendedTaskLibraryCard({
+  entry,
+  dragging,
+  canApply,
+  applyLabel,
+  className,
+  onApply,
+  onDragStart,
+  onDragEnd,
+  onDuplicate,
+  onEdit,
+  onDelete,
+}: {
+  entry: ExtendedTaskLibraryEntry;
+  dragging: boolean;
+  canApply: boolean;
+  applyLabel: string;
+  className?: string;
+  onApply?: () => void;
+  onDragStart: (entry: ExtendedTaskLibraryEntry, event: React.DragEvent<HTMLElement>) => void;
+  onDragEnd: () => void;
+  onDuplicate?: () => void;
+  onEdit?: () => void;
+  onDelete?: () => void;
+}): React.JSX.Element {
+  return (
+    <div
+      className={`${className ?? ''} rounded-[20px] border px-4 py-3 transition ${
+        dragging
+          ? 'border-blue-300 bg-blue-50/70'
+          : 'border-[var(--fg-border)] bg-[var(--fg-panel-soft)] hover:border-blue-200'
+      }`}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex min-w-0 items-start gap-3">
+          <div
+            draggable
+            onDragStart={(event) => onDragStart(entry, event)}
+            onDragEnd={onDragEnd}
+            className="mt-0.5 inline-flex cursor-grab select-none items-center rounded-full border border-[var(--fg-border)] bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--fg-muted)] active:cursor-grabbing"
+            title="Drag onto a calendar occurrence"
+          >
+            Drag
+          </div>
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="truncate text-sm font-medium text-[var(--fg-text)]">{entry.title}</p>
+              <span className="rounded-full border border-[var(--fg-border)] bg-white px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--fg-muted)]">
+                {entry.source === 'built-in' ? 'Default' : 'Editable'}
+              </span>
+            </div>
+            <p className="mt-1 text-xs leading-5 text-[var(--fg-muted)]">
+              {entry.items.length} link{entry.items.length === 1 ? '' : 's'} · drag onto a calendar occurrence
+            </p>
+          </div>
+        </div>
+
+        <div className="flex flex-shrink-0 flex-wrap items-center justify-end gap-2">
+          {canApply && onApply ? (
+            <button onClick={onApply} className="fg-button-secondary px-3 py-1.5 text-[11px]">
+              {applyLabel}
+            </button>
+          ) : null}
+          {entry.source === 'built-in' && onDuplicate ? (
+            <button onClick={onDuplicate} className="fg-button-ghost px-3 py-1.5 text-[11px]">
+              Duplicate
+            </button>
+          ) : null}
+          {entry.source === 'user' && onEdit ? (
+            <button onClick={onEdit} className="fg-button-ghost px-3 py-1.5 text-[11px]">
+              Edit
+            </button>
+          ) : null}
+          {entry.source === 'user' && onDelete ? (
+            <button onClick={onDelete} className="fg-button-ghost px-3 py-1.5 text-[11px] text-rose-600">
+              Delete
+            </button>
+          ) : null}
+        </div>
+      </div>
+
+      <div className="mt-3 space-y-1">
+        {entry.items.slice(0, 3).map((item, index) => (
+          <p key={item.id} className="truncate text-xs text-[var(--fg-muted)]">
+            {index + 1}. {item.label}
+          </p>
+        ))}
+        {entry.items.length > 3 ? (
+          <p className="text-xs text-[var(--fg-muted)]">
+            +{entry.items.length - 3} more
+          </p>
+        ) : null}
+      </div>
+    </div>
+  );
+}
 
 function CalendarEventChip({
   eventId,
@@ -2789,6 +3894,111 @@ function calendarEventAppearance(event: CalendarEvent): {
   };
 }
 
+function deriveTimeGridWindow(events: CalendarEvent[]): {
+  slotMinTime: string;
+  slotMaxTime: string;
+  scrollTime: string;
+} {
+  const timedEvents = events.filter((event) => !event.isAllDay);
+
+  if (timedEvents.length === 0) {
+    return {
+      slotMinTime: minutesToTimeString(DEFAULT_TIME_GRID_START_MINUTES),
+      slotMaxTime: minutesToTimeString(DEFAULT_TIME_GRID_END_MINUTES),
+      scrollTime: minutesToTimeString(DEFAULT_TIME_GRID_START_MINUTES),
+    };
+  }
+
+  let earliestStart = Number.POSITIVE_INFINITY;
+  let latestEnd = Number.NEGATIVE_INFINITY;
+
+  for (const event of timedEvents) {
+    const startDate = new Date(event.start);
+    const endDate = new Date(event.end);
+
+    if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
+      continue;
+    }
+
+    const startMinutes = minutesIntoDay(startDate);
+    const spansMultipleDays =
+      startDate.getFullYear() !== endDate.getFullYear() ||
+      startDate.getMonth() !== endDate.getMonth() ||
+      startDate.getDate() !== endDate.getDate();
+    const endMinutes = spansMultipleDays ? 24 * 60 : minutesIntoDay(endDate);
+    const safeEndMinutes = Math.max(startMinutes + TIME_GRID_ROUNDING_MINUTES, endMinutes);
+
+    earliestStart = Math.min(earliestStart, startMinutes);
+    latestEnd = Math.max(latestEnd, safeEndMinutes);
+  }
+
+  if (!Number.isFinite(earliestStart) || !Number.isFinite(latestEnd)) {
+    return {
+      slotMinTime: minutesToTimeString(DEFAULT_TIME_GRID_START_MINUTES),
+      slotMaxTime: minutesToTimeString(DEFAULT_TIME_GRID_END_MINUTES),
+      scrollTime: minutesToTimeString(DEFAULT_TIME_GRID_START_MINUTES),
+    };
+  }
+
+  let minMinutes = roundMinutes(
+    earliestStart - TIME_GRID_TOP_PADDING_MINUTES,
+    TIME_GRID_ROUNDING_MINUTES,
+    'down',
+  );
+  let maxMinutes = roundMinutes(
+    latestEnd + TIME_GRID_BOTTOM_PADDING_MINUTES,
+    TIME_GRID_ROUNDING_MINUTES,
+    'up',
+  );
+
+  if (maxMinutes - minMinutes < MIN_TIME_GRID_SPAN_MINUTES) {
+    const deficit = MIN_TIME_GRID_SPAN_MINUTES - (maxMinutes - minMinutes);
+    minMinutes -= Math.floor(deficit / 2);
+    maxMinutes += Math.ceil(deficit / 2);
+  }
+
+  minMinutes = Math.max(0, minMinutes);
+  maxMinutes = Math.min(24 * 60, maxMinutes);
+
+  if (maxMinutes - minMinutes < TIME_GRID_ROUNDING_MINUTES) {
+    maxMinutes = Math.min(24 * 60, minMinutes + MIN_TIME_GRID_SPAN_MINUTES);
+  }
+
+  const scrollMinutes = Math.max(
+    minMinutes,
+    roundMinutes(earliestStart - TIME_GRID_ROUNDING_MINUTES, TIME_GRID_ROUNDING_MINUTES, 'down'),
+  );
+
+  return {
+    slotMinTime: minutesToTimeString(minMinutes),
+    slotMaxTime: minutesToTimeString(maxMinutes),
+    scrollTime: minutesToTimeString(scrollMinutes),
+  };
+}
+
+function minutesIntoDay(date: Date): number {
+  return date.getHours() * 60 + date.getMinutes();
+}
+
+function roundMinutes(
+  value: number,
+  increment: number,
+  direction: 'down' | 'up',
+): number {
+  if (direction === 'down') {
+    return Math.floor(value / increment) * increment;
+  }
+
+  return Math.ceil(value / increment) * increment;
+}
+
+function minutesToTimeString(totalMinutes: number): string {
+  const clampedMinutes = Math.max(0, Math.min(24 * 60, totalMinutes));
+  const hours = Math.floor(clampedMinutes / 60);
+  const minutes = clampedMinutes % 60;
+  return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:00`;
+}
+
 function formatTooltipDate(event: CalendarEvent): string {
   const startDate = new Date(event.start);
   const endDate = new Date(event.end);
@@ -2932,6 +4142,54 @@ function parseDifficultyRank(value: string): DifficultyRank | null {
 
 function truncate(value: string, length: number): string {
   return value.length > length ? `${value.slice(0, length - 1)}…` : value;
+}
+
+function safeId(): string {
+  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
+    return crypto.randomUUID();
+  }
+
+  return `extended-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+function createEmptyExtendedTaskSetDraftItem(): ExtendedTaskSetDraftItem {
+  return {
+    id: safeId(),
+    label: '',
+    url: '',
+  };
+}
+
+function moveDraftArrayItem<T>(items: T[], fromIndex: number, toIndex: number): T[] {
+  if (toIndex < 0 || toIndex >= items.length || fromIndex === toIndex) {
+    return items;
+  }
+
+  const next = [...items];
+  const [moved] = next.splice(fromIndex, 1);
+  next.splice(toIndex, 0, moved);
+  return next;
+}
+
+function uniqueElements<T extends HTMLElement>(elements: Array<T | null | undefined>): T[] {
+  return [...new Set(elements.filter((element): element is T => element instanceof HTMLElement))];
+}
+
+function setExtendedTaskDropTargetState(elements: HTMLElement[], active: boolean): void {
+  for (const element of elements) {
+    if (active) {
+      element.dataset.windowDropTarget = 'true';
+      continue;
+    }
+
+    delete element.dataset.windowDropTarget;
+  }
+}
+
+function clearExtendedTaskDropTargets(): void {
+  document
+    .querySelectorAll<HTMLElement>('[data-window-drop-target="true"]')
+    .forEach((element) => delete element.dataset.windowDropTarget);
 }
 
 function sendMessageAsync<T = unknown>(message: { type: string; payload?: unknown }): Promise<T> {

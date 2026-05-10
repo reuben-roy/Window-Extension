@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import type {
-  AssistantOptions,
   AssistantTaskRecord,
   CalendarEvent,
   IdeaRecord,
@@ -9,37 +8,40 @@ import type {
   TaskNotificationMode,
 } from '../shared/types';
 import { formatBlockingPauseTimeLabel, isDailyBlockingPauseActive } from '../shared/blockingSchedule';
-import { MODEL_PLACEHOLDER_OPTIONS } from '../shared/constants';
 import AccountStatusControl from '../shared/components/AccountStatusControl';
 import CompactSettingRow from '../shared/components/CompactSettingRow';
 import InfoTip from '../shared/components/InfoTip';
 import PointsBubble from '../shared/components/PointsBubble';
-import SettingsGroup from '../shared/components/SettingsGroup';
 import CompletionModal from './components/CompletionModal';
 import PointsDisplay from './components/PointsDisplay';
 import TaskQueue from './components/TaskQueue';
 
-const TASK_NOTIFICATION_MODE_OPTIONS: Array<{
-  value: TaskNotificationMode;
-  label: string;
-  description: string;
-}> = [
-  {
-    value: 'after_focus',
-    label: 'After focus',
-    description: 'Hold completion notifications until the current Window focus context ends.',
-  },
-  {
-    value: 'immediate',
-    label: 'Immediate',
-    description: 'Notify as soon as the remote assistant finishes the task.',
-  },
-  {
-    value: 'inbox_only',
-    label: 'Inbox only',
-    description: 'Keep completed handoffs in the assistant inbox without a browser notification.',
-  },
-];
+type PanelSectionId = 'focus' | 'analytics' | 'controls' | 'assistant';
+
+const PANEL_LAYOUT_STORAGE_KEY = 'panelLayoutPrefs';
+const DEFAULT_PANEL_ORDER: PanelSectionId[] = ['focus', 'analytics', 'controls', 'assistant'];
+const DEFAULT_PANEL_COLLAPSED: Record<PanelSectionId, boolean> = {
+  focus: false,
+  analytics: true,
+  controls: true,
+  assistant: false,
+};
+const SECTION_TITLES: Record<PanelSectionId, string> = {
+  focus: 'Focus',
+  analytics: 'Analytics',
+  controls: 'Controls',
+  assistant: 'Assistant',
+};
+const SECTION_HINTS: Record<PanelSectionId, string> = {
+  focus: 'Current focus state, next event, and task progress.',
+  analytics: 'Compact productivity analytics. Open the full workspace for deeper breakdowns.',
+  controls: 'Keep the day moving with break, surface, and settings controls.',
+  assistant: 'Connector routing, async handoff, sessions, telemetry, and idea capture.',
+};
+
+
+const POPUP_WIDTH_PX = 460;
+const POPUP_MIN_HEIGHT_PX = 420;
 
 export default function Popup({
   mode = 'popup',
@@ -57,6 +59,10 @@ export default function Popup({
   const [ideaInput, setIdeaInput] = useState('');
   const [ideaError, setIdeaError] = useState<string | null>(null);
   const [completionModalOpen, setCompletionModalOpen] = useState(false);
+  const [panelOrder, setPanelOrder] = useState<PanelSectionId[]>(DEFAULT_PANEL_ORDER);
+  const [panelCollapsed, setPanelCollapsed] = useState<Record<PanelSectionId, boolean>>(DEFAULT_PANEL_COLLAPSED);
+  const [draggedSection, setDraggedSection] = useState<PanelSectionId | null>(null);
+  const [dropTargetSection, setDropTargetSection] = useState<PanelSectionId | null>(null);
 
   const loadState = useCallback(() => {
     chrome.runtime.sendMessage({ type: 'GET_STATE' }, (response: unknown) => {
@@ -90,19 +96,44 @@ export default function Popup({
     return () => chrome.storage.onChanged.removeListener(listener);
   }, [loadState]);
 
-  const updateAssistantOptions = useCallback((patch: Partial<AssistantOptions>) => {
-    chrome.runtime.sendMessage({ type: 'UPDATE_ASSISTANT_OPTIONS', payload: patch });
+  useEffect(() => {
+    chrome.storage.local.get(PANEL_LAYOUT_STORAGE_KEY, (result) => {
+      const prefs = result[PANEL_LAYOUT_STORAGE_KEY];
+      if (prefs?.order && Array.isArray(prefs.order) && prefs.order.length === DEFAULT_PANEL_ORDER.length) {
+        setPanelOrder(prefs.order as PanelSectionId[]);
+      }
+      if (prefs?.collapsed && typeof prefs.collapsed === 'object') {
+        setPanelCollapsed((prev) => ({ ...prev, ...(prefs.collapsed as Record<PanelSectionId, boolean>) }));
+      }
+    });
   }, []);
 
-  const updateModelSelector = useCallback((value: string) => {
-    const next = {
-      value: MODEL_PLACEHOLDER_OPTIONS.includes(value as (typeof MODEL_PLACEHOLDER_OPTIONS)[number])
-        ? value
-        : MODEL_PLACEHOLDER_OPTIONS[0],
-      updatedAt: null,
-    };
-    updateAssistantOptions({ preferredModel: next });
-  }, [updateAssistantOptions]);
+  const movePanelSection = useCallback((source: PanelSectionId, target: PanelSectionId) => {
+    setPanelOrder((current) => {
+      const next = [...current];
+      const si = next.indexOf(source);
+      const ti = next.indexOf(target);
+      if (si === -1 || ti === -1 || si === ti) return current;
+      next.splice(si, 1);
+      next.splice(ti, 0, source);
+      chrome.storage.local.get(PANEL_LAYOUT_STORAGE_KEY, (res) => {
+        chrome.storage.local.set({ [PANEL_LAYOUT_STORAGE_KEY]: { ...(res[PANEL_LAYOUT_STORAGE_KEY] ?? {}), order: next } });
+      });
+      return next;
+    });
+    setDraggedSection(null);
+    setDropTargetSection(null);
+  }, []);
+
+  const togglePanelSection = useCallback((sectionId: PanelSectionId) => {
+    setPanelCollapsed((current) => {
+      const next = { ...current, [sectionId]: !current[sectionId] };
+      chrome.storage.local.get(PANEL_LAYOUT_STORAGE_KEY, (res) => {
+        chrome.storage.local.set({ [PANEL_LAYOUT_STORAGE_KEY]: { ...(res[PANEL_LAYOUT_STORAGE_KEY] ?? {}), collapsed: next } });
+      });
+      return next;
+    });
+  }, []);
 
   const togglePersistentPanel = useCallback((enabled: boolean) => {
     chrome.runtime.sendMessage({ type: 'TOGGLE_PERSISTENT_PANEL', payload: { enabled } }, () => {
@@ -178,9 +209,9 @@ export default function Popup({
   if (loading) {
     return (
       <div
-        className={`flex items-center justify-center bg-[var(--fg-bg)] text-sm text-[var(--fg-muted)] ${
-          mode === 'panel' ? 'min-h-screen w-full' : 'h-[420px] w-[460px]'
-        }`}
+        style={mode === 'popup' ? { width: POPUP_WIDTH_PX, minWidth: POPUP_WIDTH_PX, minHeight: POPUP_MIN_HEIGHT_PX } : undefined}
+        className={`flex items-center justify-center bg-[var(--fg-bg)] text-sm text-[var(--fg-muted)] ${mode === 'panel' ? 'min-h-screen w-full' : 'h-[420px] w-[460px]'
+          }`}
       >
         Loading Window…
       </div>
@@ -189,7 +220,10 @@ export default function Popup({
 
   if (!state) {
     return (
-      <div className={`${mode === 'panel' ? 'min-h-screen w-full' : 'w-[460px]'} bg-[var(--fg-bg)] p-5`}>
+      <div
+        style={mode === 'popup' ? { width: POPUP_WIDTH_PX, minWidth: POPUP_WIDTH_PX, minHeight: POPUP_MIN_HEIGHT_PX } : undefined}
+        className={`${mode === 'panel' ? 'min-h-screen w-full' : 'w-[460px]'} bg-[var(--fg-bg)] p-5`}
+      >
         <div className="fg-card p-5">
           <p className="text-xs uppercase tracking-[0.16em] text-rose-600">Window</p>
           <p className="mt-2 text-lg font-semibold tracking-[-0.03em] text-[var(--fg-text)]">Unable to load the dashboard</p>
@@ -206,7 +240,6 @@ export default function Popup({
     accountSyncState,
     accountUser,
     analyticsSnapshot,
-    assistantOptions,
     backendSession,
     backendSyncState,
     calendarState,
@@ -218,26 +251,24 @@ export default function Popup({
     taskQueue,
     allTimeStats,
   } = state;
+  const todaysEvents = Array.isArray(calendarState.todaysEvents) ? calendarState.todaysEvents : [];
+  const ideaItems = Array.isArray(ideaState.items) ? ideaState.items : [];
+  const popupTaskQueue = Array.isArray(taskQueue) ? taskQueue : [];
   const calendarConnected = calendarState.lastSyncedAt !== null && calendarState.authError === null;
   const quietHoursActive = isDailyBlockingPauseActive(new Date(), settings);
   const effectivelyBlocking = settings.enableBlocking && calendarState.isRestricted;
   const now = Date.now();
   const nextEvent =
-    calendarState.todaysEvents
+    todaysEvents
       .filter((event) => new Date(event.start).getTime() > now)
       .sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime())[0] ?? null;
-  const inboxIdeas = ideaState.items.filter((item) => !item.archived).slice(0, 3);
-  const actionableTasks = taskQueue.filter((task) => task.status === 'active' || task.status === 'carryover');
+  const inboxIdeas = ideaItems.filter((item) => !item.archived).slice(0, 3);
+  const actionableTasks = popupTaskQueue.filter((task) => task.status === 'active' || task.status === 'carryover');
   const assistantSubtitle = openClawState.currentTask
     ? `${formatTaskStatusLabel(openClawState.currentTask.status)} · ${openClawState.currentTask.title}`
     : openClawState.status.connected
       ? 'OpenClaw ready'
       : 'OpenClaw offline';
-  const selectedModel = MODEL_PLACEHOLDER_OPTIONS.includes(
-    assistantOptions.preferredModel.value as (typeof MODEL_PLACEHOLDER_OPTIONS)[number],
-  )
-    ? assistantOptions.preferredModel.value
-    : MODEL_PLACEHOLDER_OPTIONS[0];
   const headerTitle = calendarState.currentEvent?.title ?? 'Window';
   const blockingBadgeLabel = !settings.enableBlocking
     ? 'Blocking off'
@@ -248,13 +279,12 @@ export default function Popup({
         : 'Browsing open';
   const headerCaption = calendarConnected
     ? calendarState.currentEvent
-      ? `${formatEventRange(calendarState.currentEvent)} · ${
-          effectivelyBlocking
-            ? 'Blocking active'
-            : quietHoursActive
-              ? `Quiet hours until midnight · resumes tomorrow after ${formatBlockingPauseTimeLabel(settings.dailyBlockingPauseStartTime)}`
-              : 'Browsing open'
-        }`
+      ? `${formatEventRange(calendarState.currentEvent)} · ${effectivelyBlocking
+        ? 'Blocking active'
+        : quietHoursActive
+          ? `Quiet hours until midnight · resumes tomorrow after ${formatBlockingPauseTimeLabel(settings.dailyBlockingPauseStartTime)}`
+          : 'Browsing open'
+      }`
       : nextEvent
         ? `Next focus block: ${nextEvent.title} · ${formatEventRange(nextEvent)}`
         : 'Calendar connected · no focus block live.'
@@ -264,18 +294,24 @@ export default function Popup({
     : 'Tasks appear automatically when a mapped focus event starts.';
 
   return (
-    <div className={`${mode === 'panel' ? 'min-h-screen w-full' : 'max-h-[760px] w-[460px]'} overflow-y-auto bg-[var(--fg-bg)] font-sans select-none`}>
-      <header className="sticky top-0 z-20 border-b border-[var(--fg-border)] bg-[var(--fg-bg)]/92 px-3 py-2.5 backdrop-blur">
+    <div
+      style={mode === 'popup' ? { width: POPUP_WIDTH_PX, minWidth: POPUP_WIDTH_PX, maxWidth: POPUP_WIDTH_PX, minHeight: POPUP_MIN_HEIGHT_PX } : undefined}
+      className={`${mode === 'panel' ? 'min-h-screen w-full' : 'max-h-[760px] w-[460px]'} overflow-x-hidden overflow-y-auto bg-[var(--fg-bg)] font-sans select-none`}
+    >
+      <header className="sticky top-0 z-20 border-b border-[var(--fg-border)] bg-[var(--fg-bg)]/84 px-3 py-3 backdrop-blur-xl">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
-              <h1 className="truncate text-[15px] font-semibold tracking-[-0.03em] text-[var(--fg-text)]">
-                {headerTitle}
-              </h1>
-              <span className="rounded-full border border-[var(--fg-border)] bg-white px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.14em] text-[var(--fg-muted)]">
+              <span className="rounded-full bg-[var(--fg-accent-soft)] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--fg-accent)]">
+                Window
+              </span>
+              <span className="rounded-full border border-[var(--fg-border)] bg-white/82 px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.14em] text-[var(--fg-muted)]">
                 {blockingBadgeLabel}
               </span>
             </div>
+            <h1 className="mt-2 truncate text-[18px] font-semibold tracking-[-0.04em] text-[var(--fg-text)]">
+              {headerTitle}
+            </h1>
             <p className="mt-1 text-[11px] leading-4 text-[var(--fg-muted)]">{headerCaption}</p>
           </div>
 
@@ -297,11 +333,10 @@ export default function Popup({
             <button
               onClick={handleToggle}
               disabled={toggling || !calendarConnected}
-              className={`rounded-full px-3 py-1.5 text-[11px] font-medium transition ${
-                settings.enableBlocking
-                  ? 'bg-[var(--fg-accent)] text-white shadow-[0_12px_24px_rgba(0,102,255,0.18)]'
-                  : 'border border-[var(--fg-border)] bg-white text-[var(--fg-muted)]'
-              } ${toggling || !calendarConnected ? 'cursor-not-allowed opacity-50' : ''}`}
+              className={`rounded-full px-3 py-1.5 text-[11px] font-medium transition ${settings.enableBlocking
+                ? 'bg-[var(--fg-accent)] text-white shadow-[0_12px_24px_rgba(0,102,255,0.18)]'
+                : 'border border-[var(--fg-border)] bg-white text-[var(--fg-muted)]'
+                } ${toggling || !calendarConnected ? 'cursor-not-allowed opacity-50' : ''}`}
             >
               {settings.enableBlocking ? 'Blocking on' : 'Blocking off'}
             </button>
@@ -333,242 +368,237 @@ export default function Popup({
         </div>
       </header>
 
-      <div className="space-y-2 px-3 py-2.5">
-        <section className={`grid gap-2 ${mode === 'panel' ? 'xl:grid-cols-[minmax(0,1.02fr),minmax(0,0.98fr)]' : 'grid-cols-1'}`}>
-          <div className="space-y-2">
-            <SettingsGroup
-              className="fg-card p-3"
-              title="Focus"
-              subtitle={focusCaption}
-              hint="Current focus state, next event, and task progress."
+      <div className="space-y-2 px-3 py-3">
+        {panelOrder.map((sectionId) => {
+          const sectionSubtitle =
+            sectionId === 'focus'
+              ? focusCaption
+              : sectionId === 'assistant'
+                ? assistantSubtitle
+                : sectionId === 'analytics'
+                  ? 'Live session health and the last 7 days.'
+                  : 'Fast adjustments without leaving the current page.';
+          return (
+            <PanelSectionCard
+              key={sectionId}
+              title={SECTION_TITLES[sectionId]}
+              subtitle={sectionSubtitle}
+              hint={SECTION_HINTS[sectionId]}
+              collapsed={panelCollapsed[sectionId]}
+              dragging={draggedSection === sectionId}
+              isDropTarget={dropTargetSection === sectionId && draggedSection !== sectionId}
+              onToggleCollapse={() => togglePanelSection(sectionId)}
+              onDragStart={() => setDraggedSection(sectionId)}
+              onDragOver={(event) => {
+                event.preventDefault();
+                if (draggedSection && draggedSection !== sectionId) setDropTargetSection(sectionId);
+              }}
+              onDragLeave={() => setDropTargetSection(null)}
+              onDrop={() => {
+                if (draggedSection && draggedSection !== sectionId) movePanelSection(draggedSection, sectionId);
+              }}
+              onDragEnd={() => { setDraggedSection(null); setDropTargetSection(null); }}
             >
-              <div className="space-y-1.5">
-                <PointsDisplay stats={allTimeStats} />
+              {sectionId === 'focus' && (
+                <div className="space-y-1.5">
+                  <PointsDisplay stats={allTimeStats} />
 
-                <CompactSettingRow
-                  label="Status"
-                  hint="How Window is resolving restrictions for the current block."
-                  value={effectivelyBlocking ? 'Locked in' : 'Open browsing'}
-                  meta={
-                    calendarState.activeRuleSource === 'event' && calendarState.activeRuleName
-                      ? `Event rule: ${calendarState.activeRuleName}`
-                      : quietHoursActive
-                        ? `Daily cutoff active after ${formatBlockingPauseTimeLabel(settings.dailyBlockingPauseStartTime)}`
-                        : effectivelyBlocking
-                          ? 'Focus restrictions are active for this calendar block.'
-                          : 'No active restriction is limiting browsing right now.'
-                  }
-                  className="px-3 py-2.5"
-                />
-
-                <CompactSettingRow
-                  label="Next up"
-                  hint="The next upcoming calendar block that Window can react to."
-                  value={nextEvent?.title ?? 'Nothing queued'}
-                  meta={nextEvent ? formatEventRange(nextEvent) : 'You are clear after this block.'}
-                  className="px-3 py-2.5"
-                />
-
-                {snoozeState.active && snoozeState.expiresAt ? (
-                  <div className="rounded-[18px] border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs text-amber-800">
-                    Break active. Blocking resumes in {formatCountdown(snoozeState.expiresAt)}.
-                  </div>
-                ) : null}
-
-                {actionableTasks.length > 0 ? (
-                  <div className="space-y-1.5">
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-2">
-                        <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-[var(--fg-muted)]">
-                          Tasks
-                        </p>
-                        <InfoTip text="Active and carryover tasks stay compact until you expand the queue." />
-                      </div>
-                      <button
-                        onClick={() => setCompletionModalOpen(true)}
-                        className="fg-button-primary px-3.5 py-1.5 text-[11px]"
-                      >
-                        Mark Task Done
-                      </button>
-                    </div>
-                    <TaskQueue tasks={actionableTasks} />
-                  </div>
-                ) : (
                   <CompactSettingRow
-                    label="Tasks"
-                    hint="Tasks appear automatically from active and carryover calendar blocks."
-                    value="Nothing to complete"
-                    meta="Active focus tasks will surface here automatically."
+                    label="Status"
+                    hint="How Window is resolving restrictions for the current block."
+                    value={effectivelyBlocking ? 'Locked in' : 'Open browsing'}
+                    meta={
+                      calendarState.activeRuleSource === 'event' && calendarState.activeRuleName
+                        ? `Event rule: ${calendarState.activeRuleName}`
+                        : quietHoursActive
+                          ? `Daily cutoff active after ${formatBlockingPauseTimeLabel(settings.dailyBlockingPauseStartTime)}`
+                          : effectivelyBlocking
+                            ? 'Focus restrictions are active for this calendar block.'
+                            : 'No active restriction is limiting browsing right now.'
+                    }
                     className="px-3 py-2.5"
                   />
-                )}
-              </div>
-            </SettingsGroup>
 
-            <SettingsGroup
-              className="fg-card p-3"
-              title="Analytics"
-              subtitle="Live session health and the last 7 days."
-              hint="Compact productivity analytics. Open the full workspace for deeper breakdowns."
-            >
-              <AnalyticsSummaryCard
-                analyticsSnapshot={analyticsSnapshot}
-                taskTags={taskTags}
-              />
-            </SettingsGroup>
+                  <CompactSettingRow
+                    label="Next up"
+                    hint="The next upcoming calendar block that Window can react to."
+                    value={nextEvent?.title ?? 'Nothing queued'}
+                    meta={nextEvent ? formatEventRange(nextEvent) : 'You are clear after this block.'}
+                    className="px-3 py-2.5"
+                  />
 
-            <SettingsGroup
-              className="fg-card p-3"
-              title="Controls"
-              subtitle="Fast adjustments without leaving the current page."
-              hint="Keep the day moving with break, surface, and settings controls."
-            >
-              <div className="space-y-1.5">
-                <CompactSettingRow
-                  label="Break length"
-                  hint="Default duration used when starting a break from a blocked page."
-                  value={`${settings.breakDurationMinutes} min`}
-                  meta="The same duration is reused by quick break actions."
-                  control={
-                    <select
-                      value={settings.breakDurationMinutes}
-                      onChange={(event) => {
-                        const next = Number(event.target.value) as 5 | 10 | 15;
-                        setState((prev) =>
-                          prev ? { ...prev, settings: { ...prev.settings, breakDurationMinutes: next } } : prev,
-                        );
-                        updateSettings({ ...settings, breakDurationMinutes: next });
-                      }}
-                      className="fg-select w-[112px] px-3 py-2 text-sm"
-                    >
-                      <option value={5}>5 min</option>
-                      <option value={10}>10 min</option>
-                      <option value={15}>15 min</option>
-                    </select>
-                  }
-                  className="px-3 py-2.5"
-                />
-
-                <CompactSettingRow
-                  label="Surface mode"
-                  hint="Choose whether Window opens as a popup or a persistent right-side panel."
-                  value={settings.persistentPanelEnabled ? 'Docked panel' : 'Popup'}
-                  meta="Switch modes without changing the rest of the dashboard."
-                  control={
-                    <div className="w-[172px]">
-                      <BinarySelector
-                        leftLabel="Popup"
-                        rightLabel="Docked"
-                        selected={settings.persistentPanelEnabled ? 'right' : 'left'}
-                        onSelect={(selection) => togglePersistentPanel(selection === 'right')}
-                      />
+                  {snoozeState.active && snoozeState.expiresAt ? (
+                    <div className="rounded-[20px] border border-amber-200 bg-amber-50/90 px-4 py-3 text-xs text-amber-800 shadow-[0_10px_24px_rgba(217,119,6,0.08)]">
+                      Break active. Blocking resumes in {formatCountdown(snoozeState.expiresAt)}.
                     </div>
-                  }
-                  className="px-3 py-2.5"
-                />
+                  ) : null}
 
-                <CompactSettingRow
-                  label="Quick actions"
-                  hint="Shortcuts for the two most common actions outside task completion."
-                  value="Settings and breaks"
-                  meta="Open the full workspace or start a manual break."
-                  footer={
-                    <div className="flex flex-wrap gap-2">
-                      <button
-                        onClick={() => chrome.runtime.openOptionsPage()}
-                        className="fg-button-secondary px-3 py-2 text-xs"
-                      >
-                        Open Settings
-                      </button>
-                      <button
-                        onClick={() => chrome.runtime.sendMessage({ type: 'SNOOZE' })}
-                        className="fg-button-secondary px-3 py-2 text-xs"
-                      >
-                        Start Break
-                      </button>
+                  {actionableTasks.length > 0 ? (
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                          <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-[var(--fg-muted)]">
+                            Tasks
+                          </p>
+                          <InfoTip text="Active and carryover tasks stay compact until you expand the queue." />
+                        </div>
+                        <button
+                          onClick={() => setCompletionModalOpen(true)}
+                          className="fg-button-primary px-3.5 py-1.5 text-[11px]"
+                        >
+                          Mark Task Done
+                        </button>
+                      </div>
+                      <TaskQueue tasks={actionableTasks} />
                     </div>
-                  }
-                  className="px-3 py-2.5"
-                />
-              </div>
-            </SettingsGroup>
-          </div>
+                  ) : (
+                    <CompactSettingRow
+                      label="Tasks"
+                      hint="Tasks appear automatically from active and carryover calendar blocks."
+                      value="Nothing to complete"
+                      meta="Active focus tasks will surface here automatically."
+                      className="px-3 py-2.5"
+                    />
+                  )}
+                </div>
+              )}
 
-          <SettingsGroup
-            className="fg-card p-3"
-            title="Assistant"
-            subtitle={assistantSubtitle}
-            hint="Connector routing, async handoff, sessions, telemetry, and idea capture."
-          >
-            <AssistantPanel
-              mode={mode}
-              assistantOptions={assistantOptions}
-              selectedModel={selectedModel}
-              openClawState={openClawState}
-              breakTelemetryEnabled={settings.breakTelemetryEnabled}
-              accountUser={accountUser}
-              backendSession={backendSession}
-              backendSyncState={backendSyncState}
-              assistantTaskInput={assistantTaskInput}
-              assistantTaskError={assistantTaskError}
-              submittingAssistantTask={submittingAssistantTask}
-              ideaInput={ideaInput}
-              ideaError={ideaError}
-              submittingIdea={submittingIdea}
-              inboxIdeas={inboxIdeas}
-              onAssistantTaskInputChange={(value) => {
-                setAssistantTaskInput(value);
-                setAssistantTaskError(null);
-              }}
-              onAssistantTaskSubmit={handleAssistantTaskSubmit}
-              onIdeaInputChange={(value) => {
-                setIdeaInput(value);
-                setIdeaError(null);
-              }}
-              onIdeaSubmit={handleIdeaSubmit}
-              onModelSelect={updateModelSelector}
-              onConnectorSelect={(connectorId) => updateAssistantOptions({ selectedConnectorId: connectorId })}
-              onNotificationModeChange={(value) => updateAssistantOptions({ taskNotificationMode: value })}
-              onToggleReuse={(checked) => updateAssistantOptions({ reuseActiveSession: checked })}
-              onToggleAutoCreate={(checked) => updateAssistantOptions({ autoCreateSession: checked })}
-              onToggleTelemetry={(checked) => {
-                setState((prev) =>
-                  prev ? { ...prev, settings: { ...prev.settings, breakTelemetryEnabled: checked } } : prev,
-                );
-                updateSettings({ ...settings, breakTelemetryEnabled: checked });
-              }}
-              onRefresh={() => chrome.runtime.sendMessage({ type: 'REFRESH_ASSISTANT_STATE' })}
-              onStartSession={() => chrome.runtime.sendMessage({ type: 'START_OPENCLAW_SESSION' })}
-              onReuseSession={(sessionId) =>
-                chrome.runtime.sendMessage({ type: 'REUSE_OPENCLAW_SESSION', payload: { sessionId } })
-              }
-              onCancelJob={(jobId) =>
-                chrome.runtime.sendMessage({ type: 'CANCEL_OPENCLAW_JOB', payload: { jobId } })
-              }
-              onCancelTask={(taskId) =>
-                chrome.runtime.sendMessage({ type: 'CANCEL_ASSISTANT_TASK', payload: { taskId } })
-              }
-              onKeep={(localId) =>
-                chrome.runtime.sendMessage({
-                  type: 'DECIDE_IDEA',
-                  payload: { localId, decision: 'keep' },
-                })
-              }
-              onDiscard={(localId) =>
-                chrome.runtime.sendMessage({
-                  type: 'DECIDE_IDEA',
-                  payload: { localId, decision: 'discard' },
-                })
-              }
-              onRetry={(localId) =>
-                chrome.runtime.sendMessage({
-                  type: 'RETRY_IDEA',
-                  payload: { localId },
-                })
-              }
-            />
-          </SettingsGroup>
-        </section>
+              {sectionId === 'analytics' && (
+                <AnalyticsSummaryCard
+                  analyticsSnapshot={analyticsSnapshot}
+                  taskTags={taskTags}
+                />
+              )}
+
+              {sectionId === 'controls' && (
+                <div className="space-y-2">
+                  <CompactSettingRow
+                    label="Break length"
+                    hint="Default duration used when starting a break from a blocked page."
+                    // value={`${settings.breakDurationMinutes} min`}
+                    meta="The same duration is reused by quick break actions."
+                    control={
+                      <select
+                        value={settings.breakDurationMinutes}
+                        onChange={(event) => {
+                          const next = Number(event.target.value) as 5 | 10 | 15;
+                          setState((prev) =>
+                            prev ? { ...prev, settings: { ...prev.settings, breakDurationMinutes: next } } : prev,
+                          );
+                          updateSettings({ ...settings, breakDurationMinutes: next });
+                        }}
+                        className="fg-select w-[112px] px-3 py-2 text-sm"
+                      >
+                        <option value={5}>5 min</option>
+                        <option value={10}>10 min</option>
+                        <option value={15}>15 min</option>
+                      </select>
+                    }
+                    className="px-3 py-2.5"
+                  />
+
+                  <CompactSettingRow
+                    label="Surface mode"
+                    hint="Choose whether Window opens as a popup or a persistent right-side panel."
+                    value={settings.persistentPanelEnabled ? 'Docked panel' : 'Popup'}
+                    meta="Switch modes without changing the rest of the dashboard."
+                    control={
+                      <div className="w-[172px]">
+                        <BinarySelector
+                          leftLabel="Popup"
+                          rightLabel="Docked"
+                          selected={settings.persistentPanelEnabled ? 'right' : 'left'}
+                          onSelect={(selection) => togglePersistentPanel(selection === 'right')}
+                        />
+                      </div>
+                    }
+                    className="px-3 py-2.5"
+                  />
+
+                  <CompactSettingRow
+                    label="Quick actions"
+                    hint="Shortcuts for the two most common actions outside task completion."
+                    value="Settings and breaks"
+                    meta="Open the full workspace or start a manual break."
+                    footer={
+                      <div className="flex flex-wrap gap-2">
+                        <button
+                          onClick={() => chrome.runtime.openOptionsPage()}
+                          className="fg-button-secondary px-3 py-2 text-xs"
+                        >
+                          Open Settings
+                        </button>
+                        <button
+                          onClick={() => chrome.runtime.sendMessage({ type: 'SNOOZE' })}
+                          className="fg-button-secondary px-3 py-2 text-xs"
+                        >
+                          Start Break
+                        </button>
+                      </div>
+                    }
+                    className="px-3 py-2.5"
+                  />
+                </div>
+              )}
+
+              {sectionId === 'assistant' && (
+                <AssistantPanel
+                  mode={mode}
+                  openClawState={openClawState}
+                  accountUser={accountUser}
+                  backendSession={backendSession}
+                  backendSyncState={backendSyncState}
+                  assistantTaskInput={assistantTaskInput}
+                  assistantTaskError={assistantTaskError}
+                  submittingAssistantTask={submittingAssistantTask}
+                  ideaInput={ideaInput}
+                  ideaError={ideaError}
+                  submittingIdea={submittingIdea}
+                  inboxIdeas={inboxIdeas}
+                  onAssistantTaskInputChange={(value) => {
+                    setAssistantTaskInput(value);
+                    setAssistantTaskError(null);
+                  }}
+                  onAssistantTaskSubmit={handleAssistantTaskSubmit}
+                  onIdeaInputChange={(value) => {
+                    setIdeaInput(value);
+                    setIdeaError(null);
+                  }}
+                  onIdeaSubmit={handleIdeaSubmit}
+                  onRefresh={() => chrome.runtime.sendMessage({ type: 'REFRESH_ASSISTANT_STATE' })}
+                  onStartSession={() => chrome.runtime.sendMessage({ type: 'START_OPENCLAW_SESSION' })}
+                  onReuseSession={(sessionId) =>
+                    chrome.runtime.sendMessage({ type: 'REUSE_OPENCLAW_SESSION', payload: { sessionId } })
+                  }
+                  onCancelJob={(jobId) =>
+                    chrome.runtime.sendMessage({ type: 'CANCEL_OPENCLAW_JOB', payload: { jobId } })
+                  }
+                  onCancelTask={(taskId) =>
+                    chrome.runtime.sendMessage({ type: 'CANCEL_ASSISTANT_TASK', payload: { taskId } })
+                  }
+                  onKeep={(localId) =>
+                    chrome.runtime.sendMessage({
+                      type: 'DECIDE_IDEA',
+                      payload: { localId, decision: 'keep' },
+                    })
+                  }
+                  onDiscard={(localId) =>
+                    chrome.runtime.sendMessage({
+                      type: 'DECIDE_IDEA',
+                      payload: { localId, decision: 'discard' },
+                    })
+                  }
+                  onRetry={(localId) =>
+                    chrome.runtime.sendMessage({
+                      type: 'RETRY_IDEA',
+                      payload: { localId },
+                    })
+                  }
+                />
+              )}
+            </PanelSectionCard>
+          );
+        })}
       </div>
 
       {completionModalOpen && actionableTasks.length > 0 && (
@@ -585,12 +615,89 @@ export default function Popup({
   );
 }
 
+function PanelSectionCard({
+  title,
+  subtitle,
+  hint,
+  collapsed,
+  dragging,
+  isDropTarget,
+  onToggleCollapse,
+  onDragStart,
+  onDragOver,
+  onDragLeave,
+  onDrop,
+  onDragEnd,
+  children,
+}: {
+  title: string;
+  subtitle?: string;
+  hint?: string;
+  collapsed: boolean;
+  dragging: boolean;
+  isDropTarget: boolean;
+  onToggleCollapse: () => void;
+  onDragStart: () => void;
+  onDragOver: (event: React.DragEvent) => void;
+  onDragLeave: () => void;
+  onDrop: () => void;
+  onDragEnd: () => void;
+  children?: React.ReactNode;
+}): React.JSX.Element {
+  return (
+    <div
+      onDragOver={onDragOver}
+      onDragLeave={onDragLeave}
+      onDrop={onDrop}
+      className={`fg-card overflow-hidden transition-all duration-150 ${isDropTarget ? 'ring-2 ring-[var(--fg-accent)]/50 ring-offset-1' : ''
+        } ${dragging ? 'opacity-50 scale-[0.99]' : ''}`}
+    >
+      <div className="flex items-center gap-2 px-4 py-2.5">
+        <div
+          draggable
+          onDragStart={onDragStart}
+          onDragEnd={onDragEnd}
+          className="cursor-grab select-none text-[var(--fg-muted)] active:cursor-grabbing"
+          title="Drag to reorder"
+        >
+          <svg width="12" height="14" viewBox="0 0 12 14" fill="currentColor" aria-hidden="true">
+            <circle cx="3" cy="2.5" r="1.2" />
+            <circle cx="9" cy="2.5" r="1.2" />
+            <circle cx="3" cy="7" r="1.2" />
+            <circle cx="9" cy="7" r="1.2" />
+            <circle cx="3" cy="11.5" r="1.2" />
+            <circle cx="9" cy="11.5" r="1.2" />
+          </svg>
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <h2 className="text-[13px] font-semibold tracking-[-0.02em] text-[var(--fg-text)]">{title}</h2>
+            {hint ? <InfoTip text={hint} /> : null}
+          </div>
+          {subtitle && !collapsed ? (
+            <p className="mt-0.5 truncate text-[11px] leading-4 text-[var(--fg-muted)]">{subtitle}</p>
+          ) : null}
+        </div>
+        <button
+          type="button"
+          onClick={onToggleCollapse}
+          className="shrink-0 rounded-full border border-[var(--fg-border)] bg-white/80 px-2.5 py-1 text-[11px] font-medium text-[var(--fg-muted)] transition hover:text-[var(--fg-text)]"
+        >
+          {collapsed ? 'Show' : 'Hide'}
+        </button>
+      </div>
+      {!collapsed && (
+        <div className="border-t border-[var(--fg-border)] px-4 pb-4 pt-3">
+          {children}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function AssistantPanel({
   mode,
-  assistantOptions,
-  selectedModel,
   openClawState,
-  breakTelemetryEnabled,
   accountUser,
   backendSession,
   backendSyncState,
@@ -605,12 +712,6 @@ function AssistantPanel({
   onAssistantTaskSubmit,
   onIdeaInputChange,
   onIdeaSubmit,
-  onModelSelect,
-  onConnectorSelect,
-  onNotificationModeChange,
-  onToggleReuse,
-  onToggleAutoCreate,
-  onToggleTelemetry,
   onRefresh,
   onStartSession,
   onReuseSession,
@@ -621,10 +722,7 @@ function AssistantPanel({
   onRetry,
 }: {
   mode: 'popup' | 'panel';
-  assistantOptions: AssistantOptions;
-  selectedModel: string;
   openClawState: StateResponse['openClawState'];
-  breakTelemetryEnabled: boolean;
   accountUser: StateResponse['accountUser'];
   backendSession: StateResponse['backendSession'];
   backendSyncState: StateResponse['backendSyncState'];
@@ -639,12 +737,6 @@ function AssistantPanel({
   onAssistantTaskSubmit: () => void;
   onIdeaInputChange: (value: string) => void;
   onIdeaSubmit: () => void;
-  onModelSelect: (value: string) => void;
-  onConnectorSelect: (connectorId: string) => void;
-  onNotificationModeChange: (value: TaskNotificationMode) => void;
-  onToggleReuse: (checked: boolean) => void;
-  onToggleAutoCreate: (checked: boolean) => void;
-  onToggleTelemetry: (checked: boolean) => void;
   onRefresh: () => void;
   onStartSession: () => void;
   onReuseSession: (sessionId: string) => void;
@@ -654,19 +746,22 @@ function AssistantPanel({
   onDiscard: (localId: string) => void;
   onRetry: (localId: string) => void;
 }): React.JSX.Element {
-  const reusableSession = openClawState.sessions.find((session) => session.status !== 'closed');
+  const sessions = Array.isArray(openClawState.sessions) ? openClawState.sessions : [];
+  const connectors = Array.isArray(openClawState.connectors) ? openClawState.connectors : [];
+  const tasks = Array.isArray(openClawState.tasks) ? openClawState.tasks : [];
+  const reusableSession = sessions.find((session) => session.status !== 'closed');
   const currentJob = openClawState.currentJob;
   const currentTask = openClawState.currentTask;
   const selectedConnector =
-    openClawState.connectors.find((connector) => connector.id === openClawState.selectedConnectorId) ??
-    openClawState.connectors[0] ??
+    connectors.find((connector) => connector.id === openClawState.selectedConnectorId) ??
+    connectors[0] ??
     null;
-  const visibleTasks = openClawState.tasks.slice(0, mode === 'panel' ? 6 : 4);
-  const visibleSessions = openClawState.sessions.slice(0, mode === 'panel' ? 4 : 3);
-  const toolbarButtonClass = 'fg-button-ghost px-3 py-1.5 text-[11px]';
+  const visibleTasks = tasks.slice(0, mode === 'panel' ? 6 : 4);
+  const visibleSessions = sessions.slice(0, mode === 'panel' ? 4 : 3);
+  const toolbarButtonClass = 'fg-button-secondary px-3 py-1.5 text-[11px]';
 
   return (
-    <div className="space-y-2.5">
+    <div className="space-y-3">
       <div className="flex flex-wrap gap-1.5">
         <button onClick={onRefresh} className={toolbarButtonClass}>Refresh</button>
         <button onClick={onStartSession} className={toolbarButtonClass}>New Session</button>
@@ -682,32 +777,7 @@ function AssistantPanel({
         )}
       </div>
 
-      <div className="grid gap-1.5 sm:grid-cols-2">
-        <CompactSettingRow
-          label="Connector"
-          hint="Choose which backend-managed assistant connector this panel should route through."
-          value={selectedConnector?.label ?? 'No connector configured'}
-          meta={buildConnectorMeta(selectedConnector, openClawState.status.message)}
-          control={
-            <select
-              value={selectedConnector?.id ?? ''}
-              onChange={(event) => onConnectorSelect(event.target.value)}
-              disabled={openClawState.connectors.length === 0}
-              className="fg-select w-[188px] px-3 py-2 text-sm"
-            >
-              {openClawState.connectors.length === 0 ? (
-                <option value="">No connector</option>
-              ) : (
-                openClawState.connectors.map((connector) => (
-                  <option key={connector.id} value={connector.id}>
-                    {connector.label}
-                  </option>
-                ))
-              )}
-            </select>
-          }
-          className="px-3 py-2.5"
-        />
+      <div className="grid gap-2 sm:grid-cols-2">
         <CompactSettingRow
           label="Current handoff"
           hint="The current async task running in the background, independent from idea capture."
@@ -724,105 +794,7 @@ function AssistantPanel({
         />
       </div>
 
-      <div className="space-y-1.5">
-        <CompactSettingRow
-          label="Model selector"
-          hint="Placeholder choices for the future provider switcher."
-          value={selectedModel}
-          meta="Display-only today, but ready for future routing."
-          control={
-            <select
-              value={selectedModel}
-              onChange={(event) => onModelSelect(event.target.value)}
-              className="fg-select w-[172px] px-3 py-2 text-sm"
-            >
-              {MODEL_PLACEHOLDER_OPTIONS.map((option) => (
-                <option key={option} value={option}>
-                  {option}
-                </option>
-              ))}
-            </select>
-          }
-          className="px-3 py-2.5"
-        />
-
-        <CompactSettingRow
-          label="Notification timing"
-          hint="Control when completed handoff tasks should surface a browser notification."
-          value={formatNotificationModeLabel(assistantOptions.taskNotificationMode)}
-          meta={TASK_NOTIFICATION_MODE_OPTIONS.find((option) => option.value === assistantOptions.taskNotificationMode)?.description}
-          control={
-            <select
-              value={assistantOptions.taskNotificationMode}
-              onChange={(event) => onNotificationModeChange(event.target.value as TaskNotificationMode)}
-              className="fg-select w-[188px] px-3 py-2 text-sm"
-            >
-              {TASK_NOTIFICATION_MODE_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          }
-          className="px-3 py-2.5"
-        />
-
-        <CompactSettingRow
-          label="Session behavior"
-          hint="Reuse the current thread when you want continuity, or always start fresh."
-          value={assistantOptions.reuseActiveSession ? 'Reuse current' : 'Fresh thread'}
-          meta="Choose whether capture actions continue the latest reusable session."
-          control={
-            <div className="w-[176px]">
-              <BinarySelector
-                leftLabel="Fresh thread"
-                rightLabel="Reuse current"
-                selected={assistantOptions.reuseActiveSession ? 'right' : 'left'}
-                onSelect={(selection) => onToggleReuse(selection === 'right')}
-              />
-            </div>
-          }
-          className="px-3 py-2.5"
-        />
-
-        <CompactSettingRow
-          label="New session fallback"
-          hint="Automatically create a new session when nothing reusable exists, or require manual starts."
-          value={assistantOptions.autoCreateSession ? 'Auto-create' : 'Manual'}
-          meta="Useful when you want capture to keep moving without opening the assistant first."
-          control={
-            <div className="w-[176px]">
-              <BinarySelector
-                leftLabel="Manual"
-                rightLabel="Auto-create"
-                selected={assistantOptions.autoCreateSession ? 'right' : 'left'}
-                onSelect={(selection) => onToggleAutoCreate(selection === 'right')}
-              />
-            </div>
-          }
-          className="px-3 py-2.5"
-        />
-
-        <CompactSettingRow
-          label="Break telemetry"
-          hint="Share domain-only break telemetry during active breaks."
-          value={breakTelemetryEnabled ? 'On' : 'Off'}
-          meta="Used only for break analytics and trend summaries."
-          control={
-            <div className="w-[176px]">
-              <BinarySelector
-                leftLabel="Off"
-                rightLabel="On"
-                selected={breakTelemetryEnabled ? 'right' : 'left'}
-                onSelect={(selection) => onToggleTelemetry(selection === 'right')}
-              />
-            </div>
-          }
-          className="px-3 py-2.5"
-        />
-      </div>
-
-      <div className="rounded-[22px] border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-3.5 py-3">
+      <div className="rounded-[24px] border border-[var(--fg-border-strong)] bg-[linear-gradient(180deg,rgba(246,250,255,0.94),rgba(255,255,255,0.9))] px-4 py-4 shadow-[0_16px_32px_rgba(31,52,94,0.08)]">
         <div className="flex items-center justify-between gap-2">
           <div className="min-w-0">
             <div className="flex items-center gap-2">
@@ -839,7 +811,7 @@ function AssistantPanel({
           </div>
           <button
             onClick={onAssistantTaskSubmit}
-            disabled={submittingAssistantTask || openClawState.connectors.length === 0}
+            disabled={submittingAssistantTask || connectors.length === 0}
             className="fg-button-primary shrink-0 px-3.5 py-2 text-xs"
           >
             {submittingAssistantTask ? 'Sending…' : 'Send Task'}
@@ -851,13 +823,13 @@ function AssistantPanel({
           value={assistantTaskInput}
           onChange={(event) => onAssistantTaskInputChange(event.target.value)}
           placeholder="Research API options for our billing sync, sketch the best approach, and return an implementation plan with risks."
-          className="fg-input mt-2 min-h-[84px] resize-none px-3 py-2.5 text-sm"
+          className="fg-input mt-3 min-h-[84px] resize-none px-3 py-2.5 text-sm"
         />
         {assistantTaskError && <p className="mt-2 text-xs text-rose-600">{assistantTaskError}</p>}
       </div>
 
       {visibleTasks.length > 0 ? (
-        <div className="space-y-1.5">
+        <div className="space-y-2">
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2">
               <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-[var(--fg-muted)]">
@@ -865,7 +837,7 @@ function AssistantPanel({
               </p>
               <InfoTip text="Completed tasks stay here so you can review results even if notifications are deferred or suppressed." />
             </div>
-            <span className="text-[11px] text-[var(--fg-muted)]">{openClawState.tasks.length} total</span>
+            <span className="text-[11px] text-[var(--fg-muted)]">{tasks.length} total</span>
           </div>
           <AssistantTaskList tasks={visibleTasks} onCancelTask={onCancelTask} />
         </div>
@@ -875,7 +847,7 @@ function AssistantPanel({
         </p>
       )}
 
-      <div className="rounded-[22px] border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-3.5 py-3">
+      <div className="rounded-[24px] border border-[var(--fg-border-strong)] bg-[linear-gradient(180deg,rgba(246,250,255,0.94),rgba(255,255,255,0.9))] px-4 py-4 shadow-[0_16px_32px_rgba(31,52,94,0.08)]">
         <div className="flex items-center justify-between gap-2">
           <div className="min-w-0">
             <div className="flex items-center gap-2">
@@ -904,13 +876,13 @@ function AssistantPanel({
           value={ideaInput}
           onChange={(event) => onIdeaInputChange(event.target.value)}
           placeholder="I want to build a marketplace for horse breeders. Is this viable?"
-          className="fg-input mt-2 min-h-[68px] resize-none px-3 py-2.5 text-sm"
+          className="fg-input mt-3 min-h-[68px] resize-none px-3 py-2.5 text-sm"
         />
         {ideaError && <p className="mt-2 text-xs text-rose-600">{ideaError}</p>}
       </div>
 
       {visibleSessions.length > 0 && (
-        <div className="space-y-1.5">
+        <div className="space-y-2">
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2">
               <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-[var(--fg-muted)]">
@@ -918,7 +890,7 @@ function AssistantPanel({
               </p>
               <InfoTip text="Only shown when OpenClaw has reusable history, which keeps the panel lighter by default." />
             </div>
-            <span className="text-[11px] text-[var(--fg-muted)]">{openClawState.sessions.length} saved</span>
+            <span className="text-[11px] text-[var(--fg-muted)]">{sessions.length} saved</span>
           </div>
           <div className="space-y-1.5">
             {visibleSessions.map((session) => (
@@ -934,7 +906,7 @@ function AssistantPanel({
       )}
 
       {inboxIdeas.length > 0 ? (
-        <div className="space-y-1.5">
+        <div className="space-y-2">
           <div className="flex items-center gap-2">
             <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-[var(--fg-muted)]">
               Idea inbox
@@ -1072,21 +1044,19 @@ function BinarySelector({
     <div className="inline-flex w-full rounded-[18px] border border-[var(--fg-border)] bg-white p-0.5">
       <button
         onClick={() => onSelect('left')}
-        className={`flex-1 rounded-[14px] px-2.5 py-1.5 text-[11px] font-medium transition ${
-          selected === 'left'
-            ? 'bg-[var(--fg-panel-soft)] text-[var(--fg-text)] shadow-[0_8px_16px_rgba(15,23,42,0.08)]'
-            : 'text-[var(--fg-muted)]'
-        }`}
+        className={`flex-1 rounded-[14px] px-2.5 py-1.5 text-[11px] font-medium transition ${selected === 'left'
+          ? 'bg-[var(--fg-panel-soft)] text-[var(--fg-text)] shadow-[0_8px_16px_rgba(15,23,42,0.08)]'
+          : 'text-[var(--fg-muted)]'
+          }`}
       >
         {leftLabel}
       </button>
       <button
         onClick={() => onSelect('right')}
-        className={`flex-1 rounded-[14px] px-2.5 py-1.5 text-[11px] font-medium transition ${
-          selected === 'right'
-            ? 'bg-[var(--fg-panel-soft)] text-[var(--fg-text)] shadow-[0_8px_16px_rgba(15,23,42,0.08)]'
-            : 'text-[var(--fg-muted)]'
-        }`}
+        className={`flex-1 rounded-[14px] px-2.5 py-1.5 text-[11px] font-medium transition ${selected === 'right'
+          ? 'bg-[var(--fg-panel-soft)] text-[var(--fg-text)] shadow-[0_8px_16px_rgba(15,23,42,0.08)]'
+          : 'text-[var(--fg-muted)]'
+          }`}
       >
         {rightLabel}
       </button>
@@ -1212,8 +1182,9 @@ function AnalyticsSummaryCard({
 }): React.JSX.Element {
   const current = analyticsSnapshot.currentSession;
   const summary = analyticsSnapshot.summary7d;
+  const safeTaskTags = Array.isArray(taskTags) ? taskTags : [];
   const currentTag = current?.tagKey
-    ? taskTags.find((tag) => tag.key === current.tagKey) ?? null
+    ? safeTaskTags.find((tag) => tag.key === current.tagKey) ?? null
     : null;
   const segments = [
     { label: 'Productive', value: current?.productiveMinutes ?? summary.productiveMinutes, color: '#2563eb' },
@@ -1337,18 +1308,6 @@ function formatNotificationModeLabel(value: TaskNotificationMode): string {
   return 'Immediate';
 }
 
-function buildConnectorMeta(
-  connector: StateResponse['openClawState']['connectors'][number] | null,
-  fallbackMessage: string | null,
-): string {
-  if (!connector) {
-    return fallbackMessage ?? 'No backend-managed connector is configured yet.';
-  }
-
-  const target = connector.host ?? connector.baseUrl ?? 'No remote target configured';
-  return `${connector.transport.toUpperCase()} · ${target}`;
-}
-
 function formatRelativeTime(value: string): string {
   const delta = Date.now() - new Date(value).getTime();
   const minutes = Math.max(0, Math.round(delta / 60_000));
@@ -1389,11 +1348,11 @@ function isStateResponse(value: unknown): value is StateResponse {
   const candidate = value as Partial<StateResponse>;
   return Boolean(
     candidate.settings &&
-      candidate.calendarState &&
-      candidate.allTimeStats &&
-      candidate.assistantOptions &&
-      candidate.ideaState &&
-      candidate.openClawState,
+    candidate.calendarState &&
+    candidate.allTimeStats &&
+    candidate.assistantOptions &&
+    candidate.ideaState &&
+    candidate.openClawState,
   );
 }
 
