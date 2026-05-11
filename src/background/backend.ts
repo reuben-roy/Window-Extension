@@ -69,9 +69,13 @@ import type {
   TagBreakdownItem,
   TaskNotificationMode,
   OpenClawConnectionStatus,
+  OpenClawInstanceConnectionTest,
+  OpenClawInstanceSettings,
   OpenClawJobSummary,
   OpenClawSessionSummary,
   OpenClawState,
+  SaveOpenClawInstanceSettingsPayload,
+  TestOpenClawInstanceSettingsPayload,
 } from '../shared/types';
 import { getAuthToken } from './calendar';
 
@@ -88,6 +92,14 @@ const BACKEND_BASE_URL =
 const NOTIFICATION_ICON_DATA_URL =
   'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9WHa3WgAAAAASUVORK5CYII=';
 const ACCOUNT_SYNC_DEBOUNCE_MS = 300;
+
+export const ASSISTANT_FEATURE_DISABLED_MESSAGE =
+  'Turn on Assistant in Window settings to use this.';
+
+export async function isAssistantFeatureEnabled(): Promise<boolean> {
+  const opts = await getAssistantOptions();
+  return opts.assistantFeatureEnabled === true;
+}
 
 interface AuthSessionResponse {
   sessionToken: string;
@@ -498,6 +510,11 @@ export async function submitIdea(prompt: string): Promise<RemoteStateSnapshot> {
     throw new Error('Idea capture cannot be empty.');
   }
 
+  const assistantOpts = await getAssistantOptions();
+  if (!assistantOpts.assistantFeatureEnabled) {
+    throw new Error(ASSISTANT_FEATURE_DISABLED_MESSAGE);
+  }
+
   const items = await getIdeaRecords();
   const record = createIdeaRecord(normalizedPrompt);
   await setIdeaRecords([record, ...items]);
@@ -519,6 +536,10 @@ export async function submitAssistantTask(prompt: string): Promise<RemoteStateSn
     getAssistantOptions(),
     getCurrentAssistantFocusContext(),
   ]);
+
+  if (!assistantOptions.assistantFeatureEnabled) {
+    throw new Error(ASSISTANT_FEATURE_DISABLED_MESSAGE);
+  }
 
   await backendRequest('/v1/assistant-tasks', {
     method: 'POST',
@@ -547,6 +568,11 @@ export async function decideIdea(
     throw new Error('Idea was not found.');
   }
 
+  const assistantOpts = await getAssistantOptions();
+  if (current.remoteId && !assistantOpts.assistantFeatureEnabled) {
+    throw new Error(ASSISTANT_FEATURE_DISABLED_MESSAGE);
+  }
+
   const optimistic = applyIdeaDecision(current, decision);
   await setIdeaRecords(items.map((item) => (item.localId === localId ? optimistic : item)));
 
@@ -565,6 +591,11 @@ export async function retryIdea(localId: string): Promise<RemoteStateSnapshot> {
   const current = items.find((item) => item.localId === localId);
   if (!current) {
     throw new Error('Idea was not found.');
+  }
+
+  const assistantOpts = await getAssistantOptions();
+  if (current.remoteId && !assistantOpts.assistantFeatureEnabled) {
+    throw new Error(ASSISTANT_FEATURE_DISABLED_MESSAGE);
   }
 
   const retried = mergeIdeaRecord(current, {
@@ -589,6 +620,9 @@ export async function retryIdea(localId: string): Promise<RemoteStateSnapshot> {
 }
 
 export async function startOpenClawSession(title?: string): Promise<RemoteStateSnapshot> {
+  if (!(await isAssistantFeatureEnabled())) {
+    throw new Error(ASSISTANT_FEATURE_DISABLED_MESSAGE);
+  }
   await backendRequest('/v1/openclaw/sessions', {
     method: 'POST',
     body: {
@@ -600,6 +634,9 @@ export async function startOpenClawSession(title?: string): Promise<RemoteStateS
 }
 
 export async function reuseOpenClawSession(sessionId: string): Promise<RemoteStateSnapshot> {
+  if (!(await isAssistantFeatureEnabled())) {
+    throw new Error(ASSISTANT_FEATURE_DISABLED_MESSAGE);
+  }
   await backendRequest('/v1/openclaw/sessions', {
     method: 'POST',
     body: { reuseSessionId: sessionId },
@@ -609,6 +646,9 @@ export async function reuseOpenClawSession(sessionId: string): Promise<RemoteSta
 }
 
 export async function cancelOpenClawJob(jobId: string): Promise<RemoteStateSnapshot> {
+  if (!(await isAssistantFeatureEnabled())) {
+    throw new Error(ASSISTANT_FEATURE_DISABLED_MESSAGE);
+  }
   await backendRequest(`/v1/openclaw/jobs/${jobId}/cancel`, {
     method: 'POST',
   });
@@ -617,11 +657,49 @@ export async function cancelOpenClawJob(jobId: string): Promise<RemoteStateSnaps
 }
 
 export async function cancelAssistantTask(taskId: string): Promise<RemoteStateSnapshot> {
+  if (!(await isAssistantFeatureEnabled())) {
+    throw new Error(ASSISTANT_FEATURE_DISABLED_MESSAGE);
+  }
   await backendRequest(`/v1/assistant-tasks/${taskId}/cancel`, {
     method: 'POST',
   });
 
   return refreshAssistantState();
+}
+
+export async function fetchOpenClawInstanceSettings(): Promise<OpenClawInstanceSettings | null> {
+  try {
+    const response = await backendRequest<{ settings: OpenClawInstanceSettings }>(
+      '/v1/openclaw/settings',
+    );
+    return response.settings;
+  } catch (error) {
+    console.warn('[Window] Failed to load OpenClaw instance settings:', error);
+    return null;
+  }
+}
+
+export async function saveOpenClawInstanceSettings(
+  payload: SaveOpenClawInstanceSettingsPayload,
+): Promise<OpenClawInstanceSettings> {
+  const response = await backendRequest<{ settings: OpenClawInstanceSettings }>(
+    '/v1/openclaw/settings',
+    {
+      method: 'PUT',
+      body: payload,
+    },
+  );
+
+  return response.settings;
+}
+
+export async function testOpenClawInstanceConnection(
+  payload: TestOpenClawInstanceSettingsPayload,
+): Promise<OpenClawInstanceConnectionTest> {
+  return backendRequest<OpenClawInstanceConnectionTest>('/v1/openclaw/settings/test', {
+    method: 'POST',
+    body: payload,
+  });
 }
 
 export async function updateAssistantPreference(
@@ -639,7 +717,11 @@ export async function updateAssistantPreference(
       : current.preferredModel,
   };
 
-  if (patch.selectedConnectorId !== undefined && patch.selectedConnectorId !== null) {
+  if (
+    next.assistantFeatureEnabled &&
+    patch.selectedConnectorId !== undefined &&
+    patch.selectedConnectorId !== null
+  ) {
     const session = await ensureBackendSession();
     if (session) {
       await backendRequest('/v1/connectors/select', {
@@ -652,10 +734,20 @@ export async function updateAssistantPreference(
   }
 
   await setAssistantOptions(next);
+
+  if (patch.assistantFeatureEnabled === true && !current.assistantFeatureEnabled) {
+    await refreshAssistantState();
+  }
+
   return next;
 }
 
 export async function syncIdeaOutbox(): Promise<RemoteStateSnapshot> {
+  const assistantOpts = await getAssistantOptions();
+  if (!assistantOpts.assistantFeatureEnabled) {
+    return buildAssistantSnapshot();
+  }
+
   const initialSyncState = await getBackendSyncState();
   await setBackendSyncState({
     ...initialSyncState,

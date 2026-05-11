@@ -629,6 +629,10 @@ function normalizeAssistantOptionsStored(options: Partial<AssistantOptions> | nu
           : DEFAULT_ASSISTANT_OPTIONS.preferredModel.value,
       updatedAt: normalizeNullableString(options?.preferredModel?.updatedAt),
     },
+    assistantFeatureEnabled:
+      typeof options?.assistantFeatureEnabled === 'boolean'
+        ? options.assistantFeatureEnabled
+        : DEFAULT_ASSISTANT_OPTIONS.assistantFeatureEnabled,
     autoCreateSession: options?.autoCreateSession ?? DEFAULT_ASSISTANT_OPTIONS.autoCreateSession,
     reuseActiveSession: options?.reuseActiveSession ?? DEFAULT_ASSISTANT_OPTIONS.reuseActiveSession,
     selectedConnectorId: normalizeNullableString(options?.selectedConnectorId),

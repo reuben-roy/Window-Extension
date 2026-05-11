@@ -36,7 +36,6 @@ import {
   getOpenClawState,
   getSettings,
   getTaskTags,
-  setAssistantOptions,
   setExtendedTaskSets,
   setTaskTags,
   setSettings,
@@ -428,7 +427,7 @@ export default function Options(): React.JSX.Element {
   }, [isConnected, calendarView, loadVisibleRange]);
 
   useEffect(() => {
-    if (!accountUser) {
+    if (!accountUser || !assistantOptions?.assistantFeatureEnabled) {
       setOpenClawInstanceLoaded(null);
       setOpenClawInstanceBanner(null);
       setOpenClawInstanceDraft({
@@ -455,7 +454,7 @@ export default function Options(): React.JSX.Element {
     return () => {
       cancelled = true;
     };
-  }, [accountUser]);
+  }, [accountUser, assistantOptions?.assistantFeatureEnabled]);
 
   const openClawInstanceExplanation = useMemo(() => {
     if (!accountUser) {
@@ -779,9 +778,11 @@ export default function Options(): React.JSX.Element {
 
   const updateAssistantOptions = async (patch: Partial<AssistantOptions>) => {
     if (!assistantOptions) return;
-    const next = { ...assistantOptions, ...patch };
-    setAssistantOptionsState(next);
-    await setAssistantOptions(next);
+    await sendMessageAsync<AssistantOptions>({
+      type: 'UPDATE_ASSISTANT_OPTIONS',
+      payload: patch,
+    });
+    await loadData();
   };
 
   const updateBlockingEnabled = (enabled: boolean) => {
@@ -1480,7 +1481,35 @@ export default function Options(): React.JSX.Element {
                 defaultOpen={false}
                 bodyClassName="mt-3 space-y-3"
               >
-                {accountUser && (
+                {assistantOptions ? (
+                  <CompactSettingRow
+                    label="Enable Assistant"
+                    meta="Turns on idea capture, task handoff, OpenClaw sessions, inbox sync, and related telemetry. Off by default to keep Window simple."
+                    control={
+                      <Toggle
+                        checked={assistantOptions.assistantFeatureEnabled}
+                        onChange={(checked) => void updateAssistantOptions({ assistantFeatureEnabled: checked })}
+                      />
+                    }
+                  />
+                ) : (
+                  <p className="text-xs text-[var(--fg-muted)]">Loading assistant preferences…</p>
+                )}
+
+                {assistantOptions && !assistantOptions.assistantFeatureEnabled ? (
+                  <p className="text-xs leading-snug text-[var(--fg-muted)]">
+                    Assistant stays off until you enable it above. OpenClaw URL, connectors, and capture options appear
+                    once enabled.
+                  </p>
+                ) : null}
+
+                {assistantOptions?.assistantFeatureEnabled && !accountUser ? (
+                  <p className="mb-2 text-xs text-[var(--fg-muted)]">
+                    Sign in to configure your self-hosted OpenClaw URL and sync assistant state.
+                  </p>
+                ) : null}
+
+                {assistantOptions?.assistantFeatureEnabled && accountUser && (
                   <div className="mb-4 grid gap-2 border-b border-[var(--fg-border-soft)] pb-4">
                     <p className="text-xs leading-snug text-[var(--fg-muted)]">{openClawInstanceExplanation}</p>
                     <CompactSettingRow
@@ -1584,12 +1613,7 @@ export default function Options(): React.JSX.Element {
                     </div>
                   </div>
                 )}
-                {!accountUser ? (
-                  <p className="mb-4 text-xs text-[var(--fg-muted)]">
-                    Assistant OpenClaw connection settings unlock after signing in.
-                  </p>
-                ) : null}
-                {assistantOptions && openClawState && (
+                {assistantOptions?.assistantFeatureEnabled && assistantOptions && openClawState && (
                   <div className="grid gap-2">
                     <CompactSettingRow
                       label="Connector"

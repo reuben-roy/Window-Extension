@@ -181,6 +181,7 @@ export const DEFAULT_ANALYTICS_SNAPSHOT: AnalyticsSnapshot = {
 };
 
 export const DEFAULT_ASSISTANT_OPTIONS: AssistantOptions = {
+  assistantFeatureEnabled: false,
   preferredModel: {
     value: 'Minimax-2.7',
     updatedAt: null,

@@ -358,12 +358,40 @@ export interface OpenClawState {
   lastError: string | null;
 }
 
+export type OpenClawFetchMode = 'permissive' | 'strict';
+
+export interface OpenClawInstanceSettings {
+  baseUrl: string | null;
+  tokenConfigured: boolean;
+  fetchMode: OpenClawFetchMode;
+  hasHostSuffixAllowlist: boolean;
+}
+
+export interface OpenClawInstanceConnectionTest {
+  ok: boolean;
+  connected: boolean;
+  message: string | null;
+}
+
+export interface SaveOpenClawInstanceSettingsPayload {
+  baseUrl: string;
+  apiToken?: string;
+  clearApiToken?: boolean;
+}
+
+export interface TestOpenClawInstanceSettingsPayload {
+  baseUrl: string;
+  apiToken?: string;
+}
+
 export interface ModelSelectorState {
   value: string;
   updatedAt: string | null;
 }
 
 export interface AssistantOptions {
+  /** When false (default), assistant/OpenClaw, ideas, and handoff stay inactive. */
+  assistantFeatureEnabled: boolean;
   preferredModel: ModelSelectorState;
   autoCreateSession: boolean;
   reuseActiveSession: boolean;
@@ -744,6 +772,9 @@ export type MessageType =
   | 'CANCEL_OPENCLAW_JOB'
   | 'CANCEL_ASSISTANT_TASK'
   | 'UPDATE_ASSISTANT_OPTIONS'
+  | 'LOAD_OPENCLAW_INSTANCE_SETTINGS'
+  | 'SAVE_OPENCLAW_INSTANCE_SETTINGS'
+  | 'TEST_OPENCLAW_INSTANCE_SETTINGS'
   | 'MARK_DONE'
   | 'MARK_EXTENDED_TASK_ITEM_COMPLETE'
   | 'MARK_EXTENDED_TASK_ITEM_UNCOMPLETE'

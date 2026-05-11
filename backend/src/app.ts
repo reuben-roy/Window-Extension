@@ -1,7 +1,7 @@
 import Fastify, { type FastifyReply, type FastifyRequest } from 'fastify';
 import type { Prisma } from '@prisma/client';
 import { z } from 'zod';
-import { env } from './env.js';
+import { env, getOpenClawAllowedHostSuffixes } from './env.js';
 import { prisma } from './lib/prisma.js';
 import {
   fetchGoogleUserProfile,
@@ -10,7 +10,18 @@ import {
   revokeBackendSession,
   verifyGoogleAccessToken,
 } from './lib/auth.js';
-import { openClawConnector } from './lib/openclaw/client.js';
+import {
+  openClawConnector,
+  prismaRowToOpenClawConnectionConfig,
+  type OpenClawConnectionConfig,
+} from './lib/openclaw/client.js';
+import { personalOpenClawConnectorKey } from './lib/openclaw/connectorKeys.js';
+import { listOrderedConnectorsForUser } from './lib/openclaw/connectorList.js';
+import {
+  assertOpenClawUrlAllowed,
+  coerceOpenClawBaseUrl,
+  normalizedOpenClawOrigin,
+} from './lib/openclaw/urlPolicy.js';
 import {
   toAccountSnapshotPayload,
   toAccountUserPayload,
@@ -27,6 +38,8 @@ import type {
   AccountSnapshotPayload,
   AccountSnapshotResponsePayload,
   AccountUserPayload,
+  OpenClawInstanceSettingsPayload,
+  OpenClawSettingsTestPayload,
 } from './types.js';
 
 const googleExchangeSchema = z.object({
@@ -50,6 +63,17 @@ const createIdeaSchema = z.object({
 
 const selectConnectorSchema = z.object({
   connectorId: z.string().min(1),
+});
+
+const openClawSettingsPutSchema = z.object({
+  baseUrl: z.string().min(1).max(2048),
+  apiToken: z.string().max(8192).optional(),
+  clearApiToken: z.boolean().optional(),
+});
+
+const openClawSettingsTestSchema = z.object({
+  baseUrl: z.string().min(1).max(2048),
+  apiToken: z.string().max(8192).optional(),
 });
 
 const createAssistantTaskSchema = z.object({
@@ -317,13 +341,8 @@ export async function buildApp() {
 
     await openClawConnector.syncConnectionRecord();
 
-    const [connectors, selectedConnector] = await Promise.all([
-      prisma.openClawConnection.findMany({
-        where: { enabled: true },
-        orderBy: { createdAt: 'asc' },
-      }),
-      resolveSelectedConnector(user.id),
-    ]);
+    const connectors = await listOrderedConnectorsForUser(user.id);
+    const selectedConnector = await resolveSelectedConnector(user.id);
 
     return {
       connectors: connectors.map(toAssistantConnectorPayload),
@@ -337,12 +356,8 @@ export async function buildApp() {
 
     const body = selectConnectorSchema.parse(request.body ?? {});
     await openClawConnector.syncConnectionRecord();
-    const connector = await prisma.openClawConnection.findFirst({
-      where: {
-        id: body.connectorId,
-        enabled: true,
-      },
-    });
+    const allowed = await listOrderedConnectorsForUser(user.id);
+    const connector = allowed.find((row) => row.id === body.connectorId);
 
     if (!connector) {
       return reply.code(404).send({ error: 'Connector not found.' });
@@ -359,6 +374,207 @@ export async function buildApp() {
       selectedConnectorId: connector.id,
       connector: toAssistantConnectorPayload(connector),
     };
+  });
+
+  app.get('/v1/openclaw/settings', async (request, reply) => {
+    const user = await getUserOrReply(request, reply);
+    if (!user) return;
+
+    await openClawConnector.syncConnectionRecord();
+
+    const key = personalOpenClawConnectorKey(user.id);
+    const row = await prisma.openClawConnection.findUnique({
+      where: { key },
+      select: { baseUrl: true, apiToken: true },
+    });
+
+    const settings: OpenClawInstanceSettingsPayload = {
+      baseUrl: row?.baseUrl ?? null,
+      tokenConfigured: Boolean(row?.apiToken?.trim()),
+      fetchMode: env.OPENCLAW_FETCH_MODE,
+      hasHostSuffixAllowlist: getOpenClawAllowedHostSuffixes().length > 0,
+    };
+
+    return { settings };
+  });
+
+  app.put('/v1/openclaw/settings', async (request, reply) => {
+    const user = await getUserOrReply(request, reply);
+    if (!user) return;
+
+    const body = openClawSettingsPutSchema.parse(request.body ?? {});
+
+    let normalizedBase: string;
+    try {
+      const parsedUrl = coerceOpenClawBaseUrl(body.baseUrl);
+      assertOpenClawUrlAllowed(
+        parsedUrl,
+        env.OPENCLAW_FETCH_MODE,
+        getOpenClawAllowedHostSuffixes(),
+      );
+      normalizedBase = normalizedOpenClawOrigin(parsedUrl);
+    } catch (error) {
+      return reply.code(400).send({
+        error: error instanceof Error ? error.message : 'Invalid OpenClaw base URL.',
+      });
+    }
+
+    const key = personalOpenClawConnectorKey(user.id);
+    const existing = await prisma.openClawConnection.findUnique({
+      where: { key },
+      select: { apiToken: true },
+    });
+
+    let nextApiTokenProvided = false;
+    let nextApiToken: string | null = null;
+    if (body.clearApiToken) {
+      nextApiTokenProvided = true;
+      nextApiToken = null;
+    } else if (body.apiToken !== undefined) {
+      nextApiTokenProvided = true;
+      const trimmed = body.apiToken.trim();
+      nextApiToken = trimmed.length === 0 ? null : trimmed;
+    }
+
+    const effectiveApiToken =
+      nextApiTokenProvided ? nextApiToken : (existing?.apiToken ?? null);
+
+    const probeConfig: OpenClawConnectionConfig = {
+      id: 'probe',
+      key,
+      name: 'My OpenClaw',
+      transport: 'http',
+      host: null,
+      baseUrl: normalizedBase,
+      description: '',
+      enabled: true,
+      apiToken: effectiveApiToken,
+    };
+
+    try {
+      const probe = await openClawConnector.getStatus(probeConfig);
+      if (!probe.connected) {
+        return reply.code(400).send({
+          error: probe.message ?? 'OpenClaw is not reachable with this URL.',
+        });
+      }
+    } catch (error) {
+      return reply.code(400).send({
+        error: error instanceof Error ? error.message : 'OpenClaw is not reachable with this URL.',
+      });
+    }
+
+    const upsertCore = {
+      name: 'My OpenClaw',
+      connectorType: 'openclaw' as const,
+      transport: 'http',
+      host: null,
+      baseUrl: normalizedBase,
+      description: 'Self-hosted OpenClaw',
+      enabled: true,
+      userId: user.id,
+    };
+
+    await prisma.openClawConnection.upsert({
+      where: { key },
+      create: {
+        key,
+        ...upsertCore,
+        apiToken: nextApiTokenProvided ? nextApiToken : null,
+      },
+      update: {
+        ...upsertCore,
+        ...(nextApiTokenProvided ? { apiToken: nextApiToken } : {}),
+      },
+    });
+
+    const refreshed = await prisma.openClawConnection.findUnique({
+      where: { key },
+    });
+
+    const selectedConnector = refreshed ?? null;
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        selectedConnectorId: selectedConnector?.id,
+      },
+    });
+
+    const settings: OpenClawInstanceSettingsPayload = {
+      baseUrl: refreshed?.baseUrl ?? null,
+      tokenConfigured: Boolean(refreshed?.apiToken?.trim()),
+      fetchMode: env.OPENCLAW_FETCH_MODE,
+      hasHostSuffixAllowlist: getOpenClawAllowedHostSuffixes().length > 0,
+    };
+
+    return { settings };
+  });
+
+  app.post('/v1/openclaw/settings/test', async (request, reply) => {
+    const user = await getUserOrReply(request, reply);
+    if (!user) return;
+
+    const body = openClawSettingsTestSchema.parse(request.body ?? {});
+
+    let normalizedBase: string;
+    try {
+      const parsedUrl = coerceOpenClawBaseUrl(body.baseUrl);
+      assertOpenClawUrlAllowed(
+        parsedUrl,
+        env.OPENCLAW_FETCH_MODE,
+        getOpenClawAllowedHostSuffixes(),
+      );
+      normalizedBase = normalizedOpenClawOrigin(parsedUrl);
+    } catch (error) {
+      const probe: OpenClawSettingsTestPayload = {
+        ok: false,
+        connected: false,
+        message:
+          error instanceof Error ? error.message : 'Invalid OpenClaw base URL.',
+      };
+      return probe;
+    }
+
+    const key = personalOpenClawConnectorKey(user.id);
+    let resolvedBearer: string | null;
+    if (body.apiToken !== undefined) {
+      const trimmed = body.apiToken.trim();
+      resolvedBearer = trimmed.length === 0 ? null : trimmed;
+    } else {
+      const row = await prisma.openClawConnection.findUnique({
+        where: { key },
+        select: { apiToken: true },
+      });
+      resolvedBearer = row?.apiToken?.trim() ? row.apiToken : null;
+    }
+
+    const probeConfig: OpenClawConnectionConfig = {
+      id: 'probe',
+      key,
+      name: 'My OpenClaw',
+      transport: 'http',
+      host: null,
+      baseUrl: normalizedBase,
+      description: '',
+      enabled: true,
+      apiToken: resolvedBearer,
+    };
+
+    try {
+      const probe = await openClawConnector.getStatus(probeConfig);
+      const result: OpenClawSettingsTestPayload = {
+        ok: probe.connected,
+        connected: probe.connected,
+        message: probe.message ?? null,
+      };
+      return result;
+    } catch (error) {
+      return {
+        ok: false,
+        connected: false,
+        message: error instanceof Error ? error.message : String(error),
+      } satisfies OpenClawSettingsTestPayload;
+    }
   });
 
   app.get('/v1/openclaw/status', async (request, reply) => {
@@ -1601,46 +1817,39 @@ async function upsertGoogleUser(input: {
   return user;
 }
 
-async function resolveSelectedConnector(userId: string) {
+async function resolveSelectedConnector(userId: string): Promise<OpenClawConnectionConfig | null> {
   await openClawConnector.syncConnectionRecord();
 
-  const [user, connectors] = await Promise.all([
-    prisma.user.findUnique({
-      where: { id: userId },
-      select: { selectedConnectorId: true },
-    }),
-    prisma.openClawConnection.findMany({
-      where: { enabled: true },
-      orderBy: { createdAt: 'asc' },
-    }),
-  ]);
+  const connectors = await listOrderedConnectorsForUser(userId);
+  if (!connectors.length) {
+    return null;
+  }
 
-  const selected =
-    connectors.find((connector) => connector.id === user?.selectedConnectorId) ??
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { selectedConnectorId: true },
+  });
+
+  let selectedRow =
+    (user?.selectedConnectorId &&
+      connectors.find((connector) => connector.id === user.selectedConnectorId)) ??
     connectors[0] ??
     null;
 
-  if (selected && user?.selectedConnectorId !== selected.id) {
+  if (!selectedRow) {
+    return null;
+  }
+
+  if (user?.selectedConnectorId !== selectedRow.id) {
     await prisma.user.update({
       where: { id: userId },
       data: {
-        selectedConnectorId: selected.id,
+        selectedConnectorId: selectedRow.id,
       },
     });
   }
 
-  return selected
-    ? {
-        id: selected.id,
-        key: selected.key,
-        name: selected.name,
-        transport: selected.transport,
-        host: selected.host,
-        baseUrl: selected.baseUrl,
-        description: selected.description,
-        enabled: selected.enabled,
-      }
-    : null;
+  return prismaRowToOpenClawConnectionConfig(selectedRow);
 }
 
 async function resolveOpenClawSession(

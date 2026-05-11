@@ -91,6 +91,8 @@ export interface OpenClawConnectionConfig {
   baseUrl: string | null;
   description: string | null;
   enabled: boolean;
+  /** Per-user token; server-side only — never send to clients. */
+  apiToken?: string | null;
 }
 
 export interface OpenClawStatus {
@@ -148,6 +150,30 @@ export interface OpenClawTaskStatusResult {
   error: string | null;
 }
 
+export function prismaRowToOpenClawConnectionConfig(row: {
+  id: string;
+  key: string;
+  name: string;
+  transport: string;
+  host: string | null;
+  baseUrl: string | null;
+  apiToken: string | null;
+  description: string | null;
+  enabled: boolean;
+}): OpenClawConnectionConfig {
+  return {
+    id: row.id,
+    key: row.key,
+    name: row.name,
+    transport: row.transport,
+    host: row.host,
+    baseUrl: row.baseUrl,
+    description: row.description,
+    enabled: row.enabled,
+    apiToken: row.apiToken ?? null,
+  };
+}
+
 export interface OpenClawConnector {
   syncConnectionRecord(): Promise<void>;
   getAvailableConnections(): Promise<OpenClawConnectionConfig[]>;
@@ -197,6 +223,7 @@ export const openClawConnector: OpenClawConnector = {
           baseUrl,
           description: 'Oracle-hosted OpenClaw',
           enabled: true,
+          userId: null,
         },
       });
       return;
@@ -205,6 +232,7 @@ export const openClawConnector: OpenClawConnector = {
     await prisma.openClawConnection.create({
       data: {
         key: PRIMARY_CONNECTOR_KEY,
+        userId: null,
         name: 'Primary OpenClaw',
         connectorType: 'openclaw',
         transport,
@@ -223,16 +251,7 @@ export const openClawConnector: OpenClawConnector = {
       orderBy: { createdAt: 'asc' },
     });
 
-    return rows.map((row) => ({
-      id: row.id,
-      key: row.key,
-      name: row.name,
-      transport: row.transport,
-      host: row.host,
-      baseUrl: row.baseUrl,
-      description: row.description,
-      enabled: row.enabled,
-    }));
+    return rows.map((row) => prismaRowToOpenClawConnectionConfig(row));
   },
 
   async getStatus(connection) {
@@ -448,14 +467,17 @@ async function httpRequest(
     throw new Error('OpenClaw HTTP transport is missing a base URL.');
   }
 
+  const bearer =
+    connection.apiToken?.trim() ||
+    env.OPENCLAW_API_TOKEN?.trim() ||
+    '';
+
   const response = await fetch(`${stripTrailingSlash(baseUrl)}${path}`, {
     method: init.method,
     headers: {
       Accept: 'application/json',
       'Content-Type': 'application/json',
-      ...(env.OPENCLAW_API_TOKEN
-        ? { Authorization: `Bearer ${env.OPENCLAW_API_TOKEN}` }
-        : {}),
+      ...(bearer ? { Authorization: `Bearer ${bearer}` } : {}),
     },
     body: init.body === undefined ? undefined : JSON.stringify(init.body),
   });
@@ -489,7 +511,7 @@ async function sshRequest(
   }
 
   const url = `${stripTrailingSlash(baseUrl)}${path}`;
-  const remoteCommand = buildRemoteCurlCommand(url, init.method, init.body);
+  const remoteCommand = buildRemoteCurlCommand(url, init.method, init.body, connection.apiToken);
   const sshArgs = [
     '-i',
     env.OPENCLAW_SSH_KEY_PATH,
@@ -512,7 +534,12 @@ async function sshRequest(
   return JSON.parse(output) as unknown;
 }
 
-function buildRemoteCurlCommand(url: string, method: 'GET' | 'POST', body?: unknown): string {
+function buildRemoteCurlCommand(
+  url: string,
+  method: 'GET' | 'POST',
+  body?: unknown,
+  bearerFromConnection?: string | null,
+): string {
   const parts = [
     'curl',
     '-fsSL',
@@ -526,8 +553,9 @@ function buildRemoteCurlCommand(url: string, method: 'GET' | 'POST', body?: unkn
     parts.push('-H', shellQuote('Content-Type: application/json'));
   }
 
-  if (env.OPENCLAW_API_TOKEN) {
-    parts.push('-H', shellQuote(`Authorization: Bearer ${env.OPENCLAW_API_TOKEN}`));
+  const bearer = bearerFromConnection?.trim() || env.OPENCLAW_API_TOKEN?.trim() || '';
+  if (bearer) {
+    parts.push('-H', shellQuote(`Authorization: Bearer ${bearer}`));
   }
 
   if (body === undefined) {

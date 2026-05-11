@@ -202,6 +202,21 @@ export interface AssistantConnectorPayload {
   description: string | null;
 }
 
+export type OpenClawFetchModePayload = 'permissive' | 'strict';
+
+export interface OpenClawInstanceSettingsPayload {
+  baseUrl: string | null;
+  tokenConfigured: boolean;
+  fetchMode: OpenClawFetchModePayload;
+  hasHostSuffixAllowlist: boolean;
+}
+
+export interface OpenClawSettingsTestPayload {
+  ok: boolean;
+  connected: boolean;
+  message: string | null;
+}
+
 export interface AssistantTaskResultPayload {
   summary: string;
   output: string;

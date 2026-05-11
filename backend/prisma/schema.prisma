@@ -92,6 +92,7 @@ model User {
   analyticsOverrides AnalyticsOverride[]
   interestProfiles InterestProfile[]
   recommendations  Recommendation[]
+  openClawConnections OpenClawConnection[]
   selectedConnector OpenClawConnection? @relation("SelectedConnector", fields: [selectedConnectorId], references: [id], onDelete: SetNull)
 }
 
@@ -144,11 +145,14 @@ model BackendSession {
 model OpenClawConnection {
   id          String                @id @default(cuid())
   key         String                @unique
+  userId      String?
+  user        User?                 @relation(fields: [userId], references: [id], onDelete: Cascade)
   name        String
   connectorType AssistantConnectorType @default(openclaw)
   transport   String
   host        String?
   baseUrl     String?
+  apiToken    String?
   description String?
   enabled     Boolean               @default(true)
   createdAt   DateTime              @default(now())
@@ -156,6 +160,8 @@ model OpenClawConnection {
   sessions    OpenClawSession[]
   assistantTasks AssistantTask[]
   selectedByUsers User[]            @relation("SelectedConnector")
+
+  @@index([userId])
 }
 
 model OpenClawSession {

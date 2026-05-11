@@ -64,15 +64,20 @@ import type {
   EventLaunchTarget,
   LaunchExecutionState,
   Message,
+  OpenClawInstanceConnectionTest,
+  OpenClawInstanceSettings,
   StateResponse,
   Task,
   TemporaryUnlockState,
 } from '../shared/types';
 import {
+  ASSISTANT_FEATURE_DISABLED_MESSAGE,
   cancelAssistantTask,
   cancelOpenClawJob,
   decideIdea,
+  fetchOpenClawInstanceSettings,
   handleSyncedStorageChanges,
+  isAssistantFeatureEnabled,
   refreshAccountState,
   refreshAssistantState,
   resolveAccountConflict,
@@ -80,6 +85,7 @@ import {
   retryIdea,
   refreshAnalyticsState,
   saveAnalyticsOverrideRemote,
+  saveOpenClawInstanceSettings,
   signInWithProvider,
   signOutAccount,
   startOpenClawSession,
@@ -88,6 +94,7 @@ import {
   syncAnalyticsQueues,
   syncBreakTelemetryQueue,
   syncIdeaOutbox,
+  testOpenClawInstanceConnection,
   updateAssistantPreference,
   reuseOpenClawSession,
 } from './backend';
@@ -210,15 +217,16 @@ async function handleTick(): Promise<void> {
   await handleAnalyticsHeartbeat(calendarState);
 
   const snoozed = await isSnoozeActive();
+  const assistantSyncTasks = (await isAssistantFeatureEnabled()) ? [syncIdeaOutbox()] : [];
   if (snoozed) {
-    await Promise.all([syncIdeaOutbox(), syncBreakTelemetryQueue(), syncAnalyticsQueues()]);
+    await Promise.all([...assistantSyncTasks, syncBreakTelemetryQueue(), syncAnalyticsQueues()]);
     await refreshAnalyticsState();
     await reconcileBlockedTabs(calendarState);
     await maybeAutoLaunchActiveOccurrence(calendarState);
     return;
   }
 
-  await Promise.all([syncIdeaOutbox(), syncBreakTelemetryQueue(), syncAnalyticsQueues()]);
+  await Promise.all([...assistantSyncTasks, syncBreakTelemetryQueue(), syncAnalyticsQueues()]);
   await refreshAnalyticsState();
   await applyBlockingState(calendarState);
   await maybeAutoLaunchActiveOccurrence(calendarState);
@@ -236,6 +244,75 @@ async function handleSnoozeEnd(): Promise<void> {
 }
 
 // ─── Message handler ──────────────────────────────────────────────────────────
+
+async function handleLoadOpenClawInstanceSettings(): Promise<
+  { ok: true; settings: OpenClawInstanceSettings } | { ok: false; error: string }
+> {
+  if (!(await isAssistantFeatureEnabled())) {
+    return { ok: false, error: ASSISTANT_FEATURE_DISABLED_MESSAGE };
+  }
+  const settings = await fetchOpenClawInstanceSettings();
+  if (!settings) {
+    return {
+      ok: false,
+      error: 'Could not load settings. Sign in and verify the backend is reachable.',
+    };
+  }
+  return { ok: true, settings };
+}
+
+async function handleSaveOpenClawInstanceSettings(message: Message): Promise<
+  { ok: true; settings: OpenClawInstanceSettings } | { ok: false; error: string }
+> {
+  if (!(await isAssistantFeatureEnabled())) {
+    return { ok: false, error: ASSISTANT_FEATURE_DISABLED_MESSAGE };
+  }
+  const payload = message.payload as import('../shared/types').SaveOpenClawInstanceSettingsPayload | undefined;
+  if (!payload?.baseUrl?.trim()) {
+    return { ok: false, error: 'OpenClaw base URL is required.' };
+  }
+
+  try {
+    const settings = await saveOpenClawInstanceSettings({
+      ...payload,
+      baseUrl: payload.baseUrl.trim(),
+    });
+    await refreshAssistantState();
+    return { ok: true, settings };
+  } catch (error) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : String(error),
+    };
+  }
+}
+
+async function handleTestOpenClawInstanceSettings(message: Message): Promise<
+  | { ok: true; result: OpenClawInstanceConnectionTest }
+  | { ok: false; error: string }
+> {
+  if (!(await isAssistantFeatureEnabled())) {
+    return { ok: false, error: ASSISTANT_FEATURE_DISABLED_MESSAGE };
+  }
+  const payload = message.payload as import('../shared/types').TestOpenClawInstanceSettingsPayload | undefined;
+  if (!payload?.baseUrl?.trim()) {
+    return { ok: false, error: 'OpenClaw base URL is required to test.' };
+  }
+
+  try {
+    const result = await testOpenClawInstanceConnection({
+      ...payload,
+      baseUrl: payload.baseUrl.trim(),
+      apiToken: payload.apiToken,
+    });
+    return { ok: true, result };
+  } catch (error) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : String(error),
+    };
+  }
+}
 
 chrome.runtime.onMessage.addListener((message: Message, sender, sendResponse) => {
   handleMessage(message, sender)
@@ -337,6 +414,15 @@ async function handleMessage(
       return updateAssistantPreference(
         (message.payload as Partial<import('../shared/types').AssistantOptions> | undefined) ?? {},
       );
+
+    case 'LOAD_OPENCLAW_INSTANCE_SETTINGS':
+      return handleLoadOpenClawInstanceSettings();
+
+    case 'SAVE_OPENCLAW_INSTANCE_SETTINGS':
+      return handleSaveOpenClawInstanceSettings(message);
+
+    case 'TEST_OPENCLAW_INSTANCE_SETTINGS':
+      return handleTestOpenClawInstanceSettings(message);
 
     case 'REFRESH_ANALYTICS_STATE':
       return refreshAnalyticsState();
@@ -1768,7 +1854,9 @@ async function handleMarkDone(
   });
 
   await applyPointDelta(pointsAwarded, { completedTasksDelta: 1 });
-  await refreshAssistantState();
+  if (await isAssistantFeatureEnabled()) {
+    await refreshAssistantState();
+  }
   return { ok: true, pointsAwarded };
 }
 

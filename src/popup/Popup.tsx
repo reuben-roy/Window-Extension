@@ -29,7 +29,8 @@ const DEFAULT_PANEL_COLLAPSED: Record<PanelSectionId, boolean> = {
   focus: false,
   analytics: true,
   controls: true,
-  assistant: false,
+  /** Assistant is off by default; section stays collapsed until the user enables it in settings. */
+  assistant: true,
 };
 const SECTION_TITLES: Record<PanelSectionId, string> = {
   focus: 'Focus',
@@ -263,6 +264,10 @@ export default function Popup({
 
   const handleIdeaSubmit = () => {
     if (!state || submittingIdea) return;
+    if (!state.assistantOptions.assistantFeatureEnabled) {
+      setIdeaError('Turn on Assistant in Window settings to capture ideas.');
+      return;
+    }
     const prompt = ideaInput.trim();
     if (!prompt) {
       setIdeaError('Write a quick idea before submitting.');
@@ -287,6 +292,10 @@ export default function Popup({
 
   const handleAssistantTaskSubmit = () => {
     if (!state || submittingAssistantTask) return;
+    if (!state.assistantOptions.assistantFeatureEnabled) {
+      setAssistantTaskError('Turn on Assistant in Window settings to use task handoff.');
+      return;
+    }
     const prompt = assistantTaskInput.trim();
     if (!prompt) {
       setAssistantTaskError('Write the task you want OpenClaw to handle.');
@@ -359,6 +368,7 @@ export default function Popup({
     accountSyncState,
     accountUser,
     analyticsSnapshot,
+    assistantOptions,
     backendSession,
     backendSyncState,
     calendarState,
@@ -383,11 +393,14 @@ export default function Popup({
       .sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime())[0] ?? null;
   const inboxIdeas = ideaItems.filter((item) => !item.archived).slice(0, 3);
   const actionableTasks = popupTaskQueue.filter((task) => task.status === 'active' || task.status === 'carryover');
-  const assistantSubtitle = openClawState.currentTask
-    ? `${formatTaskStatusLabel(openClawState.currentTask.status)} · ${openClawState.currentTask.title}`
-    : openClawState.status.connected
-      ? 'OpenClaw ready'
-      : 'OpenClaw offline';
+  const assistantEnabled = assistantOptions.assistantFeatureEnabled === true;
+  const assistantSubtitle = !assistantEnabled
+    ? 'Off — enable Assistant in Settings.'
+    : openClawState.currentTask
+      ? `${formatTaskStatusLabel(openClawState.currentTask.status)} · ${openClawState.currentTask.title}`
+      : openClawState.status.connected
+        ? 'OpenClaw ready'
+        : 'OpenClaw offline';
   const headerCaption = calendarConnected
     ? calendarState.currentEvent
       ? `${formatEventRange(calendarState.currentEvent)} · ${effectivelyBlocking
@@ -525,13 +538,20 @@ export default function Popup({
                 : sectionId === 'analytics'
                   ? 'Live session health and the last 7 days.'
                   : 'Fast adjustments without leaving the current page.';
+          const assistantSectionInactive = sectionId === 'assistant' && !assistantEnabled;
+          const effectiveCollapsed =
+            sectionId === 'assistant'
+              ? !assistantEnabled || panelCollapsed.assistant
+              : panelCollapsed[sectionId];
+
           return (
             <PanelSectionCard
               key={sectionId}
               title={SECTION_TITLES[sectionId]}
               subtitle={sectionSubtitle}
               hint={SECTION_HINTS[sectionId]}
-              collapsed={panelCollapsed[sectionId]}
+              collapsed={effectiveCollapsed}
+              containerClassName={assistantSectionInactive ? 'opacity-45 pointer-events-none' : undefined}
               dragging={draggedSection === sectionId}
               isDropTarget={dropTargetSection === sectionId && draggedSection !== sectionId}
               onToggleCollapse={() => togglePanelSection(sectionId)}
@@ -820,6 +840,7 @@ function PanelSectionCard({
   subtitle,
   hint,
   collapsed,
+  containerClassName,
   dragging,
   isDropTarget,
   onToggleCollapse,
@@ -834,6 +855,7 @@ function PanelSectionCard({
   subtitle?: string;
   hint?: string;
   collapsed: boolean;
+  containerClassName?: string;
   dragging: boolean;
   isDropTarget: boolean;
   onToggleCollapse: () => void;
@@ -850,7 +872,7 @@ function PanelSectionCard({
       onDragLeave={onDragLeave}
       onDrop={onDrop}
       className={`fg-card overflow-hidden transition-all duration-150 ${isDropTarget ? 'ring-1 ring-[var(--fg-accent)]/40' : ''
-        } ${dragging ? 'opacity-50 scale-[0.99]' : ''}`}
+        } ${dragging ? 'opacity-50 scale-[0.99]' : ''} ${containerClassName ?? ''}`}
     >
       <div className="flex items-center gap-1.5 px-3 py-2">
         <div

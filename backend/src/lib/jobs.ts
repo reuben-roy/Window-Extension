@@ -1,6 +1,10 @@
 import type { Prisma } from '@prisma/client';
 import { prisma } from './prisma.js';
-import { openClawConnector } from './openclaw/client.js';
+import {
+  openClawConnector,
+  prismaRowToOpenClawConnectionConfig,
+} from './openclaw/client.js';
+import { listOrderedConnectorsForUser } from './openclaw/connectorList.js';
 
 type ResearchJobWithIdea = Prisma.ResearchJobGetPayload<{
   include: {
@@ -36,7 +40,7 @@ export async function processNextResearchJob(): Promise<boolean> {
     return true;
   }
 
-  const connector = await resolveConnector(session.connectorId);
+  const connector = await resolveConnector(session.connectorId, candidate.idea.userId);
   if (!connector) {
     await markResearchJobFailed(
       candidate,
@@ -265,7 +269,10 @@ async function processNextQueuedAssistantTask(): Promise<boolean> {
   const candidate = await claimNextAssistantTaskJob();
   if (!candidate) return false;
 
-  const connector = await resolveConnector(candidate.task.connectorId);
+  const connector = await resolveConnector(
+    candidate.task.connectorId,
+    candidate.task.userId,
+  );
   if (!connector) {
     await markAssistantTaskFailed(
       candidate,
@@ -351,7 +358,10 @@ async function pollNextRunningAssistantTask(): Promise<boolean> {
     return true;
   }
 
-  const connector = await resolveConnector(candidate.task.connectorId);
+  const connector = await resolveConnector(
+    candidate.task.connectorId,
+    candidate.task.userId,
+  );
   if (!connector) {
     await markAssistantTaskFailed(candidate, 'No assistant connector is available for this task.');
     return true;
@@ -506,34 +516,22 @@ async function markAssistantTaskFailed(
   ]);
 }
 
-async function resolveConnector(connectorId: string | null) {
+async function resolveConnector(connectorId: string | null, ownerUserId: string) {
   await openClawConnector.syncConnectionRecord();
-  const connector =
-    (connectorId
-      ? await prisma.openClawConnection.findFirst({
-          where: {
-            id: connectorId,
-            enabled: true,
-          },
-        })
-      : null) ??
-    (await prisma.openClawConnection.findFirst({
-      where: { enabled: true },
-      orderBy: { createdAt: 'asc' },
-    }));
 
-  if (!connector) {
+  const ordered = await listOrderedConnectorsForUser(ownerUserId);
+  if (!ordered.length) {
     return null;
   }
 
-  return {
-    id: connector.id,
-    key: connector.key,
-    name: connector.name,
-    transport: connector.transport,
-    host: connector.host,
-    baseUrl: connector.baseUrl,
-    description: connector.description,
-    enabled: connector.enabled,
-  };
+  let row = connectorId
+    ? ordered.find((candidate) => candidate.id === connectorId) ??
+      null
+    : null;
+
+  if (!row) {
+    row = ordered[0] ?? null;
+  }
+
+  return row ? prismaRowToOpenClawConnectionConfig(row) : null;
 }

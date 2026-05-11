@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   getActiveFocusSession,
   getAnalyticsSnapshot,
+  getAssistantOptions,
   getCalendarState,
   getExtendedTaskAssignments,
   getExtendedTaskSets,
@@ -252,5 +253,20 @@ describe('storage normalization', () => {
         updatedAt: '2026-04-21T16:00:00.000Z',
       },
     ]);
+  });
+
+  it('defaults assistantFeatureEnabled to false when omitted from stored assistantOptions', async () => {
+    chrome.storage.sync.set({
+      assistantOptions: {
+        preferredModel: { value: 'Minimax-2.7', updatedAt: null },
+        autoCreateSession: true,
+        reuseActiveSession: true,
+        selectedConnectorId: null,
+        taskNotificationMode: 'after_focus',
+        notes: '',
+      },
+    });
+    const opts = await getAssistantOptions();
+    expect(opts.assistantFeatureEnabled).toBe(false);
   });
 });

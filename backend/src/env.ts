@@ -12,8 +12,19 @@ const envSchema = z.object({
   OPENCLAW_REMOTE_BASE_URL: z.string().default('http://127.0.0.1:3000'),
   OPENCLAW_API_TOKEN: z.string().default(''),
   OPENCLAW_HTTP_BASE_URL: z.string().default(''),
+  OPENCLAW_FETCH_MODE: z.enum(['permissive', 'strict']).default('permissive'),
+  /** Comma-separated hostname suffix allowlist used when OPENCLAW_FETCH_MODE=strict */
+  OPENCLAW_ALLOWED_HOST_SUFFIXES: z.string().default(''),
   OPENCLAW_MOCK_LATENCY_MS: z.coerce.number().default(2500),
   WORKER_POLL_INTERVAL_MS: z.coerce.number().default(5000),
 });
 
 export const env = envSchema.parse(process.env);
+
+export type OpenClawFetchMode = z.infer<typeof envSchema>['OPENCLAW_FETCH_MODE'];
+
+export function getOpenClawAllowedHostSuffixes(): string[] {
+  return env.OPENCLAW_ALLOWED_HOST_SUFFIXES.split(',')
+    .map((suffix) => suffix.trim())
+    .filter((suffix) => suffix.length > 0);
+}
