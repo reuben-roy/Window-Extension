@@ -1,4 +1,5 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { findExtendedTaskAssignment } from '../shared/extendedTasks';
 import type {
   AssistantTaskRecord,
   CalendarEvent,
@@ -15,7 +16,10 @@ import Toggle from '../shared/components/Toggle';
 import PointsBubble from '../shared/components/PointsBubble';
 import CompletionModal from './components/CompletionModal';
 import PointsDisplay from './components/PointsDisplay';
+import TaskDetailModal from './components/TaskDetailModal';
+import type { TaskDetailSelection } from './components/TaskDetailModal';
 import TaskQueue from './components/TaskQueue';
+import UpcomingCalendarBlocks from './components/UpcomingCalendarBlocks';
 
 type PanelSectionId = 'focus' | 'analytics' | 'controls' | 'assistant';
 
@@ -42,6 +46,8 @@ const SECTION_HINTS: Record<PanelSectionId, string> = {
 
 
 const POPUP_WIDTH_PX = 460;
+/** Wider while block detail modal is open (two-column layout). */
+const POPUP_WIDTH_DETAIL_PX = 620;
 const POPUP_MIN_HEIGHT_PX = 420;
 
 export default function Popup({
@@ -60,6 +66,8 @@ export default function Popup({
   const [ideaInput, setIdeaInput] = useState('');
   const [ideaError, setIdeaError] = useState<string | null>(null);
   const [completionModalOpen, setCompletionModalOpen] = useState(false);
+  const [taskDetailSelection, setTaskDetailSelection] = useState<TaskDetailSelection | null>(null);
+  const [extraCalendarEvents, setExtraCalendarEvents] = useState<CalendarEvent[]>([]);
   const [panelOrder, setPanelOrder] = useState<PanelSectionId[]>(DEFAULT_PANEL_ORDER);
   const [panelCollapsed, setPanelCollapsed] = useState<Record<PanelSectionId, boolean>>(DEFAULT_PANEL_COLLAPSED);
   const [draggedSection, setDraggedSection] = useState<PanelSectionId | null>(null);
@@ -119,6 +127,63 @@ export default function Popup({
     const id = window.setInterval(() => setBreakCountdownTick((n) => n + 1), 1000);
     return () => window.clearInterval(id);
   }, [state?.snoozeState?.active, state?.snoozeState?.expiresAt]);
+
+  const upcomingLaterToday = useMemo(() => {
+    if (!state) return [];
+    const events = Array.isArray(state.calendarState.todaysEvents) ? state.calendarState.todaysEvents : [];
+    const now = Date.now();
+    return events
+      .filter((e) => !e.isAllDay && new Date(e.start).getTime() > now && new Date(e.end).getTime() > now)
+      .sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime());
+  }, [state]);
+
+  const upcomingBeyondToday = useMemo(
+    () =>
+      [...extraCalendarEvents].sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime()),
+    [extraCalendarEvents],
+  );
+
+  useEffect(() => {
+    if (!state || state.calendarState.lastSyncedAt === null || state.calendarState.authError !== null) {
+      setExtraCalendarEvents([]);
+      return;
+    }
+    const d = new Date();
+    const start = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1);
+    const end = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 4);
+    let cancelled = false;
+    void sendMessageAsync<{ ok?: boolean; events?: CalendarEvent[] }>({
+      type: 'GET_CALENDAR_EVENTS_RANGE',
+      payload: { start: start.toISOString(), end: end.toISOString() },
+    })
+      .then((res) => {
+        if (cancelled) return;
+        if (res?.ok && Array.isArray(res.events)) setExtraCalendarEvents(res.events);
+        else setExtraCalendarEvents([]);
+      })
+      .catch(() => {
+        if (!cancelled) setExtraCalendarEvents([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [state?.calendarState.lastSyncedAt, state?.calendarState.authError]);
+
+  const handleRemoveExtendedAssignment = useCallback(async (calendarEventId: string) => {
+    try {
+      const res = await sendMessageAsync<{ ok: boolean; error?: string }>({
+        type: 'REMOVE_EXTENDED_TASK_ASSIGNMENT',
+        payload: { calendarEventId },
+      });
+      loadState();
+      return { ok: res.ok, error: res.error };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  }, [loadState]);
+
+  const popupSurfaceWidthPx =
+    mode === 'popup' ? (taskDetailSelection ? POPUP_WIDTH_DETAIL_PX : POPUP_WIDTH_PX) : undefined;
 
   const movePanelSection = useCallback((source: PanelSectionId, target: PanelSectionId) => {
     setPanelOrder((current) => {
@@ -247,8 +312,16 @@ export default function Popup({
   if (loading) {
     return (
       <div
-        style={mode === 'popup' ? { width: POPUP_WIDTH_PX, minWidth: POPUP_WIDTH_PX, minHeight: POPUP_MIN_HEIGHT_PX } : undefined}
-        className={`flex items-center justify-center bg-[var(--fg-bg)] text-sm text-[var(--fg-muted)] ${mode === 'panel' ? 'min-h-screen w-full' : 'h-[420px] w-[460px]'
+        style={
+          mode === 'popup'
+            ? {
+                width: popupSurfaceWidthPx,
+                minWidth: popupSurfaceWidthPx,
+                minHeight: POPUP_MIN_HEIGHT_PX,
+              }
+            : undefined
+        }
+        className={`flex items-center justify-center bg-[var(--fg-bg)] text-sm text-[var(--fg-muted)] ${mode === 'panel' ? 'min-h-screen w-full' : 'h-[420px]'
           }`}
       >
         Loading Window…
@@ -259,8 +332,16 @@ export default function Popup({
   if (!state) {
     return (
       <div
-        style={mode === 'popup' ? { width: POPUP_WIDTH_PX, minWidth: POPUP_WIDTH_PX, minHeight: POPUP_MIN_HEIGHT_PX } : undefined}
-        className={`${mode === 'panel' ? 'min-h-screen w-full' : 'w-[460px]'} bg-[var(--fg-bg)] p-4`}
+        style={
+          mode === 'popup'
+            ? {
+                width: popupSurfaceWidthPx,
+                minWidth: popupSurfaceWidthPx,
+                minHeight: POPUP_MIN_HEIGHT_PX,
+              }
+            : undefined
+        }
+        className={`${mode === 'panel' ? 'min-h-screen w-full' : ''} bg-[var(--fg-bg)] p-4`}
       >
         <div className="fg-card p-4">
           <p className="text-[10px] uppercase tracking-wide text-rose-600">Window</p>
@@ -323,10 +404,45 @@ export default function Popup({
     ? `${formatEventRange(calendarState.currentEvent)} · ${actionableTasks.length} task${actionableTasks.length === 1 ? '' : 's'} ready`
     : 'Tasks appear automatically when a mapped focus event starts.';
 
+  const taskDetailAssignment =
+    taskDetailSelection === null
+      ? null
+      : findExtendedTaskAssignment(
+          taskDetailSelection.kind === 'task'
+            ? taskDetailSelection.task.calendarEventId
+            : taskDetailSelection.event.id,
+          state.extendedTaskAssignments,
+        );
+
+  const upcomingCalendarSections =
+    calendarConnected
+      ? [
+          {
+            label: 'Later today',
+            hint: undefined as string | undefined,
+            events: upcomingLaterToday,
+          },
+          {
+            label: 'Tomorrow & coming days',
+            hint: 'Loads the next few days from Google Calendar when connected.',
+            events: upcomingBeyondToday,
+          },
+        ].filter((section) => section.events.length > 0)
+      : [];
+
   return (
     <div
-      style={mode === 'popup' ? { width: POPUP_WIDTH_PX, minWidth: POPUP_WIDTH_PX, maxWidth: POPUP_WIDTH_PX, minHeight: POPUP_MIN_HEIGHT_PX } : undefined}
-      className={`${mode === 'panel' ? 'min-h-screen w-full' : 'max-h-[760px] w-[460px]'} overflow-x-hidden overflow-y-auto bg-[var(--fg-bg)] font-sans select-none`}
+      style={
+        mode === 'popup'
+          ? {
+              width: popupSurfaceWidthPx,
+              minWidth: popupSurfaceWidthPx,
+              maxWidth: popupSurfaceWidthPx,
+              minHeight: POPUP_MIN_HEIGHT_PX,
+            }
+          : undefined
+      }
+      className={`${mode === 'panel' ? 'min-h-screen w-full' : 'max-h-[760px]'} overflow-x-hidden overflow-y-auto bg-[var(--fg-bg)] font-sans select-none`}
     >
       <header className="sticky top-0 z-20 border-b border-[var(--fg-border)] bg-[var(--fg-bg)]/95 px-3 py-2.5 backdrop-blur-md">
         {/* Stack title above toolbar so the text column never shares a row with wide controls (avoids squeeze/overlap). */}
@@ -470,7 +586,7 @@ export default function Popup({
                           <p className="text-[10px] font-medium uppercase tracking-wide text-[var(--fg-muted)]">
                             Tasks
                           </p>
-                          <InfoTip text="Active and carryover tasks stay compact until you expand the queue." />
+                          <InfoTip text="Badges show whether a task set is linked. Tap a row for a two-column detail view where you can remove the task set." />
                         </div>
                         <button
                           onClick={() => setCompletionModalOpen(true)}
@@ -479,7 +595,11 @@ export default function Popup({
                           Mark Task Done
                         </button>
                       </div>
-                      <TaskQueue tasks={actionableTasks} />
+                      <TaskQueue
+                        tasks={actionableTasks}
+                        extendedTaskAssignments={state.extendedTaskAssignments}
+                        onSelectTask={(task) => setTaskDetailSelection({ kind: 'task', task })}
+                      />
                     </div>
                   ) : (
                     <CompactSettingRow
@@ -489,6 +609,23 @@ export default function Popup({
                       className="px-2 py-1"
                     />
                   )}
+
+                  {upcomingCalendarSections.length > 0 ? (
+                    <div className="space-y-1 pt-1">
+                      <div className="flex items-center gap-1.5">
+                        <p className="text-[10px] font-medium uppercase tracking-wide text-[var(--fg-muted)]">
+                          Upcoming blocks
+                        </p>
+                        <InfoTip text="See whether each calendar block already has a task set before it starts. Applying new sets is still done from the calendar workspace." />
+                      </div>
+                      <UpcomingCalendarBlocks
+                        sections={upcomingCalendarSections}
+                        extendedTaskAssignments={state.extendedTaskAssignments}
+                        formatEventRange={formatEventRange}
+                        onSelectEvent={(event) => setTaskDetailSelection({ kind: 'event', event })}
+                      />
+                    </div>
+                  ) : null}
                 </div>
               )}
 
@@ -643,6 +780,17 @@ export default function Popup({
           );
         })}
       </div>
+
+      {taskDetailSelection ? (
+        <TaskDetailModal
+          selection={taskDetailSelection}
+          assignment={taskDetailAssignment}
+          formatEventRange={formatEventRange}
+          onClose={() => setTaskDetailSelection(null)}
+          onRemoveAssignment={handleRemoveExtendedAssignment}
+          onOpenWorkspace={() => chrome.runtime.openOptionsPage()}
+        />
+      ) : null}
 
       {completionModalOpen && actionableTasks.length > 0 && (
         <CompletionModal
@@ -1380,7 +1528,8 @@ function isStateResponse(value: unknown): value is StateResponse {
     candidate.allTimeStats &&
     candidate.assistantOptions &&
     candidate.ideaState &&
-    candidate.openClawState,
+    candidate.openClawState &&
+    Array.isArray(candidate.extendedTaskAssignments),
   );
 }
 

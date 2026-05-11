@@ -116,6 +116,8 @@ interface SelectedTooltipState {
   anchorRect: DOMRect;
 }
 
+const OCCURRENCE_CHECKLIST_PREVIEW_COUNT = 5;
+
 interface ExtendedTaskSetDraftItem {
   id: string;
   label: string;
@@ -135,8 +137,9 @@ interface DownloadRescueToggleConfig {
   description: string;
 }
 
-const TOOLTIP_WIDTH = 392;
-const TOOLTIP_HEIGHT = 688;
+/** Wide enough for two-column event editor (tags + allowlist | task set + launch). */
+const TOOLTIP_WIDTH = 720;
+const TOOLTIP_HEIGHT = 720;
 const TOOLTIP_MARGIN = 20;
 const DOWNLOAD_RESCUE_MAX_PATCH: Partial<Settings> = {
   downloadRedirectUseDownloadsApi: true,
@@ -271,6 +274,7 @@ export default function Options(): React.JSX.Element {
   const [showExtendedTaskEditor, setShowExtendedTaskEditor] = useState(false);
   const [completingExtendedTaskItemId, setCompletingExtendedTaskItemId] = useState<string | null>(null);
   const [extendedTaskActionError, setExtendedTaskActionError] = useState('');
+  const [occurrenceChecklistExpanded, setOccurrenceChecklistExpanded] = useState(false);
   const workspaceEventsRef = useRef<ResolvedWorkspaceEvent[]>([]);
   const extendedTaskSetsRef = useRef<ExtendedTaskSet[]>([]);
   const draggingExtendedTaskEntryRef = useRef<ExtendedTaskLibraryEntry | null>(null);
@@ -522,6 +526,10 @@ export default function Options(): React.JSX.Element {
       clearExtendedTaskDropTargets();
     }
   }, [draggingExtendedTaskEntry]);
+
+  useEffect(() => {
+    setOccurrenceChecklistExpanded(false);
+  }, [occurrenceExtendedTaskAssignment?.id]);
 
   useEffect(() => {
     if (!selectedTooltip) return;
@@ -963,6 +971,26 @@ export default function Options(): React.JSX.Element {
       await loadData();
     } catch (error) {
       setExtendedTaskActionError(error instanceof Error ? error.message : 'Unable to complete the extended task item.');
+    } finally {
+      setCompletingExtendedTaskItemId(null);
+    }
+  }, [loadData]);
+
+  const uncompleteExtendedTaskAssignmentItem = useCallback(async (assignmentId: string, itemId: string) => {
+    setExtendedTaskActionError('');
+    setCompletingExtendedTaskItemId(itemId);
+    try {
+      const response = await sendMessageAsync<{ ok: boolean; error?: string }>({
+        type: 'MARK_EXTENDED_TASK_ITEM_UNCOMPLETE',
+        payload: { assignmentId, itemId },
+      });
+      if (!response?.ok) {
+        setExtendedTaskActionError(response?.error ?? 'Unable to update the extended task item.');
+        return;
+      }
+      await loadData();
+    } catch (error) {
+      setExtendedTaskActionError(error instanceof Error ? error.message : 'Unable to update the extended task item.');
     } finally {
       setCompletingExtendedTaskItemId(null);
     }
@@ -1667,57 +1695,104 @@ export default function Options(): React.JSX.Element {
                         </button>
                       </div>
 
-                      <div className="space-y-2">
-                        {occurrenceExtendedTaskAssignment.items.map((item, index) => {
-                          const completed = item.completedAt !== null;
-                          const loading = completingExtendedTaskItemId === item.id;
-                          return (
+                      {(() => {
+                        const allItems = occurrenceExtendedTaskAssignment.items;
+                        const total = allItems.length;
+                        const needsCollapse = total > OCCURRENCE_CHECKLIST_PREVIEW_COUNT;
+                        const previewItems = occurrenceChecklistExpanded
+                          ? allItems
+                          : allItems.slice(0, OCCURRENCE_CHECKLIST_PREVIEW_COUNT);
+                        return (
+                          <>
+                            {needsCollapse ? (
+                              <p className="text-xs text-[var(--fg-muted)]">
+                                {occurrenceChecklistExpanded
+                                  ? `Showing all ${total} steps.`
+                                  : `Showing ${previewItems.length} of ${total} steps.`}
+                              </p>
+                            ) : null}
                             <div
-                              key={item.id}
-                              className={`flex items-start gap-3 rounded-[18px] border px-3 py-3 ${
-                                completed
-                                  ? 'border-emerald-200 bg-emerald-50/70'
-                                  : 'border-[var(--fg-border)] bg-white'
-                              }`}
+                              className={
+                                occurrenceChecklistExpanded && needsCollapse
+                                  ? 'max-h-[min(420px,70vh)] space-y-2 overflow-y-auto pr-1'
+                                  : 'space-y-2'
+                              }
                             >
+                              {previewItems.map((item) => {
+                                const completed = item.completedAt !== null;
+                                const loading = completingExtendedTaskItemId === item.id;
+                                const stepIndex = allItems.indexOf(item);
+                                return (
+                                  <div
+                                    key={item.id}
+                                    className={`flex items-start gap-3 rounded-[18px] border px-3 py-3 ${
+                                      completed
+                                        ? 'border-emerald-200 bg-emerald-50/70'
+                                        : 'border-[var(--fg-border)] bg-white'
+                                    }`}
+                                  >
+                                    <button
+                                      type="button"
+                                      disabled={loading}
+                                      onClick={() => {
+                                        if (completed) {
+                                          void uncompleteExtendedTaskAssignmentItem(
+                                            occurrenceExtendedTaskAssignment.id,
+                                            item.id,
+                                          );
+                                        } else {
+                                          void completeExtendedTaskAssignmentItem(
+                                            occurrenceExtendedTaskAssignment.id,
+                                            item.id,
+                                          );
+                                        }
+                                      }}
+                                      className={`mt-0.5 flex h-5 w-5 items-center justify-center rounded-full border text-[10px] font-semibold ${
+                                        completed
+                                          ? 'border-emerald-500 bg-emerald-500 text-white'
+                                          : 'border-[var(--fg-border)] text-[var(--fg-muted)]'
+                                      } ${loading ? 'opacity-50' : ''}`}
+                                    >
+                                      {completed ? '✓' : loading ? '…' : stepIndex + 1}
+                                    </button>
+                                    <div className="min-w-0 flex-1">
+                                      <div className="flex items-start justify-between gap-3">
+                                        <div className="min-w-0">
+                                          <p
+                                            className={`text-sm font-medium ${completed ? 'text-emerald-900 line-through' : 'text-[var(--fg-text)]'}`}
+                                          >
+                                            {item.label}
+                                          </p>
+                                          <p className="mt-1 break-all text-xs leading-5 text-[var(--fg-muted)]">
+                                            {item.url}
+                                          </p>
+                                        </div>
+                                        <a
+                                          href={item.url}
+                                          target="_blank"
+                                          rel="noreferrer"
+                                          className="fg-button-ghost px-3 py-1.5 text-[11px]"
+                                        >
+                                          Open
+                                        </a>
+                                      </div>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                            {needsCollapse ? (
                               <button
                                 type="button"
-                                disabled={completed || loading}
-                                onClick={() => {
-                                  void completeExtendedTaskAssignmentItem(occurrenceExtendedTaskAssignment.id, item.id);
-                                }}
-                                className={`mt-0.5 flex h-5 w-5 items-center justify-center rounded-full border text-[10px] font-semibold ${
-                                  completed
-                                    ? 'border-emerald-500 bg-emerald-500 text-white'
-                                    : 'border-[var(--fg-border)] text-[var(--fg-muted)]'
-                                } ${loading ? 'opacity-50' : ''}`}
+                                onClick={() => setOccurrenceChecklistExpanded((v) => !v)}
+                                className="w-full rounded-md border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-3 py-2 text-center text-[11px] font-semibold text-[var(--fg-text)] transition hover:border-blue-200"
                               >
-                                {completed ? '✓' : loading ? '…' : index + 1}
+                                {occurrenceChecklistExpanded ? 'Show less' : `Show all ${total} steps`}
                               </button>
-                              <div className="min-w-0 flex-1">
-                                <div className="flex items-start justify-between gap-3">
-                                  <div className="min-w-0">
-                                    <p className={`text-sm font-medium ${completed ? 'text-emerald-900 line-through' : 'text-[var(--fg-text)]'}`}>
-                                      {item.label}
-                                    </p>
-                                    <p className="mt-1 break-all text-xs leading-5 text-[var(--fg-muted)]">
-                                      {item.url}
-                                    </p>
-                                  </div>
-                                  <a
-                                    href={item.url}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    className="fg-button-ghost px-3 py-1.5 text-[11px]"
-                                  >
-                                    Open
-                                  </a>
-                                </div>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
+                            ) : null}
+                          </>
+                        );
+                      })()}
                     </div>
                   ) : occurrenceExtendedTaskEvent ? (
                     <div className="mt-4 rounded-md border border-dashed border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-4 py-4">
@@ -1776,15 +1851,10 @@ export default function Options(): React.JSX.Element {
                             >
                               <div className="flex items-start justify-between gap-3">
                                 <div className="flex min-w-0 items-start gap-3">
-                                  <div
-                                    draggable
+                                  <ExtendedTaskDragGrip
                                     onDragStart={(event) => startExtendedTaskEntryDrag(neetcodeMasterEntry, event)}
                                     onDragEnd={() => setDraggingExtendedTaskEntry(null)}
-                                    className="mt-0.5 inline-flex cursor-grab select-none items-center rounded-full border border-[var(--fg-border)] bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--fg-muted)] active:cursor-grabbing"
-                                    title="Drag onto a calendar occurrence"
-                                  >
-                                    Drag
-                                  </div>
+                                  />
                                   <div className="min-w-0">
                                     <div className="flex flex-wrap items-center gap-2">
                                       <p className="truncate text-sm font-medium text-[var(--fg-text)]">
@@ -2151,6 +2221,8 @@ export default function Options(): React.JSX.Element {
           ref={tooltipRef}
           resolvedEvent={selectedResolvedEvent}
           launchTarget={selectedEventLaunchTarget}
+          extendedTaskAssignment={selectedExtendedTaskAssignment}
+          onRemoveExtendedTaskAssignment={removeOccurrenceExtendedTaskAssignment}
           taskTags={taskTags}
           anchorRect={selectedTooltip.anchorRect}
           mode={tooltipMode}
@@ -2170,6 +2242,8 @@ export default function Options(): React.JSX.Element {
 const EventRuleTooltip = React.forwardRef<HTMLDivElement, {
   resolvedEvent: ResolvedWorkspaceEvent;
   launchTarget: EventLaunchTarget | null;
+  extendedTaskAssignment: ExtendedTaskAssignment | null;
+  onRemoveExtendedTaskAssignment: (calendarEventId: string) => Promise<void>;
   taskTags: TaskTag[];
   anchorRect: DOMRect;
   mode: TooltipMode;
@@ -2183,6 +2257,8 @@ const EventRuleTooltip = React.forwardRef<HTMLDivElement, {
     {
       resolvedEvent,
       launchTarget,
+      extendedTaskAssignment,
+      onRemoveExtendedTaskAssignment,
       taskTags,
       anchorRect,
       mode,
@@ -2215,6 +2291,7 @@ const EventRuleTooltip = React.forwardRef<HTMLDivElement, {
     const [error, setError] = useState('');
     const [launchError, setLaunchError] = useState('');
     const [savingLaunchTarget, setSavingLaunchTarget] = useState(false);
+    const [removingExtendedTask, setRemovingExtendedTask] = useState(false);
     const previousEventIdRef = useRef(resolvedEvent.event.id);
 
     // Only reset the draft when switching events. Background storage refreshes
@@ -2233,6 +2310,7 @@ const EventRuleTooltip = React.forwardRef<HTMLDivElement, {
       setError('');
       setLaunchError('');
       setEditingLaunchTarget(false);
+      setRemovingExtendedTask(false);
     }, [currentDomainsValue, currentLaunchUrlValue, resolvedEvent.difficultyRank, resolvedEvent.event.id, resolvedEvent.secondaryTagKeys, resolvedEvent.tagKey, startsInEditing]);
 
     const positioning = mode === 'modal'
@@ -2306,8 +2384,8 @@ const EventRuleTooltip = React.forwardRef<HTMLDivElement, {
         ) : null}
         <div
           ref={ref}
-          className={`fixed z-50 w-[min(392px,calc(100vw-24px))] rounded-xl border border-white/80 bg-[rgba(255,255,255,0.98)] p-4 shadow-2xl ring-1 ring-[rgba(148,163,184,0.12)] ${
-            mode === 'modal' ? 'max-h-[min(620px,calc(100vh-40px))] overflow-auto' : 'max-h-[min(620px,calc(100vh-32px))] overflow-auto'
+          className={`fixed z-50 w-[min(720px,calc(100vw-24px))] rounded-xl border border-white/80 bg-[rgba(255,255,255,0.98)] p-4 shadow-2xl ring-1 ring-[rgba(148,163,184,0.12)] ${
+            mode === 'modal' ? 'max-h-[min(720px,calc(100vh-40px))] overflow-auto' : 'max-h-[min(720px,calc(100vh-32px))] overflow-auto'
           }`}
           style={positioning}
           role="dialog"
@@ -2349,7 +2427,8 @@ const EventRuleTooltip = React.forwardRef<HTMLDivElement, {
             </p>
           </div>
 
-          <div className="space-y-4">
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:items-start lg:gap-5">
+            <div className="space-y-4">
             <div className="grid gap-3 md:grid-cols-2">
               <div className="rounded-md border border-[rgba(148,163,184,0.16)] bg-[var(--fg-panel-soft)] px-3 py-2.5">
                 <p className="text-sm font-medium text-[var(--fg-text)]">Primary tag</p>
@@ -2609,7 +2688,76 @@ const EventRuleTooltip = React.forwardRef<HTMLDivElement, {
               )}
             </div>
 
-            <div className="rounded-lg border border-[rgba(148,163,184,0.16)] bg-white px-4 py-4 shadow-sm">
+            </div>
+
+            <div className="space-y-4">
+              <div className="rounded-lg border border-[rgba(148,163,184,0.16)] bg-white px-4 py-4 shadow-sm">
+                <div className="mb-3">
+                  <p className="text-sm font-medium text-[var(--fg-text)]">Task set</p>
+                  <p className="mt-1 text-xs leading-5 text-[var(--fg-muted)]">
+                    Occurrence checklist from Extended Tasks (right rail). This applies only to this calendar block, not every event with the same title.
+                  </p>
+                </div>
+                {extendedTaskAssignment ? (
+                  <div className="space-y-3">
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-[var(--fg-text)]">{extendedTaskAssignment.setTitle}</p>
+                      <p className="mt-0.5 text-xs text-[var(--fg-muted)]">
+                        {extendedTaskAssignment.items.length} linked step
+                        {extendedTaskAssignment.items.length === 1 ? '' : 's'}
+                      </p>
+                    </div>
+                    <div className="max-h-[220px] space-y-1.5 overflow-y-auto rounded-md border border-[rgba(148,163,184,0.14)] bg-[var(--fg-panel-soft)] px-2.5 py-2">
+                      {extendedTaskAssignment.items.slice(0, 12).map((item, index) => (
+                        <div key={item.id} className="flex items-start justify-between gap-2 text-[11px] leading-snug">
+                          <span
+                            className={`min-w-0 flex-1 ${
+                              item.completedAt !== null ? 'text-emerald-800 line-through' : 'text-[var(--fg-text)]'
+                            }`}
+                          >
+                            <span className="font-semibold text-[var(--fg-muted)]">{index + 1}.</span> {item.label}
+                          </span>
+                          <a
+                            href={item.url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="flex-shrink-0 font-medium text-[var(--fg-accent)]"
+                          >
+                            Open
+                          </a>
+                        </div>
+                      ))}
+                      {extendedTaskAssignment.items.length > 12 ? (
+                        <p className="text-[10px] text-[var(--fg-muted)]">
+                          +{extendedTaskAssignment.items.length - 12} more steps — scroll or use the workspace rail for the full list.
+                        </p>
+                      ) : null}
+                    </div>
+                    <button
+                      type="button"
+                      disabled={removingExtendedTask}
+                      onClick={async () => {
+                        setRemovingExtendedTask(true);
+                        try {
+                          await onRemoveExtendedTaskAssignment(resolvedEvent.event.id);
+                          await onSaved();
+                        } finally {
+                          setRemovingExtendedTask(false);
+                        }
+                      }}
+                      className="w-full rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-[11px] font-semibold text-rose-700 transition hover:bg-rose-100 disabled:opacity-50"
+                    >
+                      {removingExtendedTask ? 'Removing…' : 'Remove task set from this occurrence'}
+                    </button>
+                  </div>
+                ) : (
+                  <p className="text-sm leading-6 text-[var(--fg-muted)]">
+                    No task set linked yet. Drag a roadmap card from <strong>Extended Tasks</strong> onto this event on the calendar.
+                  </p>
+                )}
+              </div>
+
+              <div className="rounded-lg border border-[rgba(148,163,184,0.16)] bg-white px-4 py-4 shadow-sm">
               <div className="mb-3 flex items-center justify-between gap-3">
                 <div>
                   <p className="text-sm font-medium text-[var(--fg-text)]">Launch page</p>
@@ -2712,7 +2860,10 @@ const EventRuleTooltip = React.forwardRef<HTMLDivElement, {
               ) : (
                 <p className="text-sm text-[var(--fg-muted)]">No launch page saved for this occurrence.</p>
               )}
+              </div>
+
             </div>
+
           </div>
         </div>
       </>
@@ -2721,6 +2872,39 @@ const EventRuleTooltip = React.forwardRef<HTMLDivElement, {
 );
 
 EventRuleTooltip.displayName = 'EventRuleTooltip';
+
+function ExtendedTaskDragGrip({
+  onDragStart,
+  onDragEnd,
+}: {
+  onDragStart: (event: React.DragEvent<HTMLElement>) => void;
+  onDragEnd: () => void;
+}): React.JSX.Element {
+  const dots = [
+    [3, 3],
+    [11, 3],
+    [3, 9],
+    [11, 9],
+    [3, 15],
+    [11, 15],
+  ] as const;
+  return (
+    <div
+      draggable
+      onDragStart={onDragStart}
+      onDragEnd={onDragEnd}
+      className="mt-0.5 inline-flex cursor-grab select-none items-center justify-center rounded-md p-1 text-[var(--fg-muted)] active:cursor-grabbing"
+      title="Drag onto a calendar occurrence"
+      aria-label="Drag onto a calendar occurrence"
+    >
+      <svg width="14" height="18" viewBox="0 0 14 18" aria-hidden="true">
+        {dots.map(([cx, cy], i) => (
+          <circle key={i} cx={cx} cy={cy} r="2" fill="currentColor" />
+        ))}
+      </svg>
+    </div>
+  );
+}
 
 function ExtendedTaskLibraryCard({
   entry,
@@ -2757,15 +2941,10 @@ function ExtendedTaskLibraryCard({
     >
       <div className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 items-start gap-3">
-          <div
-            draggable
+          <ExtendedTaskDragGrip
             onDragStart={(event) => onDragStart(entry, event)}
             onDragEnd={onDragEnd}
-            className="mt-0.5 inline-flex cursor-grab select-none items-center rounded-full border border-[var(--fg-border)] bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--fg-muted)] active:cursor-grabbing"
-            title="Drag onto a calendar occurrence"
-          >
-            Drag
-          </div>
+          />
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
               <p className="truncate text-sm font-medium text-[var(--fg-text)]">{entry.title}</p>

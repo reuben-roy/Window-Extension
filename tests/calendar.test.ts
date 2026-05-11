@@ -209,6 +209,37 @@ describe('resolveActiveState', () => {
     expect(state.allowedDomains).toEqual([]);
   });
 
+  it('derives allowed domains from extended task URLs when no calendar rule matches', () => {
+    const event = makeEvent({
+      id: 'evt-solo',
+      title: 'Standalone block',
+    });
+    const assignment = makeExtendedTaskAssignment({
+      calendarEventId: 'evt-solo',
+      eventTitle: event.title,
+      start: event.start,
+      end: event.end,
+    });
+    const state = resolveActiveState(
+      [event],
+      [],
+      [],
+      GLOBAL_ALLOWLIST,
+      DEFAULT_SETTINGS,
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [assignment],
+    );
+    expect(state.activeRuleSource).toBe('none');
+    expect(state.isRestricted).toBe(true);
+    expect(state.allowedDomains).toContain('leetcode.com');
+    expect(state.allowedDomains).toContain('accounts.google.com');
+  });
+
   it('activates blocking for an exact event rule', () => {
     const state = resolveActiveState(
       [makeEvent({ title: 'Deep Work' })],

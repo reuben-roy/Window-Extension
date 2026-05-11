@@ -1,4 +1,7 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+/** Anchor "now" so April 2026 sample events are not pruned by the 7-day retention helpers. */
+const FIXED_NOW = new Date('2026-04-22T12:00:00.000Z');
 import {
   normalizeLaunchUrl,
   pruneExpiredEventLaunchTargets,
@@ -23,9 +26,15 @@ function makeEvent(overrides: Partial<CalendarEvent> = {}): CalendarEvent {
 
 describe('launch target helpers', () => {
   beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(FIXED_NOW);
     vi.clearAllMocks();
     chrome.storage.sync.clear();
     chrome.storage.local.clear();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   it('accepts valid http and https URLs', () => {

@@ -746,6 +746,8 @@ export type MessageType =
   | 'UPDATE_ASSISTANT_OPTIONS'
   | 'MARK_DONE'
   | 'MARK_EXTENDED_TASK_ITEM_COMPLETE'
+  | 'MARK_EXTENDED_TASK_ITEM_UNCOMPLETE'
+  | 'REMOVE_EXTENDED_TASK_ASSIGNMENT'
   | 'DISMISS_TASK'
   | 'OPEN_ACTIVE_LAUNCH_TARGET'
   | 'SAVE_ANALYTICS_OVERRIDE'
@@ -759,6 +761,7 @@ export interface Message {
 export interface StateResponse {
   settings: Settings;
   taskQueue: Task[];
+  extendedTaskAssignments: ExtendedTaskAssignment[];
   snoozeState: SnoozeState;
   allTimeStats: AllTimeStats;
   calendarState: CalendarState;

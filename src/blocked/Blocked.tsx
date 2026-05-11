@@ -560,7 +560,8 @@ function isStateResponse(value: unknown): value is StateResponse {
       candidate.taskQueue &&
       candidate.assistantOptions &&
       candidate.ideaState &&
-      candidate.openClawState,
+      candidate.openClawState &&
+      Array.isArray(candidate.extendedTaskAssignments),
   );
 }
 

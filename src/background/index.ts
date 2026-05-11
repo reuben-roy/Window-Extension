@@ -25,6 +25,7 @@ import {
   getCalendarState,
   getDownloadAllowances,
   getEventRules,
+  getExtendedTaskAssignments,
   getEventPatternStats,
   getFocusSessionHistory,
   getGlobalAllowlist,
@@ -105,7 +106,9 @@ import {
 } from './calendar';
 import {
   markExtendedTaskAssignmentItemCompleted,
+  markExtendedTaskAssignmentItemIncomplete,
   reconcileExtendedTaskAssignments,
+  removeExtendedTaskAssignment,
 } from '../shared/extendedTasks';
 import {
   normalizeLaunchUrl,
@@ -347,6 +350,12 @@ async function handleMessage(
     case 'MARK_EXTENDED_TASK_ITEM_COMPLETE':
       return handleMarkExtendedTaskItemComplete(message);
 
+    case 'MARK_EXTENDED_TASK_ITEM_UNCOMPLETE':
+      return handleMarkExtendedTaskItemUncomplete(message);
+
+    case 'REMOVE_EXTENDED_TASK_ASSIGNMENT':
+      return handleRemoveExtendedTaskAssignment(message);
+
     case 'OPEN_ACTIVE_LAUNCH_TARGET':
       return openActiveLaunchTarget();
 
@@ -366,6 +375,7 @@ async function buildStateResponse(): Promise<StateResponse> {
   const [
     settings,
     taskQueue,
+    extendedTaskAssignments,
     snoozeState,
     allTimeStats,
     calendarState,
@@ -384,6 +394,7 @@ async function buildStateResponse(): Promise<StateResponse> {
   ] = await Promise.all([
     getSettings(),
     getTaskQueue(),
+    getExtendedTaskAssignments(),
     getSnoozeState(),
     getAllTimeStats(),
     getCalendarState(),
@@ -404,6 +415,7 @@ async function buildStateResponse(): Promise<StateResponse> {
   return {
     settings,
     taskQueue,
+    extendedTaskAssignments,
     snoozeState,
     allTimeStats,
     calendarState,
@@ -1789,6 +1801,55 @@ async function handleMarkExtendedTaskItemComplete(
   const updated = markExtendedTaskAssignmentItemCompleted(assignments, assignmentId, itemId);
   if (!updated.changed) {
     return { ok: false, error: 'Extended task item could not be completed.' };
+  }
+
+  await setExtendedTaskAssignments(updated.assignments);
+  await reconcileBlockingState();
+  return { ok: true, assignment: updated.assignment };
+}
+
+async function handleRemoveExtendedTaskAssignment(
+  message: Message,
+): Promise<{ ok: boolean; error?: string }> {
+  const calendarEventId = (message.payload as { calendarEventId?: string } | undefined)?.calendarEventId?.trim();
+  if (!calendarEventId) {
+    return { ok: false, error: 'Missing calendar event id.' };
+  }
+
+  await removeExtendedTaskAssignment(calendarEventId);
+  await reconcileBlockingState();
+  return { ok: true };
+}
+
+async function handleMarkExtendedTaskItemUncomplete(
+  message: Message,
+): Promise<{ ok: boolean; assignment?: ExtendedTaskAssignment | null; error?: string }> {
+  const payload = message.payload as { assignmentId?: string; itemId?: string } | undefined;
+  const assignmentId = payload?.assignmentId?.trim();
+  const itemId = payload?.itemId?.trim();
+
+  if (!assignmentId || !itemId) {
+    return { ok: false, error: 'Missing extended task item details.' };
+  }
+
+  const assignments = await reconcileExtendedTaskAssignments();
+  const assignment = assignments.find((candidate) => candidate.id === assignmentId) ?? null;
+  if (!assignment) {
+    return { ok: false, error: 'Extended task assignment not found.' };
+  }
+
+  const item = assignment.items.find((candidate) => candidate.id === itemId) ?? null;
+  if (!item) {
+    return { ok: false, error: 'Extended task item not found.' };
+  }
+
+  if (item.completedAt === null) {
+    return { ok: true, assignment };
+  }
+
+  const updated = markExtendedTaskAssignmentItemIncomplete(assignments, assignmentId, itemId);
+  if (!updated.changed) {
+    return { ok: false, error: 'Extended task item could not be uncompleted.' };
   }
 
   await setExtendedTaskAssignments(updated.assignments);

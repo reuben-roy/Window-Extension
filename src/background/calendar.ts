@@ -16,6 +16,8 @@ import {
   setTaskTags,
 } from '../shared/storage';
 import {
+  findExtendedTaskAssignment,
+  normalizeExtendedTaskUrl,
   reconcileExtendedTaskAssignments,
   resolveActiveExtendedTaskLaunchTarget,
 } from '../shared/extendedTasks';
@@ -296,6 +298,7 @@ export function resolveActiveState(
       eventPatternStats,
       eventLaunchTargets,
       extendedTaskAssignments,
+      globalAllowlist,
     );
   }
 
@@ -314,6 +317,7 @@ export function resolveActiveState(
       eventPatternStats,
       eventLaunchTargets,
       extendedTaskAssignments,
+      globalAllowlist,
     );
   }
 
@@ -339,6 +343,7 @@ export function resolveActiveState(
       eventPatternStats,
       eventLaunchTargets,
       extendedTaskAssignments,
+      globalAllowlist,
     );
   }
 
@@ -378,6 +383,8 @@ export function resolveActiveState(
     allActiveEvents,
     eventLaunchTargets,
     extendedTaskAssignments,
+    settings,
+    globalAllowlist,
   );
 }
 
@@ -395,6 +402,7 @@ function buildUnrestrictedState(
   eventPatternStats: EventPatternStat[],
   eventLaunchTargets: EventLaunchTarget[],
   extendedTaskAssignments: ExtendedTaskAssignment[],
+  globalAllowlist: string[],
 ): CalendarState {
   const currentEvent = allActiveEvents[0] ?? null;
   const tagResolution = currentEvent
@@ -439,7 +447,49 @@ function buildUnrestrictedState(
     allActiveEvents,
     eventLaunchTargets,
     extendedTaskAssignments,
+    settings,
+    globalAllowlist,
   );
+}
+
+function mergeExtendedTaskAllowlistIntoBaseState(
+  state: Omit<CalendarState, 'activeLaunchTarget'>,
+  settings: Settings,
+  allActiveEvents: CalendarEvent[],
+  extendedTaskAssignments: ExtendedTaskAssignment[],
+  globalAllowlist: string[],
+): Omit<CalendarState, 'activeLaunchTarget'> {
+  if (!settings.enableBlocking) return state;
+  if (isDailyBlockingPauseActive(new Date(), settings)) return state;
+
+  const currentEvent = state.currentEvent ?? allActiveEvents[0] ?? null;
+  if (!currentEvent) return state;
+
+  const assignment = findExtendedTaskAssignment(currentEvent.id, extendedTaskAssignments);
+  if (!assignment) return state;
+
+  const hosts: string[] = [];
+  for (const item of assignment.items) {
+    const normalized = normalizeExtendedTaskUrl(item.url);
+    if (!normalized) continue;
+    try {
+      hosts.push(new URL(normalized).hostname.toLowerCase());
+    } catch {
+      continue;
+    }
+  }
+
+  const uniqueHosts = [...new Set(hosts)];
+  if (uniqueHosts.length === 0) return state;
+
+  const pauseActive = isDailyBlockingPauseActive(new Date(), settings);
+  const shouldRestrict = settings.enableBlocking && !pauseActive;
+
+  return {
+    ...state,
+    allowedDomains: [...new Set([...state.allowedDomains, ...uniqueHosts, ...globalAllowlist])],
+    isRestricted: state.isRestricted || shouldRestrict,
+  };
 }
 
 function attachActiveLaunchTarget(
@@ -447,18 +497,28 @@ function attachActiveLaunchTarget(
   allActiveEvents: CalendarEvent[],
   eventLaunchTargets: EventLaunchTarget[],
   extendedTaskAssignments: ExtendedTaskAssignment[],
+  settings: Settings,
+  globalAllowlist: string[],
 ): CalendarState {
+  const merged = mergeExtendedTaskAllowlistIntoBaseState(
+    state,
+    settings,
+    allActiveEvents,
+    extendedTaskAssignments,
+    globalAllowlist,
+  );
+
   const activeLaunchTarget =
     resolveActiveExtendedTaskLaunchTarget(allActiveEvents, extendedTaskAssignments) ??
     resolveActiveLaunchTarget(allActiveEvents, eventLaunchTargets);
   const launchHost = activeLaunchTarget ? getLaunchTargetHost(activeLaunchTarget.launchUrl) : null;
   const allowedDomains =
-    state.isRestricted && launchHost !== null && !isAllowedHost(launchHost, state.allowedDomains)
-      ? [...new Set([...state.allowedDomains, launchHost])]
-      : state.allowedDomains;
+    merged.isRestricted && launchHost !== null && !isAllowedHost(launchHost, merged.allowedDomains)
+      ? [...new Set([...merged.allowedDomains, launchHost])]
+      : merged.allowedDomains;
 
   return {
-    ...state,
+    ...merged,
     activeLaunchTarget,
     allowedDomains,
   };
