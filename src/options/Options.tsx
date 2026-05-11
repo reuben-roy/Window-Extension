@@ -48,7 +48,7 @@ import {
   removeExtendedTaskAssignment,
 } from '../shared/extendedTasks';
 import {
-  BUILT_IN_NEETCODE_MASTER_TEMPLATE_ID,
+  BUILT_IN_LEETCODE_MASTER_TEMPLATE_ID,
   BUILT_IN_EXTENDED_TASK_TEMPLATES,
   duplicateExtendedTaskTemplate,
   encodeExtendedTaskLibraryEntryDragPayload,
@@ -89,6 +89,8 @@ import type {
   EventRule,
   FocusSessionRecord,
   KeywordRule,
+  OpenClawInstanceConnectionTest,
+  OpenClawInstanceSettings,
   OpenClawState,
   Settings,
   TaskNotificationMode,
@@ -117,6 +119,12 @@ interface SelectedTooltipState {
 }
 
 const OCCURRENCE_CHECKLIST_PREVIEW_COUNT = 5;
+
+interface ExtendedTaskListPreview {
+  title: string;
+  subtitle?: string;
+  rows: Array<{ id: string; label: string; url?: string }>;
+}
 
 interface ExtendedTaskSetDraftItem {
   id: string;
@@ -233,6 +241,18 @@ export default function Options(): React.JSX.Element {
   const [calendarState, setCalendarState] = useState<CalendarState | null>(null);
   const [assistantOptions, setAssistantOptionsState] = useState<AssistantOptions | null>(null);
   const [openClawState, setOpenClawStateState] = useState<OpenClawState | null>(null);
+  const [openClawInstanceLoaded, setOpenClawInstanceLoaded] = useState<OpenClawInstanceSettings | null>(null);
+  const [openClawInstanceDraft, setOpenClawInstanceDraft] = useState({
+    baseUrl: '',
+    apiToken: '',
+    clearStoredToken: false,
+  });
+  const [openClawInstanceBusy, setOpenClawInstanceBusy] = useState<
+    false | 'test' | 'save'
+  >(false);
+  const [openClawInstanceBanner, setOpenClawInstanceBanner] = useState<
+    null | { kind: 'ok' | 'err'; message: string }
+  >(null);
   const [analyticsSnapshot, setAnalyticsSnapshotState] = useState<AnalyticsSnapshot | null>(null);
   const [visibleEvents, setVisibleEvents] = useState<CalendarEvent[]>([]);
   const [hasLoadedVisibleRange, setHasLoadedVisibleRange] = useState(false);
@@ -250,7 +270,7 @@ export default function Options(): React.JSX.Element {
   const [tooltipMode, setTooltipMode] = useState<TooltipMode>('anchored');
   const [tooltipPlacement, setTooltipPlacement] = useState<TooltipPlacement>('bottom');
   const [expandedDefaultRoadmapId, setExpandedDefaultRoadmapId] = useState<string | null>(
-    BUILT_IN_NEETCODE_MASTER_TEMPLATE_ID,
+    BUILT_IN_LEETCODE_MASTER_TEMPLATE_ID,
   );
   const [accountUser, setAccountUserState] = useState<AccountUser | null>(null);
   const [accountSyncState, setAccountSyncStateState] = useState<AccountSyncState | null>(null);
@@ -275,6 +295,7 @@ export default function Options(): React.JSX.Element {
   const [completingExtendedTaskItemId, setCompletingExtendedTaskItemId] = useState<string | null>(null);
   const [extendedTaskActionError, setExtendedTaskActionError] = useState('');
   const [occurrenceChecklistExpanded, setOccurrenceChecklistExpanded] = useState(false);
+  const [extendedTaskListPreview, setExtendedTaskListPreview] = useState<ExtendedTaskListPreview | null>(null);
   const workspaceEventsRef = useRef<ResolvedWorkspaceEvent[]>([]);
   const extendedTaskSetsRef = useRef<ExtendedTaskSet[]>([]);
   const draggingExtendedTaskEntryRef = useRef<ExtendedTaskLibraryEntry | null>(null);
@@ -406,6 +427,155 @@ export default function Options(): React.JSX.Element {
     loadVisibleRange(api.view.activeStart.toISOString(), api.view.activeEnd.toISOString());
   }, [isConnected, calendarView, loadVisibleRange]);
 
+  useEffect(() => {
+    if (!accountUser) {
+      setOpenClawInstanceLoaded(null);
+      setOpenClawInstanceBanner(null);
+      setOpenClawInstanceDraft({
+        baseUrl: '',
+        apiToken: '',
+        clearStoredToken: false,
+      });
+      return;
+    }
+
+    let cancelled = false;
+    void sendMessageAsync<
+      | { ok: true; settings: OpenClawInstanceSettings }
+      | { ok: false; error?: string }
+    >({ type: 'LOAD_OPENCLAW_INSTANCE_SETTINGS' }).then((res) => {
+      if (cancelled || !res.ok) return;
+      setOpenClawInstanceLoaded(res.settings);
+      setOpenClawInstanceDraft((previous) => ({
+        ...previous,
+        baseUrl: res.settings.baseUrl ?? '',
+        apiToken: '',
+      }));
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [accountUser]);
+
+  const openClawInstanceExplanation = useMemo(() => {
+    if (!accountUser) {
+      return 'Sign in to configure where your self-hosted OpenClaw instance listens.';
+    }
+
+    if (!openClawInstanceLoaded) {
+      return 'Paste the HTTP or HTTPS origin where OpenClaw serves the `/api/window/*` routes. Include hostname and port (for example `http://127.0.0.1:18789`).';
+    }
+
+    const suffixHint = openClawInstanceLoaded.hasHostSuffixAllowlist
+      ? ' This Window server restricts hostnames using OPENCLAW_ALLOWED_HOST_SUFFIXES.'
+      : '';
+
+    if (openClawInstanceLoaded.fetchMode === 'strict') {
+      return `Window’s backend runs in strict OpenClaw URL mode: localhost and private IPs are rejected. Paste a hostname or HTTPS origin that the deployed backend machine can resolve and reach—for example Tailscale DNS or another shared tunnel.${suffixHint}`;
+    }
+
+    return 'Permissive mode: localhost works when Window’s backend and your SSH tunnel (if any) run on the same computer as OpenClaw is forwarded to.';
+  }, [accountUser, openClawInstanceLoaded]);
+
+  const handleTestOpenClawInstance = useCallback(async () => {
+    if (!accountUser) return;
+    setOpenClawInstanceBanner(null);
+    setOpenClawInstanceBusy('test');
+    try {
+      const res = await sendMessageAsync<
+        | { ok: true; result: OpenClawInstanceConnectionTest }
+        | { ok: false; error: string }
+      >({
+        type: 'TEST_OPENCLAW_INSTANCE_SETTINGS',
+        payload: {
+          baseUrl: openClawInstanceDraft.baseUrl.trim(),
+          ...(openClawInstanceDraft.apiToken.trim()
+            ? { apiToken: openClawInstanceDraft.apiToken.trim() }
+            : {}),
+        },
+      });
+      if (!res.ok || !('result' in res)) {
+        setOpenClawInstanceBanner({
+          kind: 'err',
+          message:
+            typeof res.error === 'string'
+              ? res.error
+              : 'Connection test failed.',
+        });
+        return;
+      }
+      const messageText =
+        res.result.ok && res.result.connected
+          ? res.result.message ?? 'OpenClaw responded successfully.'
+          : res.result.message ?? 'OpenClaw health check did not succeed.';
+      setOpenClawInstanceBanner({
+        kind: res.result.ok ? 'ok' : 'err',
+        message: messageText,
+      });
+    } finally {
+      setOpenClawInstanceBusy(false);
+    }
+  }, [accountUser, openClawInstanceDraft.apiToken, openClawInstanceDraft.baseUrl]);
+
+  const handleSaveOpenClawInstance = useCallback(async () => {
+    if (!accountUser) return;
+    setOpenClawInstanceBanner(null);
+    setOpenClawInstanceBusy('save');
+    try {
+      const trimmedBase = openClawInstanceDraft.baseUrl.trim();
+      if (!trimmedBase) {
+        setOpenClawInstanceBanner({
+          kind: 'err',
+          message: 'Provide an OpenClaw base URL before saving.',
+        });
+        return;
+      }
+
+      const res = await sendMessageAsync<
+        | { ok: true; settings: OpenClawInstanceSettings }
+        | { ok: false; error: string }
+      >({
+        type: 'SAVE_OPENCLAW_INSTANCE_SETTINGS',
+        payload: {
+          baseUrl: trimmedBase,
+          clearApiToken: openClawInstanceDraft.clearStoredToken,
+          ...(openClawInstanceDraft.apiToken.trim()
+            ? { apiToken: openClawInstanceDraft.apiToken.trim() }
+            : {}),
+        },
+      });
+
+      if (!res.ok || !('settings' in res)) {
+        setOpenClawInstanceBanner({
+          kind: 'err',
+          message:
+            typeof res.error === 'string'
+              ? res.error
+              : 'Failed to save.',
+        });
+        return;
+      }
+      setOpenClawInstanceLoaded(res.settings);
+      setOpenClawInstanceDraft((prev) => ({
+        ...prev,
+        apiToken: '',
+        clearStoredToken: false,
+        baseUrl: res.settings.baseUrl ?? prev.baseUrl,
+      }));
+      setOpenClawInstanceBanner({
+        kind: 'ok',
+        message: 'Saved. Refreshing assistant state.',
+      });
+    } finally {
+      setOpenClawInstanceBusy(false);
+    }
+  }, [
+    accountUser,
+    openClawInstanceDraft.apiToken,
+    openClawInstanceDraft.baseUrl,
+    openClawInstanceDraft.clearStoredToken,
+  ]);
+
   const todaysEvents = calendarState?.todaysEvents ?? [];
 
   const workspaceSourceEvents = hasLoadedVisibleRange
@@ -479,17 +649,17 @@ export default function Options(): React.JSX.Element {
     () => BUILT_IN_EXTENDED_TASK_TEMPLATES,
     [],
   );
-  const neetcodeMasterEntry = useMemo(
+  const leetcodeMasterEntry = useMemo(
     () =>
       defaultExtendedTaskEntries.find(
-        (entry) => entry.id === BUILT_IN_NEETCODE_MASTER_TEMPLATE_ID,
+        (entry) => entry.id === BUILT_IN_LEETCODE_MASTER_TEMPLATE_ID,
       ) ?? null,
     [defaultExtendedTaskEntries],
   );
-  const neetcodeSubgroupEntries = useMemo(
+  const leetcodeSubgroupEntries = useMemo(
     () =>
       defaultExtendedTaskEntries.filter(
-        (entry) => entry.id !== BUILT_IN_NEETCODE_MASTER_TEMPLATE_ID,
+        (entry) => entry.id !== BUILT_IN_LEETCODE_MASTER_TEMPLATE_ID,
       ),
     [defaultExtendedTaskEntries],
   );
@@ -1310,6 +1480,115 @@ export default function Options(): React.JSX.Element {
                 defaultOpen={false}
                 bodyClassName="mt-3 space-y-3"
               >
+                {accountUser && (
+                  <div className="mb-4 grid gap-2 border-b border-[var(--fg-border-soft)] pb-4">
+                    <p className="text-xs leading-snug text-[var(--fg-muted)]">{openClawInstanceExplanation}</p>
+                    <CompactSettingRow
+                      label="OpenClaw base URL"
+                      meta="Use the scheme, host, and port your Window backend can reach (often your tunnel or LAN endpoint)."
+                      control={
+                        <input
+                          type="text"
+                          value={openClawInstanceDraft.baseUrl}
+                          onChange={(event) =>
+                            setOpenClawInstanceDraft((prev) => ({
+                              ...prev,
+                              baseUrl: event.target.value,
+                            }))
+                          }
+                          placeholder="http://127.0.0.1:18789"
+                          spellCheck={false}
+                          disabled={openClawInstanceBusy !== false}
+                          className="fg-input max-w-[min(720px,100%)] min-w-[min(440px,calc(100vw-288px))] px-3 py-2 text-sm text-[var(--fg-text)] outline-none"
+                          autoCapitalize="off"
+                          autoCorrect="off"
+                        />
+                      }
+                    />
+                    <CompactSettingRow
+                      label="OpenClaw API token"
+                      meta={
+                        openClawInstanceLoaded?.tokenConfigured
+                          ? 'A token is already stored—leave blank to keep it, or overwrite here.'
+                          : 'Optional Bearer token sent with `/api/window/*` requests.'
+                      }
+                      control={
+                        <input
+                          type="password"
+                          value={openClawInstanceDraft.apiToken}
+                          onChange={(event) =>
+                            setOpenClawInstanceDraft((prev) => ({
+                              ...prev,
+                              apiToken: event.target.value,
+                            }))
+                          }
+                          placeholder={
+                            openClawInstanceLoaded?.tokenConfigured ? 'keep existing token' : 'paste bearer token'
+                          }
+                          disabled={openClawInstanceBusy !== false}
+                          className="fg-input max-w-[min(520px,100%)] px-3 py-2 text-sm text-[var(--fg-text)] outline-none"
+                          autoCapitalize="off"
+                          autoComplete="new-password"
+                        />
+                      }
+                    />
+                    <CompactSettingRow
+                      label="Forget stored token"
+                      meta="Clears the saved Bearer token next time you press Save."
+                      control={
+                        <Toggle
+                          checked={openClawInstanceDraft.clearStoredToken}
+                          onChange={(checked) =>
+                            setOpenClawInstanceDraft((prev) => ({
+                              ...prev,
+                              clearStoredToken: checked,
+                            }))
+                          }
+                        />
+                      }
+                    />
+                    {openClawInstanceBanner ? (
+                      <p
+                        className={
+                          openClawInstanceBanner.kind === 'ok'
+                            ? 'text-xs text-emerald-500'
+                            : 'text-xs text-rose-500'
+                        }
+                      >
+                        {openClawInstanceBanner.message}
+                      </p>
+                    ) : null}
+                    <div className="flex flex-wrap gap-2 pt-1">
+                      <button
+                        type="button"
+                        className="fg-button-secondary px-4 py-2 text-xs disabled:opacity-40"
+                        onClick={() => void handleTestOpenClawInstance()}
+                        disabled={
+                          openClawInstanceBusy !== false ||
+                          openClawInstanceDraft.baseUrl.trim().length === 0
+                        }
+                      >
+                        {openClawInstanceBusy === 'test' ? 'Testing…' : 'Test OpenClaw connection'}
+                      </button>
+                      <button
+                        type="button"
+                        className="fg-button px-4 py-2 text-xs disabled:opacity-40"
+                        onClick={() => void handleSaveOpenClawInstance()}
+                        disabled={
+                          openClawInstanceBusy !== false ||
+                          openClawInstanceDraft.baseUrl.trim().length === 0
+                        }
+                      >
+                        {openClawInstanceBusy === 'save' ? 'Saving…' : 'Save OpenClaw settings'}
+                      </button>
+                    </div>
+                  </div>
+                )}
+                {!accountUser ? (
+                  <p className="mb-4 text-xs text-[var(--fg-muted)]">
+                    Assistant OpenClaw connection settings unlock after signing in.
+                  </p>
+                ) : null}
                 {assistantOptions && openClawState && (
                   <div className="grid gap-2">
                     <CompactSettingRow
@@ -1834,17 +2113,17 @@ export default function Options(): React.JSX.Element {
                           </p>
                         </div>
                         <span className="rounded-full border border-[var(--fg-border)] bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--fg-muted)]">
-                          {neetcodeSubgroupEntries.length} blocks
+                          {leetcodeSubgroupEntries.length} blocks
                         </span>
                       </div>
 
                       <div className="overflow-x-auto pb-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                         <div className="flex min-w-max gap-3">
-                          {neetcodeMasterEntry ? (
+                          {leetcodeMasterEntry ? (
                             <div
                               className={`min-w-[292px] max-w-[292px] rounded-lg border px-4 py-4 transition ${
-                                draggingExtendedTaskEntry?.id === neetcodeMasterEntry.id &&
-                                draggingExtendedTaskEntry.source === neetcodeMasterEntry.source
+                                draggingExtendedTaskEntry?.id === leetcodeMasterEntry.id &&
+                                draggingExtendedTaskEntry.source === leetcodeMasterEntry.source
                                   ? 'border-blue-300 bg-blue-50/70'
                                   : 'border-[var(--fg-border)] bg-[var(--fg-panel-soft)] hover:border-blue-200'
                               }`}
@@ -1852,32 +2131,32 @@ export default function Options(): React.JSX.Element {
                               <div className="flex items-start justify-between gap-3">
                                 <div className="flex min-w-0 items-start gap-3">
                                   <ExtendedTaskDragGrip
-                                    onDragStart={(event) => startExtendedTaskEntryDrag(neetcodeMasterEntry, event)}
+                                    onDragStart={(event) => startExtendedTaskEntryDrag(leetcodeMasterEntry, event)}
                                     onDragEnd={() => setDraggingExtendedTaskEntry(null)}
                                   />
                                   <div className="min-w-0">
                                     <div className="flex flex-wrap items-center gap-2">
                                       <p className="truncate text-sm font-medium text-[var(--fg-text)]">
-                                        {neetcodeMasterEntry.title}
+                                        {leetcodeMasterEntry.title}
                                       </p>
                                       <span className="rounded-full border border-[var(--fg-border)] bg-white px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--fg-muted)]">
                                         Roadmap
                                       </span>
                                     </div>
                                     <p className="mt-1 text-xs leading-5 text-[var(--fg-muted)]">
-                                      {neetcodeMasterEntry.items.length} total links across {neetcodeSubgroupEntries.length} subgroup blocks
+                                      {leetcodeMasterEntry.items.length} total links across {leetcodeSubgroupEntries.length} subgroup blocks
                                     </p>
                                   </div>
                                 </div>
                                 <button
                                   onClick={() =>
                                     setExpandedDefaultRoadmapId((current) =>
-                                      current === neetcodeMasterEntry.id ? null : neetcodeMasterEntry.id,
+                                      current === leetcodeMasterEntry.id ? null : leetcodeMasterEntry.id,
                                     )
                                   }
                                   className="fg-button-ghost px-3 py-1.5 text-[11px]"
                                 >
-                                  {expandedDefaultRoadmapId === neetcodeMasterEntry.id ? 'Collapse' : 'Expand'}
+                                  {expandedDefaultRoadmapId === leetcodeMasterEntry.id ? 'Collapse' : 'Expand'}
                                 </button>
                               </div>
 
@@ -1886,7 +2165,7 @@ export default function Options(): React.JSX.Element {
                                   Subgroups
                                 </p>
                                 <div className="mt-2 flex flex-wrap gap-2">
-                                  {neetcodeSubgroupEntries.slice(0, 6).map((entry) => (
+                                  {leetcodeSubgroupEntries.slice(0, 6).map((entry) => (
                                     <span
                                       key={entry.id}
                                       className="rounded-full border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-2.5 py-1 text-[11px] font-medium text-[var(--fg-muted)]"
@@ -1894,10 +2173,25 @@ export default function Options(): React.JSX.Element {
                                       {entry.title}
                                     </span>
                                   ))}
-                                  {neetcodeSubgroupEntries.length > 6 ? (
-                                    <span className="rounded-full border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-2.5 py-1 text-[11px] font-medium text-[var(--fg-muted)]">
-                                      +{neetcodeSubgroupEntries.length - 6} more
-                                    </span>
+                                  {leetcodeSubgroupEntries.length > 6 ? (
+                                    <button
+                                      type="button"
+                                      title="View all subgroup blocks"
+                                      aria-label={`View all ${leetcodeSubgroupEntries.length} subgroup blocks`}
+                                      onClick={() =>
+                                        setExtendedTaskListPreview({
+                                          title: `${leetcodeMasterEntry.title} — subgroup blocks`,
+                                          subtitle: `${leetcodeSubgroupEntries.length} blocks`,
+                                          rows: leetcodeSubgroupEntries.map((e) => ({
+                                            id: e.id,
+                                            label: e.title,
+                                          })),
+                                        })
+                                      }
+                                      className="rounded-full border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-2.5 py-1 text-[11px] font-medium text-[var(--fg-muted)] transition hover:border-blue-200 hover:text-[var(--fg-text)]"
+                                    >
+                                      +{leetcodeSubgroupEntries.length - 6} more
+                                    </button>
                                   ) : null}
                                 </div>
                               </div>
@@ -1906,7 +2200,7 @@ export default function Options(): React.JSX.Element {
                                 {occurrenceExtendedTaskEvent ? (
                                   <button
                                     onClick={() => {
-                                      void applyExtendedTaskLibraryEntryToOccurrence(neetcodeMasterEntry);
+                                      void applyExtendedTaskLibraryEntryToOccurrence(leetcodeMasterEntry);
                                     }}
                                     className="fg-button-secondary px-3 py-1.5 text-[11px]"
                                   >
@@ -1915,7 +2209,7 @@ export default function Options(): React.JSX.Element {
                                 ) : null}
                                 <button
                                   onClick={() => {
-                                    void duplicateBuiltInExtendedTaskTemplateDefinition(neetcodeMasterEntry.id);
+                                    void duplicateBuiltInExtendedTaskTemplateDefinition(leetcodeMasterEntry.id);
                                   }}
                                   className="fg-button-ghost px-3 py-1.5 text-[11px]"
                                 >
@@ -1927,11 +2221,11 @@ export default function Options(): React.JSX.Element {
                         </div>
                       </div>
 
-                      {expandedDefaultRoadmapId === BUILT_IN_NEETCODE_MASTER_TEMPLATE_ID ? (
+                      {expandedDefaultRoadmapId === BUILT_IN_LEETCODE_MASTER_TEMPLATE_ID ? (
                         <div className="mt-3">
                           <div className="mb-2 flex items-center justify-between gap-3">
                             <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--fg-muted)]">
-                              NeetCode Blocks
+                              LeetCode Blocks
                             </p>
                             <p className="text-[11px] text-[var(--fg-muted)]">
                               Scroll sideways to browse subgroup cards.
@@ -1939,7 +2233,7 @@ export default function Options(): React.JSX.Element {
                           </div>
                           <div className="overflow-x-auto pb-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                             <div className="flex min-w-max gap-3">
-                              {neetcodeSubgroupEntries.map((entry) => (
+                              {leetcodeSubgroupEntries.map((entry) => (
                                 <ExtendedTaskLibraryCard
                                   key={`${entry.source}:${entry.id}`}
                                   entry={entry}
@@ -1958,6 +2252,17 @@ export default function Options(): React.JSX.Element {
                                   onDuplicate={() => {
                                     void duplicateBuiltInExtendedTaskTemplateDefinition(entry.id);
                                   }}
+                                  onPreviewAllItems={(previewEntry) =>
+                                    setExtendedTaskListPreview({
+                                      title: previewEntry.title,
+                                      subtitle: `${previewEntry.items.length} link${previewEntry.items.length === 1 ? '' : 's'}`,
+                                      rows: previewEntry.items.map((item) => ({
+                                        id: item.id,
+                                        label: item.label,
+                                        url: item.url,
+                                      })),
+                                    })
+                                  }
                                 />
                               ))}
                             </div>
@@ -2009,6 +2314,17 @@ export default function Options(): React.JSX.Element {
                               onDelete={() => {
                                 void deleteExtendedTaskSetDefinition(entry.id);
                               }}
+                              onPreviewAllItems={(previewEntry) =>
+                                setExtendedTaskListPreview({
+                                  title: previewEntry.title,
+                                  subtitle: `${previewEntry.items.length} link${previewEntry.items.length === 1 ? '' : 's'}`,
+                                  rows: previewEntry.items.map((item) => ({
+                                    id: item.id,
+                                    label: item.label,
+                                    url: item.url,
+                                  })),
+                                })
+                              }
                             />
                           ))
                         ) : (
@@ -2235,6 +2551,8 @@ export default function Options(): React.JSX.Element {
           onSavingChange={setSavingRule}
         />
       )}
+
+      <ExtendedTaskListPreviewModal preview={extendedTaskListPreview} onClose={() => setExtendedTaskListPreview(null)} />
     </div>
   );
 }
@@ -2873,6 +3191,83 @@ const EventRuleTooltip = React.forwardRef<HTMLDivElement, {
 
 EventRuleTooltip.displayName = 'EventRuleTooltip';
 
+function ExtendedTaskListPreviewModal({
+  preview,
+  onClose,
+}: {
+  preview: ExtendedTaskListPreview | null;
+  onClose: () => void;
+}): React.JSX.Element | null {
+  useEffect(() => {
+    if (!preview) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [preview, onClose]);
+
+  if (!preview) return null;
+
+  return (
+    <>
+      <div
+        className="fixed inset-0 z-[60] bg-[rgba(9,14,30,0.14)] backdrop-blur-[2px]"
+        onClick={onClose}
+        aria-hidden="true"
+      />
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="extended-task-list-preview-title"
+        className="fixed left-1/2 top-1/2 z-[70] w-[min(440px,calc(100vw-28px))] max-h-[min(520px,calc(100vh-40px))] -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-xl border border-white/80 bg-[rgba(255,255,255,0.98)] shadow-2xl ring-1 ring-[rgba(148,163,184,0.12)]"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="flex items-start justify-between gap-3 border-b border-[var(--fg-border)] px-4 py-3">
+          <div className="min-w-0">
+            <h3 id="extended-task-list-preview-title" className="text-sm font-semibold text-[var(--fg-text)]">
+              {preview.title}
+            </h3>
+            {preview.subtitle ? (
+              <p className="mt-0.5 text-xs text-[var(--fg-muted)]">{preview.subtitle}</p>
+            ) : null}
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex-shrink-0 rounded-full border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-3 py-1.5 text-xs font-medium text-[var(--fg-muted)] transition hover:bg-white hover:text-[var(--fg-text)]"
+          >
+            Close
+          </button>
+        </div>
+        <ul className="max-h-[min(420px,calc(100vh-120px))] space-y-0 overflow-y-auto px-2 py-2">
+          {preview.rows.map((row, index) => (
+            <li
+              key={row.id}
+              className="flex items-start justify-between gap-2 rounded-md px-2 py-1.5 text-xs leading-snug text-[var(--fg-text)] hover:bg-[var(--fg-panel-soft)]"
+            >
+              <span className="min-w-0 flex-1">
+                <span className="font-semibold text-[var(--fg-muted)]">{index + 1}.</span> {row.label}
+              </span>
+              {row.url ? (
+                <a
+                  href={row.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex-shrink-0 font-medium text-[var(--fg-accent)]"
+                  onClick={(event) => event.stopPropagation()}
+                >
+                  Open
+                </a>
+              ) : null}
+            </li>
+          ))}
+        </ul>
+      </div>
+    </>
+  );
+}
+
 function ExtendedTaskDragGrip({
   onDragStart,
   onDragEnd,
@@ -2918,6 +3313,7 @@ function ExtendedTaskLibraryCard({
   onDuplicate,
   onEdit,
   onDelete,
+  onPreviewAllItems,
 }: {
   entry: ExtendedTaskLibraryEntry;
   dragging: boolean;
@@ -2930,6 +3326,7 @@ function ExtendedTaskLibraryCard({
   onDuplicate?: () => void;
   onEdit?: () => void;
   onDelete?: () => void;
+  onPreviewAllItems?: (entry: ExtendedTaskLibraryEntry) => void;
 }): React.JSX.Element {
   return (
     <div
@@ -2988,10 +3385,18 @@ function ExtendedTaskLibraryCard({
             {index + 1}. {item.label}
           </p>
         ))}
-        {entry.items.length > 3 ? (
-          <p className="text-xs text-[var(--fg-muted)]">
+        {entry.items.length > 3 && onPreviewAllItems ? (
+          <button
+            type="button"
+            title="View full link list"
+            aria-label={`View all ${entry.items.length} links in this set`}
+            onClick={() => onPreviewAllItems(entry)}
+            className="text-left text-xs font-medium text-[var(--fg-accent)] underline decoration-[var(--fg-accent)]/40 underline-offset-2 transition hover:decoration-[var(--fg-accent)]"
+          >
             +{entry.items.length - 3} more
-          </p>
+          </button>
+        ) : entry.items.length > 3 ? (
+          <p className="text-xs text-[var(--fg-muted)]">+{entry.items.length - 3} more</p>
         ) : null}
       </div>
     </div>

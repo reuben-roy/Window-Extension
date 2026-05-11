@@ -20,11 +20,11 @@ export interface ExtendedTaskLibraryDragPayload {
 }
 
 export const EXTENDED_TASK_LIBRARY_DRAG_MIME = 'application/x-window-extended-task-library-entry';
-export const BUILT_IN_NEETCODE_MASTER_TEMPLATE_ID = 'neetcode-150-master';
+export const BUILT_IN_LEETCODE_MASTER_TEMPLATE_ID = 'leetcode-150-master';
 
-const NEETCODE_ROADMAP_GROUPS: readonly ExtendedTaskSeedGroup[] = [
+const LEETCODE_ROADMAP_GROUPS: readonly ExtendedTaskSeedGroup[] = [
   {
-    id: 'neetcode-arrays-hashing',
+    id: 'leetcode-arrays-hashing',
     title: 'Arrays & Hashing',
     items: [
       ['Contains Duplicate', 'https://leetcode.com/problems/contains-duplicate/'],
@@ -39,7 +39,7 @@ const NEETCODE_ROADMAP_GROUPS: readonly ExtendedTaskSeedGroup[] = [
     ],
   },
   {
-    id: 'neetcode-two-pointers',
+    id: 'leetcode-two-pointers',
     title: 'Two Pointers',
     items: [
       ['Valid Palindrome', 'https://leetcode.com/problems/valid-palindrome/'],
@@ -50,7 +50,7 @@ const NEETCODE_ROADMAP_GROUPS: readonly ExtendedTaskSeedGroup[] = [
     ],
   },
   {
-    id: 'neetcode-sliding-window',
+    id: 'leetcode-sliding-window',
     title: 'Sliding Window',
     items: [
       ['Best Time to Buy and Sell Stock', 'https://leetcode.com/problems/best-time-to-buy-and-sell-stock/'],
@@ -62,7 +62,7 @@ const NEETCODE_ROADMAP_GROUPS: readonly ExtendedTaskSeedGroup[] = [
     ],
   },
   {
-    id: 'neetcode-stack',
+    id: 'leetcode-stack',
     title: 'Stack',
     items: [
       ['Valid Parentheses', 'https://leetcode.com/problems/valid-parentheses/'],
@@ -75,7 +75,7 @@ const NEETCODE_ROADMAP_GROUPS: readonly ExtendedTaskSeedGroup[] = [
     ],
   },
   {
-    id: 'neetcode-binary-search',
+    id: 'leetcode-binary-search',
     title: 'Binary Search',
     items: [
       ['Binary Search', 'https://leetcode.com/problems/binary-search/'],
@@ -88,7 +88,7 @@ const NEETCODE_ROADMAP_GROUPS: readonly ExtendedTaskSeedGroup[] = [
     ],
   },
   {
-    id: 'neetcode-linked-list',
+    id: 'leetcode-linked-list',
     title: 'Linked List',
     items: [
       ['Reverse Linked List', 'https://leetcode.com/problems/reverse-linked-list/'],
@@ -105,7 +105,7 @@ const NEETCODE_ROADMAP_GROUPS: readonly ExtendedTaskSeedGroup[] = [
     ],
   },
   {
-    id: 'neetcode-trees',
+    id: 'leetcode-trees',
     title: 'Trees',
     items: [
       ['Invert Binary Tree', 'https://leetcode.com/problems/invert-binary-tree/'],
@@ -126,7 +126,7 @@ const NEETCODE_ROADMAP_GROUPS: readonly ExtendedTaskSeedGroup[] = [
     ],
   },
   {
-    id: 'neetcode-tries',
+    id: 'leetcode-tries',
     title: 'Tries',
     items: [
       ['Implement Trie (Prefix Tree)', 'https://leetcode.com/problems/implement-trie-prefix-tree/'],
@@ -135,7 +135,7 @@ const NEETCODE_ROADMAP_GROUPS: readonly ExtendedTaskSeedGroup[] = [
     ],
   },
   {
-    id: 'neetcode-heap-priority-queue',
+    id: 'leetcode-heap-priority-queue',
     title: 'Heap / Priority Queue',
     items: [
       ['Kth Largest Element in a Stream', 'https://leetcode.com/problems/kth-largest-element-in-a-stream/'],
@@ -148,7 +148,7 @@ const NEETCODE_ROADMAP_GROUPS: readonly ExtendedTaskSeedGroup[] = [
     ],
   },
   {
-    id: 'neetcode-backtracking',
+    id: 'leetcode-backtracking',
     title: 'Backtracking',
     items: [
       ['Subsets', 'https://leetcode.com/problems/subsets/'],
@@ -163,7 +163,7 @@ const NEETCODE_ROADMAP_GROUPS: readonly ExtendedTaskSeedGroup[] = [
     ],
   },
   {
-    id: 'neetcode-graphs',
+    id: 'leetcode-graphs',
     title: 'Graphs',
     items: [
       ['Number of Islands', 'https://leetcode.com/problems/number-of-islands/'],
@@ -182,7 +182,7 @@ const NEETCODE_ROADMAP_GROUPS: readonly ExtendedTaskSeedGroup[] = [
     ],
   },
   {
-    id: 'neetcode-advanced-graphs',
+    id: 'leetcode-advanced-graphs',
     title: 'Advanced Graphs',
     items: [
       ['Reconstruct Itinerary', 'https://leetcode.com/problems/reconstruct-itinerary/'],
@@ -194,7 +194,7 @@ const NEETCODE_ROADMAP_GROUPS: readonly ExtendedTaskSeedGroup[] = [
     ],
   },
   {
-    id: 'neetcode-1d-dp',
+    id: 'leetcode-1d-dp',
     title: '1-D Dynamic Programming',
     items: [
       ['Climbing Stairs', 'https://leetcode.com/problems/climbing-stairs/'],
@@ -212,7 +212,7 @@ const NEETCODE_ROADMAP_GROUPS: readonly ExtendedTaskSeedGroup[] = [
     ],
   },
   {
-    id: 'neetcode-2d-dp',
+    id: 'leetcode-2d-dp',
     title: '2-D Dynamic Programming',
     items: [
       ['Unique Paths', 'https://leetcode.com/problems/unique-paths/'],
@@ -229,7 +229,7 @@ const NEETCODE_ROADMAP_GROUPS: readonly ExtendedTaskSeedGroup[] = [
     ],
   },
   {
-    id: 'neetcode-greedy',
+    id: 'leetcode-greedy',
     title: 'Greedy',
     items: [
       ['Maximum Subarray', 'https://leetcode.com/problems/maximum-subarray/'],
@@ -243,7 +243,7 @@ const NEETCODE_ROADMAP_GROUPS: readonly ExtendedTaskSeedGroup[] = [
     ],
   },
   {
-    id: 'neetcode-intervals',
+    id: 'leetcode-intervals',
     title: 'Intervals',
     items: [
       ['Insert Interval', 'https://leetcode.com/problems/insert-interval/'],
@@ -255,7 +255,7 @@ const NEETCODE_ROADMAP_GROUPS: readonly ExtendedTaskSeedGroup[] = [
     ],
   },
   {
-    id: 'neetcode-math-geometry',
+    id: 'leetcode-math-geometry',
     title: 'Math & Geometry',
     items: [
       ['Rotate Image', 'https://leetcode.com/problems/rotate-image/'],
@@ -269,7 +269,7 @@ const NEETCODE_ROADMAP_GROUPS: readonly ExtendedTaskSeedGroup[] = [
     ],
   },
   {
-    id: 'neetcode-bit-manipulation',
+    id: 'leetcode-bit-manipulation',
     title: 'Bit Manipulation',
     items: [
       ['Single Number', 'https://leetcode.com/problems/single-number/'],
@@ -300,15 +300,15 @@ function createTemplate(seedGroup: ExtendedTaskSeedGroup): ExtendedTaskTemplate 
   };
 }
 
-export const BUILT_IN_NEETCODE_TOPIC_TEMPLATES: ExtendedTaskTemplate[] =
-  NEETCODE_ROADMAP_GROUPS.map(createTemplate);
+export const BUILT_IN_LEETCODE_TOPIC_TEMPLATES: ExtendedTaskTemplate[] =
+  LEETCODE_ROADMAP_GROUPS.map(createTemplate);
 
-export const BUILT_IN_NEETCODE_MASTER_TEMPLATE: ExtendedTaskTemplate = {
-  id: BUILT_IN_NEETCODE_MASTER_TEMPLATE_ID,
-  title: 'NeetCode 150',
+export const BUILT_IN_LEETCODE_MASTER_TEMPLATE: ExtendedTaskTemplate = {
+  id: BUILT_IN_LEETCODE_MASTER_TEMPLATE_ID,
+  title: 'LeetCode 150',
   items: createStableItems(
-    BUILT_IN_NEETCODE_MASTER_TEMPLATE_ID,
-    NEETCODE_ROADMAP_GROUPS.flatMap((group) =>
+    BUILT_IN_LEETCODE_MASTER_TEMPLATE_ID,
+    LEETCODE_ROADMAP_GROUPS.flatMap((group) =>
       group.items.map(
         ([label, url]) => [`${group.title} · ${label}`, url] as const,
       ),
@@ -318,11 +318,11 @@ export const BUILT_IN_NEETCODE_MASTER_TEMPLATE: ExtendedTaskTemplate = {
 };
 
 export const BUILT_IN_EXTENDED_TASK_TEMPLATES: ExtendedTaskTemplate[] = [
-  BUILT_IN_NEETCODE_MASTER_TEMPLATE,
-  ...BUILT_IN_NEETCODE_TOPIC_TEMPLATES,
+  BUILT_IN_LEETCODE_MASTER_TEMPLATE,
+  ...BUILT_IN_LEETCODE_TOPIC_TEMPLATES,
 ];
 
-export const BUILT_IN_NEETCODE_TOPIC_TEMPLATE_IDS = BUILT_IN_NEETCODE_TOPIC_TEMPLATES.map(
+export const BUILT_IN_LEETCODE_TOPIC_TEMPLATE_IDS = BUILT_IN_LEETCODE_TOPIC_TEMPLATES.map(
   (template) => template.id,
 );
 

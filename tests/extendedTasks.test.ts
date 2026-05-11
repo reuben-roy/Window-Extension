@@ -133,14 +133,14 @@ describe('extended task assignments', () => {
   it('creates occurrence assignments directly from built-in templates', async () => {
     const event = makeEvent();
     const template = BUILT_IN_EXTENDED_TASK_TEMPLATES.find(
-      (candidate) => candidate.id === 'neetcode-stack',
+      (candidate) => candidate.id === 'leetcode-stack',
     );
 
     expect(template).toBeTruthy();
 
     const assignment = await assignExtendedTaskSetToEvent(event, template!);
 
-    expect(assignment.setId).toBe('neetcode-stack');
+    expect(assignment.setId).toBe('leetcode-stack');
     expect(assignment.setTitle).toBe('Stack');
     expect(assignment.items[0]).toMatchObject({
       label: 'Valid Parentheses',

@@ -26,32 +26,32 @@ function makeUserTaskSet(overrides: Partial<ExtendedTaskSet> = {}): ExtendedTask
 describe('extended task library templates', () => {
   it('includes the master card and every seeded roadmap category', () => {
     expect(BUILT_IN_EXTENDED_TASK_TEMPLATES.map((template) => template.id)).toEqual([
-      'neetcode-150-master',
-      'neetcode-arrays-hashing',
-      'neetcode-two-pointers',
-      'neetcode-sliding-window',
-      'neetcode-stack',
-      'neetcode-binary-search',
-      'neetcode-linked-list',
-      'neetcode-trees',
-      'neetcode-tries',
-      'neetcode-heap-priority-queue',
-      'neetcode-backtracking',
-      'neetcode-graphs',
-      'neetcode-advanced-graphs',
-      'neetcode-1d-dp',
-      'neetcode-2d-dp',
-      'neetcode-greedy',
-      'neetcode-intervals',
-      'neetcode-math-geometry',
-      'neetcode-bit-manipulation',
+      'leetcode-150-master',
+      'leetcode-arrays-hashing',
+      'leetcode-two-pointers',
+      'leetcode-sliding-window',
+      'leetcode-stack',
+      'leetcode-binary-search',
+      'leetcode-linked-list',
+      'leetcode-trees',
+      'leetcode-tries',
+      'leetcode-heap-priority-queue',
+      'leetcode-backtracking',
+      'leetcode-graphs',
+      'leetcode-advanced-graphs',
+      'leetcode-1d-dp',
+      'leetcode-2d-dp',
+      'leetcode-greedy',
+      'leetcode-intervals',
+      'leetcode-math-geometry',
+      'leetcode-bit-manipulation',
     ]);
   });
 
-  it('builds the NeetCode 150 master card in roadmap order with category-prefixed labels', () => {
+  it('builds the LeetCode 150 master card in roadmap order with category-prefixed labels', () => {
     const masterTemplate = BUILT_IN_EXTENDED_TASK_TEMPLATES[0];
 
-    expect(masterTemplate.title).toBe('NeetCode 150');
+    expect(masterTemplate.title).toBe('LeetCode 150');
     expect(masterTemplate.items).toHaveLength(150);
     expect(masterTemplate.items[0]).toMatchObject({
       label: 'Arrays & Hashing · Contains Duplicate',
@@ -69,7 +69,7 @@ describe('extended task library templates', () => {
 
   it('duplicates a built-in template into an editable synced task set without mutating the original', () => {
     const arraysTemplate = BUILT_IN_EXTENDED_TASK_TEMPLATES.find(
-      (template) => template.id === 'neetcode-arrays-hashing',
+      (template) => template.id === 'leetcode-arrays-hashing',
     );
     expect(arraysTemplate).toBeTruthy();
 
@@ -94,13 +94,13 @@ describe('extended task library templates', () => {
 describe('extended task drag payload helpers', () => {
   it('encodes and decodes entry identity for drag/drop', () => {
     const arraysTemplate = BUILT_IN_EXTENDED_TASK_TEMPLATES.find(
-      (template) => template.id === 'neetcode-arrays-hashing',
+      (template) => template.id === 'leetcode-arrays-hashing',
     );
     expect(arraysTemplate).toBeTruthy();
 
     const payload = encodeExtendedTaskLibraryEntryDragPayload(arraysTemplate!);
     expect(decodeExtendedTaskLibraryEntryDragPayload(payload)).toEqual({
-      entryId: 'neetcode-arrays-hashing',
+      entryId: 'leetcode-arrays-hashing',
       source: 'built-in',
     });
   });
@@ -132,7 +132,7 @@ describe('extended task drag payload helpers', () => {
         taskSets: [userTaskSet],
       }),
     ).toMatchObject({
-      id: 'neetcode-150-master',
+      id: 'leetcode-150-master',
       source: 'built-in',
     });
   });

@@ -177,6 +177,6 @@ describe('account snapshot helpers', () => {
 
     expect(snapshot.extendedTaskSets).toEqual([]);
     expect(snapshot.extendedTaskAssignments).toEqual([]);
-    expect(snapshot.extendedTaskSets.find((taskSet) => taskSet.id === 'neetcode-150-master')).toBeUndefined();
+    expect(snapshot.extendedTaskSets.find((taskSet) => taskSet.id === 'leetcode-150-master')).toBeUndefined();
   });
 });
