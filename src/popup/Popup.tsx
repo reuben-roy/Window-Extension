@@ -463,6 +463,15 @@ export default function Popup({
                 Undock
               </button>
             )}
+            {mode !== 'panel' && !settings.persistentPanelEnabled && (
+              <button
+                type="button"
+                onClick={() => togglePersistentPanel(true)}
+                className="fg-button-ghost px-2 py-1 text-[11px]"
+              >
+                Dock
+              </button>
+            )}
             <button
               type="button"
               onClick={handleToggle}
