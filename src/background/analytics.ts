@@ -5,6 +5,8 @@ import {
   createEmptyFocusSession,
   finalizeActivitySession,
   finalizeLocalActivityRecord,
+  getDurationMinutes,
+  LOCAL_DAILY_CONSUMPTION_ROLLUP_RETENTION_DAYS,
   summarizeFocusSession,
   trimActivityHistory,
   trimLocalActivityHistory,
@@ -21,6 +23,7 @@ import {
   getActivitySessionQueue,
   getAnalyticsSnapshot,
   getCalendarState,
+  getDailyConsumptionRollups,
   getEventPatternStats,
   getFocusSessionHistory,
   getFocusSessionQueue,
@@ -32,6 +35,7 @@ import {
   setActivityHistory,
   setActivitySessionQueue,
   setAnalyticsSnapshot,
+  setDailyConsumptionRollups,
   setEventPatternStats,
   setFocusSessionHistory,
   setFocusSessionQueue,
@@ -45,6 +49,7 @@ import type {
   AnalyticsOverrideInput,
   CalendarState,
 } from '../shared/types';
+import type { DailyConsumptionRollup, DailyConsumptionRollupStore } from '../shared/types';
 import { isSnoozeActive } from './snooze';
 
 export function registerAnalyticsListeners(): void {
@@ -251,6 +256,10 @@ async function recordActivity(
       ? at
       : activeFocusSession.lastProductiveAt;
 
+  if (upserted.finalized) {
+    await updateDailyConsumptionRollups(upserted.finalized);
+  }
+
   await Promise.all([
     setActivityHistory(nextHistory),
     setActivitySessionQueue(nextQueue),
@@ -367,6 +376,10 @@ async function finalizeActiveTracking(at: string): Promise<void> {
   const nextFocusHistory = trimFocusSessionsHistory([...focusHistory, finalizedFocus]);
   const nextFocusQueue = [...focusQueue, finalizedFocus];
 
+  if (finalizedActivity) {
+    await updateDailyConsumptionRollups(finalizedActivity);
+  }
+
   await Promise.all([
     setActivityHistory(nextActivityHistory),
     setActivitySessionQueue(nextActivityQueue),
@@ -380,7 +393,15 @@ async function finalizeActiveTracking(at: string): Promise<void> {
 }
 
 async function refreshLocalAnalyticsSnapshot(): Promise<void> {
-  const [taskTags, focusHistory, activeFocusSession, activeActivitySession, existingSnapshot, activityHistory] =
+  const [
+    taskTags,
+    focusHistory,
+    activeFocusSession,
+    activeActivitySession,
+    existingSnapshot,
+    activityHistory,
+    dailyConsumptionRollups,
+  ] =
     await Promise.all([
       getTaskTags(),
       getFocusSessionHistory(),
@@ -388,6 +409,7 @@ async function refreshLocalAnalyticsSnapshot(): Promise<void> {
       getActiveActivitySession(),
       getAnalyticsSnapshot(),
       getActivityHistory(),
+      getDailyConsumptionRollups(),
     ]);
   const activityHistoryWithCurrent = activeActivitySession
     ? [...activityHistory, activeActivitySession as ActivitySessionRecord]
@@ -408,6 +430,7 @@ async function refreshLocalAnalyticsSnapshot(): Promise<void> {
     taskTags,
     focusHistory,
     activityHistory: activityHistoryWithCurrent,
+    dailyConsumptionRollups,
     currentSession,
     currentActivityClass: activeActivitySession?.activityClass ?? null,
     lastCalculatedAt: new Date().toISOString(),
@@ -415,6 +438,87 @@ async function refreshLocalAnalyticsSnapshot(): Promise<void> {
   });
 
   await setAnalyticsSnapshot(next);
+}
+
+async function updateDailyConsumptionRollups(activity: ActivitySessionRecord): Promise<void> {
+  const minutes = getDurationMinutes(activity.startedAt, activity.endedAt);
+  if (minutes <= 0) return;
+
+  const store = await getDailyConsumptionRollups();
+  const dateKey = new Date(activity.startedAt).toISOString().slice(0, 10);
+  const existing: DailyConsumptionRollup = store[dateKey] ?? {
+    dateKey,
+    productiveMinutes: 0,
+    supportiveMinutes: 0,
+    distractedMinutes: 0,
+    awayMinutes: 0,
+    breakMinutes: 0,
+    totalMinutes: 0,
+    topDomains: [],
+    otherDomainMinutes: 0,
+  };
+
+  const next = { ...existing };
+  if (activity.activityClass === 'aligned') next.productiveMinutes += minutes;
+  else if (activity.activityClass === 'supportive') next.supportiveMinutes += minutes;
+  else if (activity.activityClass === 'distracted') next.distractedMinutes += minutes;
+  else if (activity.activityClass === 'away') next.awayMinutes += minutes;
+  else next.breakMinutes += minutes;
+  next.totalMinutes += minutes;
+
+  const normalizedDomain = (activity.domain ?? '').replace(/^www\./, '').toLowerCase();
+  if (normalizedDomain) {
+    const topLimit = 12;
+    const existingIndex = next.topDomains.findIndex((entry) => entry.domain === normalizedDomain);
+    if (existingIndex >= 0) {
+      const entry = { ...next.topDomains[existingIndex] };
+      entry.visits += 1;
+      entry.totalMinutes += minutes;
+      if (activity.activityClass === 'aligned') entry.productiveMinutes += minutes;
+      else if (activity.activityClass === 'supportive') entry.supportiveMinutes += minutes;
+      else if (activity.activityClass === 'distracted') entry.distractedMinutes += minutes;
+      else if (activity.activityClass === 'away') entry.awayMinutes += minutes;
+      else entry.breakMinutes += minutes;
+      next.topDomains = [
+        ...next.topDomains.slice(0, existingIndex),
+        entry,
+        ...next.topDomains.slice(existingIndex + 1),
+      ];
+    } else if (next.topDomains.length < topLimit) {
+      next.topDomains = [
+        ...next.topDomains,
+        {
+          domain: normalizedDomain,
+          label: normalizedDomain,
+          productiveMinutes: activity.activityClass === 'aligned' ? minutes : 0,
+          supportiveMinutes: activity.activityClass === 'supportive' ? minutes : 0,
+          distractedMinutes: activity.activityClass === 'distracted' ? minutes : 0,
+          awayMinutes: activity.activityClass === 'away' ? minutes : 0,
+          breakMinutes: activity.activityClass === 'break' ? minutes : 0,
+          totalMinutes: minutes,
+          visits: 1,
+        },
+      ];
+    } else {
+      next.otherDomainMinutes += minutes;
+    }
+    next.topDomains = [...next.topDomains].sort((a, b) => b.totalMinutes - a.totalMinutes).slice(0, topLimit);
+  }
+
+  const trimmed = trimDailyConsumptionRollupStore({ ...store, [dateKey]: next });
+  await setDailyConsumptionRollups(trimmed);
+}
+
+function trimDailyConsumptionRollupStore(store: DailyConsumptionRollupStore): DailyConsumptionRollupStore {
+  const cutoff = Date.now() - LOCAL_DAILY_CONSUMPTION_ROLLUP_RETENTION_DAYS * 24 * 60 * 60 * 1000;
+  const next: DailyConsumptionRollupStore = {};
+  for (const [key, rollup] of Object.entries(store)) {
+    const dateMs = new Date(`${key}T00:00:00.000Z`).getTime();
+    if (Number.isFinite(dateMs) && dateMs >= cutoff) {
+      next[key] = rollup;
+    }
+  }
+  return next;
 }
 
 function queryIdleState(): Promise<boolean> {

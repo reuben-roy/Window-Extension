@@ -11,6 +11,7 @@ import type {
   ConsumptionDomainItem,
   ConsumptionTimelinePoint,
   ConsumptionTreeNode,
+  DailyConsumptionRollupStore,
   DifficultyBreakdownItem,
   DifficultyRank,
   FocusSessionRecord,
@@ -24,7 +25,10 @@ import { findTaskTag, normalizeDifficultyRank } from './tags';
 export const AWAY_THRESHOLD_SECONDS = 5 * 60;
 export const HEARTBEAT_INTERVAL_MS = 60 * 1000;
 export const LEFT_EARLY_THRESHOLD_MS = 10 * 60 * 1000;
-export const LOCAL_ANALYTICS_RETENTION_DAYS = 7;
+export const LOCAL_FOCUS_ANALYTICS_RETENTION_DAYS = 30;
+export const LOCAL_ACTIVITY_ANALYTICS_RETENTION_DAYS = 14;
+export const LOCAL_LOCAL_ACTIVITY_ANALYTICS_RETENTION_DAYS = 7;
+export const LOCAL_DAILY_CONSUMPTION_ROLLUP_RETENTION_DAYS = 400;
 
 const DIFFICULTY_ORDER: DifficultyRank[] = [1, 2, 3, 5, 8];
 
@@ -266,7 +270,7 @@ export function trimFocusSessionsHistory(
   sessions: FocusSessionRecord[],
   now: Date = new Date(),
 ): FocusSessionRecord[] {
-  const cutoff = now.getTime() - LOCAL_ANALYTICS_RETENTION_DAYS * 24 * 60 * 60 * 1000;
+  const cutoff = now.getTime() - LOCAL_FOCUS_ANALYTICS_RETENTION_DAYS * 24 * 60 * 60 * 1000;
   return sessions.filter((session) => new Date(session.endedAt).getTime() >= cutoff);
 }
 
@@ -274,7 +278,7 @@ export function trimActivityHistory(
   sessions: ActivitySessionRecord[],
   now: Date = new Date(),
 ): ActivitySessionRecord[] {
-  const cutoff = now.getTime() - LOCAL_ANALYTICS_RETENTION_DAYS * 24 * 60 * 60 * 1000;
+  const cutoff = now.getTime() - LOCAL_ACTIVITY_ANALYTICS_RETENTION_DAYS * 24 * 60 * 60 * 1000;
   return sessions.filter((session) => new Date(session.endedAt).getTime() >= cutoff);
 }
 
@@ -282,7 +286,7 @@ export function trimLocalActivityHistory(
   sessions: LocalActivityRecord[],
   now: Date = new Date(),
 ): LocalActivityRecord[] {
-  const cutoff = now.getTime() - LOCAL_ANALYTICS_RETENTION_DAYS * 24 * 60 * 60 * 1000;
+  const cutoff = now.getTime() - LOCAL_LOCAL_ACTIVITY_ANALYTICS_RETENTION_DAYS * 24 * 60 * 60 * 1000;
   return sessions.filter((session) => new Date(session.endedAt).getTime() >= cutoff);
 }
 
@@ -310,11 +314,13 @@ export function buildAnalyticsSnapshot(input: {
   taskTags: TaskTag[];
   focusHistory: FocusSessionRecord[];
   activityHistory: ActivitySessionRecord[];
+  dailyConsumptionRollups?: DailyConsumptionRollupStore;
   currentSession: FocusSessionRecord | null;
   currentActivityClass: ActivityClass | null;
   lastCalculatedAt?: string | null;
   lastSyncedAt?: string | null;
 }): AnalyticsSnapshot {
+  const dailyRollups = input.dailyConsumptionRollups ?? {};
   const summary7d = summarizeRange('7d', input.focusHistory);
   const summary30d = summarizeRange('30d', input.focusHistory);
   const tagBreakdown7d = buildTagBreakdown(input.focusHistory, input.taskTags, '7d');
@@ -322,6 +328,12 @@ export function buildAnalyticsSnapshot(input: {
   const domainBreakdown7d = buildDomainBreakdown(input.activityHistory, '7d');
   const consumptionTimeline7d = buildConsumptionTimeline(input.activityHistory, 7);
   const consumptionTree7d = buildConsumptionTree(input.activityHistory, '7d');
+  const consumptionTimeline30d = buildConsumptionTimelineFromRollups(dailyRollups, 30);
+  const consumptionTimeline90d = buildConsumptionTimelineFromRollups(dailyRollups, 90);
+  const consumptionTimeline365d = buildConsumptionTimelineFromRollups(dailyRollups, 365);
+  const domainBreakdown30d = buildDomainBreakdownFromRollups(dailyRollups, 30);
+  const domainBreakdown90d = buildDomainBreakdownFromRollups(dailyRollups, 90);
+  const domainBreakdown365d = buildDomainBreakdownFromRollups(dailyRollups, 365);
   const currentSession = input.currentSession
     ? toLiveAnalyticsSession(input.currentSession, input.currentActivityClass, input.taskTags)
     : null;
@@ -335,6 +347,12 @@ export function buildAnalyticsSnapshot(input: {
     difficultyBreakdown7d,
     domainBreakdown7d,
     consumptionTimeline7d,
+    consumptionTimeline30d,
+    consumptionTimeline90d,
+    consumptionTimeline365d,
+    domainBreakdown30d,
+    domainBreakdown90d,
+    domainBreakdown365d,
     consumptionTree7d,
     recentSessions: [...input.focusHistory]
       .sort((a, b) => new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime()),
@@ -449,6 +467,80 @@ function buildConsumptionTimeline(
   }
 
   return points;
+}
+
+function buildConsumptionTimelineFromRollups(
+  store: DailyConsumptionRollupStore,
+  days: number,
+): ConsumptionTimelinePoint[] {
+  const points: ConsumptionTimelinePoint[] = [];
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  for (let index = days - 1; index >= 0; index -= 1) {
+    const bucket = new Date(today);
+    bucket.setDate(today.getDate() - index);
+    const dateKey = bucket.toISOString().slice(0, 10);
+    const rollup = store[dateKey];
+    const productiveMinutes = rollup?.productiveMinutes ?? 0;
+    const supportiveMinutes = rollup?.supportiveMinutes ?? 0;
+    const distractedMinutes = rollup?.distractedMinutes ?? 0;
+    const awayMinutes = rollup?.awayMinutes ?? 0;
+    const breakMinutes = rollup?.breakMinutes ?? 0;
+    points.push({
+      date: bucket.toISOString(),
+      label: days <= 14 ? bucket.toLocaleDateString([], { weekday: 'short' }) : bucket.toLocaleDateString([], { month: 'short', day: 'numeric' }),
+      productiveMinutes,
+      supportiveMinutes,
+      distractedMinutes,
+      awayMinutes,
+      breakMinutes,
+      totalMinutes: productiveMinutes + supportiveMinutes + distractedMinutes + awayMinutes + breakMinutes,
+    });
+  }
+
+  return points;
+}
+
+function buildDomainBreakdownFromRollups(
+  store: DailyConsumptionRollupStore,
+  days: number,
+): ConsumptionDomainItem[] {
+  const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
+  const map = new Map<string, ConsumptionDomainItem>();
+
+  for (const rollup of Object.values(store)) {
+    const dateMs = new Date(`${rollup.dateKey}T00:00:00.000Z`).getTime();
+    if (!Number.isFinite(dateMs) || dateMs < cutoff) continue;
+
+    for (const entry of rollup.topDomains) {
+      if (!entry.domain) continue;
+      const existing = map.get(entry.domain) ?? {
+        domain: entry.domain,
+        label: entry.label || entry.domain,
+        productiveMinutes: 0,
+        supportiveMinutes: 0,
+        distractedMinutes: 0,
+        awayMinutes: 0,
+        breakMinutes: 0,
+        totalMinutes: 0,
+        visits: 0,
+        primaryActivityClass: 'away' as ActivityClass,
+      };
+
+      existing.productiveMinutes += entry.productiveMinutes;
+      existing.supportiveMinutes += entry.supportiveMinutes;
+      existing.distractedMinutes += entry.distractedMinutes;
+      existing.awayMinutes += entry.awayMinutes;
+      existing.breakMinutes += entry.breakMinutes;
+      existing.totalMinutes += entry.totalMinutes;
+      existing.visits += entry.visits;
+      existing.primaryActivityClass = dominantActivityClass(existing);
+      map.set(entry.domain, existing);
+    }
+  }
+
+  return [...map.values()].sort((a, b) => b.totalMinutes - a.totalMinutes);
 }
 
 function buildConsumptionTree(

@@ -20,6 +20,8 @@ import type {
   ConsumptionDomainItem,
   ConsumptionTimelinePoint,
   ConsumptionTreeNode,
+  DailyConsumptionRollup,
+  DailyConsumptionRollupStore,
   DownloadAllowance,
   DifficultyBreakdownItem,
   DifficultyRank,
@@ -575,6 +577,58 @@ function normalizeConsumptionTree(value: unknown): ConsumptionTreeNode[] {
     .filter((node): node is ConsumptionTreeNode => node !== null);
 }
 
+function normalizeDailyConsumptionTopDomain(
+  item: Partial<DailyConsumptionRollup['topDomains'][number]> | null | undefined,
+): DailyConsumptionRollup['topDomains'][number] | null {
+  if (!item || typeof item !== 'object') return null;
+  return {
+    domain: typeof item.domain === 'string' ? item.domain : '',
+    label: typeof item.label === 'string' ? item.label : '',
+    productiveMinutes: normalizeNumber(item.productiveMinutes),
+    supportiveMinutes: normalizeNumber(item.supportiveMinutes),
+    distractedMinutes: normalizeNumber(item.distractedMinutes),
+    awayMinutes: normalizeNumber(item.awayMinutes),
+    breakMinutes: normalizeNumber(item.breakMinutes),
+    totalMinutes: normalizeNumber(item.totalMinutes),
+    visits: normalizeNumber(item.visits),
+  };
+}
+
+function normalizeDailyConsumptionRollup(
+  item: Partial<DailyConsumptionRollup> | null | undefined,
+): DailyConsumptionRollup | null {
+  if (!item || typeof item !== 'object') return null;
+  const dateKey = typeof item.dateKey === 'string' ? item.dateKey : '';
+  if (!dateKey) return null;
+  return {
+    dateKey,
+    productiveMinutes: normalizeNumber(item.productiveMinutes),
+    supportiveMinutes: normalizeNumber(item.supportiveMinutes),
+    distractedMinutes: normalizeNumber(item.distractedMinutes),
+    awayMinutes: normalizeNumber(item.awayMinutes),
+    breakMinutes: normalizeNumber(item.breakMinutes),
+    totalMinutes: normalizeNumber(item.totalMinutes),
+    topDomains: Array.isArray(item.topDomains)
+      ? item.topDomains
+          .map((entry) => normalizeDailyConsumptionTopDomain(entry as Partial<DailyConsumptionRollup['topDomains'][number]>))
+          .filter((entry): entry is DailyConsumptionRollup['topDomains'][number] => entry !== null)
+      : [],
+    otherDomainMinutes: normalizeNumber(item.otherDomainMinutes),
+  };
+}
+
+function normalizeDailyConsumptionRollupStore(value: unknown): DailyConsumptionRollupStore {
+  if (!value || typeof value !== 'object') return {};
+  const entries = Object.entries(value as Record<string, unknown>);
+  const store: DailyConsumptionRollupStore = {};
+  for (const [key, raw] of entries) {
+    const normalized = normalizeDailyConsumptionRollup(raw as Partial<DailyConsumptionRollup>);
+    if (!normalized) continue;
+    store[key] = normalized;
+  }
+  return store;
+}
+
 function normalizeAnalyticsSnapshotStored(snapshot: AnalyticsSnapshot): AnalyticsSnapshot {
   return {
     ...DEFAULT_ANALYTICS_SNAPSHOT,
@@ -585,6 +639,12 @@ function normalizeAnalyticsSnapshotStored(snapshot: AnalyticsSnapshot): Analytic
     difficultyBreakdown7d: normalizeDifficultyBreakdownItems(snapshot?.difficultyBreakdown7d),
     domainBreakdown7d: normalizeConsumptionDomainItems(snapshot?.domainBreakdown7d),
     consumptionTimeline7d: normalizeConsumptionTimelineItems(snapshot?.consumptionTimeline7d),
+    consumptionTimeline30d: normalizeConsumptionTimelineItems(snapshot?.consumptionTimeline30d),
+    consumptionTimeline90d: normalizeConsumptionTimelineItems(snapshot?.consumptionTimeline90d),
+    consumptionTimeline365d: normalizeConsumptionTimelineItems(snapshot?.consumptionTimeline365d),
+    domainBreakdown30d: normalizeConsumptionDomainItems(snapshot?.domainBreakdown30d),
+    domainBreakdown90d: normalizeConsumptionDomainItems(snapshot?.domainBreakdown90d),
+    domainBreakdown365d: normalizeConsumptionDomainItems(snapshot?.domainBreakdown365d),
     consumptionTree7d: normalizeConsumptionTree(snapshot?.consumptionTree7d),
     recentSessions: normalizeFocusSessionRecords(snapshot?.recentSessions),
     lastCalculatedAt: normalizeNullableString(snapshot?.lastCalculatedAt),
@@ -1044,6 +1104,12 @@ export const getAnalyticsSnapshot = (): Promise<AnalyticsSnapshot> =>
 
 export const setAnalyticsSnapshot = (snapshot: AnalyticsSnapshot): Promise<void> =>
   setLocal('analyticsSnapshot', normalizeAnalyticsSnapshotStored(snapshot));
+
+export const getDailyConsumptionRollups = (): Promise<DailyConsumptionRollupStore> =>
+  getLocal<DailyConsumptionRollupStore>('dailyConsumptionRollups', {}).then(normalizeDailyConsumptionRollupStore);
+
+export const setDailyConsumptionRollups = (store: DailyConsumptionRollupStore): Promise<void> =>
+  setLocal('dailyConsumptionRollups', normalizeDailyConsumptionRollupStore(store));
 
 export const getEventPatternStats = (): Promise<EventPatternStat[]> =>
   getLocal<EventPatternStat[]>('eventPatternStats', []);

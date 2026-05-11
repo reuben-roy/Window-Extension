@@ -28,6 +28,7 @@ export type DifficultyRank = 1 | 2 | 3 | 5 | 8;
 export type ActivityClass = 'aligned' | 'supportive' | 'distracted' | 'away' | 'break';
 export type TaskTagSource = 'seed' | 'keyword' | 'auto' | 'user';
 export type AnalyticsRange = '7d' | '30d';
+export type AnalyticsConsumptionRange = '7d' | '30d' | '90d' | '365d';
 
 export interface TaskTag {
   key: string;
@@ -533,6 +534,32 @@ export interface ConsumptionTreeNode {
   children: ConsumptionTreeNode[];
 }
 
+export interface DailyConsumptionTopDomain {
+  domain: string;
+  label: string;
+  productiveMinutes: number;
+  supportiveMinutes: number;
+  distractedMinutes: number;
+  awayMinutes: number;
+  breakMinutes: number;
+  totalMinutes: number;
+  visits: number;
+}
+
+export interface DailyConsumptionRollup {
+  dateKey: string; // YYYY-MM-DD in local time
+  productiveMinutes: number;
+  supportiveMinutes: number;
+  distractedMinutes: number;
+  awayMinutes: number;
+  breakMinutes: number;
+  totalMinutes: number;
+  topDomains: DailyConsumptionTopDomain[];
+  otherDomainMinutes: number;
+}
+
+export type DailyConsumptionRollupStore = Record<string, DailyConsumptionRollup>;
+
 export interface LiveAnalyticsSession {
   focusSessionId: string;
   eventTitle: string;
@@ -561,6 +588,12 @@ export interface AnalyticsSnapshot {
   difficultyBreakdown7d: DifficultyBreakdownItem[];
   domainBreakdown7d: ConsumptionDomainItem[];
   consumptionTimeline7d: ConsumptionTimelinePoint[];
+  consumptionTimeline30d: ConsumptionTimelinePoint[];
+  consumptionTimeline90d: ConsumptionTimelinePoint[];
+  consumptionTimeline365d: ConsumptionTimelinePoint[];
+  domainBreakdown30d: ConsumptionDomainItem[];
+  domainBreakdown90d: ConsumptionDomainItem[];
+  domainBreakdown365d: ConsumptionDomainItem[];
   consumptionTree7d: ConsumptionTreeNode[];
   recentSessions: FocusSessionRecord[];
   lastCalculatedAt: string | null;

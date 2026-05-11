@@ -79,6 +79,7 @@ import type {
   BreakDurationMinutes,
   CalendarEvent,
   CalendarState,
+  ConsumptionTimelinePoint,
   DifficultyRank,
   DownloadRedirectFallbackSeconds,
   ExtendedTaskAssignment,
@@ -2145,15 +2146,15 @@ export default function Options(): React.JSX.Element {
                         <div className="flex min-w-max gap-3">
                           {leetcodeMasterEntry ? (
                             <div
-                              className={`min-w-[292px] max-w-[292px] rounded-lg border px-4 py-4 transition ${
+                              className={`min-w-[220px] max-w-[260px] rounded-lg border px-3 py-3 transition ${
                                 draggingExtendedTaskEntry?.id === leetcodeMasterEntry.id &&
                                 draggingExtendedTaskEntry.source === leetcodeMasterEntry.source
                                   ? 'border-blue-300 bg-blue-50/70'
                                   : 'border-[var(--fg-border)] bg-[var(--fg-panel-soft)] hover:border-blue-200'
                               }`}
                             >
-                              <div className="flex items-start justify-between gap-3">
-                                <div className="flex min-w-0 items-start gap-3">
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="flex min-w-0 items-start gap-2">
                                   <ExtendedTaskDragGrip
                                     onDragStart={(event) => startExtendedTaskEntryDrag(leetcodeMasterEntry, event)}
                                     onDragEnd={() => setDraggingExtendedTaskEntry(null)}
@@ -2173,56 +2174,22 @@ export default function Options(): React.JSX.Element {
                                   </div>
                                 </div>
                                 <button
+                                  type="button"
                                   onClick={() =>
                                     setExpandedDefaultRoadmapId((current) =>
                                       current === leetcodeMasterEntry.id ? null : leetcodeMasterEntry.id,
                                     )
                                   }
-                                  className="fg-button-ghost px-3 py-1.5 text-[11px]"
+                                  className="fg-button-ghost flex-shrink-0 px-2.5 py-1.5 text-[11px]"
                                 >
                                   {expandedDefaultRoadmapId === leetcodeMasterEntry.id ? 'Collapse' : 'Expand'}
                                 </button>
                               </div>
 
-                              <div className="mt-4 rounded-md border border-white/70 bg-white/75 px-3.5 py-3">
-                                <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--fg-muted)]">
-                                  Subgroups
-                                </p>
-                                <div className="mt-2 flex flex-wrap gap-2">
-                                  {leetcodeSubgroupEntries.slice(0, 6).map((entry) => (
-                                    <span
-                                      key={entry.id}
-                                      className="rounded-full border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-2.5 py-1 text-[11px] font-medium text-[var(--fg-muted)]"
-                                    >
-                                      {entry.title}
-                                    </span>
-                                  ))}
-                                  {leetcodeSubgroupEntries.length > 6 ? (
-                                    <button
-                                      type="button"
-                                      title="View all subgroup blocks"
-                                      aria-label={`View all ${leetcodeSubgroupEntries.length} subgroup blocks`}
-                                      onClick={() =>
-                                        setExtendedTaskListPreview({
-                                          title: `${leetcodeMasterEntry.title} — subgroup blocks`,
-                                          subtitle: `${leetcodeSubgroupEntries.length} blocks`,
-                                          rows: leetcodeSubgroupEntries.map((e) => ({
-                                            id: e.id,
-                                            label: e.title,
-                                          })),
-                                        })
-                                      }
-                                      className="rounded-full border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-2.5 py-1 text-[11px] font-medium text-[var(--fg-muted)] transition hover:border-blue-200 hover:text-[var(--fg-text)]"
-                                    >
-                                      +{leetcodeSubgroupEntries.length - 6} more
-                                    </button>
-                                  ) : null}
-                                </div>
-                              </div>
-
-                              <div className="mt-4 flex flex-wrap items-center gap-2">
+                              <div className="mt-3 flex flex-wrap items-center gap-2">
                                 {occurrenceExtendedTaskEvent ? (
                                   <button
+                                    type="button"
                                     onClick={() => {
                                       void applyExtendedTaskLibraryEntryToOccurrence(leetcodeMasterEntry);
                                     }}
@@ -2232,6 +2199,7 @@ export default function Options(): React.JSX.Element {
                                   </button>
                                 ) : null}
                                 <button
+                                  type="button"
                                   onClick={() => {
                                     void duplicateBuiltInExtendedTaskTemplateDefinition(leetcodeMasterEntry.id);
                                   }}
@@ -2246,17 +2214,57 @@ export default function Options(): React.JSX.Element {
                       </div>
 
                       {expandedDefaultRoadmapId === BUILT_IN_LEETCODE_MASTER_TEMPLATE_ID ? (
-                        <div className="mt-3">
-                          <div className="mb-2 flex items-center justify-between gap-3">
-                            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--fg-muted)]">
-                              LeetCode Blocks
-                            </p>
-                            <p className="text-[11px] text-[var(--fg-muted)]">
-                              Scroll sideways to browse subgroup cards.
-                            </p>
+                        <div className="mt-3 space-y-4">
+                          <div>
+                            <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                              <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--fg-muted)]">
+                                Subgroups
+                              </p>
+                              {leetcodeMasterEntry ? (
+                                <button
+                                  type="button"
+                                  title="Open full list of subgroup names"
+                                  className="fg-button-ghost px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em]"
+                                  onClick={() =>
+                                    setExtendedTaskListPreview({
+                                      title: `${leetcodeMasterEntry.title} — subgroup blocks`,
+                                      subtitle: `${leetcodeSubgroupEntries.length} blocks`,
+                                      rows: leetcodeSubgroupEntries.map((e) => ({
+                                        id: e.id,
+                                        label: e.title,
+                                      })),
+                                    })
+                                  }
+                                >
+                                  Full list
+                                </button>
+                              ) : null}
+                            </div>
+                            <div className="overflow-x-auto pb-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                              <div className="flex min-w-max gap-2">
+                                {leetcodeSubgroupEntries.map((entry) => (
+                                  <span
+                                    key={entry.id}
+                                    className="flex-shrink-0 rounded-full border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-2.5 py-1 text-[11px] font-medium text-[var(--fg-muted)]"
+                                  >
+                                    {entry.title}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
                           </div>
-                          <div className="overflow-x-auto pb-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                            <div className="flex min-w-max gap-3">
+
+                          <div>
+                            <div className="mb-2 flex items-center justify-between gap-3">
+                              <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--fg-muted)]">
+                                LeetCode Blocks
+                              </p>
+                              <p className="text-[11px] text-[var(--fg-muted)]">
+                                Scroll sideways to browse subgroup cards.
+                              </p>
+                            </div>
+                            <div className="overflow-x-auto pb-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                              <div className="flex min-w-max gap-3">
                               {leetcodeSubgroupEntries.map((entry) => (
                                 <ExtendedTaskLibraryCard
                                   key={`${entry.source}:${entry.id}`}
@@ -2290,6 +2298,7 @@ export default function Options(): React.JSX.Element {
                                 />
                               ))}
                             </div>
+                          </div>
                           </div>
                         </div>
                       ) : null}
@@ -3603,6 +3612,10 @@ function TagManager({
   onToggleArchive: (tagKey: string, archived: boolean) => Promise<void>;
   onDeleteTag: (tagKey: string) => Promise<{ ok: boolean; error?: string }>;
 }): React.JSX.Element {
+  const [createOpen, setCreateOpen] = useState(false);
+  const [query, setQuery] = useState('');
+  const [showArchived, setShowArchived] = useState(false);
+  const [expandedKey, setExpandedKey] = useState<string | null>(null);
   const [label, setLabel] = useState('');
   const [color, setColor] = useState('#2563eb');
   const [aliases, setAliases] = useState('');
@@ -3611,86 +3624,135 @@ function TagManager({
   const [supportiveDomains, setSupportiveDomains] = useState('');
   const [error, setError] = useState('');
 
-  const sortedTags = useMemo(
-    () => [...taskTags].sort((left, right) => Number(Boolean(left.archivedAt)) - Number(Boolean(right.archivedAt)) || left.label.localeCompare(right.label)),
-    [taskTags],
-  );
+  const filteredTags = useMemo(() => {
+    const normalizedQuery = query.trim().toLowerCase();
+    return [...taskTags]
+      .filter((tag) => (showArchived ? true : tag.archivedAt === null))
+      .filter((tag) => {
+        if (!normalizedQuery) return true;
+        const haystack = [
+          tag.label,
+          tag.key,
+          ...tag.aliases,
+          ...tag.alignedDomains,
+          ...tag.supportiveDomains,
+        ].join(' ').toLowerCase();
+        return haystack.includes(normalizedQuery);
+      })
+      .sort(
+        (left, right) =>
+          Number(Boolean(left.archivedAt)) - Number(Boolean(right.archivedAt)) ||
+          left.label.localeCompare(right.label),
+      );
+  }, [query, showArchived, taskTags]);
 
   return (
     <section className="fg-card p-4">
-      <div className="mb-4 flex items-center gap-2">
-        <h2 className="text-lg font-semibold tracking-[-0.02em] text-[var(--fg-text)]">Tag Manager</h2>
-        <InfoTip text="Manage reusable task tags, their default difficulty, and the domains Window should treat as aligned or supportive." />
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <h2 className="text-lg font-semibold tracking-[-0.02em] text-[var(--fg-text)]">Tag Manager</h2>
+          <InfoTip text="Manage reusable task tags, their default difficulty, and the domains Window should treat as aligned or supportive." />
+        </div>
+        <div className="text-xs text-[var(--fg-muted)]">
+          Active tags: {activeTaskTags.length} · Archived tags: {taskTags.length - activeTaskTags.length}
+        </div>
       </div>
 
-      <div className="mb-5 rounded-lg border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] p-4">
-        <div className="mb-3 flex items-center justify-between gap-3">
-          <div>
-            <p className="text-sm font-medium text-[var(--fg-text)]">Create tag</p>
-            <p className="mt-1 text-xs text-[var(--fg-muted)]">
-              Active tags: {activeTaskTags.length} · Archived tags: {taskTags.length - activeTaskTags.length}
-            </p>
-          </div>
-        </div>
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-[minmax(0,1.1fr),140px,160px]">
-          <input value={label} onChange={(event) => setLabel(event.target.value)} placeholder="Research ops" className="fg-input" />
-          <input value={color} onChange={(event) => setColor(event.target.value)} placeholder="#2563eb" className="fg-input" />
-          <select value={baselineDifficulty} onChange={(event) => setBaselineDifficulty(event.target.value)} className="fg-select">
-            <option value="1">1 · Routine</option>
-            <option value="2">2 · Light</option>
-            <option value="3">3 · Standard</option>
-            <option value="5">5 · Demanding</option>
-            <option value="8">8 · Deep</option>
-          </select>
-        </div>
-        <div className="mt-3 grid gap-3 md:grid-cols-3">
-          <input value={aliases} onChange={(event) => setAliases(event.target.value)} placeholder="aliases: research, analyze" className="fg-input" />
-          <input value={alignedDomains} onChange={(event) => setAlignedDomains(event.target.value)} placeholder="aligned: github.com, figma.com" className="fg-input" />
-          <input value={supportiveDomains} onChange={(event) => setSupportiveDomains(event.target.value)} placeholder="supportive: docs.google.com" className="fg-input" />
-        </div>
-        {error ? <p className="mt-3 text-xs text-rose-600">{error}</p> : null}
-        <div className="mt-3 flex justify-end">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-1 flex-wrap items-center gap-2">
+          <input
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Search tags, keys, domains…"
+            className="fg-input w-[min(420px,100%)]"
+          />
           <button
-            className="fg-button-primary px-4 py-2.5 text-sm"
-            onClick={async () => {
-              setError('');
-              const result = await onSaveTag({
-                label,
-                color,
-                aliases: splitCommaList(aliases),
-                baselineDifficulty: parseDifficultyRank(baselineDifficulty) ?? 3,
-                alignedDomains: splitDomains(alignedDomains),
-                supportiveDomains: splitDomains(supportiveDomains),
-                archivedAt: null,
-              });
-              if (!result.ok) {
-                setError(result.error ?? 'Unable to save tag.');
-                return;
-              }
-              setLabel('');
-              setColor('#2563eb');
-              setAliases('');
-              setAlignedDomains('');
-              setSupportiveDomains('');
-              setBaselineDifficulty('3');
-            }}
+            className={`fg-button-secondary px-3 py-2 text-sm ${showArchived ? 'opacity-100' : 'opacity-80'}`}
+            onClick={() => setShowArchived((value) => !value)}
           >
-            Create Tag
+            {showArchived ? 'Showing archived' : 'Hide archived'}
           </button>
         </div>
+        <button
+          className="fg-button-primary px-4 py-2.5 text-sm"
+          onClick={() => {
+            setCreateOpen((value) => !value);
+            setExpandedKey(null);
+          }}
+        >
+          {createOpen ? 'Close' : 'New tag'}
+        </button>
       </div>
 
-      <div className="space-y-3">
-        {sortedTags.map((tag) => (
-          <TagManagerRow
-            key={tag.key}
-            tag={tag}
-            isReferenced={tagReferenceKeys.has(tag.key)}
-            onSaveTag={onSaveTag}
-            onToggleArchive={onToggleArchive}
-            onDeleteTag={onDeleteTag}
-          />
-        ))}
+      {createOpen ? (
+        <div className="mb-4 rounded-lg border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] p-3">
+          <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-[minmax(0,1.1fr),140px,160px]">
+            <input value={label} onChange={(event) => setLabel(event.target.value)} placeholder="Research ops" className="fg-input" />
+            <input value={color} onChange={(event) => setColor(event.target.value)} placeholder="#2563eb" className="fg-input" />
+            <select value={baselineDifficulty} onChange={(event) => setBaselineDifficulty(event.target.value)} className="fg-select">
+              <option value="1">1 · Routine</option>
+              <option value="2">2 · Light</option>
+              <option value="3">3 · Standard</option>
+              <option value="5">5 · Demanding</option>
+              <option value="8">8 · Deep</option>
+            </select>
+          </div>
+          <div className="mt-2 grid gap-2 md:grid-cols-3">
+            <input value={aliases} onChange={(event) => setAliases(event.target.value)} placeholder="aliases: research, analyze" className="fg-input" />
+            <input value={alignedDomains} onChange={(event) => setAlignedDomains(event.target.value)} placeholder="aligned: github.com, figma.com" className="fg-input" />
+            <input value={supportiveDomains} onChange={(event) => setSupportiveDomains(event.target.value)} placeholder="supportive: docs.google.com" className="fg-input" />
+          </div>
+          {error ? <p className="mt-2 text-xs text-rose-600">{error}</p> : null}
+          <div className="mt-2 flex justify-end">
+            <button
+              className="fg-button-primary px-4 py-2.5 text-sm"
+              onClick={async () => {
+                setError('');
+                const result = await onSaveTag({
+                  label,
+                  color,
+                  aliases: splitCommaList(aliases),
+                  baselineDifficulty: parseDifficultyRank(baselineDifficulty) ?? 3,
+                  alignedDomains: splitDomains(alignedDomains),
+                  supportiveDomains: splitDomains(supportiveDomains),
+                  archivedAt: null,
+                });
+                if (!result.ok) {
+                  setError(result.error ?? 'Unable to save tag.');
+                  return;
+                }
+                setLabel('');
+                setColor('#2563eb');
+                setAliases('');
+                setAlignedDomains('');
+                setSupportiveDomains('');
+                setBaselineDifficulty('3');
+                setCreateOpen(false);
+              }}
+            >
+              Create Tag
+            </button>
+          </div>
+        </div>
+      ) : null}
+
+      <div className="space-y-2">
+        {filteredTags.length === 0 ? (
+          <EmptyCard text="No matching tags." />
+        ) : (
+          filteredTags.map((tag) => (
+            <TagManagerRow
+              key={tag.key}
+              tag={tag}
+              isReferenced={tagReferenceKeys.has(tag.key)}
+              isExpanded={expandedKey === tag.key}
+              onToggleExpanded={() => setExpandedKey((value) => (value === tag.key ? null : tag.key))}
+              onSaveTag={onSaveTag}
+              onToggleArchive={onToggleArchive}
+              onDeleteTag={onDeleteTag}
+            />
+          ))
+        )}
       </div>
     </section>
   );
@@ -3699,12 +3761,16 @@ function TagManager({
 function TagManagerRow({
   tag,
   isReferenced,
+  isExpanded,
+  onToggleExpanded,
   onSaveTag,
   onToggleArchive,
   onDeleteTag,
 }: {
   tag: TaskTag;
   isReferenced: boolean;
+  isExpanded: boolean;
+  onToggleExpanded: () => void;
   onSaveTag: (input: {
     existingKey?: string | null;
     label: string;
@@ -3737,19 +3803,28 @@ function TagManagerRow({
   }, [tag]);
 
   return (
-    <div className="rounded-md border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] p-4">
-      <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <span className="h-3 w-3 rounded-full" style={{ background: color }} />
-          <div>
-            <p className="text-sm font-medium text-[var(--fg-text)]">{tag.label}</p>
-            <p className="text-xs text-[var(--fg-muted)]">
-              `{tag.key}` · {tag.archivedAt ? 'Archived' : 'Active'} {isReferenced ? '· In use' : ''}
-            </p>
+    <div className="rounded-md border border-[var(--fg-border)] bg-[var(--fg-panel-soft)]">
+      <div className="grid grid-cols-[minmax(0,1fr),auto] items-center gap-3 px-3 py-2.5">
+        <button className="min-w-0 text-left" onClick={onToggleExpanded}>
+          <div className="flex items-center gap-2">
+            <span className="h-2.5 w-2.5 rounded-full" style={{ background: tag.color }} />
+            <p className="truncate text-sm font-medium text-[var(--fg-text)]">{tag.label}</p>
+            <span className="hidden text-xs text-[var(--fg-muted)] md:inline">
+              `{tag.key}` {tag.archivedAt ? '· Archived' : ''} {isReferenced ? '· In use' : ''}
+            </span>
           </div>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <button className="fg-button-secondary px-3 py-2 text-sm" onClick={() => onToggleArchive(tag.key, tag.archivedAt === null)}>
+          <p className="mt-0.5 text-xs text-[var(--fg-muted)]">
+            Difficulty {tag.baselineDifficulty} · {tag.alignedDomains.length} aligned · {tag.supportiveDomains.length} supportive · {tag.aliases.length} alias{tag.aliases.length === 1 ? '' : 'es'}
+          </p>
+        </button>
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          <button className="fg-button-secondary px-3 py-2 text-sm" onClick={onToggleExpanded}>
+            {isExpanded ? 'Close' : 'Edit'}
+          </button>
+          <button
+            className="fg-button-secondary px-3 py-2 text-sm"
+            onClick={() => onToggleArchive(tag.key, tag.archivedAt === null)}
+          >
             {tag.archivedAt ? 'Unarchive' : 'Archive'}
           </button>
           <button
@@ -3765,46 +3840,51 @@ function TagManagerRow({
           </button>
         </div>
       </div>
-      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-[minmax(0,1.1fr),140px,160px]">
-        <input value={label} onChange={(event) => setLabel(event.target.value)} className="fg-input" />
-        <input value={color} onChange={(event) => setColor(event.target.value)} className="fg-input" />
-        <select value={baselineDifficulty} onChange={(event) => setBaselineDifficulty(event.target.value)} className="fg-select">
-          <option value="1">1 · Routine</option>
-          <option value="2">2 · Light</option>
-          <option value="3">3 · Standard</option>
-          <option value="5">5 · Demanding</option>
-          <option value="8">8 · Deep</option>
-        </select>
-      </div>
-      <div className="mt-3 grid gap-3 md:grid-cols-3">
-        <input value={aliases} onChange={(event) => setAliases(event.target.value)} className="fg-input" />
-        <input value={alignedDomains} onChange={(event) => setAlignedDomains(event.target.value)} className="fg-input" />
-        <input value={supportiveDomains} onChange={(event) => setSupportiveDomains(event.target.value)} className="fg-input" />
-      </div>
-      {error ? <p className="mt-3 text-xs text-rose-600">{error}</p> : null}
-      <div className="mt-3 flex justify-end">
-        <button
-          className="fg-button-primary px-4 py-2.5 text-sm"
-          onClick={async () => {
-            setError('');
-            const result = await onSaveTag({
-              existingKey: tag.key,
-              label,
-              color,
-              aliases: splitCommaList(aliases),
-              baselineDifficulty: parseDifficultyRank(baselineDifficulty) ?? 3,
-              alignedDomains: splitDomains(alignedDomains),
-              supportiveDomains: splitDomains(supportiveDomains),
-              archivedAt: tag.archivedAt,
-            });
-            if (!result.ok) {
-              setError(result.error ?? 'Unable to save tag.');
-            }
-          }}
-        >
-          Save Tag
-        </button>
-      </div>
+
+      {isExpanded ? (
+        <div className="border-t border-[var(--fg-border)] px-3 py-3">
+          <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-[minmax(0,1.1fr),140px,160px]">
+            <input value={label} onChange={(event) => setLabel(event.target.value)} className="fg-input" />
+            <input value={color} onChange={(event) => setColor(event.target.value)} className="fg-input" />
+            <select value={baselineDifficulty} onChange={(event) => setBaselineDifficulty(event.target.value)} className="fg-select">
+              <option value="1">1 · Routine</option>
+              <option value="2">2 · Light</option>
+              <option value="3">3 · Standard</option>
+              <option value="5">5 · Demanding</option>
+              <option value="8">8 · Deep</option>
+            </select>
+          </div>
+          <div className="mt-2 grid gap-2 md:grid-cols-3">
+            <input value={aliases} onChange={(event) => setAliases(event.target.value)} className="fg-input" />
+            <input value={alignedDomains} onChange={(event) => setAlignedDomains(event.target.value)} className="fg-input" />
+            <input value={supportiveDomains} onChange={(event) => setSupportiveDomains(event.target.value)} className="fg-input" />
+          </div>
+          {error ? <p className="mt-2 text-xs text-rose-600">{error}</p> : null}
+          <div className="mt-2 flex justify-end">
+            <button
+              className="fg-button-primary px-4 py-2.5 text-sm"
+              onClick={async () => {
+                setError('');
+                const result = await onSaveTag({
+                  existingKey: tag.key,
+                  label,
+                  color,
+                  aliases: splitCommaList(aliases),
+                  baselineDifficulty: parseDifficultyRank(baselineDifficulty) ?? 3,
+                  alignedDomains: splitDomains(alignedDomains),
+                  supportiveDomains: splitDomains(supportiveDomains),
+                  archivedAt: tag.archivedAt,
+                });
+                if (!result.ok) {
+                  setError(result.error ?? 'Unable to save tag.');
+                }
+              }}
+            >
+              Save Tag
+            </button>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -3824,8 +3904,24 @@ function AnalyticsWorkspace({
     difficultyRank: DifficultyRank | null,
   ) => void;
 }): React.JSX.Element {
-  const summary = analyticsSnapshot.summary7d;
+  const [metricsRange, setMetricsRange] = useState<'7d' | '30d'>('7d');
+  const [consumptionRange, setConsumptionRange] = useState<'7d' | '30d' | '90d' | '365d'>('7d');
+
+  const summary = metricsRange === '30d' ? analyticsSnapshot.summary30d : analyticsSnapshot.summary7d;
   const recentSessions = analyticsSnapshot.recentSessions.slice(0, 12);
+  const consumptionPoints = useMemo(() => {
+    if (consumptionRange === '30d') return analyticsSnapshot.consumptionTimeline30d;
+    if (consumptionRange === '90d') return analyticsSnapshot.consumptionTimeline90d;
+    if (consumptionRange === '365d') return analyticsSnapshot.consumptionTimeline365d;
+    return analyticsSnapshot.consumptionTimeline7d;
+  }, [analyticsSnapshot, consumptionRange]);
+
+  const domainBreakdown = useMemo(() => {
+    if (consumptionRange === '30d') return analyticsSnapshot.domainBreakdown30d;
+    if (consumptionRange === '90d') return analyticsSnapshot.domainBreakdown90d;
+    if (consumptionRange === '365d') return analyticsSnapshot.domainBreakdown365d;
+    return analyticsSnapshot.domainBreakdown7d;
+  }, [analyticsSnapshot, consumptionRange]);
 
   return (
     <div className="space-y-4">
@@ -3834,12 +3930,28 @@ function AnalyticsWorkspace({
           <div>
             <h2 className="text-lg font-semibold tracking-[-0.02em] text-[var(--fg-text)]">Analytics</h2>
             <p className="mt-1 text-sm text-[var(--fg-muted)]">
-              Last 7 days of calendar-linked focus sessions, grouped by time quality, tags, and inferred difficulty.
+              Calendar-linked focus sessions, grouped by time quality, tags, and inferred difficulty.
             </p>
           </div>
-          <button onClick={onRefresh} className="fg-button-secondary px-3 py-2 text-sm">
-            Refresh Analytics
-          </button>
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="rounded-full border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] p-1">
+              <button
+                className={`rounded-full px-3 py-1 text-xs font-medium ${metricsRange === '7d' ? 'bg-white text-[var(--fg-text)]' : 'text-[var(--fg-muted)]'}`}
+                onClick={() => setMetricsRange('7d')}
+              >
+                7d
+              </button>
+              <button
+                className={`rounded-full px-3 py-1 text-xs font-medium ${metricsRange === '30d' ? 'bg-white text-[var(--fg-text)]' : 'text-[var(--fg-muted)]'}`}
+                onClick={() => setMetricsRange('30d')}
+              >
+                30d
+              </button>
+            </div>
+            <button onClick={onRefresh} className="fg-button-secondary px-3 py-2 text-sm">
+              Refresh Analytics
+            </button>
+          </div>
         </div>
 
         <div className="mb-3 grid gap-3 xl:grid-cols-[minmax(0,1.45fr),repeat(3,minmax(0,0.55fr))]">
@@ -3861,35 +3973,52 @@ function AnalyticsWorkspace({
           <AnalyticsMetricCard label="Supportive" value={formatMinutes(summary.supportiveMinutes)} />
           <AnalyticsMetricCard label="Distracted" value={formatMinutes(summary.distractedMinutes)} />
           <AnalyticsMetricCard label="Away" value={formatMinutes(summary.awayMinutes)} />
-          <AnalyticsMetricCard label="Sessions" value={String(summary.totalFocusSessions)} />
-          <AnalyticsMetricCard label="Left early" value={String(summary.leftEarlyCount)} />
         </div>
       </section>
 
       <section className="grid gap-4 xl:grid-cols-[minmax(0,1.08fr),minmax(0,0.92fr)]">
         <div className="fg-card p-4">
-          <div className="mb-3 flex items-center gap-2">
-            <h3 className="text-sm font-semibold text-[var(--fg-text)]">Consumption graph</h3>
-            <InfoTip text="Daily lines built from recorded sites and pages during active focus blocks. Productive, supportive, and distracted time are shown separately." />
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <h3 className="text-sm font-semibold text-[var(--fg-text)]">Consumption graph</h3>
+              <InfoTip text="Daily lines built from recorded sites and pages during active focus blocks. Productive, supportive, and distracted time are shown separately." />
+            </div>
+            <div className="rounded-full border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] p-1">
+              {(['7d', '30d', '90d', '365d'] as const).map((range) => (
+                <button
+                  key={range}
+                  className={`rounded-full px-2.5 py-1 text-xs font-medium ${consumptionRange === range ? 'bg-white text-[var(--fg-text)]' : 'text-[var(--fg-muted)]'}`}
+                  onClick={() => setConsumptionRange(range)}
+                >
+                  {range}
+                </button>
+              ))}
+            </div>
           </div>
-          <ConsumptionTimelineChart points={analyticsSnapshot.consumptionTimeline7d} />
+          <ConsumptionTimelineChart points={consumptionPoints} />
         </div>
 
         <div className="fg-card p-4">
           <div className="mb-3 flex items-center gap-2">
             <h3 className="text-sm font-semibold text-[var(--fg-text)]">Consumption map</h3>
-            <InfoTip text="Top domains come from local browsing telemetry during focus sessions. The tree groups related subdomains so reading, watching, and task pages cluster together." />
+            <InfoTip text="Top domains come from local browsing telemetry during focus sessions. Domain breakdowns beyond 7 days are approximations built from compact daily rollups." />
           </div>
           <div className="space-y-3">
-            <ConsumptionBreakdownList items={analyticsSnapshot.domainBreakdown7d.slice(0, 6)} />
-            <div className="border-t border-[var(--fg-border)] pt-3">
-              <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-[var(--fg-muted)]">
-                Domain tree
-              </p>
-              <div className="mt-2">
-                <ConsumptionTreeView nodes={analyticsSnapshot.consumptionTree7d.slice(0, 8)} />
+            <ConsumptionBreakdownList items={domainBreakdown.slice(0, 8)} />
+            {consumptionRange === '7d' ? (
+              <div className="border-t border-[var(--fg-border)] pt-3">
+                <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-[var(--fg-muted)]">
+                  Domain tree
+                </p>
+                <div className="mt-2">
+                  <ConsumptionTreeView nodes={analyticsSnapshot.consumptionTree7d.slice(0, 8)} />
+                </div>
               </div>
-            </div>
+            ) : (
+              <div className="rounded-md border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-3 py-2 text-xs text-[var(--fg-muted)]">
+                Domain tree is shown for 7d only (it requires full session-resolution domain history).
+              </div>
+            )}
           </div>
         </div>
       </section>
@@ -4006,8 +4135,12 @@ function AnalyticsMetricCard({
 function ConsumptionTimelineChart({
   points,
 }: {
-  points: AnalyticsSnapshot['consumptionTimeline7d'];
+  points: ConsumptionTimelinePoint[];
 }): React.JSX.Element {
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const [hoverIndex, setHoverIndex] = useState<number | null>(null);
+  const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
+
   const max = Math.max(
     0,
     ...points.map((point) =>
@@ -4023,11 +4156,34 @@ function ConsumptionTimelineChart({
   const chartHeight = 180;
   const paddingX = 14;
   const paddingY = 18;
+  const effectiveIndex = hoverIndex ?? selectedIndex;
+  const effectivePoint = effectiveIndex == null ? null : points[effectiveIndex] ?? null;
+  const tickEvery = points.length <= 14 ? 1 : points.length <= 60 ? 7 : points.length <= 120 ? 14 : 30;
 
   return (
     <div className="space-y-3">
-      <div className="rounded-md border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-3 py-3">
-        <svg viewBox={`0 0 ${chartWidth} ${chartHeight}`} className="h-[180px] w-full">
+      <div
+        ref={containerRef}
+        className="relative rounded-md border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-3 py-3"
+        onMouseLeave={() => setHoverIndex(null)}
+      >
+        <svg
+          viewBox={`0 0 ${chartWidth} ${chartHeight}`}
+          className="h-[180px] w-full"
+          onMouseMove={(event) => {
+            const rect = containerRef.current?.getBoundingClientRect();
+            if (!rect) return;
+            const x = event.clientX - rect.left;
+            const innerWidth = rect.width;
+            if (innerWidth <= 0) return;
+            const index = Math.round((x / innerWidth) * (points.length - 1));
+            setHoverIndex(Math.max(0, Math.min(points.length - 1, index)));
+          }}
+          onClick={() => {
+            if (hoverIndex == null) return;
+            setSelectedIndex(hoverIndex);
+          }}
+        >
           {points.map((point, index) => {
             const x = chartX(index, points.length, chartWidth, paddingX);
             return (
@@ -4042,6 +4198,16 @@ function ConsumptionTimelineChart({
               />
             );
           })}
+          {effectiveIndex != null ? (
+            <line
+              x1={chartX(effectiveIndex, points.length, chartWidth, paddingX)}
+              x2={chartX(effectiveIndex, points.length, chartWidth, paddingX)}
+              y1={paddingY}
+              y2={chartHeight - paddingY}
+              stroke="rgba(37,99,235,0.28)"
+              strokeWidth="2"
+            />
+          ) : null}
           <path d={buildLinePath(points, (point) => point.productiveMinutes, max, chartWidth, chartHeight, paddingX, paddingY)} fill="none" stroke="#2563eb" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
           <path d={buildLinePath(points, (point) => point.supportiveMinutes, max, chartWidth, chartHeight, paddingX, paddingY)} fill="none" stroke="#0f766e" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
           <path d={buildLinePath(points, (point) => point.distractedMinutes, max, chartWidth, chartHeight, paddingX, paddingY)} fill="none" stroke="#dc2626" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
@@ -4055,6 +4221,29 @@ function ConsumptionTimelineChart({
             />
           ))}
         </svg>
+
+        {effectivePoint ? (
+          <div className="pointer-events-none absolute right-3 top-3 w-[240px] rounded-md border border-[var(--fg-border)] bg-white px-3 py-2 text-xs text-[var(--fg-text)] shadow-sm">
+            <p className="font-medium">
+              {new Date(effectivePoint.date).toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })}{' '}
+              <span className="font-normal text-[var(--fg-muted)]">· {formatMinutes(effectivePoint.totalMinutes)} total</span>
+            </p>
+            <div className="mt-1 space-y-0.5 text-[var(--fg-muted)]">
+              <div className="flex items-center justify-between gap-2">
+                <span className="flex items-center gap-2"><span className="h-2 w-2 rounded-full" style={{ background: '#2563eb' }} />Productive</span>
+                <span className="font-medium text-[var(--fg-text)]">{formatMinutes(effectivePoint.productiveMinutes)}</span>
+              </div>
+              <div className="flex items-center justify-between gap-2">
+                <span className="flex items-center gap-2"><span className="h-2 w-2 rounded-full" style={{ background: '#0f766e' }} />Supportive</span>
+                <span className="font-medium text-[var(--fg-text)]">{formatMinutes(effectivePoint.supportiveMinutes)}</span>
+              </div>
+              <div className="flex items-center justify-between gap-2">
+                <span className="flex items-center gap-2"><span className="h-2 w-2 rounded-full" style={{ background: '#dc2626' }} />Distracted</span>
+                <span className="font-medium text-[var(--fg-text)]">{formatMinutes(effectivePoint.distractedMinutes)}</span>
+              </div>
+            </div>
+          </div>
+        ) : null}
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -4064,11 +4253,14 @@ function ConsumptionTimelineChart({
           <ChartLegend color="#dc2626" label="Distracted" />
         </div>
         <div className="flex flex-wrap gap-3 text-xs text-[var(--fg-muted)]">
-          {points.map((point) => (
-            <span key={point.date}>
-              {point.label} {formatMinutes(point.totalMinutes)}
-            </span>
-          ))}
+          {points.map((point, index) => {
+            if (index % tickEvery !== 0 && index !== points.length - 1) return null;
+            return (
+              <span key={point.date}>
+                {point.label} {formatMinutes(point.totalMinutes)}
+              </span>
+            );
+          })}
         </div>
       </div>
     </div>
