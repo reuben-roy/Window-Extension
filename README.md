@@ -1,6 +1,12 @@
 # Window
 
-Window is a browser-based focus and productivity assistant.
+> A Chrome extension that transforms your browser into an intelligent productivity co-pilot — connecting to Google Calendar, blocking distractions during focus sessions, and running an OpenClaw-powered assistant layer for idea evaluation and task management.
+
+![Version](https://img.shields.io/badge/version-0.1.0-blue)
+![Manifest](https://img.shields.io/badge/manifest-v3-green)
+![License](https://img.shields.io/badge/license-all%20rights%20reserved-red)
+
+---
 
 At its core, Window connects to your Google Calendar, understands what you are supposed to be working on right now, and helps you stay focused by blocking distracting websites during scheduled focus sessions. It is designed to live where work already happens: inside the browser.
 
@@ -235,3 +241,203 @@ That means:
 ## In One Sentence
 
 Window is a browser extension that helps users stay focused during calendar-based work, manage event-specific allowed sites, and gradually evolve that focus system into a full browser-native productivity assistant powered by OpenClaw.
+
+---
+
+## Quick Start
+
+### Install the Extension (Development)
+
+```bash
+# 1. Install dependencies
+npm install
+
+# 2. Build the extension
+npm run build
+
+# 3. Load in Chrome
+# - Open chrome://extensions
+# - Enable "Developer mode"
+# - Click "Load unpacked"
+# - Select the `dist/` folder
+```
+
+### Run the Backend
+
+```bash
+cd backend
+npm install
+
+# Set environment variables (see Configuration section)
+export DATABASE_URL="postgresql://..."
+export OPENCLAW_API_TOKEN="..."
+
+# Start the API server
+npm run dev
+
+# In another terminal, start the worker
+npm run worker
+```
+
+### Run Tests
+
+```bash
+npm test
+```
+
+---
+
+## Installation
+
+### Chrome Web Store (Production)
+
+Window is not yet published to the Chrome Web Store. For now, install from source as shown above.
+
+### Side Panel
+
+Window supports Chrome's Side Panel API. Right-click the extension icon and select "Show in Side Panel" for a persistent workspace.
+
+---
+
+## Project Structure
+
+```
+Window-Extension/
+  manifest.json              # Chrome extension manifest (v3)
+  src/
+    background/              # Service worker (blocking, calendar, points, tasks)
+      index.ts               # Main entry + event listeners
+      blocker.ts             # declarativeNetRequest rule management
+      calendar.ts            # Google Calendar API integration
+      analytics.ts           # Event tracking & telemetry
+      points.ts              # Gamification engine
+      taskQueue.ts           # Idea queue processor
+      snooze.ts              # Break timer logic
+    popup/                   # Extension popup (React + Tailwind)
+      Popup.tsx
+      components/
+    options/                 # Settings & calendar workspace (React)
+      Options.tsx
+    blocked/                 # Blocked page UI
+      Blocked.tsx
+    sidepanel/               # Side panel view
+    shared/                  # Common utilities, types, components
+      constants.ts
+      storage.ts             # Chrome storage wrapper
+      eventRules.ts          # Rule resolution logic
+      profiles.ts            # User profile configs
+  backend/
+    src/
+      app.ts                 # Fastify API server
+      worker.ts              # Background job processor
+      lib/
+        auth.ts              # Google OAuth + backend session handling
+        prisma.ts            # Database client
+        openclaw/            # OpenClaw SDK wrappers
+          client.ts          # Session management, task creation
+          connectorList.ts   # Available connectors
+          urlPolicy.ts       # Allowed host validation
+        jobs.ts              # Job queue logic
+        serializers.ts       # Payload transformers
+      prisma/
+        schema.prisma        # Database schema
+        migrations/          # Schema migrations
+    tests/                   # Vitest test suite
+  docs/
+    window-investor-deck.md  # Product pitch deck
+```
+
+---
+
+## Configuration
+
+### Environment Variables (Backend)
+
+Create a `.env` file in `backend/`:
+
+```env
+# Database
+DATABASE_URL="postgresql://user:pass@localhost:5432/window?schema=public"
+
+# OpenClaw
+OPENCLAW_BASE_URL="http://localhost:8080"
+OPENCLAW_API_TOKEN="your-api-token"
+OPENCLAW_ALLOWED_HOSTS="localhost,127.0.0.1"
+
+# Google OAuth
+GOOGLE_CLIENT_ID="your-client-id"
+GOOGLE_CLIENT_SECRET="your-client-secret"
+
+# Server
+PORT=3000
+NODE_ENV=development
+```
+
+### Chrome OAuth
+
+The extension uses Google OAuth for calendar access. Update `manifest.json` with your own client ID:
+
+```json
+"oauth2": {
+  "client_id": "YOUR_CLIENT_ID.apps.googleusercontent.com",
+  "scopes": [
+    "openid",
+    "email",
+    "profile",
+    "https://www.googleapis.com/auth/calendar.readonly"
+  ]
+}
+```
+
+### Prisma Setup
+
+```bash
+cd backend
+npx prisma migrate dev
+npx prisma generate
+```
+
+---
+
+## API Reference
+
+### Authentication
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/auth/google` | POST | Exchange Google access token for backend session |
+| `/auth/logout` | POST | Revoke backend session |
+
+### OpenClaw Integration
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/openclaw/connect` | POST | Link OpenClaw instance (URL + API token) |
+| `/openclaw/disconnect` | POST | Remove OpenClaw connection |
+| `/openclaw/test` | POST | Validate connection settings |
+| `/openclaw/settings` | GET/PUT | Fetch/update connector settings |
+| `/openclaw/instances` | GET | List connected instances |
+| `/openclaw/connectors` | GET | List available connectors |
+
+### Ideas & Tasks
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/ideas` | POST | Submit idea for async evaluation |
+| `/ideas/:id` | GET | Fetch idea status + result |
+| `/tasks` | POST | Create assistant task |
+| `/tasks/queue` | GET | List queued tasks |
+
+### Focus Sessions
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/sessions` | POST | Start focus session |
+| `/sessions/active` | GET | Get current active session |
+| `/sessions/:id/end` | POST | End session |
+
+---
+
+## Core Concepts
+
+Focus sessions, connectors, ideas, and tasks. Brief definitions.
