@@ -316,3 +316,122 @@ export interface FocusSessionPayload {
   totalTrackedMinutes: number;
   leftEarly: boolean;
 }
+
+export type LearningLicenseModePayload = 'commercial_safe' | 'expanded_oer';
+export type LearningPackSourceKindPayload = 'textbook' | 'paper-based';
+export type LearningPackStatusPayload = 'queued' | 'processing' | 'ready' | 'failed';
+export type LearningTopicSourcePayload = 'catalog' | 'custom' | 'suggested';
+export type LearningSuggestionSourcePayload = 'calendar' | 'activity' | 'tag' | 'recommendation';
+export type QuizDifficultyPayload = 'easy' | 'medium' | 'hard';
+export type QuizArtifactTypePayload = 'image' | 'graph';
+export type QuizPromptOriginPayload = 'scheduled' | 'manual' | 'retry';
+
+export interface LearningTopicOptionPayload {
+  key: string;
+  label: string;
+  description: string;
+}
+
+export interface LearningSubjectPayload {
+  key: string;
+  label: string;
+  description: string;
+  topics: LearningTopicOptionPayload[];
+}
+
+export interface UserLearningTopicPayload {
+  id: string;
+  subjectKey: string | null;
+  topicKey: string;
+  label: string;
+  source: LearningTopicSourcePayload;
+  active: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface LearningSuggestionPayload {
+  id: string;
+  topicKey: string;
+  label: string;
+  subjectKey: string | null;
+  reason: string;
+  source: LearningSuggestionSourcePayload;
+}
+
+export interface QuizPackSummaryPayload {
+  id: string;
+  topicId: string;
+  topicLabel: string;
+  title: string;
+  sourceKind: LearningPackSourceKindPayload;
+  status: LearningPackStatusPayload;
+  canonical: boolean;
+  chapterCount: number;
+  questionCount: number;
+  versionNumber: number;
+  licenseMode: LearningLicenseModePayload;
+  generatedAt: string | null;
+}
+
+export interface ReviewQueueItemPayload {
+  progressId: string;
+  questionId: string;
+  topicId: string;
+  topicLabel: string;
+  chapterTitle: string;
+  difficulty: QuizDifficultyPayload;
+  dueAt: string;
+  lastSeenAt: string | null;
+  seenCount: number;
+  correctStreak: number;
+}
+
+export interface QuizAnswerChoicePayload {
+  id: string;
+  label: string;
+  body: string;
+}
+
+export interface QuizArtifactPayload {
+  type: QuizArtifactTypePayload;
+  alt: string;
+  imageUrl: string | null;
+  graphSpec: Record<string, unknown> | null;
+}
+
+export interface QuizPromptPayload {
+  sessionId: string;
+  questionId: string;
+  progressId: string | null;
+  packId: string;
+  packVersionId: string | null;
+  topicId: string;
+  topicLabel: string;
+  packTitle: string;
+  chapterTitle: string;
+  difficulty: QuizDifficultyPayload;
+  origin: QuizPromptOriginPayload;
+  pointsReward: number;
+  streak: number;
+  prompt: string;
+  hint: string | null;
+  explanation: string | null;
+  choices: QuizAnswerChoicePayload[];
+  correctChoiceId: string | null;
+  wrongAnswerExplanations: Record<string, string>;
+  artifact: QuizArtifactPayload | null;
+  surfacedAt: string;
+}
+
+export interface QuizAnswerResultPayload {
+  prompt: QuizPromptPayload;
+  correct: boolean;
+  selectedChoiceId: string | null;
+  correctChoiceId: string | null;
+  explanation: string | null;
+  wrongAnswerExplanation: string | null;
+  nextDueAt: string | null;
+  pointsAwarded: number;
+  updatedStreak: number;
+}

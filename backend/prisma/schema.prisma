@@ -68,6 +68,55 @@ enum AuthProvider {
   password
 }
 
+enum LearningTopicSource {
+  catalog
+  custom
+  suggested
+}
+
+enum LearningPackSourceKind {
+  textbook
+  paper_based
+}
+
+enum LearningPackStatus {
+  queued
+  processing
+  ready
+  failed
+}
+
+enum LearningJobKind {
+  source_discovery
+  document_ingestion
+  pack_generation
+  pack_regeneration
+}
+
+enum LearningJobStatus {
+  queued
+  running
+  completed
+  failed
+  cancelled
+}
+
+enum LearningLicenseMode {
+  commercial_safe
+  expanded_oer
+}
+
+enum QuizDifficulty {
+  easy
+  medium
+  hard
+}
+
+enum QuizArtifactType {
+  image
+  graph
+}
+
 model User {
   id               String             @id @default(cuid())
   supabaseUserId   String?            @unique
@@ -93,6 +142,10 @@ model User {
   interestProfiles InterestProfile[]
   recommendations  Recommendation[]
   openClawConnections OpenClawConnection[]
+  learningTopics   UserLearningTopic[]
+  quizProgress     UserQuizProgress[]
+  quizSessions     QuizSession[]
+  learningJobs     LearningJob[]
   selectedConnector OpenClawConnection? @relation("SelectedConnector", fields: [selectedConnectorId], references: [id], onDelete: SetNull)
 }
 
@@ -432,4 +485,205 @@ model AnalyticsOverride {
   focusSession   FocusSession @relation(fields: [focusSessionId], references: [id], onDelete: Cascade)
 
   @@index([userId, updatedAt])
+}
+
+model LearningSubject {
+  id          String          @id @default(cuid())
+  key         String          @unique
+  label       String
+  description String
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  topics      LearningTopic[]
+}
+
+model LearningTopic {
+  id          String             @id @default(cuid())
+  subjectId   String?
+  key         String             @unique
+  label       String
+  description String
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+  subject     LearningSubject?   @relation(fields: [subjectId], references: [id], onDelete: SetNull)
+  userTopics  UserLearningTopic[]
+  sources     LearningSource[]
+  packs       QuizPack[]
+  jobs        LearningJob[]
+
+  @@index([subjectId, label])
+}
+
+model UserLearningTopic {
+  id        String              @id @default(cuid())
+  userId    String
+  topicId   String
+  source    LearningTopicSource @default(catalog)
+  active    Boolean             @default(true)
+  createdAt DateTime            @default(now())
+  updatedAt DateTime            @updatedAt
+  user      User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  topic     LearningTopic       @relation(fields: [topicId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, topicId])
+  @@index([userId, active, updatedAt])
+}
+
+model LearningSource {
+  id          String                 @id @default(cuid())
+  topicId      String
+  title       String
+  provider    String
+  sourceKind  LearningPackSourceKind
+  licenseMode LearningLicenseMode
+  sourceUrl   String?
+  createdAt   DateTime               @default(now())
+  updatedAt   DateTime               @updatedAt
+  topic       LearningTopic          @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  documents   LearningDocument[]
+  packs       QuizPack[]
+
+  @@index([topicId, createdAt])
+}
+
+model LearningDocument {
+  id          String            @id @default(cuid())
+  sourceId    String
+  title       String
+  content     String?
+  sourceUrl   String?
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  source      LearningSource    @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  chapters    LearningChapter[]
+}
+
+model LearningChapter {
+  id          String           @id @default(cuid())
+  documentId  String
+  ordinal     Int
+  title       String
+  summary     String?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  document    LearningDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  questions   QuizQuestion[]
+
+  @@unique([documentId, ordinal])
+}
+
+model QuizPack {
+  id          String                 @id @default(cuid())
+  topicId     String
+  sourceId    String?
+  title       String
+  sourceKind  LearningPackSourceKind
+  status      LearningPackStatus     @default(queued)
+  canonical   Boolean                @default(true)
+  createdAt   DateTime               @default(now())
+  updatedAt   DateTime               @updatedAt
+  topic       LearningTopic          @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  source      LearningSource?        @relation(fields: [sourceId], references: [id], onDelete: SetNull)
+  versions    QuizPackVersion[]
+  jobs        LearningJob[]
+
+  @@index([topicId, updatedAt])
+}
+
+model QuizPackVersion {
+  id            String              @id @default(cuid())
+  packId        String
+  versionNumber Int
+  licenseMode   LearningLicenseMode
+  generatedNote String?
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+  pack          QuizPack            @relation(fields: [packId], references: [id], onDelete: Cascade)
+  questions     QuizQuestion[]
+  jobs          LearningJob[]
+
+  @@unique([packId, versionNumber])
+  @@index([packId, createdAt])
+}
+
+model QuizQuestion {
+  id                     String            @id @default(cuid())
+  packVersionId          String
+  chapterId              String?
+  ordinal                Int
+  difficulty             QuizDifficulty
+  prompt                 String
+  choices                Json
+  correctChoiceId        String
+  hint                   String?
+  explanation            String?
+  wrongAnswerExplanations Json
+  artifactType           QuizArtifactType?
+  artifactData           Json?
+  createdAt              DateTime          @default(now())
+  updatedAt              DateTime          @updatedAt
+  packVersion            QuizPackVersion   @relation(fields: [packVersionId], references: [id], onDelete: Cascade)
+  chapter                LearningChapter?  @relation(fields: [chapterId], references: [id], onDelete: SetNull)
+  progress               UserQuizProgress[]
+  sessions               QuizSession[]
+
+  @@unique([packVersionId, ordinal])
+  @@index([chapterId])
+}
+
+model UserQuizProgress {
+  id             String       @id @default(cuid())
+  userId         String
+  questionId     String
+  seenCount      Int          @default(0)
+  correctStreak  Int          @default(0)
+  ease           Float        @default(2.5)
+  lastSeenAt     DateTime?
+  dueAt          DateTime     @default(now())
+  lastWasCorrect Boolean?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  question       QuizQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, questionId])
+  @@index([userId, dueAt])
+}
+
+model QuizSession {
+  id               String       @id @default(cuid())
+  userId           String
+  questionId       String
+  selectedChoiceId String?
+  correct          Boolean
+  pointsAwarded    Int          @default(0)
+  dueAt            DateTime?
+  createdAt        DateTime     @default(now())
+  user             User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  question         QuizQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+}
+
+model LearningJob {
+  id            String            @id @default(cuid())
+  userId        String
+  kind          LearningJobKind
+  status        LearningJobStatus @default(queued)
+  topicId       String?
+  packId        String?
+  packVersionId String?
+  payload       Json?
+  lastError     String?
+  startedAt     DateTime?
+  completedAt   DateTime?
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+  user          User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  topic         LearningTopic?    @relation(fields: [topicId], references: [id], onDelete: SetNull)
+  pack          QuizPack?         @relation(fields: [packId], references: [id], onDelete: SetNull)
+  packVersion   QuizPackVersion?  @relation(fields: [packVersionId], references: [id], onDelete: SetNull)
+
+  @@index([status, createdAt])
+  @@index([userId, kind, createdAt])
 }

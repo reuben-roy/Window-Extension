@@ -37,12 +37,22 @@ import type {
   IdeaRecord,
   KeywordRule,
   LaunchExecutionState,
+  LearningSettings,
+  LearningState,
+  LearningSubject,
+  LearningSuggestion,
+  QuizAnswerChoice,
+  QuizArtifact,
+  QuizPackSummary,
+  QuizPrompt,
+  ReviewQueueItem,
   LocalActivityRecord,
   LiveAnalyticsSession,
   OpenClawState,
   PointsHistory,
   Profiles,
   Settings,
+  UserLearningTopic,
   SnoozeState,
   StorageData,
   TaskTag,
@@ -60,6 +70,7 @@ import {
   DEFAULT_EXTENDED_TASK_ASSIGNMENTS,
   DEFAULT_EXTENDED_TASK_SETS,
   DEFAULT_GLOBAL_ALLOWLIST,
+  DEFAULT_LEARNING_STATE,
   DEFAULT_OPENCLAW_STATE,
   DEFAULT_SETTINGS,
   DEFAULT_SNOOZE_STATE,
@@ -167,6 +178,10 @@ function normalizeActivityClass(value: unknown): ActivityClass {
 
 function normalizeNumber(value: unknown): number {
   return typeof value === 'number' && Number.isFinite(value) ? value : 0;
+}
+
+function normalizeBoolean(value: unknown, fallback = false): boolean {
+  return typeof value === 'boolean' ? value : fallback;
 }
 
 function normalizeCalendarEvent(event: Partial<CalendarEvent> | null | undefined): CalendarEvent | null {
@@ -652,6 +667,53 @@ function normalizeAnalyticsSnapshotStored(snapshot: AnalyticsSnapshot): Analytic
   };
 }
 
+function normalizeLearningSettingsStored(
+  settings: Partial<LearningSettings> | null | undefined,
+): LearningSettings {
+  return {
+    ...DEFAULT_SETTINGS.learningSettings,
+    suggestTopicsFromActivity: normalizeBoolean(
+      settings?.suggestTopicsFromActivity,
+      DEFAULT_SETTINGS.learningSettings.suggestTopicsFromActivity,
+    ),
+    intensity:
+      settings?.intensity === 'quiet' ||
+      settings?.intensity === 'balanced' ||
+      settings?.intensity === 'aggressive'
+        ? settings.intensity
+        : DEFAULT_SETTINGS.learningSettings.intensity,
+    licenseMode:
+      settings?.licenseMode === 'commercial_safe' ||
+      settings?.licenseMode === 'expanded_oer'
+        ? settings.licenseMode
+        : DEFAULT_SETTINGS.learningSettings.licenseMode,
+  };
+}
+
+function normalizeSettingsStored(settings: Partial<Settings> | null | undefined): Settings {
+  return {
+    ...DEFAULT_SETTINGS,
+    ...settings,
+    featureFlags: {
+      ...DEFAULT_SETTINGS.featureFlags,
+      ...(settings?.featureFlags ?? {}),
+      blocking: normalizeBoolean(
+        settings?.featureFlags?.blocking,
+        DEFAULT_SETTINGS.featureFlags.blocking,
+      ),
+      routines: normalizeBoolean(
+        settings?.featureFlags?.routines,
+        DEFAULT_SETTINGS.featureFlags.routines,
+      ),
+      learning: normalizeBoolean(
+        settings?.featureFlags?.learning,
+        DEFAULT_SETTINGS.featureFlags.learning,
+      ),
+    },
+    learningSettings: normalizeLearningSettingsStored(settings?.learningSettings),
+  };
+}
+
 function normalizeCalendarStateStored(state: CalendarState): CalendarState {
   return {
     ...DEFAULT_CALENDAR_STATE,
@@ -732,6 +794,260 @@ function normalizeOpenClawStateStored(state: Partial<OpenClawState> | null | und
     currentJob: state?.currentJob ?? null,
     currentTask: state?.currentTask ?? null,
     tasks: Array.isArray(state?.tasks) ? state.tasks : [],
+    lastError: normalizeNullableString(state?.lastError),
+  };
+}
+
+function normalizeLearningSubject(subject: Partial<LearningSubject> | null | undefined): LearningSubject | null {
+  if (!subject || typeof subject !== 'object') return null;
+  const key = typeof subject.key === 'string' ? subject.key.trim() : '';
+  const label = typeof subject.label === 'string' ? subject.label.trim() : '';
+  if (!key || !label) return null;
+  return {
+    key,
+    label,
+    description: typeof subject.description === 'string' ? subject.description : '',
+    topics: Array.isArray(subject.topics)
+      ? subject.topics
+          .map((topic) => {
+            if (!topic || typeof topic !== 'object') return null;
+            const topicKey = typeof topic.key === 'string' ? topic.key.trim() : '';
+            const topicLabel = typeof topic.label === 'string' ? topic.label.trim() : '';
+            if (!topicKey || !topicLabel) return null;
+            return {
+              key: topicKey,
+              label: topicLabel,
+              description: typeof topic.description === 'string' ? topic.description : '',
+            };
+          })
+          .filter((topic): topic is LearningSubject['topics'][number] => topic !== null)
+      : [],
+  };
+}
+
+function normalizeUserLearningTopic(
+  topic: Partial<UserLearningTopic> | null | undefined,
+): UserLearningTopic | null {
+  if (!topic || typeof topic !== 'object') return null;
+  const id = typeof topic.id === 'string' ? topic.id.trim() : '';
+  const topicKey = typeof topic.topicKey === 'string' ? topic.topicKey.trim() : '';
+  const label = typeof topic.label === 'string' ? topic.label.trim() : '';
+  if (!id || !topicKey || !label) return null;
+  return {
+    id,
+    topicKey,
+    label,
+    subjectKey: normalizeNullableString(topic.subjectKey),
+    source:
+      topic.source === 'catalog' || topic.source === 'custom' || topic.source === 'suggested'
+        ? topic.source
+        : 'catalog',
+    active: normalizeBoolean(topic.active, true),
+    createdAt: typeof topic.createdAt === 'string' ? topic.createdAt : new Date(0).toISOString(),
+    updatedAt: typeof topic.updatedAt === 'string' ? topic.updatedAt : new Date(0).toISOString(),
+  };
+}
+
+function normalizeLearningSuggestion(
+  suggestion: Partial<LearningSuggestion> | null | undefined,
+): LearningSuggestion | null {
+  if (!suggestion || typeof suggestion !== 'object') return null;
+  const id = typeof suggestion.id === 'string' ? suggestion.id.trim() : '';
+  const topicKey = typeof suggestion.topicKey === 'string' ? suggestion.topicKey.trim() : '';
+  const label = typeof suggestion.label === 'string' ? suggestion.label.trim() : '';
+  if (!id || !topicKey || !label) return null;
+  return {
+    id,
+    topicKey,
+    label,
+    subjectKey: normalizeNullableString(suggestion.subjectKey),
+    reason: typeof suggestion.reason === 'string' ? suggestion.reason : '',
+    source:
+      suggestion.source === 'calendar' ||
+      suggestion.source === 'activity' ||
+      suggestion.source === 'tag' ||
+      suggestion.source === 'recommendation'
+        ? suggestion.source
+        : 'recommendation',
+  };
+}
+
+function normalizeQuizPackSummary(
+  pack: Partial<QuizPackSummary> | null | undefined,
+): QuizPackSummary | null {
+  if (!pack || typeof pack !== 'object') return null;
+  const id = typeof pack.id === 'string' ? pack.id.trim() : '';
+  const topicId = typeof pack.topicId === 'string' ? pack.topicId.trim() : '';
+  const topicLabel = typeof pack.topicLabel === 'string' ? pack.topicLabel.trim() : '';
+  const title = typeof pack.title === 'string' ? pack.title.trim() : '';
+  if (!id || !topicId || !topicLabel || !title) return null;
+  return {
+    id,
+    topicId,
+    topicLabel,
+    title,
+    sourceKind: pack.sourceKind === 'paper-based' ? 'paper-based' : 'textbook',
+    status:
+      pack.status === 'queued' ||
+      pack.status === 'processing' ||
+      pack.status === 'ready' ||
+      pack.status === 'failed'
+        ? pack.status
+        : 'queued',
+    canonical: normalizeBoolean(pack.canonical, true),
+    chapterCount: normalizeNumber(pack.chapterCount),
+    questionCount: normalizeNumber(pack.questionCount),
+    versionNumber: Math.max(1, normalizeNumber(pack.versionNumber)),
+    licenseMode: pack.licenseMode === 'expanded_oer' ? 'expanded_oer' : 'commercial_safe',
+    generatedAt: normalizeNullableString(pack.generatedAt),
+  };
+}
+
+function normalizeReviewQueueItem(
+  item: Partial<ReviewQueueItem> | null | undefined,
+): ReviewQueueItem | null {
+  if (!item || typeof item !== 'object') return null;
+  const progressId = typeof item.progressId === 'string' ? item.progressId.trim() : '';
+  const questionId = typeof item.questionId === 'string' ? item.questionId.trim() : '';
+  const topicId = typeof item.topicId === 'string' ? item.topicId.trim() : '';
+  const topicLabel = typeof item.topicLabel === 'string' ? item.topicLabel.trim() : '';
+  const chapterTitle = typeof item.chapterTitle === 'string' ? item.chapterTitle.trim() : '';
+  if (!progressId || !questionId || !topicId || !topicLabel || !chapterTitle) return null;
+  return {
+    progressId,
+    questionId,
+    topicId,
+    topicLabel,
+    chapterTitle,
+    difficulty:
+      item.difficulty === 'easy' || item.difficulty === 'medium' || item.difficulty === 'hard'
+        ? item.difficulty
+        : 'easy',
+    dueAt: typeof item.dueAt === 'string' ? item.dueAt : new Date(0).toISOString(),
+    lastSeenAt: normalizeNullableString(item.lastSeenAt),
+    seenCount: normalizeNumber(item.seenCount),
+    correctStreak: normalizeNumber(item.correctStreak),
+  };
+}
+
+function normalizeQuizAnswerChoices(value: unknown): QuizAnswerChoice[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((choice) => {
+      if (!choice || typeof choice !== 'object') return null;
+      const id = typeof choice.id === 'string' ? choice.id.trim() : '';
+      const label = typeof choice.label === 'string' ? choice.label.trim() : '';
+      const body = typeof choice.body === 'string' ? choice.body : '';
+      if (!id || !label) return null;
+      return { id, label, body };
+    })
+    .filter((choice): choice is QuizAnswerChoice => choice !== null);
+}
+
+function normalizeQuizArtifact(artifact: Partial<QuizArtifact> | null | undefined): QuizArtifact | null {
+  if (!artifact || typeof artifact !== 'object') return null;
+  const type = artifact.type === 'graph' ? 'graph' : artifact.type === 'image' ? 'image' : null;
+  const alt = typeof artifact.alt === 'string' ? artifact.alt : '';
+  if (type === null) return null;
+  return {
+    type,
+    alt,
+    imageUrl: normalizeNullableString(artifact.imageUrl),
+    graphSpec:
+      artifact.graphSpec && typeof artifact.graphSpec === 'object'
+        ? (artifact.graphSpec as Record<string, unknown>)
+        : null,
+  };
+}
+
+function normalizeQuizPrompt(prompt: Partial<QuizPrompt> | null | undefined): QuizPrompt | null {
+  if (!prompt || typeof prompt !== 'object') return null;
+  const sessionId = typeof prompt.sessionId === 'string' ? prompt.sessionId.trim() : '';
+  const questionId = typeof prompt.questionId === 'string' ? prompt.questionId.trim() : '';
+  const packId = typeof prompt.packId === 'string' ? prompt.packId.trim() : '';
+  const topicId = typeof prompt.topicId === 'string' ? prompt.topicId.trim() : '';
+  const topicLabel = typeof prompt.topicLabel === 'string' ? prompt.topicLabel.trim() : '';
+  const packTitle = typeof prompt.packTitle === 'string' ? prompt.packTitle.trim() : '';
+  const chapterTitle = typeof prompt.chapterTitle === 'string' ? prompt.chapterTitle.trim() : '';
+  const body = typeof prompt.prompt === 'string' ? prompt.prompt.trim() : '';
+  if (!sessionId || !questionId || !packId || !topicId || !topicLabel || !packTitle || !chapterTitle || !body) {
+    return null;
+  }
+  return {
+    sessionId,
+    questionId,
+    progressId: normalizeNullableString(prompt.progressId),
+    packId,
+    packVersionId: normalizeNullableString(prompt.packVersionId),
+    topicId,
+    topicLabel,
+    packTitle,
+    chapterTitle,
+    difficulty:
+      prompt.difficulty === 'easy' || prompt.difficulty === 'medium' || prompt.difficulty === 'hard'
+        ? prompt.difficulty
+        : 'easy',
+    origin:
+      prompt.origin === 'manual' || prompt.origin === 'retry' || prompt.origin === 'scheduled'
+        ? prompt.origin
+        : 'manual',
+    pointsReward: normalizeNumber(prompt.pointsReward),
+    streak: normalizeNumber(prompt.streak),
+    prompt: body,
+    hint: normalizeNullableString(prompt.hint),
+    explanation: normalizeNullableString(prompt.explanation),
+    choices: normalizeQuizAnswerChoices(prompt.choices),
+    correctChoiceId: normalizeNullableString(prompt.correctChoiceId),
+    wrongAnswerExplanations:
+      prompt.wrongAnswerExplanations && typeof prompt.wrongAnswerExplanations === 'object'
+        ? Object.entries(prompt.wrongAnswerExplanations as Record<string, unknown>).reduce<Record<string, string>>(
+            (acc, [key, value]) => {
+              if (typeof value === 'string') acc[key] = value;
+              return acc;
+            },
+            {},
+          )
+        : {},
+    artifact: normalizeQuizArtifact(prompt.artifact),
+    surfacedAt: typeof prompt.surfacedAt === 'string' ? prompt.surfacedAt : new Date(0).toISOString(),
+  };
+}
+
+function normalizeLearningStateStored(
+  state: Partial<LearningState> | null | undefined,
+): LearningState {
+  return {
+    ...DEFAULT_LEARNING_STATE,
+    ...state,
+    taxonomy: Array.isArray(state?.taxonomy)
+      ? state.taxonomy
+          .map((subject) => normalizeLearningSubject(subject))
+          .filter((subject): subject is LearningSubject => subject !== null)
+      : [],
+    userTopics: Array.isArray(state?.userTopics)
+      ? state.userTopics
+          .map((topic) => normalizeUserLearningTopic(topic))
+          .filter((topic): topic is UserLearningTopic => topic !== null)
+      : [],
+    suggestions: Array.isArray(state?.suggestions)
+      ? state.suggestions
+          .map((suggestion) => normalizeLearningSuggestion(suggestion))
+          .filter((suggestion): suggestion is LearningSuggestion => suggestion !== null)
+      : [],
+    packs: Array.isArray(state?.packs)
+      ? state.packs
+          .map((pack) => normalizeQuizPackSummary(pack))
+          .filter((pack): pack is QuizPackSummary => pack !== null)
+      : [],
+    reviewQueue: Array.isArray(state?.reviewQueue)
+      ? state.reviewQueue
+          .map((item) => normalizeReviewQueueItem(item))
+          .filter((item): item is ReviewQueueItem => item !== null)
+      : [],
+    activeQuizPrompt: normalizeQuizPrompt(state?.activeQuizPrompt),
+    activeQuizVisible: normalizeBoolean(state?.activeQuizVisible, false),
+    syncing: normalizeBoolean(state?.syncing, false),
+    lastSyncedAt: normalizeNullableString(state?.lastSyncedAt),
     lastError: normalizeNullableString(state?.lastError),
   };
 }
@@ -859,13 +1175,10 @@ export const clearExtendedTaskAssignments = (): Promise<void> =>
 // ─── Settings ─────────────────────────────────────────────────────────────────
 
 export const getSettings = (): Promise<Settings> =>
-  get<Partial<Settings>>('settings', DEFAULT_SETTINGS).then((settings) => ({
-    ...DEFAULT_SETTINGS,
-    ...settings,
-  }));
+  get<Partial<Settings>>('settings', DEFAULT_SETTINGS).then(normalizeSettingsStored);
 
 export const setSettings = (settings: Settings): Promise<void> =>
-  set('settings', settings);
+  set('settings', normalizeSettingsStored(settings));
 
 // ─── Assistant options ───────────────────────────────────────────────────────
 
@@ -1018,6 +1331,14 @@ export const getOpenClawState = (): Promise<OpenClawState> =>
 
 export const setOpenClawState = (state: OpenClawState): Promise<void> =>
   setLocal('openClawState', state);
+
+export const getLearningState = (): Promise<LearningState> =>
+  getLocal<Partial<LearningState>>('learningState', DEFAULT_LEARNING_STATE).then(
+    normalizeLearningStateStored,
+  );
+
+export const setLearningState = (state: LearningState): Promise<void> =>
+  setLocal('learningState', normalizeLearningStateStored(state));
 
 export const getBreakVisitQueue = (): Promise<BreakVisitEvent[]> =>
   getLocal<BreakVisitEvent[]>('breakVisitQueue', []);

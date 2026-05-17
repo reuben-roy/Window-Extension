@@ -29,6 +29,156 @@ export type ActivityClass = 'aligned' | 'supportive' | 'distracted' | 'away' | '
 export type TaskTagSource = 'seed' | 'keyword' | 'auto' | 'user';
 export type AnalyticsRange = '7d' | '30d';
 export type AnalyticsConsumptionRange = '7d' | '30d' | '90d' | '365d';
+export type LearningLicenseMode = 'commercial_safe' | 'expanded_oer';
+export type LearningIntensity = 'quiet' | 'balanced' | 'aggressive';
+export type LearningTopicSource = 'catalog' | 'custom' | 'suggested';
+export type LearningSuggestionSource = 'calendar' | 'activity' | 'tag' | 'recommendation';
+export type LearningPackSourceKind = 'textbook' | 'paper-based';
+export type LearningPackStatus = 'queued' | 'processing' | 'ready' | 'failed';
+export type LearningJobKind =
+  | 'source_discovery'
+  | 'document_ingestion'
+  | 'pack_generation'
+  | 'pack_regeneration';
+export type LearningJobStatus = 'queued' | 'running' | 'completed' | 'failed' | 'cancelled';
+export type QuizDifficulty = 'easy' | 'medium' | 'hard';
+export type QuizArtifactType = 'image' | 'graph';
+export type QuizPromptOrigin = 'scheduled' | 'manual' | 'retry';
+
+export interface FeatureFlags {
+  blocking: boolean;
+  routines: boolean;
+  learning: boolean;
+}
+
+export interface LearningSettings {
+  suggestTopicsFromActivity: boolean;
+  intensity: LearningIntensity;
+  licenseMode: LearningLicenseMode;
+}
+
+export interface LearningTopicOption {
+  key: string;
+  label: string;
+  description: string;
+}
+
+export interface LearningSubject {
+  key: string;
+  label: string;
+  description: string;
+  topics: LearningTopicOption[];
+}
+
+export interface UserLearningTopic {
+  id: string;
+  subjectKey: string | null;
+  topicKey: string;
+  label: string;
+  source: LearningTopicSource;
+  active: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface LearningSuggestion {
+  id: string;
+  topicKey: string;
+  label: string;
+  subjectKey: string | null;
+  reason: string;
+  source: LearningSuggestionSource;
+}
+
+export interface QuizPackSummary {
+  id: string;
+  topicId: string;
+  topicLabel: string;
+  title: string;
+  sourceKind: LearningPackSourceKind;
+  status: LearningPackStatus;
+  canonical: boolean;
+  chapterCount: number;
+  questionCount: number;
+  versionNumber: number;
+  licenseMode: LearningLicenseMode;
+  generatedAt: string | null;
+}
+
+export interface ReviewQueueItem {
+  progressId: string;
+  questionId: string;
+  topicId: string;
+  topicLabel: string;
+  chapterTitle: string;
+  difficulty: QuizDifficulty;
+  dueAt: string;
+  lastSeenAt: string | null;
+  seenCount: number;
+  correctStreak: number;
+}
+
+export interface QuizAnswerChoice {
+  id: string;
+  label: string;
+  body: string;
+}
+
+export interface QuizArtifact {
+  type: QuizArtifactType;
+  alt: string;
+  imageUrl?: string | null;
+  graphSpec?: Record<string, unknown> | null;
+}
+
+export interface QuizPrompt {
+  sessionId: string;
+  questionId: string;
+  progressId: string | null;
+  packId: string;
+  packVersionId: string | null;
+  topicId: string;
+  topicLabel: string;
+  packTitle: string;
+  chapterTitle: string;
+  difficulty: QuizDifficulty;
+  origin: QuizPromptOrigin;
+  pointsReward: number;
+  streak: number;
+  prompt: string;
+  hint: string | null;
+  explanation: string | null;
+  choices: QuizAnswerChoice[];
+  correctChoiceId: string | null;
+  wrongAnswerExplanations: Record<string, string>;
+  artifact: QuizArtifact | null;
+  surfacedAt: string;
+}
+
+export interface QuizAnswerResult {
+  prompt: QuizPrompt;
+  correct: boolean;
+  selectedChoiceId: string | null;
+  correctChoiceId: string | null;
+  explanation: string | null;
+  wrongAnswerExplanation: string | null;
+  nextDueAt: string | null;
+  pointsAwarded: number;
+  updatedStreak: number;
+}
+
+export interface LearningState {
+  taxonomy: LearningSubject[];
+  userTopics: UserLearningTopic[];
+  suggestions: LearningSuggestion[];
+  packs: QuizPackSummary[];
+  reviewQueue: ReviewQueueItem[];
+  activeQuizPrompt: QuizPrompt | null;
+  activeQuizVisible: boolean;
+  syncing: boolean;
+  lastSyncedAt: string | null;
+  lastError: string | null;
+}
 
 export interface TaskTag {
   key: string;
@@ -64,6 +214,8 @@ export type ActiveRuleSource = 'event' | 'keyword' | 'none';
 export interface Settings {
   enableBlocking: boolean;
   blockPage: string;
+  featureFlags: FeatureFlags;
+  learningSettings: LearningSettings;
   carryoverMode: CarryoverMode;
   taskTTLDays: number;
   monthlyResetEnabled: boolean;
@@ -777,6 +929,7 @@ export interface StorageData {
   allTimeStats: AllTimeStats;
   calendarState: CalendarState;
   assistantOptions: AssistantOptions;
+  learningState: LearningState;
 }
 
 // Messages passed between service worker and UI pages
@@ -815,7 +968,14 @@ export type MessageType =
   | 'DISMISS_TASK'
   | 'OPEN_ACTIVE_LAUNCH_TARGET'
   | 'SAVE_ANALYTICS_OVERRIDE'
-  | 'REFRESH_ANALYTICS_STATE';
+  | 'REFRESH_ANALYTICS_STATE'
+  | 'REFRESH_LEARNING_STATE'
+  | 'SAVE_USER_LEARNING_TOPICS'
+  | 'CREATE_CUSTOM_LEARNING_TOPIC'
+  | 'REGENERATE_LEARNING_PACK'
+  | 'GET_NEXT_QUIZ_PROMPT'
+  | 'SUBMIT_QUIZ_ANSWER'
+  | 'SET_ACTIVE_QUIZ_VISIBILITY';
 
 export interface Message {
   type: MessageType;
@@ -841,4 +1001,5 @@ export interface StateResponse {
   ideaState: IdeaState;
   openClawState: OpenClawState;
   analyticsSnapshot: AnalyticsSnapshot;
+  learningState: LearningState;
 }

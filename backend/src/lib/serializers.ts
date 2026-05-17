@@ -14,9 +14,15 @@ import type {
   AssistantTaskPayload,
   FocusSessionPayload,
   IdeaReportPayload,
+  LearningSubjectPayload,
+  QuizAnswerResultPayload,
+  QuizPackSummaryPayload,
+  QuizPromptPayload,
+  ReviewQueueItemPayload,
   OpenClawJobPayload,
   OpenClawSessionPayload,
   RemoteIdeaRecordPayload,
+  UserLearningTopicPayload,
 } from '../types.js';
 
 export type IdeaWithRelations = Prisma.IdeaCaptureGetPayload<{
@@ -229,6 +235,244 @@ export function toRecommendationPayload(recommendation: Recommendation): {
     title: recommendation.title,
     body: recommendation.body,
     createdAt: recommendation.createdAt.toISOString(),
+  };
+}
+
+export function toLearningSubjectPayload(subject: {
+  key: string;
+  label: string;
+  description: string;
+  topics: Array<{
+    key: string;
+    label: string;
+    description: string;
+  }>;
+}): LearningSubjectPayload {
+  return {
+    key: subject.key,
+    label: subject.label,
+    description: subject.description,
+    topics: subject.topics.map((topic) => ({
+      key: topic.key,
+      label: topic.label,
+      description: topic.description,
+    })),
+  };
+}
+
+export function toUserLearningTopicPayload(topic: {
+  id: string;
+  source: 'catalog' | 'custom' | 'suggested';
+  active: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+  topic: {
+    key: string;
+    label: string;
+    subject: {
+      key: string;
+    } | null;
+  };
+}): UserLearningTopicPayload {
+  return {
+    id: topic.id,
+    subjectKey: topic.topic.subject?.key ?? null,
+    topicKey: topic.topic.key,
+    label: topic.topic.label,
+    source: topic.source,
+    active: topic.active,
+    createdAt: topic.createdAt.toISOString(),
+    updatedAt: topic.updatedAt.toISOString(),
+  };
+}
+
+export function toQuizPackSummaryPayload(pack: {
+  id: string;
+  title: string;
+  sourceKind: 'textbook' | 'paper_based';
+  status: 'queued' | 'processing' | 'ready' | 'failed';
+  canonical: boolean;
+  createdAt: Date;
+  topic: {
+    id: string;
+    label: string;
+  };
+  source?: {
+    licenseMode: 'commercial_safe' | 'expanded_oer';
+  } | null;
+  versions: Array<{
+    id: string;
+    versionNumber: number;
+    createdAt: Date;
+    questions: Array<{ id: string }>;
+  }>;
+}): QuizPackSummaryPayload {
+  const latestVersion = [...pack.versions].sort((left, right) => right.versionNumber - left.versionNumber)[0] ?? null;
+  return {
+    id: pack.id,
+    topicId: pack.topic.id,
+    topicLabel: pack.topic.label,
+    title: pack.title,
+    sourceKind: pack.sourceKind === 'paper_based' ? 'paper-based' : 'textbook',
+    status: pack.status,
+    canonical: pack.canonical,
+    chapterCount: latestVersion ? 3 : 0,
+    questionCount: latestVersion?.questions.length ?? 0,
+    versionNumber: latestVersion?.versionNumber ?? 1,
+    licenseMode: pack.source?.licenseMode ?? 'commercial_safe',
+    generatedAt: latestVersion?.createdAt.toISOString() ?? null,
+  };
+}
+
+export function toReviewQueueItemPayload(item: {
+  id: string;
+  seenCount: number;
+  correctStreak: number;
+  dueAt: Date;
+  lastSeenAt: Date | null;
+  question: {
+    id: string;
+    difficulty: 'easy' | 'medium' | 'hard';
+    chapter: {
+      title: string;
+    } | null;
+    packVersion: {
+      pack: {
+        topic: {
+          id: string;
+          label: string;
+        };
+      };
+    };
+  };
+}): ReviewQueueItemPayload {
+  return {
+    progressId: item.id,
+    questionId: item.question.id,
+    topicId: item.question.packVersion.pack.topic.id,
+    topicLabel: item.question.packVersion.pack.topic.label,
+    chapterTitle: item.question.chapter?.title ?? 'General review',
+    difficulty: item.question.difficulty,
+    dueAt: item.dueAt.toISOString(),
+    lastSeenAt: item.lastSeenAt?.toISOString() ?? null,
+    seenCount: item.seenCount,
+    correctStreak: item.correctStreak,
+  };
+}
+
+export function toQuizPromptPayload(question: {
+  id: string;
+  prompt: string;
+  hint: string | null;
+  explanation: string | null;
+  correctChoiceId: string;
+  choices: unknown;
+  wrongAnswerExplanations: unknown;
+  difficulty: 'easy' | 'medium' | 'hard';
+  artifactType: 'image' | 'graph' | null;
+  artifactData: unknown;
+  chapter: {
+    title: string;
+  } | null;
+  packVersion: {
+    id: string;
+    pack: {
+      id: string;
+      title: string;
+      topic: {
+        id: string;
+        label: string;
+      };
+    };
+  };
+}, input: {
+  sessionId: string;
+  progressId: string | null;
+  origin: 'scheduled' | 'manual' | 'retry';
+  pointsReward: number;
+  streak: number;
+}): QuizPromptPayload {
+  return {
+    sessionId: input.sessionId,
+    questionId: question.id,
+    progressId: input.progressId,
+    packId: question.packVersion.pack.id,
+    packVersionId: question.packVersion.id,
+    topicId: question.packVersion.pack.topic.id,
+    topicLabel: question.packVersion.pack.topic.label,
+    packTitle: question.packVersion.pack.title,
+    chapterTitle: question.chapter?.title ?? 'General review',
+    difficulty: question.difficulty,
+    origin: input.origin,
+    pointsReward: input.pointsReward,
+    streak: input.streak,
+    prompt: question.prompt,
+    hint: question.hint,
+    explanation: question.explanation,
+    choices: Array.isArray(question.choices)
+      ? question.choices.reduce<QuizPromptPayload['choices']>((acc, choice) => {
+          if (!choice || typeof choice !== 'object') return acc;
+          const id = typeof (choice as { id?: unknown }).id === 'string'
+            ? (choice as { id: string }).id
+            : null;
+          const label = typeof (choice as { label?: unknown }).label === 'string'
+            ? (choice as { label: string }).label
+            : null;
+          const body = typeof (choice as { body?: unknown }).body === 'string'
+            ? (choice as { body: string }).body
+            : '';
+          if (!id || !label) return acc;
+          acc.push({ id, label, body });
+          return acc;
+        }, [])
+      : [],
+    correctChoiceId: question.correctChoiceId,
+    wrongAnswerExplanations: coerceStringRecord(question.wrongAnswerExplanations),
+    artifact:
+      question.artifactType === null
+        ? null
+        : {
+            type: question.artifactType,
+            alt: `${question.packVersion.pack.topic.label} study artifact`,
+            imageUrl:
+              question.artifactType === 'image' &&
+              question.artifactData &&
+              typeof question.artifactData === 'object' &&
+              'imageUrl' in (question.artifactData as Record<string, unknown>) &&
+              typeof (question.artifactData as Record<string, unknown>).imageUrl === 'string'
+                ? ((question.artifactData as Record<string, unknown>).imageUrl as string)
+                : null,
+            graphSpec:
+              question.artifactType === 'graph' &&
+              question.artifactData &&
+              typeof question.artifactData === 'object'
+                ? (question.artifactData as Record<string, unknown>)
+                : null,
+          },
+    surfacedAt: new Date().toISOString(),
+  };
+}
+
+export function toQuizAnswerResultPayload(input: {
+  prompt: QuizPromptPayload;
+  correct: boolean;
+  selectedChoiceId: string | null;
+  explanation: string | null;
+  wrongAnswerExplanation: string | null;
+  nextDueAt: Date | null;
+  pointsAwarded: number;
+  updatedStreak: number;
+}): QuizAnswerResultPayload {
+  return {
+    prompt: input.prompt,
+    correct: input.correct,
+    selectedChoiceId: input.selectedChoiceId,
+    correctChoiceId: input.prompt.correctChoiceId,
+    explanation: input.explanation,
+    wrongAnswerExplanation: input.wrongAnswerExplanation,
+    nextDueAt: input.nextDueAt?.toISOString() ?? null,
+    pointsAwarded: input.pointsAwarded,
+    updatedStreak: input.updatedStreak,
   };
 }
 

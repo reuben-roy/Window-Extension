@@ -1,0 +1,12 @@
+[Unit]
+Description=Window Neon backup export
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=window
+Group=window
+WorkingDirectory=/opt/window/window-extension/backend
+EnvironmentFile=/etc/window/window.env
+ExecStart=/opt/window/window-extension/backend/scripts/backup-postgres.sh

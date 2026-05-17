@@ -45,6 +45,7 @@ import {
   normalizeEventPattern,
   observeEventPatterns,
 } from '../shared/tags';
+import { isBlockingFeatureEnabled, isRoutinesFeatureEnabled } from '../shared/learning';
 import type {
   ActiveRuleSource,
   ActivitySessionRecord,
@@ -376,7 +377,10 @@ export function resolveActiveState(
       difficultyRank: tagResolution.difficultyRank,
       allowedDomains,
       recentEventTitles,
-      isRestricted: settings.enableBlocking && !isDailyBlockingPauseActive(new Date(), settings),
+      isRestricted:
+        isBlockingFeatureEnabled(settings) &&
+        settings.enableBlocking &&
+        !isDailyBlockingPauseActive(new Date(), settings),
       lastSyncedAt: new Date().toISOString(),
       authError: null,
     },
@@ -459,7 +463,7 @@ function mergeExtendedTaskAllowlistIntoBaseState(
   extendedTaskAssignments: ExtendedTaskAssignment[],
   globalAllowlist: string[],
 ): Omit<CalendarState, 'activeLaunchTarget'> {
-  if (!settings.enableBlocking) return state;
+  if (!isBlockingFeatureEnabled(settings) || !settings.enableBlocking) return state;
   if (isDailyBlockingPauseActive(new Date(), settings)) return state;
 
   const currentEvent = state.currentEvent ?? allActiveEvents[0] ?? null;
@@ -483,7 +487,7 @@ function mergeExtendedTaskAllowlistIntoBaseState(
   if (uniqueHosts.length === 0) return state;
 
   const pauseActive = isDailyBlockingPauseActive(new Date(), settings);
-  const shouldRestrict = settings.enableBlocking && !pauseActive;
+  const shouldRestrict = isBlockingFeatureEnabled(settings) && settings.enableBlocking && !pauseActive;
 
   return {
     ...state,
@@ -500,6 +504,19 @@ function attachActiveLaunchTarget(
   settings: Settings,
   globalAllowlist: string[],
 ): CalendarState {
+  if (!isRoutinesFeatureEnabled(settings)) {
+    return {
+      ...mergeExtendedTaskAllowlistIntoBaseState(
+        state,
+        settings,
+        allActiveEvents,
+        [],
+        globalAllowlist,
+      ),
+      activeLaunchTarget: null,
+    };
+  }
+
   const merged = mergeExtendedTaskAllowlistIntoBaseState(
     state,
     settings,

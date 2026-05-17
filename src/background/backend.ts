@@ -9,6 +9,7 @@ import {
 } from '../shared/account';
 import { DEFAULT_OPENCLAW_STATE, DEFAULT_WINDOW_BACKEND_URL } from '../shared/constants';
 import { mergeAnalyticsSnapshot } from '../shared/analytics';
+import { DEFAULT_LEARNING_TAXONOMY, deriveLearningSuggestions, isLearningFeatureEnabled } from '../shared/learning';
 import {
   applyIdeaDecision,
   createIdeaRecord,
@@ -31,7 +32,10 @@ import {
   getCalendarState,
   getFocusSessionQueue,
   getIdeaRecords,
+  getLearningState,
   getOpenClawState,
+  getSettings,
+  getTaskTags,
   getTaskQueue,
   setAccountConflict,
   setAccountSyncState,
@@ -45,6 +49,7 @@ import {
   setBreakVisitQueue,
   setFocusSessionQueue,
   setIdeaRecords,
+  setLearningState,
   setOpenClawState,
 } from '../shared/storage';
 import type {
@@ -65,6 +70,14 @@ import type {
   IdeaRecord,
   IdeaReport,
   IdeaState,
+  LearningState,
+  LearningSubject,
+  LearningSuggestion,
+  QuizAnswerResult,
+  QuizPackSummary,
+  QuizPrompt,
+  ReviewQueueItem,
+  UserLearningTopic,
   FocusSessionRecord,
   TagBreakdownItem,
   TaskNotificationMode,
@@ -197,6 +210,32 @@ interface AnalyticsTagsResponse {
 
 interface AnalyticsSessionsResponse {
   items: FocusSessionRecord[];
+}
+
+interface LearningTaxonomyResponse {
+  items: LearningSubject[];
+}
+
+interface LearningTopicsResponse {
+  items: UserLearningTopic[];
+}
+
+interface LearningSuggestionsResponse {
+  items: LearningSuggestion[];
+}
+
+interface LearningPacksResponse {
+  items: QuizPackSummary[];
+}
+
+interface LearningReviewResponse {
+  prompt: QuizPrompt | null;
+  reviewQueue: ReviewQueueItem[];
+}
+
+interface LearningAnswerResponse {
+  result: QuizAnswerResult;
+  reviewQueue: ReviewQueueItem[];
 }
 
 let accountSyncTimer: ReturnType<typeof setTimeout> | null = null;
@@ -986,6 +1025,173 @@ export async function refreshAnalyticsState(): Promise<AnalyticsSnapshot> {
     });
     return existing;
   }
+}
+
+export async function refreshLearningState(): Promise<LearningState> {
+  const [existing, settings, analyticsSnapshot, calendarState, taskTags] = await Promise.all([
+    getLearningState(),
+    getSettings(),
+    getAnalyticsSnapshot(),
+    getCalendarState(),
+    getTaskTags(),
+  ]);
+
+  const fallbackSuggestions = deriveLearningSuggestions({
+    analyticsSnapshot,
+    calendarState,
+    taskTags,
+    settings,
+    existingTopicKeys: existing.userTopics.map((topic) => topic.topicKey),
+  });
+
+  if (!isLearningFeatureEnabled(settings)) {
+    const next: LearningState = {
+      ...existing,
+      taxonomy: DEFAULT_LEARNING_TAXONOMY,
+      suggestions: [],
+      syncing: false,
+      lastError: null,
+    };
+    await setLearningState(next);
+    return next;
+  }
+
+  const session = await ensureBackendSession();
+  if (!session) {
+    const next: LearningState = {
+      ...existing,
+      taxonomy: DEFAULT_LEARNING_TAXONOMY,
+      suggestions: fallbackSuggestions,
+      syncing: false,
+      lastError: null,
+    };
+    await setLearningState(next);
+    return next;
+  }
+
+  await setLearningState({
+    ...existing,
+    syncing: true,
+    lastError: null,
+  });
+
+  try {
+    const [taxonomy, userTopics, suggestions, packs, review] = await Promise.all([
+      backendRequest<LearningTaxonomyResponse>('/v1/learning/taxonomy'),
+      backendRequest<LearningTopicsResponse>('/v1/learning/user-topics'),
+      backendRequest<LearningSuggestionsResponse>('/v1/learning/suggestions'),
+      backendRequest<LearningPacksResponse>('/v1/learning/packs'),
+      backendRequest<LearningReviewResponse>('/v1/learning/review/next?origin=scheduled'),
+    ]);
+
+    const next: LearningState = {
+      taxonomy: taxonomy.items.length > 0 ? taxonomy.items : DEFAULT_LEARNING_TAXONOMY,
+      userTopics: userTopics.items,
+      suggestions: suggestions.items.length > 0 ? suggestions.items : fallbackSuggestions,
+      packs: packs.items,
+      reviewQueue: review.reviewQueue,
+      activeQuizPrompt: review.prompt,
+      activeQuizVisible: existing.activeQuizVisible && review.prompt !== null,
+      syncing: false,
+      lastSyncedAt: new Date().toISOString(),
+      lastError: null,
+    };
+    await setLearningState(next);
+    return next;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    const next: LearningState = {
+      ...existing,
+      taxonomy: existing.taxonomy.length > 0 ? existing.taxonomy : DEFAULT_LEARNING_TAXONOMY,
+      suggestions: fallbackSuggestions,
+      syncing: false,
+      lastError: message,
+    };
+    await setLearningState(next);
+    const currentSyncState = await getBackendSyncState();
+    await setBackendSyncState({
+      ...currentSyncState,
+      lastError: message,
+    });
+    return next;
+  }
+}
+
+export async function saveUserLearningTopics(topics: Array<{
+  topicKey: string;
+  label: string;
+  subjectKey?: string | null;
+  source?: 'catalog' | 'custom' | 'suggested';
+}>): Promise<LearningState> {
+  await backendRequest<LearningTopicsResponse>('/v1/learning/user-topics', {
+    method: 'POST',
+    body: { topics },
+  });
+  return refreshLearningState();
+}
+
+export async function createCustomLearningTopic(input: {
+  label: string;
+  subjectKey?: string | null;
+}): Promise<LearningState> {
+  await backendRequest<{ topic: UserLearningTopic }>('/v1/learning/topics/custom', {
+    method: 'POST',
+    body: input,
+  });
+  return refreshLearningState();
+}
+
+export async function regenerateLearningPack(packId: string): Promise<LearningState> {
+  await backendRequest<{ ok: boolean }>(`/v1/learning/packs/${packId}/regenerate`, {
+    method: 'POST',
+    body: {},
+  });
+  return refreshLearningState();
+}
+
+export async function getNextQuizPrompt(origin: 'scheduled' | 'manual' | 'retry' = 'manual'): Promise<QuizPrompt | null> {
+  const review = await backendRequest<LearningReviewResponse>(`/v1/learning/review/next?origin=${origin}`);
+  const current = await getLearningState();
+  await setLearningState({
+    ...current,
+    reviewQueue: review.reviewQueue,
+    activeQuizPrompt: review.prompt,
+    activeQuizVisible: review.prompt !== null,
+    lastSyncedAt: new Date().toISOString(),
+    lastError: null,
+  });
+  return review.prompt;
+}
+
+export async function submitQuizAnswer(input: {
+  questionId: string;
+  selectedChoiceId: string | null;
+  sessionId?: string;
+}): Promise<QuizAnswerResult> {
+  const response = await backendRequest<LearningAnswerResponse>('/v1/learning/answers', {
+    method: 'POST',
+    body: input,
+  });
+  const current = await getLearningState();
+  await setLearningState({
+    ...current,
+    reviewQueue: response.reviewQueue,
+    activeQuizPrompt: response.result.prompt,
+    activeQuizVisible: true,
+    lastSyncedAt: new Date().toISOString(),
+    lastError: null,
+  });
+  return response.result;
+}
+
+export async function setActiveQuizVisibility(visible: boolean): Promise<LearningState> {
+  const current = await getLearningState();
+  const next: LearningState = {
+    ...current,
+    activeQuizVisible: visible && current.activeQuizPrompt !== null,
+  };
+  await setLearningState(next);
+  return next;
 }
 
 export async function saveAnalyticsOverrideRemote(

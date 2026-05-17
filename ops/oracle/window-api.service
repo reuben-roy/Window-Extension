@@ -1,0 +1,18 @@
+[Unit]
+Description=Window API
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=window
+Group=window
+WorkingDirectory=/opt/window/window-extension/backend
+EnvironmentFile=/etc/window/window.env
+ExecStart=/usr/bin/node dist/src/server.js
+Restart=always
+RestartSec=5
+TimeoutStopSec=20
+
+[Install]
+WantedBy=multi-user.target

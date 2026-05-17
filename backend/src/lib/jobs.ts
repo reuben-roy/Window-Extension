@@ -1,6 +1,10 @@
 import type { Prisma } from '@prisma/client';
 import { prisma } from './prisma.js';
 import {
+  buildSampleQuestions,
+  sampleChaptersForTopic,
+} from './learning.js';
+import {
   openClawConnector,
   prismaRowToOpenClawConnectionConfig,
 } from './openclaw/client.js';
@@ -24,6 +28,14 @@ type AssistantTaskJobWithTask = Prisma.AssistantTaskJobGetPayload<{
         result: true;
       };
     };
+  };
+}>;
+
+type LearningJobWithRelations = Prisma.LearningJobGetPayload<{
+  include: {
+    topic: true;
+    pack: true;
+    packVersion: true;
   };
 }>;
 
@@ -161,6 +173,18 @@ export async function processAssistantTasksBatch(maxJobs = 10): Promise<number> 
   return processed;
 }
 
+export async function processLearningJobsBatch(maxJobs = 5): Promise<number> {
+  let processed = 0;
+
+  while (processed < maxJobs) {
+    const didWork = await processNextLearningJob();
+    if (!didWork) break;
+    processed += 1;
+  }
+
+  return processed;
+}
+
 async function claimNextResearchJob(): Promise<ResearchJobWithIdea | null> {
   const candidate = await prisma.researchJob.findFirst({
     where: { status: 'queued' },
@@ -263,6 +287,190 @@ async function claimNextAssistantTaskJob(): Promise<AssistantTaskJobWithTask | n
       },
     },
   });
+}
+
+async function claimNextLearningJob(): Promise<LearningJobWithRelations | null> {
+  const candidate = await prisma.learningJob.findFirst({
+    where: { status: 'queued' },
+    orderBy: { createdAt: 'asc' },
+    include: {
+      topic: true,
+      pack: true,
+      packVersion: true,
+    },
+  });
+  if (!candidate) return null;
+
+  const claimed = await prisma.learningJob.updateMany({
+    where: {
+      id: candidate.id,
+      status: 'queued',
+    },
+    data: {
+      status: 'running',
+      startedAt: new Date(),
+      lastError: null,
+    },
+  });
+
+  if (!claimed.count) return null;
+
+  return prisma.learningJob.findUnique({
+    where: { id: candidate.id },
+    include: {
+      topic: true,
+      pack: true,
+      packVersion: true,
+    },
+  });
+}
+
+async function processNextLearningJob(): Promise<boolean> {
+  const job = await claimNextLearningJob();
+  if (!job) return false;
+
+  try {
+    if (!job.topicId && !job.packId) {
+      throw new Error('Learning job is missing topic or pack context.');
+    }
+
+    let topic = job.topic;
+    let pack = job.pack;
+    if (!topic && pack?.topicId) {
+      topic = await prisma.learningTopic.findUnique({ where: { id: pack.topicId } });
+    }
+    if (!topic) {
+      throw new Error('Learning topic could not be resolved.');
+    }
+
+    const effectivePack =
+      pack ??
+      (await prisma.quizPack.findFirst({
+        where: { topicId: topic.id, canonical: true },
+        include: { source: true },
+      }));
+
+    const source =
+      effectivePack?.sourceId
+        ? (await prisma.learningSource.findUnique({ where: { id: effectivePack.sourceId } })) ??
+          (await prisma.learningSource.create({
+            data: {
+              topicId: topic.id,
+              title: `${topic.label} Reference Set`,
+              provider: job.kind === 'pack_regeneration' ? 'Window Regenerated Pack' : 'Window Starter Corpus',
+              sourceKind: 'textbook',
+              licenseMode: 'commercial_safe',
+              sourceUrl: null,
+            },
+          }))
+        : await prisma.learningSource.create({
+            data: {
+              topicId: topic.id,
+              title: `${topic.label} Reference Set`,
+              provider: job.kind === 'pack_regeneration' ? 'Window Regenerated Pack' : 'Window Starter Corpus',
+              sourceKind: 'textbook',
+              licenseMode: 'commercial_safe',
+              sourceUrl: null,
+            },
+          });
+
+    const resolvedPack =
+      effectivePack ??
+      (await prisma.quizPack.create({
+        data: {
+          topicId: topic.id,
+          sourceId: source.id,
+          title: `${topic.label} Mastery Pack`,
+          sourceKind: source.sourceKind,
+          status: 'processing',
+          canonical: true,
+        },
+      }));
+
+    const chapterTitles = sampleChaptersForTopic(topic.label);
+    const document = await prisma.learningDocument.create({
+      data: {
+        sourceId: source.id,
+        title: `${topic.label} Study Guide`,
+        content: `Structured notes for ${topic.label}.`,
+        chapters: {
+          create: chapterTitles.map((title, index) => ({
+            ordinal: index + 1,
+            title,
+            summary: `Core concepts and review prompts for ${title}.`,
+          })),
+        },
+      },
+      include: {
+        chapters: {
+          orderBy: { ordinal: 'asc' },
+        },
+      },
+    });
+
+    const latestVersion = await prisma.quizPackVersion.findFirst({
+      where: { packId: resolvedPack.id },
+      orderBy: { versionNumber: 'desc' },
+    });
+    const nextVersionNumber = (latestVersion?.versionNumber ?? 0) + 1;
+
+    const version = await prisma.quizPackVersion.create({
+      data: {
+        packId: resolvedPack.id,
+        versionNumber: nextVersionNumber,
+        licenseMode: source.licenseMode,
+        generatedNote:
+          job.kind === 'pack_regeneration'
+            ? 'Regenerated from the latest canonical topic pack.'
+            : 'Seeded starter pack generated by the learning worker.',
+      },
+    });
+
+    let questionOrdinalOffset = 0;
+    for (const chapter of document.chapters) {
+      const questions = buildSampleQuestions(topic.label, chapter.title, questionOrdinalOffset);
+      questionOrdinalOffset += questions.length;
+      await prisma.quizQuestion.createMany({
+        data: questions.map((question) => ({
+          packVersionId: version.id,
+          chapterId: chapter.id,
+          ordinal: question.ordinal,
+          difficulty: question.difficulty,
+          prompt: question.prompt,
+          choices: question.choices,
+          correctChoiceId: question.correctChoiceId,
+          hint: question.hint,
+          explanation: question.explanation,
+          wrongAnswerExplanations: question.wrongAnswerExplanations,
+        })),
+      });
+    }
+
+    await prisma.$transaction([
+      prisma.quizPack.update({
+        where: { id: resolvedPack.id },
+        data: {
+          status: 'ready',
+          sourceId: source.id,
+          updatedAt: new Date(),
+        },
+      }),
+      prisma.learningJob.update({
+        where: { id: job.id },
+        data: {
+          status: 'completed',
+          packId: resolvedPack.id,
+          packVersionId: version.id,
+          lastError: null,
+          completedAt: new Date(),
+        },
+      }),
+    ]);
+  } catch (error) {
+    await markLearningJobFailed(job, error instanceof Error ? error.message : String(error));
+  }
+
+  return true;
 }
 
 async function processNextQueuedAssistantTask(): Promise<boolean> {
@@ -513,6 +721,40 @@ async function markAssistantTaskFailed(
         completedAt: new Date(),
       },
     }),
+  ]);
+}
+
+async function markLearningJobFailed(
+  job: LearningJobWithRelations,
+  message: string,
+): Promise<void> {
+  const latest = await prisma.learningJob.findUnique({
+    where: { id: job.id },
+    select: { status: true },
+  });
+  if (!latest || latest.status === 'cancelled') {
+    return;
+  }
+
+  await prisma.$transaction([
+    prisma.learningJob.update({
+      where: { id: job.id },
+      data: {
+        status: 'failed',
+        lastError: message,
+        completedAt: new Date(),
+      },
+    }),
+    ...(job.packId
+      ? [
+          prisma.quizPack.update({
+            where: { id: job.packId },
+            data: {
+              status: 'failed',
+            },
+          }),
+        ]
+      : []),
   ]);
 }
 

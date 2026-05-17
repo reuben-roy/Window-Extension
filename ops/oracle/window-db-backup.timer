@@ -1,0 +1,10 @@
+[Unit]
+Description=Nightly Window Neon backup export
+
+[Timer]
+OnCalendar=*-*-* 03:15:00 UTC
+Persistent=true
+Unit=window-db-backup.service
+
+[Install]
+WantedBy=timers.target

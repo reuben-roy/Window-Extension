@@ -32,6 +32,7 @@ import {
   getIdeaRecords,
   getKeywordRules,
   getLaunchExecutionStates,
+  getLearningState,
   getOpenClawState,
   getPointsHistory,
   getWeekKey,
@@ -74,28 +75,35 @@ import {
   ASSISTANT_FEATURE_DISABLED_MESSAGE,
   cancelAssistantTask,
   cancelOpenClawJob,
+  createCustomLearningTopic,
   decideIdea,
   fetchOpenClawInstanceSettings,
   handleSyncedStorageChanges,
   isAssistantFeatureEnabled,
   refreshAccountState,
   refreshAssistantState,
+  refreshLearningState,
   resolveAccountConflict,
   restoreAccountSession,
   retryIdea,
   refreshAnalyticsState,
   saveAnalyticsOverrideRemote,
   saveOpenClawInstanceSettings,
+  saveUserLearningTopics,
+  setActiveQuizVisibility,
   signInWithProvider,
   signOutAccount,
   startOpenClawSession,
   submitAssistantTask,
+  submitQuizAnswer,
   submitIdea,
   syncAnalyticsQueues,
   syncBreakTelemetryQueue,
   syncIdeaOutbox,
   testOpenClawInstanceConnection,
   updateAssistantPreference,
+  regenerateLearningPack,
+  getNextQuizPrompt,
   reuseOpenClawSession,
 } from './backend';
 import {
@@ -134,6 +142,7 @@ import { calculatePoints } from './points';
 import { activateSnooze, clearSnoozeAlarm, deactivateSnooze, isSnoozeActive } from './snooze';
 import { finalizeTrackedBreakVisits, registerTelemetryListeners } from './telemetry';
 import { markTaskCompleted, syncTasksFromCalendarState } from './taskQueue';
+import { isBlockingFeatureEnabled, isLearningFeatureEnabled } from '../shared/learning';
 
 const pendingNavigationByTab = new Map<number, string>();
 const currentDocumentUrlByTab = new Map<number, string>();
@@ -164,6 +173,7 @@ void ensureDemoStatsSeeded();
 void hydrateOpenTabsDocumentUrls();
 void syncActionSurfaceBehavior();
 void restoreAccountSession();
+void refreshLearningState();
 void getCalendarState().then((calendarState) => maybeAutoLaunchActiveOccurrence(calendarState)).catch(console.error);
 
 chrome.storage.onChanged.addListener((changes, areaName) => {
@@ -221,15 +231,19 @@ async function handleTick(): Promise<void> {
   if (snoozed) {
     await Promise.all([...assistantSyncTasks, syncBreakTelemetryQueue(), syncAnalyticsQueues()]);
     await refreshAnalyticsState();
+    await refreshLearningState();
     await reconcileBlockedTabs(calendarState);
     await maybeAutoLaunchActiveOccurrence(calendarState);
+    await maybeSurfaceLearningQuiz();
     return;
   }
 
   await Promise.all([...assistantSyncTasks, syncBreakTelemetryQueue(), syncAnalyticsQueues()]);
   await refreshAnalyticsState();
+  await refreshLearningState();
   await applyBlockingState(calendarState);
   await maybeAutoLaunchActiveOccurrence(calendarState);
+  await maybeSurfaceLearningQuiz();
 }
 
 async function handleSnoozeEnd(): Promise<void> {
@@ -344,6 +358,9 @@ async function handleMessage(
     case 'REFRESH_ASSISTANT_STATE':
       return refreshAssistantState();
 
+    case 'REFRESH_LEARNING_STATE':
+      return refreshLearningState();
+
     case 'SIGN_IN_WITH_PROVIDER':
       return signInWithProvider(
         ((message.payload as { provider?: 'google' | 'github' } | undefined)?.provider ?? 'google'),
@@ -427,6 +444,24 @@ async function handleMessage(
     case 'REFRESH_ANALYTICS_STATE':
       return refreshAnalyticsState();
 
+    case 'SAVE_USER_LEARNING_TOPICS':
+      return handleSaveUserLearningTopics(message);
+
+    case 'CREATE_CUSTOM_LEARNING_TOPIC':
+      return handleCreateCustomLearningTopic(message);
+
+    case 'REGENERATE_LEARNING_PACK':
+      return handleRegenerateLearningPack(message);
+
+    case 'GET_NEXT_QUIZ_PROMPT':
+      return handleGetNextQuizPrompt(message);
+
+    case 'SUBMIT_QUIZ_ANSWER':
+      return handleSubmitQuizAnswer(message);
+
+    case 'SET_ACTIVE_QUIZ_VISIBILITY':
+      return handleSetActiveQuizVisibility(message);
+
     case 'SAVE_ANALYTICS_OVERRIDE':
       return handleSaveAnalyticsOverride(message);
 
@@ -477,6 +512,7 @@ async function buildStateResponse(): Promise<StateResponse> {
     ideaRecords,
     openClawState,
     analyticsSnapshot,
+    learningState,
   ] = await Promise.all([
     getSettings(),
     getTaskQueue(),
@@ -496,6 +532,7 @@ async function buildStateResponse(): Promise<StateResponse> {
     getIdeaRecords(),
     getOpenClawState(),
     getAnalyticsSnapshot(),
+    getLearningState(),
   ]);
 
   return {
@@ -523,6 +560,7 @@ async function buildStateResponse(): Promise<StateResponse> {
     },
     openClawState,
     analyticsSnapshot,
+    learningState,
   };
 }
 
@@ -544,6 +582,111 @@ async function handleSaveAnalyticsOverride(
   return {
     ok: true,
     analyticsSnapshot: await getAnalyticsSnapshot(),
+  };
+}
+
+async function handleSaveUserLearningTopics(message: Message): Promise<{
+  ok: boolean;
+  learningState: StateResponse['learningState'];
+}> {
+  const payload = (message.payload as {
+    topics?: Array<{
+      topicKey: string;
+      label: string;
+      subjectKey?: string | null;
+      source?: 'catalog' | 'custom' | 'suggested';
+    }>;
+  } | undefined) ?? { topics: [] };
+
+  const learningState = await saveUserLearningTopics(payload.topics ?? []);
+  return {
+    ok: true,
+    learningState,
+  };
+}
+
+async function handleCreateCustomLearningTopic(message: Message): Promise<{
+  ok: boolean;
+  learningState: StateResponse['learningState'];
+}> {
+  const payload = (message.payload as { label?: string; subjectKey?: string | null } | undefined) ?? {};
+  if (!payload.label?.trim()) {
+    throw new Error('Custom topic label is required.');
+  }
+
+  const learningState = await createCustomLearningTopic({
+    label: payload.label.trim(),
+    subjectKey: payload.subjectKey ?? null,
+  });
+  return {
+    ok: true,
+    learningState,
+  };
+}
+
+async function handleRegenerateLearningPack(message: Message): Promise<{
+  ok: boolean;
+  learningState: StateResponse['learningState'];
+}> {
+  const payload = (message.payload as { packId?: string } | undefined) ?? {};
+  if (!payload.packId) {
+    throw new Error('Quiz pack id is required.');
+  }
+
+  const learningState = await regenerateLearningPack(payload.packId);
+  return {
+    ok: true,
+    learningState,
+  };
+}
+
+async function handleGetNextQuizPrompt(message: Message): Promise<{
+  ok: boolean;
+  prompt: import('../shared/types').QuizPrompt | null;
+}> {
+  const payload = (message.payload as { origin?: 'scheduled' | 'manual' | 'retry' } | undefined) ?? {};
+  return {
+    ok: true,
+    prompt: await getNextQuizPrompt(payload.origin ?? 'manual'),
+  };
+}
+
+async function handleSubmitQuizAnswer(message: Message): Promise<{
+  ok: boolean;
+  result: import('../shared/types').QuizAnswerResult;
+}> {
+  const payload = (message.payload as {
+    questionId?: string;
+    selectedChoiceId?: string | null;
+    sessionId?: string;
+  } | undefined) ?? {};
+  if (!payload.questionId) {
+    throw new Error('Quiz question id is required.');
+  }
+
+  const result = await submitQuizAnswer({
+    questionId: payload.questionId,
+    selectedChoiceId: payload.selectedChoiceId ?? null,
+    sessionId: payload.sessionId,
+  });
+  if (result.pointsAwarded > 0) {
+    await applyPointDelta(result.pointsAwarded, { completedTasksDelta: 0 });
+  }
+  return {
+    ok: true,
+    result,
+  };
+}
+
+async function handleSetActiveQuizVisibility(message: Message): Promise<{
+  ok: boolean;
+  learningState: StateResponse['learningState'];
+}> {
+  const payload = (message.payload as { visible?: boolean } | undefined) ?? {};
+  const learningState = await setActiveQuizVisibility(Boolean(payload.visible));
+  return {
+    ok: true,
+    learningState,
   };
 }
 
@@ -607,6 +750,12 @@ async function disconnectCalendar(): Promise<{ ok: boolean }> {
 
 async function toggleBlocking(message?: Message): Promise<{ enableBlocking: boolean }> {
   const settings = await getSettings();
+  if (!isBlockingFeatureEnabled(settings)) {
+    const next = { ...settings, enableBlocking: false };
+    await setSettings(next);
+    await reconcileBlockingState();
+    return { enableBlocking: false };
+  }
   const requested = (message?.payload as { enabled?: boolean } | undefined)?.enabled;
   const enableBlocking = typeof requested === 'boolean'
     ? requested
@@ -726,6 +875,45 @@ export async function maybeAutoLaunchActiveOccurrence(
   if (executionStates[executionKey] !== undefined) return;
 
   await launchTargetInBrowser(target, executionStates);
+}
+
+async function maybeSurfaceLearningQuiz(): Promise<void> {
+  const [settings, learningState, calendarState, snoozeState] = await Promise.all([
+    getSettings(),
+    getLearningState(),
+    getCalendarState(),
+    getSnoozeState(),
+  ]);
+  if (!isLearningFeatureEnabled(settings)) return;
+  if (learningState.activeQuizVisible || learningState.activeQuizPrompt === null) return;
+
+  const idleWindow = !calendarState.currentEvent || snoozeState.active;
+  if (!idleWindow) return;
+
+  await setActiveQuizVisibility(true);
+
+  if (settings.persistentPanelEnabled) {
+    return;
+  }
+
+  try {
+    const actionWithPopup = chrome.action as typeof chrome.action & {
+      openPopup?: () => Promise<void>;
+    };
+    if (typeof actionWithPopup.openPopup === 'function') {
+      await actionWithPopup.openPopup();
+      return;
+    }
+  } catch {
+    // Fall through to notification.
+  }
+
+  chrome.notifications.create('learning-quiz-ready', {
+    type: 'basic',
+    iconUrl: 'src/assets/icons/icon48.png',
+    title: 'Window quiz ready',
+    message: `Quick review: ${learningState.activeQuizPrompt.topicLabel}`,
+  });
 }
 
 export async function openActiveLaunchTarget(): Promise<{
@@ -1312,7 +1500,12 @@ function shouldEnforceBlocking(
   settings: Awaited<ReturnType<typeof getSettings>>,
   calendarState: CalendarState,
 ): boolean {
-  return settings.enableBlocking && calendarState.isRestricted && calendarState.allowedDomains.length > 0;
+  return (
+    isBlockingFeatureEnabled(settings) &&
+    settings.enableBlocking &&
+    calendarState.isRestricted &&
+    calendarState.allowedDomains.length > 0
+  );
 }
 
 export async function handleDownloadCreated(

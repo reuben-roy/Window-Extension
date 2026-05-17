@@ -6,6 +6,7 @@ import type {
   BackendSyncState,
   ExtendedTaskAssignment,
   ExtendedTaskSet,
+  LearningState,
   OpenClawState,
   Settings,
   SnoozeState,
@@ -17,6 +18,16 @@ import type {
 export const DEFAULT_SETTINGS: Settings = {
   enableBlocking: true,
   blockPage: 'custom',
+  featureFlags: {
+    blocking: true,
+    routines: true,
+    learning: true,
+  },
+  learningSettings: {
+    suggestTopicsFromActivity: true,
+    intensity: 'balanced',
+    licenseMode: 'commercial_safe',
+  },
   carryoverMode: 'union',
   taskTTLDays: 7,
   monthlyResetEnabled: true,
@@ -233,6 +244,19 @@ export const DEFAULT_OPENCLAW_STATE: OpenClawState = {
   currentJob: null,
   currentTask: null,
   tasks: [],
+  lastError: null,
+};
+
+export const DEFAULT_LEARNING_STATE: LearningState = {
+  taxonomy: [],
+  userTopics: [],
+  suggestions: [],
+  packs: [],
+  reviewQueue: [],
+  activeQuizPrompt: null,
+  activeQuizVisible: false,
+  syncing: false,
+  lastSyncedAt: null,
   lastError: null,
 };
 

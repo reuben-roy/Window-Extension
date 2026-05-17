@@ -4,6 +4,12 @@ import { z } from 'zod';
 import { env, getOpenClawAllowedHostSuffixes } from './env.js';
 import { prisma } from './lib/prisma.js';
 import {
+  ensureLearningCatalogSeeded,
+  computeNextReviewSchedule,
+  quizPointsForDifficulty,
+  topicKeyFromLabel,
+} from './lib/learning.js';
+import {
   fetchGoogleUserProfile,
   issueBackendSession,
   requireUser,
@@ -30,9 +36,15 @@ import {
   toFocusSessionPayload,
   toIdeaRecordPayload,
   toInterestPayload,
+  toLearningSubjectPayload,
   toOpenClawJobPayload,
   toOpenClawSessionPayload,
+  toQuizAnswerResultPayload,
+  toQuizPackSummaryPayload,
+  toQuizPromptPayload,
   toRecommendationPayload,
+  toReviewQueueItemPayload,
+  toUserLearningTopicPayload,
 } from './lib/serializers.js';
 import type {
   AccountSnapshotPayload,
@@ -40,6 +52,10 @@ import type {
   AccountUserPayload,
   OpenClawInstanceSettingsPayload,
   OpenClawSettingsTestPayload,
+  LearningSubjectPayload,
+  QuizPromptPayload,
+  ReviewQueueItemPayload,
+  UserLearningTopicPayload,
 } from './types.js';
 
 const googleExchangeSchema = z.object({
@@ -168,6 +184,34 @@ const analyticsOverrideSchema = z.object({
 });
 
 const analyticsRangeSchema = z.enum(['7d', '30d']);
+
+const learningTopicSelectionSchema = z.object({
+  topicKey: z.string().min(1),
+  label: z.string().min(1).max(160),
+  subjectKey: z.string().min(1).nullable().optional(),
+  source: z.enum(['catalog', 'custom', 'suggested']).optional().default('catalog'),
+});
+
+const saveLearningTopicsSchema = z.object({
+  topics: z.array(learningTopicSelectionSchema),
+});
+
+const createCustomLearningTopicSchema = z.object({
+  label: z.string().min(1).max(160),
+  subjectKey: z.string().min(1).nullable().optional(),
+});
+
+const regenerateLearningPackSchema = z.object({
+  reason: z.string().max(500).optional(),
+});
+
+const quizPromptOriginSchema = z.enum(['scheduled', 'manual', 'retry']).default('manual');
+
+const submitQuizAnswerSchema = z.object({
+  questionId: z.string().min(1),
+  selectedChoiceId: z.string().nullable().optional(),
+  sessionId: z.string().optional(),
+});
 
 const emptyAccountSnapshot = (): AccountSnapshotPayload => ({
   allTimeStats: {
@@ -1474,6 +1518,443 @@ export async function buildApp() {
     };
   });
 
+  app.get('/v1/learning/taxonomy', async () => {
+    await ensureLearningCatalogSeeded(prisma);
+    const items = await prisma.learningSubject.findMany({
+      orderBy: { label: 'asc' },
+      include: {
+        topics: {
+          orderBy: { label: 'asc' },
+        },
+      },
+    });
+
+    return {
+      items: items.map(toLearningSubjectPayload),
+    };
+  });
+
+  app.get('/v1/learning/user-topics', async (request, reply) => {
+    const user = await getUserOrReply(request, reply);
+    if (!user) return;
+
+    await ensureLearningCatalogSeeded(prisma);
+    const items = await prisma.userLearningTopic.findMany({
+      where: {
+        userId: user.id,
+        active: true,
+      },
+      orderBy: { updatedAt: 'desc' },
+      include: {
+        topic: {
+          include: {
+            subject: true,
+          },
+        },
+      },
+    });
+
+    return {
+      items: items.map(toUserLearningTopicPayload),
+    };
+  });
+
+  app.post('/v1/learning/user-topics', async (request, reply) => {
+    const user = await getUserOrReply(request, reply);
+    if (!user) return;
+
+    const body = saveLearningTopicsSchema.parse(request.body);
+    await ensureLearningCatalogSeeded(prisma);
+    const resolvedTopics = await resolveLearningTopicSelections(body.topics);
+    const topicIds = resolvedTopics.map((topic) => topic.id);
+
+    await prisma.$transaction(async (tx) => {
+      await tx.userLearningTopic.updateMany({
+        where: { userId: user.id },
+        data: { active: false },
+      });
+
+      for (const selection of resolvedTopics) {
+        const source = body.topics.find((item) => item.topicKey === selection.key)?.source ?? 'catalog';
+        await tx.userLearningTopic.upsert({
+          where: {
+            userId_topicId: {
+              userId: user.id,
+              topicId: selection.id,
+            },
+          },
+          update: {
+            active: true,
+            source,
+          },
+          create: {
+            userId: user.id,
+            topicId: selection.id,
+            source,
+            active: true,
+          },
+        });
+      }
+    });
+
+    await ensureLearningPackJobsForTopics(user.id, topicIds);
+    const items = await prisma.userLearningTopic.findMany({
+      where: { userId: user.id, active: true },
+      orderBy: { updatedAt: 'desc' },
+      include: {
+        topic: {
+          include: {
+            subject: true,
+          },
+        },
+      },
+    });
+
+    return {
+      items: items.map(toUserLearningTopicPayload),
+    };
+  });
+
+  app.get('/v1/learning/suggestions', async (request, reply) => {
+    const user = await getUserOrReply(request, reply);
+    if (!user) return;
+
+    await ensureLearningCatalogSeeded(prisma);
+    const [activeTopics, profiles, recommendations, taxonomy] = await Promise.all([
+      prisma.userLearningTopic.findMany({
+        where: { userId: user.id, active: true },
+        include: { topic: true },
+      }),
+      prisma.interestProfile.findMany({
+        where: { userId: user.id },
+        orderBy: [{ minutes: 'desc' }, { updatedAt: 'desc' }],
+        take: 8,
+      }),
+      prisma.recommendation.findMany({
+        where: { userId: user.id, kind: 'interest' },
+        orderBy: { createdAt: 'desc' },
+        take: 8,
+      }),
+      prisma.learningSubject.findMany({
+        include: { topics: true },
+        orderBy: { label: 'asc' },
+      }),
+    ]);
+
+    const activeKeys = new Set(activeTopics.map((item) => item.topic.key));
+    const suggestions = new Map<string, {
+      id: string;
+      topicKey: string;
+      label: string;
+      subjectKey: string | null;
+      reason: string;
+      source: 'calendar' | 'activity' | 'tag' | 'recommendation';
+    }>();
+
+    for (const profile of profiles) {
+      const match = taxonomy
+        .flatMap((subject) => subject.topics.map((topic) => ({ subject, topic })))
+        .find(({ topic }) => topic.key === profile.key || topic.label.toLowerCase() === profile.label.toLowerCase());
+      if (!match || activeKeys.has(match.topic.key) || suggestions.has(match.topic.key)) continue;
+      suggestions.set(match.topic.key, {
+        id: `activity:${match.topic.key}`,
+        topicKey: match.topic.key,
+        label: match.topic.label,
+        subjectKey: match.subject.key,
+        reason: `Recent Window activity already shows sustained interest in ${match.topic.label}.`,
+        source: 'activity',
+      });
+    }
+
+    for (const recommendation of recommendations) {
+      const match = taxonomy
+        .flatMap((subject) => subject.topics.map((topic) => ({ subject, topic })))
+        .find(({ topic }) =>
+          recommendation.title.toLowerCase().includes(topic.label.toLowerCase()) ||
+          recommendation.body.toLowerCase().includes(topic.label.toLowerCase()),
+        );
+      if (!match || activeKeys.has(match.topic.key) || suggestions.has(match.topic.key)) continue;
+      suggestions.set(match.topic.key, {
+        id: `recommendation:${match.topic.key}`,
+        topicKey: match.topic.key,
+        label: match.topic.label,
+        subjectKey: match.subject.key,
+        reason: recommendation.body,
+        source: 'recommendation',
+      });
+    }
+
+    if (suggestions.size < 6) {
+      for (const subject of taxonomy) {
+        for (const topic of subject.topics) {
+          if (activeKeys.has(topic.key) || suggestions.has(topic.key)) continue;
+          suggestions.set(topic.key, {
+            id: `catalog:${topic.key}`,
+            topicKey: topic.key,
+            label: topic.label,
+            subjectKey: subject.key,
+            reason: `A strong adjacent topic in ${subject.label}.`,
+            source: 'recommendation',
+          });
+          if (suggestions.size >= 6) break;
+        }
+        if (suggestions.size >= 6) break;
+      }
+    }
+
+    return {
+      items: [...suggestions.values()],
+    };
+  });
+
+  app.post('/v1/learning/topics/custom', async (request, reply) => {
+    const user = await getUserOrReply(request, reply);
+    if (!user) return;
+
+    const body = createCustomLearningTopicSchema.parse(request.body);
+    await ensureLearningCatalogSeeded(prisma);
+    const baseKey = topicKeyFromLabel(body.label);
+    const topic = await createOrFindCustomLearningTopic({
+      key: baseKey,
+      label: body.label,
+      subjectKey: body.subjectKey ?? null,
+    });
+
+    const item = await prisma.userLearningTopic.upsert({
+      where: {
+        userId_topicId: {
+          userId: user.id,
+          topicId: topic.id,
+        },
+      },
+      update: {
+        active: true,
+        source: 'custom',
+      },
+      create: {
+        userId: user.id,
+        topicId: topic.id,
+        source: 'custom',
+        active: true,
+      },
+      include: {
+        topic: {
+          include: {
+            subject: true,
+          },
+        },
+      },
+    });
+
+    await ensureLearningPackJobsForTopics(user.id, [topic.id]);
+
+    return {
+      topic: toUserLearningTopicPayload(item),
+    };
+  });
+
+  app.get('/v1/learning/packs', async (request, reply) => {
+    const user = await getUserOrReply(request, reply);
+    if (!user) return;
+
+    const items = await prisma.quizPack.findMany({
+      where: {
+        topic: {
+          userTopics: {
+            some: {
+              userId: user.id,
+              active: true,
+            },
+          },
+        },
+      },
+      orderBy: { updatedAt: 'desc' },
+      include: {
+        topic: true,
+        source: true,
+        versions: {
+          include: {
+            questions: {
+              select: { id: true },
+            },
+          },
+          orderBy: { versionNumber: 'desc' },
+        },
+      },
+    });
+
+    return {
+      items: items.map(toQuizPackSummaryPayload),
+    };
+  });
+
+  app.post('/v1/learning/packs/:id/regenerate', async (request, reply) => {
+    const user = await getUserOrReply(request, reply);
+    if (!user) return;
+
+    regenerateLearningPackSchema.parse(request.body ?? {});
+    const packId = (request.params as { id: string }).id;
+    const pack = await prisma.quizPack.findFirst({
+      where: {
+        id: packId,
+        topic: {
+          userTopics: {
+            some: {
+              userId: user.id,
+              active: true,
+            },
+          },
+        },
+      },
+    });
+
+    if (!pack) {
+      return reply.code(404).send({ error: 'Quiz pack not found.' });
+    }
+
+    await prisma.learningJob.create({
+      data: {
+        userId: user.id,
+        kind: 'pack_regeneration',
+        status: 'queued',
+        packId: pack.id,
+        topicId: pack.topicId,
+      },
+    });
+
+    await prisma.quizPack.update({
+      where: { id: pack.id },
+      data: { status: 'queued' },
+    });
+
+    return {
+      ok: true,
+    };
+  });
+
+  app.get('/v1/learning/review/next', async (request, reply) => {
+    const user = await getUserOrReply(request, reply);
+    if (!user) return;
+
+    const origin = quizPromptOriginSchema.parse(
+      ((request.query as { origin?: 'scheduled' | 'manual' | 'retry' } | undefined)?.origin) ?? 'manual',
+    );
+    const reviewQueue = await loadLearningReviewQueue(user.id);
+    const prompt = await loadLearningPrompt(user.id, origin);
+
+    return {
+      prompt,
+      reviewQueue,
+    };
+  });
+
+  app.post('/v1/learning/answers', async (request, reply) => {
+    const user = await getUserOrReply(request, reply);
+    if (!user) return;
+
+    const body = submitQuizAnswerSchema.parse(request.body);
+    const question = await prisma.quizQuestion.findUnique({
+      where: { id: body.questionId },
+      include: {
+        chapter: true,
+        packVersion: {
+          include: {
+            pack: {
+              include: {
+                topic: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!question) {
+      return reply.code(404).send({ error: 'Quiz question not found.' });
+    }
+
+    const existingProgress = await prisma.userQuizProgress.findUnique({
+      where: {
+        userId_questionId: {
+          userId: user.id,
+          questionId: question.id,
+        },
+      },
+    });
+
+    const correct = body.selectedChoiceId === question.correctChoiceId;
+    const scheduled = computeNextReviewSchedule({
+      correct,
+      ease: existingProgress?.ease ?? 2.5,
+      seenCount: existingProgress?.seenCount ?? 0,
+      correctStreak: existingProgress?.correctStreak ?? 0,
+    });
+
+    const progress = await prisma.userQuizProgress.upsert({
+      where: {
+        userId_questionId: {
+          userId: user.id,
+          questionId: question.id,
+        },
+      },
+      update: {
+        seenCount: (existingProgress?.seenCount ?? 0) + 1,
+        correctStreak: scheduled.correctStreak,
+        ease: scheduled.ease,
+        lastSeenAt: new Date(),
+        dueAt: scheduled.dueAt,
+        lastWasCorrect: correct,
+      },
+      create: {
+        userId: user.id,
+        questionId: question.id,
+        seenCount: 1,
+        correctStreak: scheduled.correctStreak,
+        ease: scheduled.ease,
+        lastSeenAt: new Date(),
+        dueAt: scheduled.dueAt,
+        lastWasCorrect: correct,
+      },
+    });
+
+    const pointsAwarded = correct ? quizPointsForDifficulty(question.difficulty) : 0;
+    await prisma.quizSession.create({
+      data: {
+        userId: user.id,
+        questionId: question.id,
+        selectedChoiceId: body.selectedChoiceId ?? null,
+        correct,
+        pointsAwarded,
+        dueAt: scheduled.dueAt,
+      },
+    });
+
+    const prompt = toQuizPromptPayload(question, {
+      sessionId: body.sessionId ?? `quiz-${question.id}-${Date.now()}`,
+      progressId: progress.id,
+      origin: 'manual',
+      pointsReward: quizPointsForDifficulty(question.difficulty),
+      streak: progress.correctStreak,
+    });
+
+    return {
+      result: toQuizAnswerResultPayload({
+        prompt,
+        correct,
+        selectedChoiceId: body.selectedChoiceId ?? null,
+        explanation: question.explanation,
+        wrongAnswerExplanation:
+          body.selectedChoiceId && typeof question.wrongAnswerExplanations === 'object'
+            ? ((question.wrongAnswerExplanations as Record<string, unknown>)[body.selectedChoiceId] as string | undefined) ?? null
+            : null,
+        nextDueAt: scheduled.dueAt,
+        pointsAwarded,
+        updatedStreak: progress.correctStreak,
+      }),
+      reviewQueue: await loadLearningReviewQueue(user.id),
+    };
+  });
+
   app.setErrorHandler((error, _request, reply) => {
     const statusCode = inferStatusCode(error);
     const message = toPublicErrorMessage(error);
@@ -1483,6 +1964,245 @@ export async function buildApp() {
   });
 
   return app;
+}
+
+async function resolveLearningTopicSelections(
+  selections: Array<{
+    topicKey: string;
+    label: string;
+    subjectKey?: string | null;
+    source?: 'catalog' | 'custom' | 'suggested';
+  }>,
+) {
+  const results = [];
+  for (const selection of selections) {
+    if (selection.source === 'custom') {
+      results.push(await createOrFindCustomLearningTopic({
+        key: selection.topicKey,
+        label: selection.label,
+        subjectKey: selection.subjectKey ?? null,
+      }));
+      continue;
+    }
+
+    const topic = await prisma.learningTopic.findUnique({
+      where: { key: selection.topicKey },
+    });
+    if (topic) {
+      results.push(topic);
+      continue;
+    }
+
+    results.push(await createOrFindCustomLearningTopic({
+      key: selection.topicKey,
+      label: selection.label,
+      subjectKey: selection.subjectKey ?? null,
+    }));
+  }
+  return results;
+}
+
+async function createOrFindCustomLearningTopic(input: {
+  key: string;
+  label: string;
+  subjectKey: string | null;
+}) {
+  const existing = await prisma.learningTopic.findFirst({
+    where: {
+      OR: [
+        { key: input.key },
+        { label: input.label },
+      ],
+    },
+  });
+  if (existing) return existing;
+
+  const subject = input.subjectKey
+    ? await prisma.learningSubject.findUnique({ where: { key: input.subjectKey } })
+    : null;
+  let key = input.key;
+  let suffix = 1;
+  while (await prisma.learningTopic.findUnique({ where: { key } })) {
+    suffix += 1;
+    key = `${input.key}-${suffix}`;
+  }
+
+  return prisma.learningTopic.create({
+    data: {
+      key,
+      label: input.label,
+      description: `Custom learning topic: ${input.label}`,
+      subjectId: subject?.id ?? null,
+    },
+  });
+}
+
+async function ensureLearningPackJobsForTopics(userId: string, topicIds: string[]): Promise<void> {
+  for (const topicId of topicIds) {
+    const existingPack = await prisma.quizPack.findFirst({
+      where: { topicId },
+      select: { id: true },
+    });
+    if (existingPack) continue;
+
+    const queued = await prisma.learningJob.findFirst({
+      where: {
+        userId,
+        topicId,
+        kind: 'pack_generation',
+        status: { in: ['queued', 'running'] },
+      },
+      select: { id: true },
+    });
+    if (queued) continue;
+
+    await prisma.learningJob.create({
+      data: {
+        userId,
+        topicId,
+        kind: 'pack_generation',
+        status: 'queued',
+      },
+    });
+  }
+}
+
+async function loadLearningReviewQueue(userId: string): Promise<ReviewQueueItemPayload[]> {
+  const items = await prisma.userQuizProgress.findMany({
+    where: {
+      userId,
+      question: {
+        packVersion: {
+          pack: {
+            topic: {
+              userTopics: {
+                some: {
+                  userId,
+                  active: true,
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+    orderBy: [{ dueAt: 'asc' }, { updatedAt: 'desc' }],
+    take: 8,
+    include: {
+      question: {
+        include: {
+          chapter: true,
+          packVersion: {
+            include: {
+              pack: {
+                include: {
+                  topic: true,
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+  });
+
+  return items.map(toReviewQueueItemPayload);
+}
+
+async function loadLearningPrompt(
+  userId: string,
+  origin: 'scheduled' | 'manual' | 'retry',
+): Promise<QuizPromptPayload | null> {
+  const now = new Date();
+  const dueProgress = await prisma.userQuizProgress.findFirst({
+    where: {
+      userId,
+      dueAt: { lte: now },
+      question: {
+        packVersion: {
+          pack: {
+            status: 'ready',
+            topic: {
+              userTopics: {
+                some: {
+                  userId,
+                  active: true,
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+    orderBy: [{ dueAt: 'asc' }, { updatedAt: 'desc' }],
+    include: {
+      question: {
+        include: {
+          chapter: true,
+          packVersion: {
+            include: {
+              pack: {
+                include: {
+                  topic: true,
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+  });
+
+  if (dueProgress) {
+    return toQuizPromptPayload(dueProgress.question, {
+      sessionId: `quiz-${dueProgress.question.id}-${Date.now()}`,
+      progressId: dueProgress.id,
+      origin,
+      pointsReward: quizPointsForDifficulty(dueProgress.question.difficulty),
+      streak: dueProgress.correctStreak,
+    });
+  }
+
+  const fallbackQuestion = await prisma.quizQuestion.findFirst({
+    where: {
+      packVersion: {
+        pack: {
+          status: 'ready',
+          topic: {
+            userTopics: {
+              some: {
+                userId,
+                active: true,
+              },
+            },
+          },
+        },
+      },
+    },
+    orderBy: [{ createdAt: 'asc' }, { ordinal: 'asc' }],
+    include: {
+      chapter: true,
+      packVersion: {
+        include: {
+          pack: {
+            include: {
+              topic: true,
+            },
+          },
+        },
+      },
+    },
+  });
+
+  if (!fallbackQuestion) return null;
+
+  return toQuizPromptPayload(fallbackQuestion, {
+    sessionId: `quiz-${fallbackQuestion.id}-${Date.now()}`,
+    progressId: null,
+    origin,
+    pointsReward: quizPointsForDifficulty(fallbackQuestion.difficulty),
+    streak: 0,
+  });
 }
 
 async function getUserOrReply(

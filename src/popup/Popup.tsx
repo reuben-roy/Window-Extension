@@ -1,10 +1,13 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { findExtendedTaskAssignment } from '../shared/extendedTasks';
+import { isBlockingFeatureEnabled, isLearningFeatureEnabled } from '../shared/learning';
 import type {
   AssistantTaskRecord,
   CalendarEvent,
   IdeaRecord,
   OpenClawSessionSummary,
+  QuizAnswerResult,
+  QuizPrompt,
   StateResponse,
   TaskNotificationMode,
 } from '../shared/types';
@@ -21,12 +24,13 @@ import type { TaskDetailSelection } from './components/TaskDetailModal';
 import TaskQueue from './components/TaskQueue';
 import UpcomingCalendarBlocks from './components/UpcomingCalendarBlocks';
 
-type PanelSectionId = 'focus' | 'analytics' | 'controls' | 'assistant';
+type PanelSectionId = 'focus' | 'learning' | 'analytics' | 'controls' | 'assistant';
 
 const PANEL_LAYOUT_STORAGE_KEY = 'panelLayoutPrefs';
-const DEFAULT_PANEL_ORDER: PanelSectionId[] = ['focus', 'analytics', 'controls', 'assistant'];
+const DEFAULT_PANEL_ORDER: PanelSectionId[] = ['focus', 'learning', 'analytics', 'controls', 'assistant'];
 const DEFAULT_PANEL_COLLAPSED: Record<PanelSectionId, boolean> = {
   focus: false,
+  learning: false,
   analytics: true,
   controls: true,
   /** Assistant is off by default; section stays collapsed until the user enables it in settings. */
@@ -34,12 +38,14 @@ const DEFAULT_PANEL_COLLAPSED: Record<PanelSectionId, boolean> = {
 };
 const SECTION_TITLES: Record<PanelSectionId, string> = {
   focus: 'Focus',
+  learning: 'Learning',
   analytics: 'Analytics',
   controls: 'Controls',
   assistant: 'Assistant',
 };
 const SECTION_HINTS: Record<PanelSectionId, string> = {
   focus: 'Current focus state, next event, and task progress.',
+  learning: 'Subjects, quiz packs, and the next spaced-repetition prompt.',
   analytics: 'Compact productivity analytics. Open the full workspace for deeper breakdowns.',
   controls: 'Keep the day moving with break, surface, and settings controls.',
   assistant: 'Connector routing, async handoff, sessions, telemetry, and idea capture.',
@@ -76,6 +82,10 @@ export default function Popup({
   const [breakStarting, setBreakStarting] = useState(false);
   const [endBreakBusy, setEndBreakBusy] = useState(false);
   const [breakActionError, setBreakActionError] = useState<string | null>(null);
+  const [quizResult, setQuizResult] = useState<QuizAnswerResult | null>(null);
+  const [quizSelectedChoiceId, setQuizSelectedChoiceId] = useState<string | null>(null);
+  const [quizSubmitting, setQuizSubmitting] = useState(false);
+  const [quizHintVisible, setQuizHintVisible] = useState(false);
   const [, setBreakCountdownTick] = useState(0);
 
   const loadState = useCallback(() => {
@@ -105,6 +115,7 @@ export default function Popup({
     chrome.runtime.sendMessage({ type: 'REFRESH_ACCOUNT_STATE' });
     chrome.runtime.sendMessage({ type: 'REFRESH_ASSISTANT_STATE' });
     chrome.runtime.sendMessage({ type: 'REFRESH_ANALYTICS_STATE' });
+    chrome.runtime.sendMessage({ type: 'REFRESH_LEARNING_STATE' });
     const listener = () => loadState();
     chrome.storage.onChanged.addListener(listener);
     return () => chrome.storage.onChanged.removeListener(listener);
@@ -128,6 +139,16 @@ export default function Popup({
     const id = window.setInterval(() => setBreakCountdownTick((n) => n + 1), 1000);
     return () => window.clearInterval(id);
   }, [state?.snoozeState?.active, state?.snoozeState?.expiresAt]);
+
+  const learningState = state?.learningState ?? null;
+  const learningFeatureEnabled = state ? isLearningFeatureEnabled(state.settings) : false;
+  const activeQuizPrompt = learningFeatureEnabled ? learningState?.activeQuizPrompt ?? null : null;
+
+  useEffect(() => {
+    setQuizResult(null);
+    setQuizSelectedChoiceId(null);
+    setQuizHintVisible(false);
+  }, [activeQuizPrompt?.questionId]);
 
   const upcomingLaterToday = useMemo(() => {
     if (!state) return [];
@@ -185,6 +206,10 @@ export default function Popup({
 
   const popupSurfaceWidthPx =
     mode === 'popup' ? (taskDetailSelection ? POPUP_WIDTH_DETAIL_PX : POPUP_WIDTH_PX) : undefined;
+
+  const openLearningWorkspace = useCallback(() => {
+    window.open(chrome.runtime.getURL('src/options/index.html#learning'), '_blank', 'noopener,noreferrer');
+  }, []);
 
   const movePanelSection = useCallback((source: PanelSectionId, target: PanelSectionId) => {
     setPanelOrder((current) => {
@@ -248,6 +273,53 @@ export default function Popup({
   const updateSettings = useCallback((nextSettings: StateResponse['settings']) => {
     chrome.storage.sync.set({ settings: nextSettings });
   }, []);
+
+  const handleCloseQuizTakeover = useCallback(async () => {
+    await sendMessageAsync<{ ok: boolean }>({
+      type: 'SET_ACTIVE_QUIZ_VISIBILITY',
+      payload: { visible: false },
+    });
+    setQuizResult(null);
+    setQuizSelectedChoiceId(null);
+    setQuizHintVisible(false);
+    loadState();
+  }, [loadState]);
+
+  const handleRequestQuizPrompt = useCallback(
+    async (origin: 'manual' | 'retry' = 'manual') => {
+      setQuizResult(null);
+      setQuizSelectedChoiceId(null);
+      setQuizHintVisible(false);
+      await sendMessageAsync<{ ok: boolean; prompt: QuizPrompt | null }>({
+        type: 'GET_NEXT_QUIZ_PROMPT',
+        payload: { origin },
+      });
+      loadState();
+    },
+    [loadState],
+  );
+
+  const handleSubmitQuiz = useCallback(
+    async (selectedChoiceId: string | null) => {
+      if (!activeQuizPrompt || quizSubmitting) return;
+      setQuizSubmitting(true);
+      try {
+        const response = await sendMessageAsync<{ ok: boolean; result: QuizAnswerResult }>({
+          type: 'SUBMIT_QUIZ_ANSWER',
+          payload: {
+            questionId: activeQuizPrompt.questionId,
+            selectedChoiceId,
+            sessionId: activeQuizPrompt.sessionId,
+          },
+        });
+        setQuizResult(response.result);
+        loadState();
+      } finally {
+        setQuizSubmitting(false);
+      }
+    },
+    [activeQuizPrompt, loadState, quizSubmitting],
+  );
 
   const handleToggle = () => {
     if (toggling || !state) return;
@@ -384,8 +456,9 @@ export default function Popup({
   const ideaItems = Array.isArray(ideaState.items) ? ideaState.items : [];
   const popupTaskQueue = Array.isArray(taskQueue) ? taskQueue : [];
   const calendarConnected = calendarState.lastSyncedAt !== null && calendarState.authError === null;
+  const blockingFeatureEnabled = isBlockingFeatureEnabled(settings);
   const quietHoursActive = isDailyBlockingPauseActive(new Date(), settings);
-  const effectivelyBlocking = settings.enableBlocking && calendarState.isRestricted;
+  const effectivelyBlocking = blockingFeatureEnabled && settings.enableBlocking && calendarState.isRestricted;
   const now = Date.now();
   const nextEvent =
     todaysEvents
@@ -393,6 +466,11 @@ export default function Popup({
       .sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime())[0] ?? null;
   const inboxIdeas = ideaItems.filter((item) => !item.archived).slice(0, 3);
   const actionableTasks = popupTaskQueue.filter((task) => task.status === 'active' || task.status === 'carryover');
+  const selectedLearningTopics = learningState?.userTopics ?? [];
+  const reviewQueue = learningState?.reviewQueue ?? [];
+  const dueReviewCount = reviewQueue.filter((item) => new Date(item.dueAt).getTime() <= Date.now()).length;
+  const readyLearningPacks = (learningState?.packs ?? []).filter((pack) => pack.status === 'ready');
+  const quizTakeoverActive = learningFeatureEnabled && learningState?.activeQuizVisible === true && activeQuizPrompt !== null;
   const assistantEnabled = assistantOptions.assistantFeatureEnabled === true;
   const assistantSubtitle = !assistantEnabled
     ? 'Off — enable Assistant in Settings.'
@@ -401,10 +479,19 @@ export default function Popup({
       : openClawState.status.connected
         ? 'OpenClaw ready'
         : 'OpenClaw offline';
+  const learningSubtitle = !learningFeatureEnabled
+    ? 'Off — turn on Learning in Settings.'
+    : activeQuizPrompt
+      ? `${activeQuizPrompt.topicLabel} · ${activeQuizPrompt.difficulty} · ${activeQuizPrompt.pointsReward} pts`
+      : selectedLearningTopics.length > 0
+        ? `${selectedLearningTopics.length} topic${selectedLearningTopics.length === 1 ? '' : 's'} selected · ${dueReviewCount} review${dueReviewCount === 1 ? '' : 's'} due`
+        : 'Pick topics in Settings to start building study packs.';
   const headerCaption = calendarConnected
     ? calendarState.currentEvent
       ? `${formatEventRange(calendarState.currentEvent)} · ${effectivelyBlocking
         ? 'Blocking active'
+        : !blockingFeatureEnabled
+          ? 'Blocking feature off'
         : quietHoursActive
           ? `Quiet hours until midnight · resumes tomorrow after ${formatBlockingPauseTimeLabel(settings.dailyBlockingPauseStartTime)}`
           : 'Browsing open'
@@ -488,13 +575,13 @@ export default function Popup({
             <button
               type="button"
               onClick={handleToggle}
-              disabled={toggling || !calendarConnected}
-              className={`rounded-md px-2.5 py-1 text-[11px] font-medium transition ${settings.enableBlocking
+              disabled={toggling || !calendarConnected || !blockingFeatureEnabled}
+              className={`rounded-md px-2.5 py-1 text-[11px] font-medium transition ${blockingFeatureEnabled && settings.enableBlocking
                 ? 'bg-[var(--fg-accent)] text-white'
                 : 'border border-[var(--fg-border)] bg-white text-[var(--fg-muted)]'
-                } ${toggling || !calendarConnected ? 'cursor-not-allowed opacity-50' : ''}`}
+                } ${toggling || !calendarConnected || !blockingFeatureEnabled ? 'cursor-not-allowed opacity-50' : ''}`}
             >
-              {settings.enableBlocking ? 'Blocking on' : 'Blocking off'}
+              {!blockingFeatureEnabled ? 'Blocking off' : settings.enableBlocking ? 'Blocking on' : 'Blocking off'}
             </button>
             <AccountStatusControl
               accountUser={accountUser}
@@ -529,16 +616,37 @@ export default function Popup({
       </header>
 
       <div className="space-y-1.5 px-2.5 py-2">
+        {quizTakeoverActive && activeQuizPrompt ? (
+          <QuizTakeoverCard
+            mode={mode}
+            prompt={activeQuizPrompt}
+            result={quizResult}
+            selectedChoiceId={quizSelectedChoiceId}
+            hintVisible={quizHintVisible}
+            submitting={quizSubmitting}
+            onSelectChoice={setQuizSelectedChoiceId}
+            onToggleHint={() => setQuizHintVisible((current) => !current)}
+            onSubmit={() => void handleSubmitQuiz(quizSelectedChoiceId)}
+            onGiveUp={() => void handleSubmitQuiz(null)}
+            onMoreQuestions={() => void handleRequestQuizPrompt(quizResult ? 'retry' : 'manual')}
+            onOpenLearningWorkspace={openLearningWorkspace}
+            onClose={() => void handleCloseQuizTakeover()}
+          />
+        ) : null}
+
         {panelOrder.map((sectionId) => {
           const sectionSubtitle =
             sectionId === 'focus'
               ? focusCaption
               : sectionId === 'assistant'
                 ? assistantSubtitle
+                : sectionId === 'learning'
+                  ? learningSubtitle
                 : sectionId === 'analytics'
                   ? 'Live session health and the last 7 days.'
                   : 'Fast adjustments without leaving the current page.';
           const assistantSectionInactive = sectionId === 'assistant' && !assistantEnabled;
+          const learningSectionInactive = sectionId === 'learning' && !learningFeatureEnabled;
           const effectiveCollapsed =
             sectionId === 'assistant'
               ? !assistantEnabled || panelCollapsed.assistant
@@ -551,7 +659,11 @@ export default function Popup({
               subtitle={sectionSubtitle}
               hint={SECTION_HINTS[sectionId]}
               collapsed={effectiveCollapsed}
-              containerClassName={assistantSectionInactive ? 'opacity-45 pointer-events-none' : undefined}
+              containerClassName={
+                assistantSectionInactive || learningSectionInactive
+                  ? 'opacity-45 pointer-events-none'
+                  : undefined
+              }
               dragging={draggedSection === sectionId}
               isDropTarget={dropTargetSection === sectionId && draggedSection !== sectionId}
               onToggleCollapse={() => togglePanelSection(sectionId)}
@@ -663,6 +775,80 @@ export default function Popup({
                   analyticsSnapshot={analyticsSnapshot}
                   taskTags={taskTags}
                 />
+              )}
+
+              {sectionId === 'learning' && (
+                <div className="space-y-1">
+                  <CompactSettingRow
+                    label="Subjects"
+                    value={
+                      selectedLearningTopics.length > 0
+                        ? `${selectedLearningTopics.length} selected`
+                        : 'No study topics yet'
+                    }
+                    meta={
+                      selectedLearningTopics.length > 0
+                        ? selectedLearningTopics
+                            .map((topic) => topic.label)
+                            .slice(0, 3)
+                            .join(', ')
+                        : 'Use the Learning workspace to pick topics or add a custom subject.'
+                    }
+                    className="px-2 py-1"
+                  />
+
+                  <CompactSettingRow
+                    label="Quiz packs"
+                    value={
+                      readyLearningPacks.length > 0
+                        ? `${readyLearningPacks.length} ready`
+                        : 'No ready packs'
+                    }
+                    meta={
+                      readyLearningPacks.length > 0
+                        ? `${reviewQueue.length} review card${reviewQueue.length === 1 ? '' : 's'} tracked`
+                        : 'Shared packs appear here after ingestion and quiz generation complete.'
+                    }
+                    className="px-2 py-1"
+                  />
+
+                  <CompactSettingRow
+                    label="Next prompt"
+                    value={
+                      activeQuizPrompt
+                        ? `${activeQuizPrompt.topicLabel} · ${activeQuizPrompt.difficulty}`
+                        : dueReviewCount > 0
+                          ? `${dueReviewCount} due`
+                          : 'Nothing due right now'
+                    }
+                    meta={
+                      activeQuizPrompt
+                        ? `${activeQuizPrompt.chapterTitle} · ${activeQuizPrompt.pointsReward} pts`
+                        : dueReviewCount > 0
+                          ? 'Surface the next due review prompt now.'
+                          : 'Window will pull a prompt here once review cards are available.'
+                    }
+                    className="px-2 py-1"
+                  />
+
+                  <div className="flex flex-wrap justify-end gap-1 px-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={openLearningWorkspace}
+                      className="fg-button-secondary text-[11px]"
+                    >
+                      Open study view
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void handleRequestQuizPrompt('manual')}
+                      disabled={!learningFeatureEnabled || quizSubmitting}
+                      className="fg-button-primary text-[11px] disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {activeQuizPrompt ? 'More questions' : 'Start quiz'}
+                    </button>
+                  </div>
+                </div>
               )}
 
               {sectionId === 'controls' && (
@@ -914,6 +1100,289 @@ function PanelSectionCard({
         </div>
       )}
     </div>
+  );
+}
+
+function QuizTakeoverCard({
+  mode,
+  prompt,
+  result,
+  selectedChoiceId,
+  hintVisible,
+  submitting,
+  onSelectChoice,
+  onToggleHint,
+  onSubmit,
+  onGiveUp,
+  onMoreQuestions,
+  onOpenLearningWorkspace,
+  onClose,
+}: {
+  mode: 'popup' | 'panel';
+  prompt: QuizPrompt;
+  result: QuizAnswerResult | null;
+  selectedChoiceId: string | null;
+  hintVisible: boolean;
+  submitting: boolean;
+  onSelectChoice: (choiceId: string) => void;
+  onToggleHint: () => void;
+  onSubmit: () => void;
+  onGiveUp: () => void;
+  onMoreQuestions: () => void;
+  onOpenLearningWorkspace: () => void;
+  onClose: () => void;
+}): React.JSX.Element {
+  const resolvedCorrectChoiceId = result?.correctChoiceId ?? prompt.correctChoiceId;
+  const selectedWrongExplanation =
+    result?.wrongAnswerExplanation ??
+    (selectedChoiceId ? prompt.wrongAnswerExplanations[selectedChoiceId] ?? null : null);
+  const canSubmit = !submitting && selectedChoiceId !== null && result === null;
+
+  return (
+    <section className={`fg-card overflow-hidden ${mode === 'panel' ? 'min-h-[56vh]' : 'min-h-[360px]'}`}>
+      <div className="border-b border-[var(--fg-border)] bg-gradient-to-r from-sky-50 via-white to-white px-4 py-3">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="rounded-full bg-[var(--fg-accent-soft)] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-[var(--fg-accent)]">
+                Quiz triggered
+              </span>
+              <span className="rounded-full border border-[var(--fg-border)] bg-white px-2.5 py-1 text-[10px] font-medium uppercase tracking-wide text-[var(--fg-muted)]">
+                {prompt.difficulty}
+              </span>
+            </div>
+            <h2 className="mt-2 text-lg font-semibold tracking-[-0.03em] text-[var(--fg-text)]">
+              {prompt.topicLabel}
+            </h2>
+            <p className="mt-1 text-sm text-[var(--fg-muted)]">
+              {prompt.chapterTitle} · {prompt.pointsReward} pts · streak {result?.updatedStreak ?? prompt.streak}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="fg-button-ghost shrink-0 px-2 py-1 text-[11px]"
+          >
+            Dismiss
+          </button>
+        </div>
+      </div>
+
+      <div className="flex h-full flex-col justify-between px-4 py-4">
+        <div className="space-y-4">
+          <div>
+            <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-[var(--fg-muted)]">
+              Prompt
+            </p>
+            <p className="mt-2 text-base leading-7 text-[var(--fg-text)]">{prompt.prompt}</p>
+          </div>
+
+          {prompt.artifact ? <QuizArtifactFigure artifact={prompt.artifact} /> : null}
+
+          <div className="space-y-2">
+            {prompt.choices.map((choice) => {
+              const isSelected = selectedChoiceId === choice.id;
+              const isCorrect = resolvedCorrectChoiceId === choice.id;
+              const isIncorrectSelection =
+                result !== null && selectedChoiceId === choice.id && resolvedCorrectChoiceId !== choice.id;
+
+              return (
+                <button
+                  key={choice.id}
+                  type="button"
+                  onClick={() => {
+                    if (result === null) {
+                      onSelectChoice(choice.id);
+                    }
+                  }}
+                  disabled={result !== null}
+                  className={`w-full rounded-xl border px-3 py-3 text-left transition ${
+                    result !== null
+                      ? isCorrect
+                        ? 'border-emerald-300 bg-emerald-50'
+                        : isIncorrectSelection
+                          ? 'border-rose-300 bg-rose-50'
+                          : 'border-[var(--fg-border)] bg-white opacity-70'
+                      : isSelected
+                        ? 'border-[var(--fg-accent)] bg-[var(--fg-accent-soft)]'
+                        : 'border-[var(--fg-border)] bg-white hover:border-[var(--fg-accent)]/40'
+                  } ${result !== null ? 'cursor-default' : ''}`}
+                >
+                  <div className="flex items-start gap-3">
+                    <span className="mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-[var(--fg-border)] bg-white text-[11px] font-semibold text-[var(--fg-muted)]">
+                      {choice.label}
+                    </span>
+                    <div className="min-w-0">
+                      <p className="text-sm leading-6 text-[var(--fg-text)]">{choice.body}</p>
+                      {result !== null && isCorrect ? (
+                        <p className="mt-1 text-[11px] font-medium text-emerald-700">Correct answer</p>
+                      ) : null}
+                      {result !== null && isIncorrectSelection && selectedWrongExplanation ? (
+                        <p className="mt-1 text-[11px] leading-5 text-rose-700">{selectedWrongExplanation}</p>
+                      ) : null}
+                    </div>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+
+          {hintVisible && prompt.hint ? (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm leading-6 text-amber-900">
+              <span className="font-medium">Hint:</span> {prompt.hint}
+            </div>
+          ) : null}
+
+          {result ? (
+            <div className="space-y-2 rounded-xl border border-[var(--fg-border)] bg-[var(--fg-panel-soft)]/75 px-3 py-3">
+              <p className={`text-sm font-semibold ${result.correct ? 'text-emerald-700' : 'text-rose-700'}`}>
+                {result.correct ? `Correct. +${result.pointsAwarded} pts` : 'Review this before moving on'}
+              </p>
+              <p className="text-sm leading-6 text-[var(--fg-text)]">
+                {result.explanation ?? prompt.explanation ?? 'Window will attach a short explainer here as packs mature.'}
+              </p>
+              {result.nextDueAt ? (
+                <p className="text-[11px] text-[var(--fg-muted)]">
+                  Next review {formatRelativeDueTime(result.nextDueAt)}.
+                </p>
+              ) : null}
+            </div>
+          ) : null}
+        </div>
+
+        <div className="mt-5 flex flex-wrap items-center justify-between gap-2 border-t border-[var(--fg-border)] pt-3">
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={onToggleHint}
+              className="fg-button-secondary px-3 py-2 text-[11px]"
+            >
+              {hintVisible ? 'Hide hint' : 'Hint'}
+            </button>
+            {result === null ? (
+              <button
+                type="button"
+                onClick={onGiveUp}
+                disabled={submitting}
+                className="fg-button-secondary px-3 py-2 text-[11px] disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Give up
+              </button>
+            ) : null}
+            <button
+              type="button"
+              onClick={onOpenLearningWorkspace}
+              className="fg-button-ghost px-3 py-2 text-[11px]"
+            >
+              Open full study view
+            </button>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={onMoreQuestions}
+              className="fg-button-primary px-3 py-2 text-[11px]"
+            >
+              More questions
+            </button>
+            {result === null ? (
+              <button
+                type="button"
+                onClick={onSubmit}
+                disabled={!canSubmit}
+                className="fg-button-primary px-3 py-2 text-[11px] disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {submitting ? 'Checking…' : 'Submit'}
+              </button>
+            ) : null}
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function QuizArtifactFigure({
+  artifact,
+}: {
+  artifact: NonNullable<QuizPrompt['artifact']>;
+}): React.JSX.Element {
+  if (artifact.type === 'image' && artifact.imageUrl) {
+    return (
+      <figure className="overflow-hidden rounded-xl border border-[var(--fg-border)] bg-white">
+        <img src={artifact.imageUrl} alt={artifact.alt} className="h-auto w-full object-cover" />
+        <figcaption className="border-t border-[var(--fg-border)] px-3 py-2 text-[11px] leading-5 text-[var(--fg-muted)]">
+          {artifact.alt}
+        </figcaption>
+      </figure>
+    );
+  }
+
+  if (artifact.type === 'graph' && artifact.graphSpec) {
+    return (
+      <figure className="rounded-xl border border-[var(--fg-border)] bg-white p-3">
+        <SimpleGraphArtifact graphSpec={artifact.graphSpec} />
+        <figcaption className="mt-2 text-[11px] leading-5 text-[var(--fg-muted)]">{artifact.alt}</figcaption>
+      </figure>
+    );
+  }
+
+  return (
+    <div className="rounded-xl border border-[var(--fg-border)] bg-[var(--fg-panel-soft)]/75 px-3 py-3 text-sm text-[var(--fg-muted)]">
+      {artifact.alt}
+    </div>
+  );
+}
+
+function SimpleGraphArtifact({
+  graphSpec,
+}: {
+  graphSpec: Record<string, unknown>;
+}): React.JSX.Element {
+  const points = extractGraphPoints(graphSpec);
+
+  if (points.length < 2) {
+    return (
+      <div className="rounded-lg border border-dashed border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-3 py-4 text-center text-[11px] text-[var(--fg-muted)]">
+        Graph data is stored structurally and will render here when the pack includes numeric points.
+      </div>
+    );
+  }
+
+  const minX = Math.min(...points.map((point) => point.x));
+  const maxX = Math.max(...points.map((point) => point.x));
+  const minY = Math.min(...points.map((point) => point.y));
+  const maxY = Math.max(...points.map((point) => point.y));
+  const xSpan = maxX - minX || 1;
+  const ySpan = maxY - minY || 1;
+  const plotPoints = points
+    .map((point) => {
+      const x = 18 + ((point.x - minX) / xSpan) * 284;
+      const y = 170 - ((point.y - minY) / ySpan) * 144;
+      return `${x},${y}`;
+    })
+    .join(' ');
+
+  return (
+    <svg viewBox="0 0 320 190" className="h-[180px] w-full" role="img" aria-label="Quiz graph artifact">
+      <rect x="0" y="0" width="320" height="190" rx="14" fill="#F8FBFF" />
+      <line x1="18" y1="170" x2="302" y2="170" stroke="#B7C6D9" strokeWidth="1.5" />
+      <line x1="18" y1="24" x2="18" y2="170" stroke="#B7C6D9" strokeWidth="1.5" />
+      <polyline
+        fill="none"
+        stroke="#2F6DF6"
+        strokeWidth="3"
+        strokeLinejoin="round"
+        strokeLinecap="round"
+        points={plotPoints}
+      />
+      {points.map((point, index) => {
+        const x = 18 + ((point.x - minX) / xSpan) * 284;
+        const y = 170 - ((point.y - minY) / ySpan) * 144;
+        return <circle key={`${point.x}-${point.y}-${index}`} cx={x} cy={y} r="4" fill="#2F6DF6" />;
+      })}
+    </svg>
   );
 }
 
@@ -1528,6 +1997,49 @@ function formatRelativeTime(value: string): string {
 
   const days = Math.round(hours / 24);
   return days === 1 ? 'Updated 1 day ago' : `Updated ${days} days ago`;
+}
+
+function formatRelativeDueTime(value: string): string {
+  const delta = new Date(value).getTime() - Date.now();
+  const minutes = Math.round(delta / 60_000);
+
+  if (minutes <= 0) {
+    const overdueMinutes = Math.abs(minutes);
+    if (overdueMinutes < 60) return overdueMinutes === 0 ? 'is due now' : `was due ${overdueMinutes} min ago`;
+    const overdueHours = Math.round(overdueMinutes / 60);
+    return `was due ${overdueHours} hour${overdueHours === 1 ? '' : 's'} ago`;
+  }
+
+  if (minutes < 60) return `in ${minutes} min`;
+  const hours = Math.round(minutes / 60);
+  if (hours < 24) return `in ${hours} hour${hours === 1 ? '' : 's'}`;
+  const days = Math.round(hours / 24);
+  return `in ${days} day${days === 1 ? '' : 's'}`;
+}
+
+function extractGraphPoints(graphSpec: Record<string, unknown>): Array<{ x: number; y: number }> {
+  const rawPoints = graphSpec.points;
+  if (!Array.isArray(rawPoints)) {
+    return [];
+  }
+
+  return rawPoints
+    .map((point) => {
+      if (Array.isArray(point) && point.length >= 2) {
+        const [x, y] = point;
+        return typeof x === 'number' && typeof y === 'number' ? { x, y } : null;
+      }
+
+      if (!point || typeof point !== 'object') {
+        return null;
+      }
+
+      const candidate = point as { x?: unknown; y?: unknown };
+      return typeof candidate.x === 'number' && typeof candidate.y === 'number'
+        ? { x: candidate.x, y: candidate.y }
+        : null;
+    })
+    .filter((point): point is { x: number; y: number } => point !== null);
 }
 
 function truncateText(value: string, maxLength: number): string {
