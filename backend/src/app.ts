@@ -1775,7 +1775,7 @@ export async function buildApp() {
         versions: {
           include: {
             questions: {
-              select: { id: true },
+              select: { id: true, chapterId: true },
             },
           },
           orderBy: { versionNumber: 'desc' },

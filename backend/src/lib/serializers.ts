@@ -304,10 +304,17 @@ export function toQuizPackSummaryPayload(pack: {
     id: string;
     versionNumber: number;
     createdAt: Date;
-    questions: Array<{ id: string }>;
+    questions: Array<{ id: string; chapterId?: string | null }>;
   }>;
 }): QuizPackSummaryPayload {
   const latestVersion = [...pack.versions].sort((left, right) => right.versionNumber - left.versionNumber)[0] ?? null;
+  const chapterCount = latestVersion
+    ? new Set(
+        latestVersion.questions
+          .map((question) => question.chapterId ?? null)
+          .filter((chapterId): chapterId is string => typeof chapterId === 'string'),
+      ).size
+    : 0;
   return {
     id: pack.id,
     topicId: pack.topic.id,
@@ -316,7 +323,7 @@ export function toQuizPackSummaryPayload(pack: {
     sourceKind: pack.sourceKind === 'paper_based' ? 'paper-based' : 'textbook',
     status: pack.status,
     canonical: pack.canonical,
-    chapterCount: latestVersion ? 3 : 0,
+    chapterCount,
     questionCount: latestVersion?.questions.length ?? 0,
     versionNumber: latestVersion?.versionNumber ?? 1,
     licenseMode: pack.source?.licenseMode ?? 'commercial_safe',
