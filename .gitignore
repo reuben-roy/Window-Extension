@@ -26,3 +26,11 @@ pnpm-debug.log*
 tmp/
 
 *.tsbuildinfo
+
+# Learning corpus pipeline (regeneratable; quizzes-cleaned/ is committed for deploy)
+backend/data/learning/chapters/
+backend/data/learning/raw/
+backend/data/learning/raw-selected/
+backend/data/learning/quizzes/
+backend/data/learning/quality-reports/
+backend/data/learning/run-summary.json
