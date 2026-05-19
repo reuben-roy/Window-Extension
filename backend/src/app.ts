@@ -2109,12 +2109,17 @@ async function loadLearningReviewQueue(userId: string): Promise<ReviewQueueItemP
   return items.map(toReviewQueueItemPayload);
 }
 
+function pickRandom<T>(items: T[]): T | null {
+  if (items.length === 0) return null;
+  return items[Math.floor(Math.random() * items.length)];
+}
+
 async function loadLearningPrompt(
   userId: string,
   origin: 'scheduled' | 'manual' | 'retry',
 ): Promise<QuizPromptPayload | null> {
   const now = new Date();
-  const dueProgress = await prisma.userQuizProgress.findFirst({
+  const dueCandidates = await prisma.userQuizProgress.findMany({
     where: {
       userId,
       dueAt: { lte: now },
@@ -2134,7 +2139,8 @@ async function loadLearningPrompt(
         },
       },
     },
-    orderBy: [{ dueAt: 'asc' }, { updatedAt: 'desc' }],
+    orderBy: [{ dueAt: 'asc' }],
+    take: 50,
     include: {
       question: {
         include: {
@@ -2153,6 +2159,7 @@ async function loadLearningPrompt(
     },
   });
 
+  const dueProgress = pickRandom(dueCandidates);
   if (dueProgress) {
     return toQuizPromptPayload(dueProgress.question, {
       sessionId: `quiz-${dueProgress.question.id}-${Date.now()}`,
@@ -2163,8 +2170,18 @@ async function loadLearningPrompt(
     });
   }
 
-  const fallbackQuestion = await prisma.quizQuestion.findFirst({
+  // Prefer questions the user has never seen. Exclude any question with an
+  // existing UserQuizProgress row (seen + scheduled in the future) so we don't
+  // re-serve a question the user already answered correctly today.
+  const seenProgress = await prisma.userQuizProgress.findMany({
+    where: { userId },
+    select: { questionId: true },
+  });
+  const seenIds = seenProgress.map((row) => row.questionId);
+
+  const unseenCandidates = await prisma.quizQuestion.findMany({
     where: {
+      id: seenIds.length > 0 ? { notIn: seenIds } : undefined,
       packVersion: {
         pack: {
           status: 'ready',
@@ -2179,7 +2196,7 @@ async function loadLearningPrompt(
         },
       },
     },
-    orderBy: [{ createdAt: 'asc' }, { ordinal: 'asc' }],
+    take: 100,
     include: {
       chapter: true,
       packVersion: {
@@ -2193,6 +2210,44 @@ async function loadLearningPrompt(
       },
     },
   });
+
+  let fallbackQuestion = pickRandom(unseenCandidates);
+
+  // If every question has been seen, fall back to any active-topic question at
+  // random — the spaced-repetition cycle has wrapped.
+  if (!fallbackQuestion) {
+    const anyCandidates = await prisma.quizQuestion.findMany({
+      where: {
+        packVersion: {
+          pack: {
+            status: 'ready',
+            topic: {
+              userTopics: {
+                some: {
+                  userId,
+                  active: true,
+                },
+              },
+            },
+          },
+        },
+      },
+      take: 100,
+      include: {
+        chapter: true,
+        packVersion: {
+          include: {
+            pack: {
+              include: {
+                topic: true,
+              },
+            },
+          },
+        },
+      },
+    });
+    fallbackQuestion = pickRandom(anyCandidates);
+  }
 
   if (!fallbackQuestion) return null;
 

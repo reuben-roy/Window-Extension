@@ -12,7 +12,8 @@
     "start:worker": "node dist/src/worker.js",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "prisma:generate": "prisma generate",
-    "prisma:migrate": "prisma migrate dev"
+    "prisma:migrate": "prisma migrate dev",
+    "import:learning-quizzes": "node scripts/import_learning_quizzes.mjs"
   },
   "dependencies": {
     "@prisma/client": "^6.7.0",

@@ -1077,11 +1077,11 @@ export async function refreshLearningState(): Promise<LearningState> {
 
   try {
     const [taxonomy, userTopics, suggestions, packs, review] = await Promise.all([
-      backendRequest<LearningTaxonomyResponse>('/v1/learning/taxonomy'),
-      backendRequest<LearningTopicsResponse>('/v1/learning/user-topics'),
-      backendRequest<LearningSuggestionsResponse>('/v1/learning/suggestions'),
-      backendRequest<LearningPacksResponse>('/v1/learning/packs'),
-      backendRequest<LearningReviewResponse>('/v1/learning/review/next?origin=scheduled'),
+      learningBackendRequest<LearningTaxonomyResponse>('/v1/learning/taxonomy'),
+      learningBackendRequest<LearningTopicsResponse>('/v1/learning/user-topics'),
+      learningBackendRequest<LearningSuggestionsResponse>('/v1/learning/suggestions'),
+      learningBackendRequest<LearningPacksResponse>('/v1/learning/packs'),
+      learningBackendRequest<LearningReviewResponse>('/v1/learning/review/next?origin=scheduled'),
     ]);
 
     const next: LearningState = {
@@ -1123,7 +1123,7 @@ export async function saveUserLearningTopics(topics: Array<{
   subjectKey?: string | null;
   source?: 'catalog' | 'custom' | 'suggested';
 }>): Promise<LearningState> {
-  await backendRequest<LearningTopicsResponse>('/v1/learning/user-topics', {
+  await learningBackendRequest<LearningTopicsResponse>('/v1/learning/user-topics', {
     method: 'POST',
     body: { topics },
   });
@@ -1134,7 +1134,7 @@ export async function createCustomLearningTopic(input: {
   label: string;
   subjectKey?: string | null;
 }): Promise<LearningState> {
-  await backendRequest<{ topic: UserLearningTopic }>('/v1/learning/topics/custom', {
+  await learningBackendRequest<{ topic: UserLearningTopic }>('/v1/learning/topics/custom', {
     method: 'POST',
     body: input,
   });
@@ -1142,7 +1142,7 @@ export async function createCustomLearningTopic(input: {
 }
 
 export async function regenerateLearningPack(packId: string): Promise<LearningState> {
-  await backendRequest<{ ok: boolean }>(`/v1/learning/packs/${packId}/regenerate`, {
+  await learningBackendRequest<{ ok: boolean }>(`/v1/learning/packs/${packId}/regenerate`, {
     method: 'POST',
     body: {},
   });
@@ -1150,7 +1150,7 @@ export async function regenerateLearningPack(packId: string): Promise<LearningSt
 }
 
 export async function getNextQuizPrompt(origin: 'scheduled' | 'manual' | 'retry' = 'manual'): Promise<QuizPrompt | null> {
-  const review = await backendRequest<LearningReviewResponse>(`/v1/learning/review/next?origin=${origin}`);
+  const review = await learningBackendRequest<LearningReviewResponse>(`/v1/learning/review/next?origin=${origin}`);
   const current = await getLearningState();
   await setLearningState({
     ...current,
@@ -1168,7 +1168,7 @@ export async function submitQuizAnswer(input: {
   selectedChoiceId: string | null;
   sessionId?: string;
 }): Promise<QuizAnswerResult> {
-  const response = await backendRequest<LearningAnswerResponse>('/v1/learning/answers', {
+  const response = await learningBackendRequest<LearningAnswerResponse>('/v1/learning/answers', {
     method: 'POST',
     body: input,
   });
@@ -1451,6 +1451,24 @@ async function backendRequest<T>(
 ): Promise<T> {
   const response = await backendRequestDetailed<T>(path, init);
   if (!response.ok) {
+    throw new Error(response.data?.error ?? `Backend request failed with ${response.status}`);
+  }
+
+  return response.data as T;
+}
+
+async function learningBackendRequest<T>(
+  path: string,
+  init: BackendRequestInit = {},
+): Promise<T> {
+  const response = await backendRequestDetailed<T>(path, init);
+  if (!response.ok) {
+    if (response.status === 404) {
+      throw new Error(
+        `The configured backend (${BACKEND_BASE_URL}) does not expose ${path}. Learning is not deployed on that service yet.`,
+      );
+    }
+
     throw new Error(response.data?.error ?? `Backend request failed with ${response.status}`);
   }
 

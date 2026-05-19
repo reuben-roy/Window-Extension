@@ -1,0 +1,536 @@
+{
+  "taxonomySource": "/Users/reubenroy/github/hobby/window-extension/src/shared/learning.ts",
+  "generatedOn": "2026-05-17",
+  "notes": [
+    "This mapping prioritizes textbooks that are free to read and usually downloadable as PDF or HTML bundles.",
+    "Some subtopics map to broader foundational texts when there is no strong open textbook dedicated to that exact niche."
+  ],
+  "topics": {
+    "AI & Machine Learning": {
+      "Machine Learning": [
+        {
+          "title": "Dive into Deep Learning",
+          "url": "https://d2l.ai/d2l-en.pdf",
+          "fit": "broad ML and deep learning foundations"
+        },
+        {
+          "title": "Probabilistic Machine Learning: An Introduction",
+          "url": "https://probml.github.io/pml-book/book1.html",
+          "fit": "probabilistic foundations for modern machine learning"
+        }
+      ],
+      "Deep Learning": [
+        {
+          "title": "Dive into Deep Learning",
+          "url": "https://d2l.ai/d2l-en.pdf",
+          "fit": "core deep learning textbook"
+        },
+        {
+          "title": "Neural Networks and Deep Learning",
+          "url": "http://neuralnetworksanddeeplearning.com/",
+          "fit": "introductory conceptual deep learning text"
+        }
+      ],
+      "Transformers": [
+        {
+          "title": "Dive into Deep Learning",
+          "url": "https://d2l.ai/d2l-en.pdf",
+          "fit": "attention and transformer chapters"
+        },
+        {
+          "title": "Probabilistic Machine Learning: Advanced Topics",
+          "url": "https://probml.github.io/pml-book/book2.html",
+          "fit": "advanced modern ML coverage including sequence models"
+        }
+      ],
+      "Reinforcement Learning": [
+        {
+          "title": "Reinforcement Learning: An Introduction",
+          "url": "https://incompleteideas.net/book/the-book-2nd.html",
+          "fit": "canonical RL textbook"
+        },
+        {
+          "title": "Algorithms for Decision Making",
+          "url": "https://algorithmsbook.com/files/dm.pdf",
+          "fit": "decision processes and planning"
+        }
+      ],
+      "ML Systems": [
+        {
+          "title": "Dive into Deep Learning",
+          "url": "https://d2l.ai/d2l-en.pdf",
+          "fit": "practical pipelines, training, and deployment context"
+        },
+        {
+          "title": "Patterns, Predictions, and Actions",
+          "url": "https://mlstory.org/",
+          "fit": "end-to-end ML thinking with deployment-oriented framing"
+        }
+      ]
+    },
+    "Computer Science": {
+      "Algorithms": [
+        {
+          "title": "Open Data Structures",
+          "url": "https://opendatastructures.org/",
+          "fit": "data structures and algorithmic thinking"
+        },
+        {
+          "title": "Algorithms",
+          "url": "https://jeffe.cs.illinois.edu/teaching/algorithms/",
+          "fit": "rigorous algorithms text"
+        }
+      ],
+      "Operating Systems": [
+        {
+          "title": "Operating Systems: Three Easy Pieces",
+          "url": "https://pages.cs.wisc.edu/~remzi/OSTEP/",
+          "fit": "canonical open OS textbook"
+        }
+      ],
+      "Distributed Systems": [
+        {
+          "title": "Distributed Systems",
+          "url": "https://www.distributed-systems.net/index.php/books/ds4/",
+          "fit": "replication, consensus, and fault tolerance"
+        }
+      ],
+      "Databases": [
+        {
+          "title": "Database Design, 2nd Edition",
+          "url": "https://open.umn.edu/opentextbooks/textbooks/database-design-2nd-edition",
+          "fit": "database design fundamentals"
+        },
+        {
+          "title": "Foundations of Databases",
+          "url": "http://webdam.inria.fr/Alice/",
+          "fit": "theory-heavy database foundations"
+        }
+      ],
+      "Networking": [
+        {
+          "title": "Computer Networking: Principles, Protocols and Practice",
+          "url": "https://www.computer-networking.info/",
+          "fit": "networking protocols and architecture"
+        }
+      ]
+    },
+    "Mathematics": {
+      "Linear Algebra": [
+        {
+          "title": "Linear Algebra",
+          "url": "https://hefferon.net/linearalgebra/",
+          "fit": "full introductory linear algebra text"
+        }
+      ],
+      "Probability": [
+        {
+          "title": "Introduction to Probability",
+          "url": "https://chance.dartmouth.edu/teaching_aids/books_articles/probability_book/book.html",
+          "fit": "foundational probability"
+        },
+        {
+          "title": "Probability and Statistics Cookbook",
+          "url": "https://open.umn.edu/opentextbooks/textbooks/probability-and-statistics-cookbook",
+          "fit": "compact probability reference"
+        }
+      ],
+      "Statistics": [
+        {
+          "title": "OpenIntro Statistics",
+          "url": "https://www.openintro.org/book/os/",
+          "fit": "introductory statistics"
+        },
+        {
+          "title": "Think Stats",
+          "url": "https://greenteapress.com/wp/think-stats-2e/",
+          "fit": "applied statistics with computation"
+        }
+      ],
+      "Calculus": [
+        {
+          "title": "Calculus Volume 1",
+          "url": "https://openstax.org/details/books/calculus-volume-1",
+          "fit": "single-variable calculus"
+        },
+        {
+          "title": "Calculus Volume 2",
+          "url": "https://openstax.org/details/books/calculus-volume-2",
+          "fit": "integration and series"
+        },
+        {
+          "title": "Calculus Volume 3",
+          "url": "https://openstax.org/details/books/calculus-volume-3",
+          "fit": "multivariable calculus"
+        }
+      ],
+      "Discrete Math": [
+        {
+          "title": "Discrete Mathematics: An Open Introduction",
+          "url": "https://discrete.openmathbooks.org/",
+          "fit": "logic, proofs, combinatorics, and graph theory"
+        }
+      ]
+    },
+    "Physics": {
+      "Classical Mechanics": [
+        {
+          "title": "University Physics Volume 1",
+          "url": "https://openstax.org/details/books/university-physics-volume-1",
+          "fit": "mechanics foundations"
+        }
+      ],
+      "Electromagnetism": [
+        {
+          "title": "University Physics Volume 2",
+          "url": "https://openstax.org/details/books/university-physics-volume-2",
+          "fit": "electromagnetism and optics"
+        }
+      ],
+      "Thermodynamics": [
+        {
+          "title": "University Physics Volume 2",
+          "url": "https://openstax.org/details/books/university-physics-volume-2",
+          "fit": "thermodynamics"
+        }
+      ],
+      "Quantum Mechanics": [
+        {
+          "title": "University Physics Volume 3",
+          "url": "https://openstax.org/details/books/university-physics-volume-3",
+          "fit": "intro modern physics and quantum topics"
+        },
+        {
+          "title": "Quantum Mechanics",
+          "url": "https://phys.libretexts.org/Bookshelves/Quantum_Mechanics/Quantum_Mechanics_(Fowler)",
+          "fit": "supplemental quantum mechanics coverage"
+        }
+      ]
+    },
+    "Chemistry": {
+      "Organic Chemistry": [
+        {
+          "title": "Organic Chemistry",
+          "url": "https://openstax.org/details/books/organic-chemistry",
+          "fit": "full organic chemistry text"
+        }
+      ],
+      "Inorganic Chemistry": [
+        {
+          "title": "Chemistry 2e",
+          "url": "https://openstax.org/details/books/chemistry-2e",
+          "fit": "broad chemistry with inorganic foundations"
+        },
+        {
+          "title": "CLUE: Chemistry, Life, the Universe and Everything",
+          "url": "https://open.umn.edu/opentextbooks/textbooks/clue-chemistry-life-the-universe-and-everything",
+          "fit": "general chemistry foundations"
+        }
+      ],
+      "Physical Chemistry": [
+        {
+          "title": "Chemistry 2e",
+          "url": "https://openstax.org/details/books/chemistry-2e",
+          "fit": "thermodynamics and kinetics foundations"
+        },
+        {
+          "title": "Physical Chemistry for the Biological Sciences",
+          "url": "https://open.umn.edu/opentextbooks/textbooks/physical-chemistry-for-the-biological-sciences",
+          "fit": "physical chemistry concepts"
+        }
+      ],
+      "Analytical Chemistry": [
+        {
+          "title": "Analytical Chemistry 2.1",
+          "url": "https://chem.libretexts.org/Bookshelves/Analytical_Chemistry/Analytical_Chemistry_2.1_(Harvey)",
+          "fit": "measurement and analytical methods"
+        }
+      ]
+    },
+    "Biology & Medicine": {
+      "Cell Biology": [
+        {
+          "title": "Fundamentals of Cell Biology",
+          "url": "https://open.umn.edu/opentextbooks/textbooks/fundamentals-of-cell-biology",
+          "fit": "dedicated cell biology text"
+        },
+        {
+          "title": "Biology 2e",
+          "url": "https://openstax.org/details/books/biology-2e",
+          "fit": "broad biology support"
+        }
+      ],
+      "Genetics": [
+        {
+          "title": "Biology 2e",
+          "url": "https://openstax.org/details/books/biology-2e",
+          "fit": "genetics foundations"
+        },
+        {
+          "title": "Introduction to Genetics",
+          "url": "https://open.umn.edu/opentextbooks/textbooks/introduction-to-genetics",
+          "fit": "genetics-specific support"
+        }
+      ],
+      "Biochemistry": [
+        {
+          "title": "Biochemistry Free For All",
+          "url": "https://open.umn.edu/opentextbooks/textbooks/biochemistry-free-for-all",
+          "fit": "full biochemistry text"
+        }
+      ],
+      "Physiology": [
+        {
+          "title": "Anatomy and Physiology 2e",
+          "url": "https://openstax.org/details/books/anatomy-and-physiology-2e",
+          "fit": "physiology and organ systems"
+        }
+      ]
+    },
+    "Engineering": {
+      "Electrical Engineering": [
+        {
+          "title": "Lessons In Electric Circuits",
+          "url": "https://www.allaboutcircuits.com/textbook/",
+          "fit": "circuits and electrical fundamentals"
+        }
+      ],
+      "Mechanical Engineering": [
+        {
+          "title": "Engineering Systems: Dynamics, Modelling, Simulation, and Design",
+          "url": "https://open.umn.edu/opentextbooks/textbooks/engineering-systems-dynamics-modelling-simulation-and-design",
+          "fit": "mechanical systems and dynamics"
+        }
+      ],
+      "Control Systems": [
+        {
+          "title": "Feedback Systems: An Introduction for Scientists and Engineers",
+          "url": "https://fbswiki.org/wiki/images/2/2d/Feedback_systems_an_introduction_for_scientists_and_engineers.pdf",
+          "fit": "control systems and feedback"
+        }
+      ],
+      "Materials Science": [
+        {
+          "title": "The Science of Everyday Materials",
+          "url": "https://open.umn.edu/opentextbooks/textbooks/the-science-of-everyday-materials-4th-edition",
+          "fit": "introductory materials science"
+        }
+      ]
+    },
+    "Economics & Finance": {
+      "Microeconomics": [
+        {
+          "title": "Principles of Microeconomics 3e",
+          "url": "https://openstax.org/details/books/principles-microeconomics-3e",
+          "fit": "microeconomics foundations"
+        }
+      ],
+      "Macroeconomics": [
+        {
+          "title": "Principles of Macroeconomics 3e",
+          "url": "https://openstax.org/details/books/principles-macroeconomics-3e",
+          "fit": "macroeconomics foundations"
+        }
+      ],
+      "Corporate Finance": [
+        {
+          "title": "Principles of Finance",
+          "url": "https://openstax.org/details/books/principles-finance",
+          "fit": "core corporate finance"
+        }
+      ],
+      "Investing": [
+        {
+          "title": "Principles of Finance",
+          "url": "https://openstax.org/details/books/principles-finance",
+          "fit": "portfolio and valuation basics"
+        },
+        {
+          "title": "Finance for Managers",
+          "url": "https://open.umn.edu/opentextbooks/textbooks/finance-for-managers",
+          "fit": "practical finance support"
+        }
+      ]
+    },
+    "History & Politics": {
+      "Modern History": [
+        {
+          "title": "World History, Volume 2",
+          "url": "https://openstax.org/details/books/world-history-volume-2",
+          "fit": "modern global history"
+        }
+      ],
+      "Political Theory": [
+        {
+          "title": "Political Ideologies and Worldviews",
+          "url": "https://open.umn.edu/opentextbooks/textbooks/political-ideologies-and-worldviews",
+          "fit": "political thought and frameworks"
+        }
+      ],
+      "International Relations": [
+        {
+          "title": "International Relations",
+          "url": "https://open.umn.edu/opentextbooks/textbooks/international-relations",
+          "fit": "broad IR text"
+        }
+      ],
+      "Public Policy": [
+        {
+          "title": "Public Policy: Origins, Practice, and Analysis",
+          "url": "https://open.umn.edu/opentextbooks/textbooks/public-policy-origins-practice-and-analysis",
+          "fit": "public policy foundations"
+        }
+      ]
+    },
+    "Philosophy & Psychology": {
+      "Ethics": [
+        {
+          "title": "Introduction to Philosophy: Ethics",
+          "url": "https://open.umn.edu/opentextbooks/textbooks/introduction-to-philosophy-ethics",
+          "fit": "ethics foundations"
+        }
+      ],
+      "Cognitive Psychology": [
+        {
+          "title": "Mind, Body, World: Foundations of Cognitive Science",
+          "url": "https://open.umn.edu/opentextbooks/textbooks/mind-body-world-foundations-of-cognitive-science",
+          "fit": "cognition-focused foundational text"
+        },
+        {
+          "title": "Psychology 2e",
+          "url": "https://openstax.org/details/books/psychology-2e",
+          "fit": "supporting cognition chapters"
+        }
+      ],
+      "Behavioral Psychology": [
+        {
+          "title": "Psychology 2e",
+          "url": "https://openstax.org/details/books/psychology-2e",
+          "fit": "learning, conditioning, and behavior"
+        }
+      ],
+      "Logic": [
+        {
+          "title": "forall x: Calgary Remix",
+          "url": "https://forallx.openlogicproject.org/",
+          "fit": "formal logic"
+        }
+      ]
+    },
+    "Writing & Communication": {
+      "Technical Writing": [
+        {
+          "title": "Open Technical Communication",
+          "url": "https://oer.galileo.usg.edu/communication-textbooks/2/",
+          "fit": "technical writing and communication"
+        }
+      ],
+      "Storytelling": [
+        {
+          "title": "Writing Guide with Handbook",
+          "url": "https://openstax.org/details/books/writing-guide",
+          "fit": "writing craft and composition support"
+        },
+        {
+          "title": "Advanced Fiction Writing",
+          "url": "https://open.umn.edu/opentextbooks/textbooks/advanced-fiction-writing-a-writers-guide-and-anthology",
+          "fit": "narrative structure and storytelling practice"
+        }
+      ],
+      "Rhetoric": [
+        {
+          "title": "A Rhetoric of Literate Action",
+          "url": "https://open.umn.edu/opentextbooks/textbooks/a-rhetoric-of-literate-action",
+          "fit": "rhetoric and argument"
+        }
+      ],
+      "Public Speaking": [
+        {
+          "title": "Stand Up, Speak Out: The Practice and Ethics of Public Speaking",
+          "url": "https://saylordotorg.github.io/text_stand-up-speak-out-the-practice-and-ethics-of-public-speaking/",
+          "fit": "public speaking foundations"
+        }
+      ]
+    },
+    "Languages": {
+      "English Composition": [
+        {
+          "title": "Writing Guide with Handbook",
+          "url": "https://openstax.org/details/books/writing-guide",
+          "fit": "composition, style, and structure"
+        }
+      ],
+      "Spanish": [
+        {
+          "title": "Beginning Spanish: Empecemos por aqui",
+          "url": "https://open.umn.edu/opentextbooks/textbooks/beginning-spanish-empecemos-por-aqui",
+          "fit": "beginning Spanish"
+        }
+      ],
+      "Mandarin": [
+        {
+          "title": "Elementary Chinese I",
+          "url": "https://open.umn.edu/opentextbooks/textbooks/elementary-chinese-i",
+          "fit": "introductory Mandarin"
+        },
+        {
+          "title": "Mastering Mandarin Sounds",
+          "url": "https://open.umn.edu/opentextbooks/textbooks/mastering-mandarin-sounds-an-interactive-h5p-pressbook",
+          "fit": "pronunciation support"
+        }
+      ],
+      "Linguistics": [
+        {
+          "title": "Essentials of Linguistics",
+          "url": "https://open.umn.edu/opentextbooks/textbooks/essentials-of-linguistics",
+          "fit": "core linguistics"
+        }
+      ]
+    },
+    "Art & Design": {
+      "Design Systems": [
+        {
+          "title": "Temas de Diseno en Interaccion Humano-Computadora",
+          "url": "https://open.umn.edu/opentextbooks/textbooks/temas-de-diseno-en-interaccion-humano-computadora",
+          "fit": "interaction design systems thinking"
+        },
+        {
+          "title": "Graphic Design and Print Production Fundamentals",
+          "url": "https://open.umn.edu/opentextbooks/textbooks/graphic-design-and-print-production-fundamentals",
+          "fit": "foundational visual systems and consistency"
+        }
+      ],
+      "UI Design": [
+        {
+          "title": "Temas de Diseno en Interaccion Humano-Computadora",
+          "url": "https://open.umn.edu/opentextbooks/textbooks/temas-de-diseno-en-interaccion-humano-computadora",
+          "fit": "UI and HCI foundations"
+        },
+        {
+          "title": "Graphic Design and Print Production Fundamentals",
+          "url": "https://open.umn.edu/opentextbooks/textbooks/graphic-design-and-print-production-fundamentals",
+          "fit": "layout and hierarchy support"
+        }
+      ],
+      "Art History": [
+        {
+          "title": "Introduction to Art: Design, Context, and Meaning",
+          "url": "https://open.umn.edu/opentextbooks/textbooks/introduction-to-art-design-context-and-meaning",
+          "fit": "art history and visual interpretation"
+        }
+      ],
+      "Color Theory": [
+        {
+          "title": "Graphic Design and Print Production Fundamentals",
+          "url": "https://open.umn.edu/opentextbooks/textbooks/graphic-design-and-print-production-fundamentals",
+          "fit": "color fundamentals in design"
+        },
+        {
+          "title": "Introduction to Art: Design, Context, and Meaning",
+          "url": "https://open.umn.edu/opentextbooks/textbooks/introduction-to-art-design-context-and-meaning",
+          "fit": "supplemental visual design context"
+        }
+      ]
+    }
+  }
+}

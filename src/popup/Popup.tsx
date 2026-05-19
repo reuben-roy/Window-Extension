@@ -86,6 +86,7 @@ export default function Popup({
   const [quizSelectedChoiceId, setQuizSelectedChoiceId] = useState<string | null>(null);
   const [quizSubmitting, setQuizSubmitting] = useState(false);
   const [quizHintVisible, setQuizHintVisible] = useState(false);
+  const [quizAutoAdvanceSecsLeft, setQuizAutoAdvanceSecsLeft] = useState<number | null>(null);
   const [, setBreakCountdownTick] = useState(0);
 
   const loadState = useCallback(() => {
@@ -148,7 +149,31 @@ export default function Popup({
     setQuizResult(null);
     setQuizSelectedChoiceId(null);
     setQuizHintVisible(false);
+    setQuizAutoAdvanceSecsLeft(null);
   }, [activeQuizPrompt?.questionId]);
+
+  useEffect(() => {
+    if (!quizResult) {
+      setQuizAutoAdvanceSecsLeft(null);
+      return;
+    }
+    const totalSecs = 20;
+    setQuizAutoAdvanceSecsLeft(totalSecs);
+    const interval = setInterval(() => {
+      setQuizAutoAdvanceSecsLeft((prev) => {
+        if (prev === null || prev <= 1) return null;
+        return prev - 1;
+      });
+    }, 1000);
+    const timeout = setTimeout(() => {
+      void handleRequestQuizPrompt('retry');
+    }, totalSecs * 1000);
+    return () => {
+      clearInterval(interval);
+      clearTimeout(timeout);
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [quizResult]);
 
   const upcomingLaterToday = useMemo(() => {
     if (!state) return [];
@@ -290,6 +315,7 @@ export default function Popup({
       setQuizResult(null);
       setQuizSelectedChoiceId(null);
       setQuizHintVisible(false);
+      setQuizAutoAdvanceSecsLeft(null);
       await sendMessageAsync<{ ok: boolean; prompt: QuizPrompt | null }>({
         type: 'GET_NEXT_QUIZ_PROMPT',
         payload: { origin },
@@ -624,6 +650,7 @@ export default function Popup({
             selectedChoiceId={quizSelectedChoiceId}
             hintVisible={quizHintVisible}
             submitting={quizSubmitting}
+            autoAdvanceSecsLeft={quizAutoAdvanceSecsLeft}
             onSelectChoice={setQuizSelectedChoiceId}
             onToggleHint={() => setQuizHintVisible((current) => !current)}
             onSubmit={() => void handleSubmitQuiz(quizSelectedChoiceId)}
@@ -1110,6 +1137,7 @@ function QuizTakeoverCard({
   selectedChoiceId,
   hintVisible,
   submitting,
+  autoAdvanceSecsLeft,
   onSelectChoice,
   onToggleHint,
   onSubmit,
@@ -1124,6 +1152,7 @@ function QuizTakeoverCard({
   selectedChoiceId: string | null;
   hintVisible: boolean;
   submitting: boolean;
+  autoAdvanceSecsLeft: number | null;
   onSelectChoice: (choiceId: string) => void;
   onToggleHint: () => void;
   onSubmit: () => void;
@@ -1278,13 +1307,15 @@ function QuizTakeoverCard({
             </button>
           </div>
 
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
               onClick={onMoreQuestions}
               className="fg-button-primary px-3 py-2 text-[11px]"
             >
-              More questions
+              {autoAdvanceSecsLeft !== null
+                ? `Next in ${autoAdvanceSecsLeft}s`
+                : 'More questions'}
             </button>
             {result === null ? (
               <button

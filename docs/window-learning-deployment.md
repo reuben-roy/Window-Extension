@@ -33,9 +33,12 @@ npm run build
 npm run build:backend
 cd backend
 npx prisma migrate deploy
+npm run import:learning-quizzes -- --activate-user-email you@example.com
 ```
 
 `prisma migrate deploy` applies the checked-in migrations, including `20260514123000_learning_system`.
+
+`import:learning-quizzes` loads the generated quiz artifacts from `backend/data/learning/quizzes-cleaned` into Postgres and can optionally activate the imported topics for a specific signed-in user.
 
 ## Services
 
@@ -83,3 +86,4 @@ Behavior:
 - The learning worker is intentionally separate from the API so source discovery and quiz generation continue even when the API is idle.
 - The checked-in migration creates the canonical learning entities, quiz pack versions, spaced-repetition progress tables, and worker job table required by the new Learning feature.
 - This repo does not apply the migration automatically to the live Neon database; run `npx prisma migrate deploy` during the release window you choose.
+- The generated quiz JSON files are not served directly from disk. The API only exposes quiz packs that already exist in Postgres, so importing the corpus is a separate deployment step.

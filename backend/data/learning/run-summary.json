@@ -1,0 +1,44 @@
+{
+  "books": [
+    {
+      "slug": "machine-learning-d2l",
+      "title": "Dive into Deep Learning",
+      "pageCount": 1151,
+      "chapterCount": 22,
+      "conceptCount": 765,
+      "quizPath": "/Users/reubenroy/github/hobby/window-extension/backend/data/learning/quizzes/machine-learning-d2l.json"
+    },
+    {
+      "slug": "reinforcement-learning-sutton-barto",
+      "title": "Reinforcement Learning: An Introduction",
+      "pageCount": 548,
+      "chapterCount": 9,
+      "conceptCount": 258,
+      "quizPath": "/Users/reubenroy/github/hobby/window-extension/backend/data/learning/quizzes/reinforcement-learning-sutton-barto.json"
+    },
+    {
+      "slug": "algorithms-jeff-erickson",
+      "title": "Algorithms",
+      "pageCount": 472,
+      "chapterCount": 16,
+      "conceptCount": 224,
+      "quizPath": "/Users/reubenroy/github/hobby/window-extension/backend/data/learning/quizzes/algorithms-jeff-erickson.json"
+    },
+    {
+      "slug": "probability-grinstead-snell",
+      "title": "Introduction to Probability",
+      "pageCount": 518,
+      "chapterCount": 12,
+      "conceptCount": 71,
+      "quizPath": "/Users/reubenroy/github/hobby/window-extension/backend/data/learning/quizzes/probability-grinstead-snell.json"
+    },
+    {
+      "slug": "logic-forallx-calgary",
+      "title": "forall x: Calgary",
+      "pageCount": 341,
+      "chapterCount": 10,
+      "conceptCount": 128,
+      "quizPath": "/Users/reubenroy/github/hobby/window-extension/backend/data/learning/quizzes/logic-forallx-calgary.json"
+    }
+  ]
+}
