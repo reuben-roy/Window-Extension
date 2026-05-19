@@ -1084,14 +1084,15 @@ export async function refreshLearningState(): Promise<LearningState> {
       learningBackendRequest<LearningReviewResponse>('/v1/learning/review/next?origin=scheduled'),
     ]);
 
+    const preserveActiveQuiz = existing.activeQuizVisible && existing.activeQuizPrompt !== null;
     const next: LearningState = {
       taxonomy: taxonomy.items.length > 0 ? taxonomy.items : DEFAULT_LEARNING_TAXONOMY,
       userTopics: userTopics.items,
       suggestions: suggestions.items.length > 0 ? suggestions.items : fallbackSuggestions,
       packs: packs.items,
       reviewQueue: review.reviewQueue,
-      activeQuizPrompt: review.prompt,
-      activeQuizVisible: existing.activeQuizVisible && review.prompt !== null,
+      activeQuizPrompt: preserveActiveQuiz ? existing.activeQuizPrompt : review.prompt,
+      activeQuizVisible: preserveActiveQuiz || review.prompt !== null,
       syncing: false,
       lastSyncedAt: new Date().toISOString(),
       lastError: null,
@@ -1149,8 +1150,17 @@ export async function regenerateLearningPack(packId: string): Promise<LearningSt
   return refreshLearningState();
 }
 
-export async function getNextQuizPrompt(origin: 'scheduled' | 'manual' | 'retry' = 'manual'): Promise<QuizPrompt | null> {
-  const review = await learningBackendRequest<LearningReviewResponse>(`/v1/learning/review/next?origin=${origin}`);
+export async function getNextQuizPrompt(
+  origin: 'scheduled' | 'manual' | 'retry' = 'manual',
+  excludeQuestionId?: string,
+): Promise<QuizPrompt | null> {
+  const params = new URLSearchParams({ origin });
+  if (excludeQuestionId) {
+    params.set('excludeQuestionId', excludeQuestionId);
+  }
+  const review = await learningBackendRequest<LearningReviewResponse>(
+    `/v1/learning/review/next?${params.toString()}`,
+  );
   const current = await getLearningState();
   await setLearningState({
     ...current,

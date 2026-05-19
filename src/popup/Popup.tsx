@@ -318,11 +318,14 @@ export default function Popup({
       setQuizAutoAdvanceSecsLeft(null);
       await sendMessageAsync<{ ok: boolean; prompt: QuizPrompt | null }>({
         type: 'GET_NEXT_QUIZ_PROMPT',
-        payload: { origin },
+        payload: {
+          origin,
+          excludeQuestionId: activeQuizPrompt?.questionId,
+        },
       });
       loadState();
     },
-    [loadState],
+    [activeQuizPrompt?.questionId, loadState],
   );
 
   const handleSubmitQuiz = useCallback(

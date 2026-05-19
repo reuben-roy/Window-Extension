@@ -217,6 +217,19 @@ export function quizPointsForDifficulty(difficulty: QuizDifficulty): number {
   return 3;
 }
 
+export function pickRandom<T>(items: T[]): T | null {
+  if (items.length === 0) return null;
+  return items[Math.floor(Math.random() * items.length)] ?? null;
+}
+
+export function filterExcludedQuestionId<T extends { id: string }>(
+  items: T[],
+  excludeQuestionId?: string,
+): T[] {
+  if (!excludeQuestionId) return items;
+  return items.filter((item) => item.id !== excludeQuestionId);
+}
+
 export function computeNextReviewSchedule(input: {
   correct: boolean;
   ease: number;

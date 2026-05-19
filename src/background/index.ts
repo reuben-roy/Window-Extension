@@ -644,10 +644,15 @@ async function handleGetNextQuizPrompt(message: Message): Promise<{
   ok: boolean;
   prompt: import('../shared/types').QuizPrompt | null;
 }> {
-  const payload = (message.payload as { origin?: 'scheduled' | 'manual' | 'retry' } | undefined) ?? {};
+  const payload =
+    (message.payload as { origin?: 'scheduled' | 'manual' | 'retry'; excludeQuestionId?: string } | undefined) ??
+    {};
+  const learningState = await getLearningState();
+  const excludeQuestionId =
+    payload.excludeQuestionId?.trim() || learningState.activeQuizPrompt?.questionId || undefined;
   return {
     ok: true,
-    prompt: await getNextQuizPrompt(payload.origin ?? 'manual'),
+    prompt: await getNextQuizPrompt(payload.origin ?? 'manual', excludeQuestionId),
   };
 }
 

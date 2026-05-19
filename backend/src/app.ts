@@ -6,6 +6,7 @@ import { prisma } from './lib/prisma.js';
 import {
   ensureLearningCatalogSeeded,
   computeNextReviewSchedule,
+  pickRandom,
   quizPointsForDifficulty,
   topicKeyFromLabel,
 } from './lib/learning.js';
@@ -1836,11 +1837,17 @@ export async function buildApp() {
     const user = await getUserOrReply(request, reply);
     if (!user) return;
 
-    const origin = quizPromptOriginSchema.parse(
-      ((request.query as { origin?: 'scheduled' | 'manual' | 'retry' } | undefined)?.origin) ?? 'manual',
-    );
+    const query = request.query as {
+      origin?: 'scheduled' | 'manual' | 'retry';
+      excludeQuestionId?: string;
+    };
+    const origin = quizPromptOriginSchema.parse(query?.origin ?? 'manual');
+    const excludeQuestionId =
+      typeof query?.excludeQuestionId === 'string' && query.excludeQuestionId.trim().length > 0
+        ? query.excludeQuestionId.trim()
+        : undefined;
     const reviewQueue = await loadLearningReviewQueue(user.id);
-    const prompt = await loadLearningPrompt(user.id, origin);
+    const prompt = await loadLearningPrompt(user.id, origin, { excludeQuestionId });
 
     return {
       prompt,
@@ -2109,33 +2116,31 @@ async function loadLearningReviewQueue(userId: string): Promise<ReviewQueueItemP
   return items.map(toReviewQueueItemPayload);
 }
 
-function pickRandom<T>(items: T[]): T | null {
-  if (items.length === 0) return null;
-  return items[Math.floor(Math.random() * items.length)];
-}
-
 async function loadLearningPrompt(
   userId: string,
   origin: 'scheduled' | 'manual' | 'retry',
+  options?: { excludeQuestionId?: string },
 ): Promise<QuizPromptPayload | null> {
+  const excludeQuestionId = options?.excludeQuestionId;
   const now = new Date();
+  const activeTopicPackFilter = {
+    status: 'ready' as const,
+    topic: {
+      userTopics: {
+        some: {
+          userId,
+          active: true,
+        },
+      },
+    },
+  };
   const dueCandidates = await prisma.userQuizProgress.findMany({
     where: {
       userId,
       dueAt: { lte: now },
       question: {
         packVersion: {
-          pack: {
-            status: 'ready',
-            topic: {
-              userTopics: {
-                some: {
-                  userId,
-                  active: true,
-                },
-              },
-            },
-          },
+          pack: activeTopicPackFilter,
         },
       },
     },
@@ -2159,7 +2164,9 @@ async function loadLearningPrompt(
     },
   });
 
-  const dueProgress = pickRandom(dueCandidates);
+  const dueProgress = pickRandom(
+    dueCandidates.filter((row) => !excludeQuestionId || row.question.id !== excludeQuestionId),
+  );
   if (dueProgress) {
     return toQuizPromptPayload(dueProgress.question, {
       sessionId: `quiz-${dueProgress.question.id}-${Date.now()}`,
@@ -2178,22 +2185,15 @@ async function loadLearningPrompt(
     select: { questionId: true },
   });
   const seenIds = seenProgress.map((row) => row.questionId);
+  const blockedQuestionIds = excludeQuestionId
+    ? [...new Set([...seenIds, excludeQuestionId])]
+    : seenIds;
 
   const unseenCandidates = await prisma.quizQuestion.findMany({
     where: {
-      id: seenIds.length > 0 ? { notIn: seenIds } : undefined,
+      id: blockedQuestionIds.length > 0 ? { notIn: blockedQuestionIds } : undefined,
       packVersion: {
-        pack: {
-          status: 'ready',
-          topic: {
-            userTopics: {
-              some: {
-                userId,
-                active: true,
-              },
-            },
-          },
-        },
+        pack: activeTopicPackFilter,
       },
     },
     take: 100,
@@ -2213,23 +2213,43 @@ async function loadLearningPrompt(
 
   let fallbackQuestion = pickRandom(unseenCandidates);
 
-  // If every question has been seen, fall back to any active-topic question at
-  // random — the spaced-repetition cycle has wrapped.
+  // Prefer unseen or due-for-review questions before repeating a recently answered one.
   if (!fallbackQuestion) {
-    const anyCandidates = await prisma.quizQuestion.findMany({
+    const reviewableCandidates = await prisma.quizQuestion.findMany({
       where: {
+        ...(excludeQuestionId ? { id: { not: excludeQuestionId } } : {}),
         packVersion: {
-          pack: {
-            status: 'ready',
-            topic: {
-              userTopics: {
-                some: {
-                  userId,
-                  active: true,
-                },
+          pack: activeTopicPackFilter,
+        },
+        OR: [
+          { progress: { none: { userId } } },
+          { progress: { some: { userId, dueAt: { lte: now } } } },
+        ],
+      },
+      take: 100,
+      include: {
+        chapter: true,
+        packVersion: {
+          include: {
+            pack: {
+              include: {
+                topic: true,
               },
             },
           },
+        },
+      },
+    });
+    fallbackQuestion = pickRandom(reviewableCandidates);
+  }
+
+  // Last resort: any active-topic question except the one we just served.
+  if (!fallbackQuestion) {
+    const anyCandidates = await prisma.quizQuestion.findMany({
+      where: {
+        ...(excludeQuestionId ? { id: { not: excludeQuestionId } } : {}),
+        packVersion: {
+          pack: activeTopicPackFilter,
         },
       },
       take: 100,
