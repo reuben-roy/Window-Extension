@@ -169,6 +169,19 @@ export function isLearningFeatureEnabled(settings: Pick<Settings, 'featureFlags'
   return settings.featureFlags.learning;
 }
 
+export function shouldPreserveActiveQuizPrompt(
+  learningState: Pick<LearningState, 'activeQuizVisible' | 'activeQuizPrompt' | 'userTopics'>,
+): boolean {
+  if (!learningState.activeQuizVisible || learningState.activeQuizPrompt === null) {
+    return false;
+  }
+
+  const activeTopicIds = new Set(
+    learningState.userTopics.filter((topic) => topic.active).map((topic) => topic.topicId),
+  );
+  return activeTopicIds.has(learningState.activeQuizPrompt.topicId);
+}
+
 export function deriveLearningSuggestions(input: {
   analyticsSnapshot: AnalyticsSnapshot | null;
   calendarState: CalendarState | null;

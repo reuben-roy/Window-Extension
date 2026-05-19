@@ -9,7 +9,12 @@ import {
 } from '../shared/account';
 import { DEFAULT_OPENCLAW_STATE, DEFAULT_WINDOW_BACKEND_URL } from '../shared/constants';
 import { mergeAnalyticsSnapshot } from '../shared/analytics';
-import { DEFAULT_LEARNING_TAXONOMY, deriveLearningSuggestions, isLearningFeatureEnabled } from '../shared/learning';
+import {
+  DEFAULT_LEARNING_TAXONOMY,
+  deriveLearningSuggestions,
+  isLearningFeatureEnabled,
+  shouldPreserveActiveQuizPrompt,
+} from '../shared/learning';
 import {
   applyIdeaDecision,
   createIdeaRecord,
@@ -1084,14 +1089,19 @@ export async function refreshLearningState(): Promise<LearningState> {
       learningBackendRequest<LearningReviewResponse>('/v1/learning/review/next?origin=scheduled'),
     ]);
 
-    const preserveActiveQuiz = existing.activeQuizVisible && existing.activeQuizPrompt !== null;
+    const latest = await getLearningState();
+    const latestWithFreshTopics: LearningState = {
+      ...latest,
+      userTopics: userTopics.items,
+    };
+    const preserveActiveQuiz = shouldPreserveActiveQuizPrompt(latestWithFreshTopics);
     const next: LearningState = {
       taxonomy: taxonomy.items.length > 0 ? taxonomy.items : DEFAULT_LEARNING_TAXONOMY,
       userTopics: userTopics.items,
       suggestions: suggestions.items.length > 0 ? suggestions.items : fallbackSuggestions,
       packs: packs.items,
       reviewQueue: review.reviewQueue,
-      activeQuizPrompt: preserveActiveQuiz ? existing.activeQuizPrompt : review.prompt,
+      activeQuizPrompt: preserveActiveQuiz ? latestWithFreshTopics.activeQuizPrompt : review.prompt,
       activeQuizVisible: preserveActiveQuiz || review.prompt !== null,
       syncing: false,
       lastSyncedAt: new Date().toISOString(),
