@@ -174,6 +174,7 @@ export interface LearningState {
   packs: QuizPackSummary[];
   reviewQueue: ReviewQueueItem[];
   activeQuizPrompt: QuizPrompt | null;
+  activeQuizResult: QuizAnswerResult | null;
   activeQuizVisible: boolean;
   syncing: boolean;
   lastSyncedAt: string | null;

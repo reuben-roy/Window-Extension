@@ -42,6 +42,7 @@ import type {
   LearningSubject,
   LearningSuggestion,
   QuizAnswerChoice,
+  QuizAnswerResult,
   QuizArtifact,
   QuizPackSummary,
   QuizPrompt,
@@ -1013,6 +1014,25 @@ function normalizeQuizPrompt(prompt: Partial<QuizPrompt> | null | undefined): Qu
   };
 }
 
+function normalizeQuizAnswerResult(
+  result: Partial<QuizAnswerResult> | null | undefined,
+): QuizAnswerResult | null {
+  if (!result || typeof result !== 'object') return null;
+  const prompt = normalizeQuizPrompt(result.prompt);
+  if (prompt === null) return null;
+  return {
+    prompt,
+    correct: normalizeBoolean(result.correct, false),
+    selectedChoiceId: normalizeNullableString(result.selectedChoiceId),
+    correctChoiceId: normalizeNullableString(result.correctChoiceId),
+    explanation: normalizeNullableString(result.explanation),
+    wrongAnswerExplanation: normalizeNullableString(result.wrongAnswerExplanation),
+    nextDueAt: normalizeNullableString(result.nextDueAt),
+    pointsAwarded: normalizeNumber(result.pointsAwarded),
+    updatedStreak: normalizeNumber(result.updatedStreak),
+  };
+}
+
 function normalizeLearningStateStored(
   state: Partial<LearningState> | null | undefined,
 ): LearningState {
@@ -1045,6 +1065,7 @@ function normalizeLearningStateStored(
           .filter((item): item is ReviewQueueItem => item !== null)
       : [],
     activeQuizPrompt: normalizeQuizPrompt(state?.activeQuizPrompt),
+    activeQuizResult: normalizeQuizAnswerResult(state?.activeQuizResult),
     activeQuizVisible: normalizeBoolean(state?.activeQuizVisible, false),
     syncing: normalizeBoolean(state?.syncing, false),
     lastSyncedAt: normalizeNullableString(state?.lastSyncedAt),

@@ -82,7 +82,6 @@ export default function Popup({
   const [breakStarting, setBreakStarting] = useState(false);
   const [endBreakBusy, setEndBreakBusy] = useState(false);
   const [breakActionError, setBreakActionError] = useState<string | null>(null);
-  const [quizResult, setQuizResult] = useState<QuizAnswerResult | null>(null);
   const [quizSelectedChoiceId, setQuizSelectedChoiceId] = useState<string | null>(null);
   const [quizSubmitting, setQuizSubmitting] = useState(false);
   const [quizHintVisible, setQuizHintVisible] = useState(false);
@@ -144,16 +143,17 @@ export default function Popup({
   const learningState = state?.learningState ?? null;
   const learningFeatureEnabled = state ? isLearningFeatureEnabled(state.settings) : false;
   const activeQuizPrompt = learningFeatureEnabled ? learningState?.activeQuizPrompt ?? null : null;
+  const activeQuizResult = learningFeatureEnabled ? learningState?.activeQuizResult ?? null : null;
+  const displayedQuizSelectedChoiceId = activeQuizResult?.selectedChoiceId ?? quizSelectedChoiceId;
 
   useEffect(() => {
-    setQuizResult(null);
     setQuizSelectedChoiceId(null);
     setQuizHintVisible(false);
     setQuizAutoAdvanceSecsLeft(null);
   }, [activeQuizPrompt?.questionId]);
 
   useEffect(() => {
-    if (!quizResult) {
+    if (!activeQuizResult) {
       setQuizAutoAdvanceSecsLeft(null);
       return;
     }
@@ -173,7 +173,7 @@ export default function Popup({
       clearTimeout(timeout);
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [quizResult]);
+  }, [activeQuizResult]);
 
   const upcomingLaterToday = useMemo(() => {
     if (!state) return [];
@@ -304,7 +304,6 @@ export default function Popup({
       type: 'SET_ACTIVE_QUIZ_VISIBILITY',
       payload: { visible: false },
     });
-    setQuizResult(null);
     setQuizSelectedChoiceId(null);
     setQuizHintVisible(false);
     loadState();
@@ -312,7 +311,6 @@ export default function Popup({
 
   const handleRequestQuizPrompt = useCallback(
     async (origin: 'manual' | 'retry' = 'manual') => {
-      setQuizResult(null);
       setQuizSelectedChoiceId(null);
       setQuizHintVisible(false);
       setQuizAutoAdvanceSecsLeft(null);
@@ -333,7 +331,7 @@ export default function Popup({
       if (!activeQuizPrompt || quizSubmitting) return;
       setQuizSubmitting(true);
       try {
-        const response = await sendMessageAsync<{ ok: boolean; result: QuizAnswerResult }>({
+        await sendMessageAsync<{ ok: boolean; result: QuizAnswerResult }>({
           type: 'SUBMIT_QUIZ_ANSWER',
           payload: {
             questionId: activeQuizPrompt.questionId,
@@ -341,7 +339,6 @@ export default function Popup({
             sessionId: activeQuizPrompt.sessionId,
           },
         });
-        setQuizResult(response.result);
         loadState();
       } finally {
         setQuizSubmitting(false);
@@ -649,8 +646,9 @@ export default function Popup({
           <QuizTakeoverCard
             mode={mode}
             prompt={activeQuizPrompt}
-            result={quizResult}
-            selectedChoiceId={quizSelectedChoiceId}
+            result={activeQuizResult}
+            errorMessage={learningState?.lastError ?? null}
+            selectedChoiceId={displayedQuizSelectedChoiceId}
             hintVisible={quizHintVisible}
             submitting={quizSubmitting}
             autoAdvanceSecsLeft={quizAutoAdvanceSecsLeft}
@@ -658,7 +656,7 @@ export default function Popup({
             onToggleHint={() => setQuizHintVisible((current) => !current)}
             onSubmit={() => void handleSubmitQuiz(quizSelectedChoiceId)}
             onGiveUp={() => void handleSubmitQuiz(null)}
-            onMoreQuestions={() => void handleRequestQuizPrompt(quizResult ? 'retry' : 'manual')}
+            onMoreQuestions={() => void handleRequestQuizPrompt(activeQuizResult ? 'retry' : 'manual')}
             onOpenLearningWorkspace={openLearningWorkspace}
             onClose={() => void handleCloseQuizTakeover()}
           />
@@ -1137,6 +1135,7 @@ function QuizTakeoverCard({
   mode,
   prompt,
   result,
+  errorMessage,
   selectedChoiceId,
   hintVisible,
   submitting,
@@ -1152,6 +1151,7 @@ function QuizTakeoverCard({
   mode: 'popup' | 'panel';
   prompt: QuizPrompt;
   result: QuizAnswerResult | null;
+  errorMessage: string | null;
   selectedChoiceId: string | null;
   hintVisible: boolean;
   submitting: boolean;
@@ -1278,6 +1278,12 @@ function QuizTakeoverCard({
                   Next review {formatRelativeDueTime(result.nextDueAt)}.
                 </p>
               ) : null}
+            </div>
+          ) : null}
+
+          {errorMessage ? (
+            <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-3 text-sm leading-6 text-amber-900">
+              {errorMessage}
             </div>
           ) : null}
         </div>

@@ -254,6 +254,7 @@ export const DEFAULT_LEARNING_STATE: LearningState = {
   packs: [],
   reviewQueue: [],
   activeQuizPrompt: null,
+  activeQuizResult: null,
   activeQuizVisible: false,
   syncing: false,
   lastSyncedAt: null,

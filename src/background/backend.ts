@@ -12,8 +12,10 @@ import { mergeAnalyticsSnapshot } from '../shared/analytics';
 import {
   DEFAULT_LEARNING_TAXONOMY,
   deriveLearningSuggestions,
+  isRepeatedExcludedQuizPrompt,
   isLearningFeatureEnabled,
   shouldPreserveActiveQuizPrompt,
+  shouldPreserveActiveQuizResult,
 } from '../shared/learning';
 import {
   applyIdeaDecision,
@@ -1095,6 +1097,8 @@ export async function refreshLearningState(): Promise<LearningState> {
       userTopics: userTopics.items,
     };
     const preserveActiveQuiz = shouldPreserveActiveQuizPrompt(latestWithFreshTopics);
+    const preserveActiveQuizResult =
+      preserveActiveQuiz && shouldPreserveActiveQuizResult(latestWithFreshTopics);
     const next: LearningState = {
       taxonomy: taxonomy.items.length > 0 ? taxonomy.items : DEFAULT_LEARNING_TAXONOMY,
       userTopics: userTopics.items,
@@ -1102,6 +1106,7 @@ export async function refreshLearningState(): Promise<LearningState> {
       packs: packs.items,
       reviewQueue: review.reviewQueue,
       activeQuizPrompt: preserveActiveQuiz ? latestWithFreshTopics.activeQuizPrompt : review.prompt,
+      activeQuizResult: preserveActiveQuizResult ? latestWithFreshTopics.activeQuizResult : null,
       activeQuizVisible: preserveActiveQuiz || review.prompt !== null,
       syncing: false,
       lastSyncedAt: new Date().toISOString(),
@@ -1168,19 +1173,41 @@ export async function getNextQuizPrompt(
   if (excludeQuestionId) {
     params.set('excludeQuestionId', excludeQuestionId);
   }
-  const review = await learningBackendRequest<LearningReviewResponse>(
+  let review = await learningBackendRequest<LearningReviewResponse>(
     `/v1/learning/review/next?${params.toString()}`,
   );
+  for (
+    let attempt = 0;
+    attempt < 2 && isRepeatedExcludedQuizPrompt(review.prompt, excludeQuestionId);
+    attempt += 1
+  ) {
+    review = await learningBackendRequest<LearningReviewResponse>(
+      `/v1/learning/review/next?${params.toString()}`,
+    );
+  }
   const current = await getLearningState();
+  const repeatedPrompt = isRepeatedExcludedQuizPrompt(review.prompt, excludeQuestionId);
+  const preserveCurrentPrompt =
+    repeatedPrompt &&
+    current.activeQuizPrompt !== null &&
+    current.activeQuizPrompt.questionId === excludeQuestionId;
+  const activeQuizPrompt = preserveCurrentPrompt ? current.activeQuizPrompt : review.prompt;
+  const activeQuizResult =
+    preserveCurrentPrompt && shouldPreserveActiveQuizResult(current)
+      ? current.activeQuizResult
+      : null;
   await setLearningState({
     ...current,
     reviewQueue: review.reviewQueue,
-    activeQuizPrompt: review.prompt,
-    activeQuizVisible: review.prompt !== null,
+    activeQuizPrompt,
+    activeQuizResult,
+    activeQuizVisible: activeQuizPrompt !== null,
     lastSyncedAt: new Date().toISOString(),
-    lastError: null,
+    lastError: repeatedPrompt
+      ? 'Window requested a different quiz card, but the backend returned the same question again. If another card should exist for these topics, rebuild and restart the learning API on Oracle.'
+      : null,
   });
-  return review.prompt;
+  return activeQuizPrompt;
 }
 
 export async function submitQuizAnswer(input: {
@@ -1197,6 +1224,7 @@ export async function submitQuizAnswer(input: {
     ...current,
     reviewQueue: response.reviewQueue,
     activeQuizPrompt: response.result.prompt,
+    activeQuizResult: response.result,
     activeQuizVisible: true,
     lastSyncedAt: new Date().toISOString(),
     lastError: null,

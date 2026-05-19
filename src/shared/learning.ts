@@ -268,3 +268,37 @@ export function mergeLearningState(
     ...patch,
   };
 }
+
+export function shouldPreserveActiveQuizPrompt(
+  learningState: Pick<LearningState, 'activeQuizVisible' | 'activeQuizPrompt' | 'userTopics'>,
+): boolean {
+  if (!learningState.activeQuizVisible || learningState.activeQuizPrompt === null) {
+    return false;
+  }
+
+  const activeTopicIds = new Set(
+    learningState.userTopics.filter((topic) => topic.active).map((topic) => topic.id),
+  );
+  return activeTopicIds.has(learningState.activeQuizPrompt.topicId);
+}
+
+export function shouldPreserveActiveQuizResult(
+  state: Pick<LearningState, 'activeQuizPrompt' | 'activeQuizResult'>,
+): boolean {
+  return (
+    state.activeQuizPrompt !== null &&
+    state.activeQuizResult !== null &&
+    state.activeQuizResult.prompt.questionId === state.activeQuizPrompt.questionId
+  );
+}
+
+export function isRepeatedExcludedQuizPrompt(
+  prompt: { questionId: string } | null,
+  excludeQuestionId?: string,
+): boolean {
+  return Boolean(
+    excludeQuestionId &&
+    prompt !== null &&
+    prompt.questionId === excludeQuestionId,
+  );
+}
