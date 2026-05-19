@@ -22,7 +22,7 @@ describe('learning review helpers', () => {
       shouldPreserveActiveQuizPrompt({
         activeQuizVisible: true,
         activeQuizPrompt: { topicId: 'topic-a' } as never,
-        userTopics: [{ topicId: 'topic-a', active: true }] as never,
+        userTopics: [{ id: 'topic-a', active: true }] as never,
       }),
     ).toBe(true);
 
@@ -30,7 +30,7 @@ describe('learning review helpers', () => {
       shouldPreserveActiveQuizPrompt({
         activeQuizVisible: true,
         activeQuizPrompt: { topicId: 'topic-stale' } as never,
-        userTopics: [{ topicId: 'topic-a', active: true }] as never,
+        userTopics: [{ id: 'topic-a', active: true }] as never,
       }),
     ).toBe(false);
   });
