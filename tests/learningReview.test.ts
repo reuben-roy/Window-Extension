@@ -21,16 +21,16 @@ describe('learning review helpers', () => {
     expect(
       shouldPreserveActiveQuizPrompt({
         activeQuizVisible: true,
-        activeQuizPrompt: { topicId: 'topic-a' } as never,
-        userTopics: [{ id: 'topic-a', active: true }] as never,
+        activeQuizPrompt: { topicKey: 'probability' } as never,
+        userTopics: [{ id: 'user-topic-a', topicKey: 'probability', active: true }] as never,
       }),
     ).toBe(true);
 
     expect(
       shouldPreserveActiveQuizPrompt({
         activeQuizVisible: true,
-        activeQuizPrompt: { topicId: 'topic-stale' } as never,
-        userTopics: [{ id: 'topic-a', active: true }] as never,
+        activeQuizPrompt: { topicKey: 'statistics' } as never,
+        userTopics: [{ id: 'user-topic-a', topicKey: 'probability', active: true }] as never,
       }),
     ).toBe(false);
   });

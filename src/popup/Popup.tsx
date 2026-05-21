@@ -86,6 +86,8 @@ export default function Popup({
   const [quizSubmitting, setQuizSubmitting] = useState(false);
   const [quizHintVisible, setQuizHintVisible] = useState(false);
   const [quizAutoAdvanceSecsLeft, setQuizAutoAdvanceSecsLeft] = useState<number | null>(null);
+  const [quizAutoAdvanceStartedAt, setQuizAutoAdvanceStartedAt] = useState<number | null>(null);
+  const [quizActionError, setQuizActionError] = useState<string | null>(null);
   const [, setBreakCountdownTick] = useState(0);
 
   const loadState = useCallback(() => {
@@ -143,37 +145,57 @@ export default function Popup({
   const learningState = state?.learningState ?? null;
   const learningFeatureEnabled = state ? isLearningFeatureEnabled(state.settings) : false;
   const activeQuizPrompt = learningFeatureEnabled ? learningState?.activeQuizPrompt ?? null : null;
-  const activeQuizResult = learningFeatureEnabled ? learningState?.activeQuizResult ?? null : null;
+  const storedQuizResult = learningFeatureEnabled ? learningState?.activeQuizResult ?? null : null;
+  const activeQuizResult =
+    storedQuizResult &&
+    activeQuizPrompt &&
+    storedQuizResult.prompt.questionId === activeQuizPrompt.questionId
+      ? storedQuizResult
+      : null;
   const displayedQuizSelectedChoiceId = activeQuizResult?.selectedChoiceId ?? quizSelectedChoiceId;
 
   useEffect(() => {
     setQuizSelectedChoiceId(null);
     setQuizHintVisible(false);
     setQuizAutoAdvanceSecsLeft(null);
+    setQuizAutoAdvanceStartedAt(null);
+    setQuizActionError(null);
   }, [activeQuizPrompt?.questionId]);
 
   useEffect(() => {
     if (!activeQuizResult) {
       setQuizAutoAdvanceSecsLeft(null);
+      setQuizAutoAdvanceStartedAt(null);
       return;
     }
     const totalSecs = 20;
-    setQuizAutoAdvanceSecsLeft(totalSecs);
+    const startedAt = quizAutoAdvanceStartedAt ?? Date.now();
+    if (quizAutoAdvanceStartedAt === null) {
+      setQuizAutoAdvanceStartedAt(startedAt);
+    }
+    const getRemainingSecs = () => {
+      const elapsedMs = Date.now() - startedAt;
+      return Math.max(0, Math.ceil((totalSecs * 1000 - elapsedMs) / 1000));
+    };
+    const initialRemainingSecs = getRemainingSecs();
+    if (initialRemainingSecs <= 0) {
+      void handleRequestQuizPrompt('retry');
+      return;
+    }
+    setQuizAutoAdvanceSecsLeft(initialRemainingSecs);
     const interval = setInterval(() => {
-      setQuizAutoAdvanceSecsLeft((prev) => {
-        if (prev === null || prev <= 1) return null;
-        return prev - 1;
-      });
+      const remainingSecs = getRemainingSecs();
+      setQuizAutoAdvanceSecsLeft(remainingSecs > 0 ? remainingSecs : null);
     }, 1000);
     const timeout = setTimeout(() => {
       void handleRequestQuizPrompt('retry');
-    }, totalSecs * 1000);
+    }, initialRemainingSecs * 1000);
     return () => {
       clearInterval(interval);
       clearTimeout(timeout);
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeQuizResult]);
+  }, [activeQuizResult, quizAutoAdvanceStartedAt]);
 
   const upcomingLaterToday = useMemo(() => {
     if (!state) return [];
@@ -314,14 +336,20 @@ export default function Popup({
       setQuizSelectedChoiceId(null);
       setQuizHintVisible(false);
       setQuizAutoAdvanceSecsLeft(null);
-      await sendMessageAsync<{ ok: boolean; prompt: QuizPrompt | null }>({
-        type: 'GET_NEXT_QUIZ_PROMPT',
-        payload: {
-          origin,
-          excludeQuestionId: activeQuizPrompt?.questionId,
-        },
-      });
-      loadState();
+      setQuizAutoAdvanceStartedAt(null);
+      setQuizActionError(null);
+      try {
+        await sendMessageAsync<{ ok: boolean; prompt: QuizPrompt | null }>({
+          type: 'GET_NEXT_QUIZ_PROMPT',
+          payload: {
+            origin,
+            excludeQuestionId: activeQuizPrompt?.questionId,
+          },
+        });
+        loadState();
+      } catch (err) {
+        setQuizActionError(err instanceof Error ? err.message : 'Could not load the next question.');
+      }
     },
     [activeQuizPrompt?.questionId, loadState],
   );
@@ -330,6 +358,7 @@ export default function Popup({
     async (selectedChoiceId: string | null) => {
       if (!activeQuizPrompt || quizSubmitting) return;
       setQuizSubmitting(true);
+      setQuizActionError(null);
       try {
         await sendMessageAsync<{ ok: boolean; result: QuizAnswerResult }>({
           type: 'SUBMIT_QUIZ_ANSWER',
@@ -340,6 +369,8 @@ export default function Popup({
           },
         });
         loadState();
+      } catch (err) {
+        setQuizActionError(err instanceof Error ? err.message : 'Could not submit your answer.');
       } finally {
         setQuizSubmitting(false);
       }
@@ -647,7 +678,7 @@ export default function Popup({
             mode={mode}
             prompt={activeQuizPrompt}
             result={activeQuizResult}
-            errorMessage={learningState?.lastError ?? null}
+            errorMessage={quizActionError ?? learningState?.lastError ?? null}
             selectedChoiceId={displayedQuizSelectedChoiceId}
             hintVisible={quizHintVisible}
             submitting={quizSubmitting}

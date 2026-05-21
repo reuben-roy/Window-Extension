@@ -967,6 +967,7 @@ function normalizeQuizPrompt(prompt: Partial<QuizPrompt> | null | undefined): Qu
   const questionId = typeof prompt.questionId === 'string' ? prompt.questionId.trim() : '';
   const packId = typeof prompt.packId === 'string' ? prompt.packId.trim() : '';
   const topicId = typeof prompt.topicId === 'string' ? prompt.topicId.trim() : '';
+  const topicKey = typeof prompt.topicKey === 'string' ? prompt.topicKey.trim() : '';
   const topicLabel = typeof prompt.topicLabel === 'string' ? prompt.topicLabel.trim() : '';
   const packTitle = typeof prompt.packTitle === 'string' ? prompt.packTitle.trim() : '';
   const chapterTitle = typeof prompt.chapterTitle === 'string' ? prompt.chapterTitle.trim() : '';
@@ -981,6 +982,7 @@ function normalizeQuizPrompt(prompt: Partial<QuizPrompt> | null | undefined): Qu
     packId,
     packVersionId: normalizeNullableString(prompt.packVersionId),
     topicId,
+    topicKey,
     topicLabel,
     packTitle,
     chapterTitle,

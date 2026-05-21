@@ -263,10 +263,18 @@ export function shouldPreserveActiveQuizPrompt(
     return false;
   }
 
-  const activeTopicIds = new Set(
-    learningState.userTopics.filter((topic) => topic.active).map((topic) => topic.id),
+  const activeTopicKeys = new Set(
+    learningState.userTopics
+      .filter((topic) => topic.active && topic.topicKey)
+      .map((topic) => topic.topicKey),
   );
-  return activeTopicIds.has(learningState.activeQuizPrompt.topicId);
+  const promptTopicKey = learningState.activeQuizPrompt.topicKey?.trim();
+  if (promptTopicKey) {
+    return activeTopicKeys.has(promptTopicKey);
+  }
+
+  // Legacy prompts may lack topicKey; user-topic ids are not comparable to prompt.topicId.
+  return activeTopicKeys.size > 0;
 }
 
 export function shouldPreserveActiveQuizResult(
@@ -276,6 +284,16 @@ export function shouldPreserveActiveQuizResult(
     state.activeQuizPrompt !== null &&
     state.activeQuizResult !== null &&
     state.activeQuizResult.prompt.questionId === state.activeQuizPrompt.questionId
+  );
+}
+
+export function shouldLockVisibleQuizDuringRefresh(
+  state: Pick<LearningState, 'activeQuizVisible' | 'activeQuizPrompt' | 'activeQuizResult'>,
+): boolean {
+  return (
+    state.activeQuizVisible &&
+    state.activeQuizPrompt !== null &&
+    state.activeQuizResult === null
   );
 }
 

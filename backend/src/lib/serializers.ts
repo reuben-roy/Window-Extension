@@ -388,6 +388,7 @@ export function toQuizPromptPayload(question: {
       title: string;
       topic: {
         id: string;
+        key: string;
         label: string;
       };
     };
@@ -406,6 +407,7 @@ export function toQuizPromptPayload(question: {
     packId: question.packVersion.pack.id,
     packVersionId: question.packVersion.id,
     topicId: question.packVersion.pack.topic.id,
+    topicKey: question.packVersion.pack.topic.key,
     topicLabel: question.packVersion.pack.topic.label,
     packTitle: question.packVersion.pack.title,
     chapterTitle: question.chapter?.title ?? 'General review',

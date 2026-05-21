@@ -1,5 +1,5 @@
 import Fastify, { type FastifyReply, type FastifyRequest } from 'fastify';
-import type { Prisma } from '@prisma/client';
+import type { Prisma, QuizDifficulty } from '@prisma/client';
 import { z } from 'zod';
 import { env, getOpenClawAllowedHostSuffixes } from './env.js';
 import { prisma } from './lib/prisma.js';
@@ -2134,6 +2134,71 @@ async function loadLearningPrompt(
       },
     },
   };
+  // Find all active pack versions for active topics
+  const activePackVersions = await prisma.quizPackVersion.findMany({
+    where: {
+      pack: activeTopicPackFilter,
+    },
+    select: {
+      id: true,
+    },
+  });
+  const activePackVersionIds = activePackVersions.map((pv) => pv.id);
+
+  if (activePackVersionIds.length === 0) {
+    return null;
+  }
+
+  // Fetch all correct answers for the user under active pack versions
+  const correctAnswers = await prisma.userQuizProgress.findMany({
+    where: {
+      userId,
+      lastWasCorrect: true,
+      question: {
+        packVersionId: { in: activePackVersionIds },
+      },
+    },
+    select: {
+      question: {
+        select: {
+          packVersionId: true,
+          difficulty: true,
+        },
+      },
+    },
+  });
+
+  // Aggregate counts per packVersionId and difficulty
+  const correctCounts: Record<string, { easy: number; medium: number }> = {};
+  for (const row of correctAnswers) {
+    const pvId = row.question.packVersionId;
+    const diff = row.question.difficulty;
+    if (!correctCounts[pvId]) {
+      correctCounts[pvId] = { easy: 0, medium: 0 };
+    }
+    if (diff === 'easy') {
+      correctCounts[pvId].easy++;
+    } else if (diff === 'medium') {
+      correctCounts[pvId].medium++;
+    }
+  }
+
+  // Construct unlocked filter for Prisma
+  const unlockedFilter: Prisma.QuizQuestionWhereInput[] = activePackVersionIds.map((pvId) => {
+    const counts = correctCounts[pvId] || { easy: 0, medium: 0 };
+    const allowedDiffs: QuizDifficulty[] = ['easy'];
+    if (counts.easy >= 3) {
+      allowedDiffs.push('medium');
+    }
+    if (counts.easy >= 3 && counts.medium >= 3) {
+      allowedDiffs.push('hard');
+    }
+    return {
+      packVersionId: pvId,
+      difficulty: { in: allowedDiffs },
+    };
+  });
+
   const dueCandidates = await prisma.userQuizProgress.findMany({
     where: {
       userId,
@@ -2142,6 +2207,7 @@ async function loadLearningPrompt(
         packVersion: {
           pack: activeTopicPackFilter,
         },
+        OR: unlockedFilter,
       },
     },
     orderBy: [{ dueAt: 'asc' }],
@@ -2195,6 +2261,7 @@ async function loadLearningPrompt(
       packVersion: {
         pack: activeTopicPackFilter,
       },
+      OR: unlockedFilter,
     },
     take: 100,
     include: {
@@ -2225,6 +2292,9 @@ async function loadLearningPrompt(
           { progress: { none: { userId } } },
           { progress: { some: { userId, dueAt: { lte: now } } } },
         ],
+        AND: [
+          { OR: unlockedFilter },
+        ],
       },
       take: 100,
       include: {
@@ -2251,6 +2321,7 @@ async function loadLearningPrompt(
         packVersion: {
           pack: activeTopicPackFilter,
         },
+        OR: unlockedFilter,
       },
       take: 100,
       include: {

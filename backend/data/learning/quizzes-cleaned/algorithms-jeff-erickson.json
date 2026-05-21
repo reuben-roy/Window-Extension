@@ -87,26 +87,26 @@
           {
             "id": "b",
             "label": "B",
-            "body": "The exact number of operations an algorithm performs."
+            "body": "A lower bound on a function's growth rate."
           },
           {
             "id": "c",
             "label": "C",
-            "body": "The average number of operations across random inputs."
+            "body": "The exact number of operations an algorithm performs."
           },
           {
             "id": "d",
             "label": "D",
-            "body": "A lower bound on a function's growth rate."
+            "body": "The average number of operations across random inputs."
           }
         ],
         "correctChoiceId": "a",
         "hint": "Think about the precise definition before picking.",
         "explanation": "Big-O is a worst-case upper bound up to constant factors; it tells you the function grows no faster than n log n for large n.",
         "wrongAnswerExplanations": {
-          "b": "Big-O hides constants and lower-order terms; it isn't an exact count.",
-          "c": "That's average-case analysis; Big-O on its own is worst-case asymptotic.",
-          "d": "That's Big-\u03a9. Big-O is an upper bound."
+          "b": "That's Big-\u03a9. Big-O is an upper bound.",
+          "c": "Big-O hides constants and lower-order terms; it isn't an exact count.",
+          "d": "That's average-case analysis; Big-O on its own is worst-case asymptotic."
         },
         "difficulty": "easy",
         "source": {
@@ -128,12 +128,12 @@
           {
             "id": "b",
             "label": "B",
-            "body": "Mergesort"
+            "body": "Insertion sort"
           },
           {
             "id": "c",
             "label": "C",
-            "body": "Insertion sort"
+            "body": "Mergesort"
           },
           {
             "id": "d",
@@ -146,8 +146,8 @@
         "explanation": "Heapsort builds a heap in place and repeatedly extracts the max, giving deterministic O(n log n) with O(1) extra space.",
         "wrongAnswerExplanations": {
           "a": "Quicksort is O(n log n) on average but O(n\u00b2) worst case.",
-          "b": "Mergesort is O(n log n) but needs O(n) auxiliary space for the merge buffer.",
-          "c": "Insertion sort is O(n\u00b2) in the worst case."
+          "b": "Insertion sort is O(n\u00b2) in the worst case.",
+          "c": "Mergesort is O(n log n) but needs O(n) auxiliary space for the merge buffer."
         },
         "difficulty": "easy",
         "source": {
@@ -205,31 +205,31 @@
           {
             "id": "a",
             "label": "A",
-            "body": "O(log n)"
+            "body": "O(n log n)"
           },
           {
             "id": "b",
             "label": "B",
-            "body": "O(n)"
+            "body": "O(1)"
           },
           {
             "id": "c",
             "label": "C",
-            "body": "O(1)"
+            "body": "O(n)"
           },
           {
             "id": "d",
             "label": "D",
-            "body": "O(n log n)"
+            "body": "O(log n)"
           }
         ],
-        "correctChoiceId": "a",
+        "correctChoiceId": "d",
         "hint": "Think about the precise definition before picking.",
         "explanation": "A balanced BST has height \u0398(log n), and search descends one level at a time.",
         "wrongAnswerExplanations": {
-          "b": "That's the worst case for an unbalanced (degenerate) BST.",
-          "c": "Constant-time lookup is a hash-table property, not a BST.",
-          "d": "That's a typical sort cost, not search."
+          "a": "That's a typical sort cost, not search.",
+          "b": "Constant-time lookup is a hash-table property, not a BST.",
+          "c": "That's the worst case for an unbalanced (degenerate) BST."
         },
         "difficulty": "easy",
         "source": {
@@ -246,7 +246,7 @@
           {
             "id": "a",
             "label": "A",
-            "body": "Insert at the front."
+            "body": "Append to the end."
           },
           {
             "id": "b",
@@ -261,16 +261,16 @@
           {
             "id": "d",
             "label": "D",
-            "body": "Append to the end."
+            "body": "Insert at the front."
           }
         ],
-        "correctChoiceId": "d",
+        "correctChoiceId": "a",
         "hint": "Think about the precise definition before picking.",
         "explanation": "Doubling the backing array makes the amortized cost per append constant, even though some appends trigger an O(n) resize.",
         "wrongAnswerExplanations": {
-          "a": "Front insertion shifts every element \u2014 \u0398(n).",
           "b": "Mid-deletion also shifts elements \u2014 \u0398(n).",
-          "c": "That requires selection (\u0398(n)) or a sorted structure."
+          "c": "That requires selection (\u0398(n)) or a sorted structure.",
+          "d": "Front insertion shifts every element \u2014 \u0398(n)."
         },
         "difficulty": "easy",
         "source": {
@@ -292,26 +292,26 @@
           {
             "id": "b",
             "label": "B",
-            "body": "A minimum spanning tree of the graph."
+            "body": "The minimum number of edges from the source."
           },
           {
             "id": "c",
             "label": "C",
-            "body": "The minimum total edge weight from the source."
+            "body": "A minimum spanning tree of the graph."
           },
           {
             "id": "d",
             "label": "D",
-            "body": "The minimum number of edges from the source."
+            "body": "The minimum total edge weight from the source."
           }
         ],
-        "correctChoiceId": "d",
+        "correctChoiceId": "b",
         "hint": "Think about the precise definition before picking.",
         "explanation": "BFS explores vertices in order of edge-count distance, so it yields shortest paths in unweighted graphs.",
         "wrongAnswerExplanations": {
           "a": "Topological order comes from DFS on a DAG.",
-          "b": "MSTs are computed with Kruskal or Prim.",
-          "c": "Weighted shortest paths need Dijkstra or Bellman\u2013Ford."
+          "c": "MSTs are computed with Kruskal or Prim.",
+          "d": "Weighted shortest paths need Dijkstra or Bellman\u2013Ford."
         },
         "difficulty": "easy",
         "source": {
@@ -328,17 +328,17 @@
           {
             "id": "a",
             "label": "A",
-            "body": "Kruskal's algorithm"
+            "body": "Dijkstra's algorithm"
           },
           {
             "id": "b",
             "label": "B",
-            "body": "Dijkstra's algorithm"
+            "body": "Topological sort"
           },
           {
             "id": "c",
             "label": "C",
-            "body": "Topological sort"
+            "body": "Kruskal's algorithm"
           },
           {
             "id": "d",
@@ -346,12 +346,12 @@
             "body": "Floyd\u2013Warshall"
           }
         ],
-        "correctChoiceId": "b",
+        "correctChoiceId": "a",
         "hint": "Think about the precise definition before picking.",
         "explanation": "Dijkstra greedily settles the nearest unvisited vertex; correctness relies on non-negative weights.",
         "wrongAnswerExplanations": {
-          "a": "Kruskal builds a minimum spanning tree, not shortest paths.",
-          "c": "Topological sort orders a DAG; it isn't a shortest-path algorithm.",
+          "b": "Topological sort orders a DAG; it isn't a shortest-path algorithm.",
+          "c": "Kruskal builds a minimum spanning tree, not shortest paths.",
           "d": "Floyd\u2013Warshall solves all-pairs shortest paths, not single-source."
         },
         "difficulty": "easy",
@@ -369,17 +369,17 @@
           {
             "id": "a",
             "label": "A",
-            "body": "\u0398(log n)"
+            "body": "\u0398(n)"
           },
           {
             "id": "b",
             "label": "B",
-            "body": "\u0398(n)"
+            "body": "\u0398(n log n)"
           },
           {
             "id": "c",
             "label": "C",
-            "body": "\u0398(n log n)"
+            "body": "\u0398(log n)"
           },
           {
             "id": "d",
@@ -387,12 +387,12 @@
             "body": "\u0398(n\u00b2)"
           }
         ],
-        "correctChoiceId": "c",
+        "correctChoiceId": "b",
         "hint": "Think about the precise definition before picking.",
         "explanation": "By the Master Theorem, a = 2, b = 2, f(n) = n falls in case 2, so T(n) = \u0398(n log n) \u2014 exactly the mergesort recurrence.",
         "wrongAnswerExplanations": {
-          "a": "Logarithmic time would imply constant work per level, but each level here does \u0398(n) work.",
-          "b": "Linear time would require the merge step to be sublinear.",
+          "a": "Linear time would require the merge step to be sublinear.",
+          "c": "Logarithmic time would imply constant work per level, but each level here does \u0398(n) work.",
           "d": "That's the quicksort worst case; this recurrence is balanced."
         },
         "difficulty": "easy",
@@ -410,31 +410,31 @@
           {
             "id": "a",
             "label": "A",
-            "body": "O(n)"
+            "body": "O(n log n)"
           },
           {
             "id": "b",
             "label": "B",
-            "body": "O(n log n)"
+            "body": "O(n)"
           },
           {
             "id": "c",
             "label": "C",
-            "body": "O(1)"
+            "body": "O(log n)"
           },
           {
             "id": "d",
             "label": "D",
-            "body": "O(log n)"
+            "body": "O(1)"
           }
         ],
-        "correctChoiceId": "c",
+        "correctChoiceId": "d",
         "hint": "Think about the precise definition before picking.",
         "explanation": "With uniform hashing and bounded load factor, the expected probe count is constant.",
         "wrongAnswerExplanations": {
-          "a": "Linear is the worst case if every key collides, not the expectation.",
-          "b": "That's a sort cost.",
-          "d": "That's tree-based search, not hashing."
+          "a": "That's a sort cost.",
+          "b": "Linear is the worst case if every key collides, not the expectation.",
+          "c": "That's tree-based search, not hashing."
         },
         "difficulty": "easy",
         "source": {
@@ -451,31 +451,31 @@
           {
             "id": "a",
             "label": "A",
-            "body": "When the problem has the greedy-choice property and optimal substructure."
+            "body": "Whenever the input is sorted."
           },
           {
             "id": "b",
             "label": "B",
-            "body": "Whenever the answer is a number."
+            "body": "Only on graphs."
           },
           {
             "id": "c",
             "label": "C",
-            "body": "Whenever the input is sorted."
+            "body": "When the problem has the greedy-choice property and optimal substructure."
           },
           {
             "id": "d",
             "label": "D",
-            "body": "Only on graphs."
+            "body": "Whenever the answer is a number."
           }
         ],
-        "correctChoiceId": "a",
+        "correctChoiceId": "c",
         "hint": "Think about the precise definition before picking.",
         "explanation": "Greedy correctness requires that a locally optimal choice extends to a global optimum (greedy choice) and that subproblems can be solved independently (optimal substructure).",
         "wrongAnswerExplanations": {
-          "b": "Numerical output is unrelated to whether greedy is correct.",
-          "c": "Sorted input helps efficiency but doesn't justify greedy correctness.",
-          "d": "Greedy applies far beyond graphs (e.g., Huffman coding, scheduling)."
+          "a": "Sorted input helps efficiency but doesn't justify greedy correctness.",
+          "b": "Greedy applies far beyond graphs (e.g., Huffman coding, scheduling).",
+          "d": "Numerical output is unrelated to whether greedy is correct."
         },
         "difficulty": "easy",
         "source": {
@@ -492,31 +492,31 @@
           {
             "id": "a",
             "label": "A",
-            "body": "Solve and memoize overlapping subproblems so each is computed only once."
+            "body": "Pick the locally best option at each step."
           },
           {
             "id": "b",
             "label": "B",
-            "body": "Pick the locally best option at each step."
+            "body": "Solve and memoize overlapping subproblems so each is computed only once."
           },
           {
             "id": "c",
             "label": "C",
-            "body": "Restart from scratch whenever the answer changes."
+            "body": "Repeatedly halve the input until it fits in cache."
           },
           {
             "id": "d",
             "label": "D",
-            "body": "Repeatedly halve the input until it fits in cache."
+            "body": "Restart from scratch whenever the answer changes."
           }
         ],
-        "correctChoiceId": "a",
+        "correctChoiceId": "b",
         "hint": "Think about the precise definition before picking.",
         "explanation": "DP exploits overlapping subproblems and optimal substructure by caching results in a table.",
         "wrongAnswerExplanations": {
-          "b": "That's greedy.",
-          "c": "DP avoids recomputation \u2014 the opposite of restarting.",
-          "d": "That's divide-and-conquer (without memoization)."
+          "a": "That's greedy.",
+          "c": "That's divide-and-conquer (without memoization).",
+          "d": "DP avoids recomputation \u2014 the opposite of restarting."
         },
         "difficulty": "easy",
         "source": {
@@ -533,12 +533,12 @@
           {
             "id": "a",
             "label": "A",
-            "body": "It requires exponential space."
+            "body": "Every problem in NP reduces to it in polynomial time."
           },
           {
             "id": "b",
             "label": "B",
-            "body": "Every problem in NP reduces to it in polynomial time."
+            "body": "It has no known algorithm at all."
           },
           {
             "id": "c",
@@ -548,16 +548,16 @@
           {
             "id": "d",
             "label": "D",
-            "body": "It has no known algorithm at all."
+            "body": "It requires exponential space."
           }
         ],
-        "correctChoiceId": "b",
+        "correctChoiceId": "a",
         "hint": "Think about the precise definition before picking.",
         "explanation": "NP-hardness is defined by polynomial-time reductions from every NP problem; the hard problem need not itself be in NP.",
         "wrongAnswerExplanations": {
-          "a": "Hardness is about time reductions, not space.",
+          "b": "Many NP-hard problems have algorithms \u2014 just none known to run in polynomial time.",
           "c": "If an NP-hard problem were in P, then P = NP.",
-          "d": "Many NP-hard problems have algorithms \u2014 just none known to run in polynomial time."
+          "d": "Hardness is about time reductions, not space."
         },
         "difficulty": "easy",
         "source": {
@@ -574,7 +574,7 @@
           {
             "id": "a",
             "label": "A",
-            "body": "Dijkstra's algorithm."
+            "body": "BFS from any source."
           },
           {
             "id": "b",
@@ -584,7 +584,7 @@
           {
             "id": "c",
             "label": "C",
-            "body": "BFS from any source."
+            "body": "Dijkstra's algorithm."
           },
           {
             "id": "d",
@@ -596,9 +596,9 @@
         "hint": "Think about the precise definition before picking.",
         "explanation": "DFS post-order finishes a vertex only after all its descendants, so reversing the finishing order yields a topological sort.",
         "wrongAnswerExplanations": {
-          "a": "Dijkstra computes shortest paths; it doesn't order DAG vertices.",
+          "a": "BFS gives shortest-edge-count layers, not a topological order.",
           "b": "Union-find tracks connectivity; it doesn't order vertices.",
-          "c": "BFS gives shortest-edge-count layers, not a topological order."
+          "c": "Dijkstra computes shortest paths; it doesn't order DAG vertices."
         },
         "difficulty": "easy",
         "source": {
@@ -615,31 +615,31 @@
           {
             "id": "a",
             "label": "A",
-            "body": "Every element in the window is equal to the target."
+            "body": "If the target exists in the array, it lies within the current [lo, hi] window."
           },
           {
             "id": "b",
             "label": "B",
-            "body": "The array is partitioned around a pivot."
+            "body": "The window length doubles each step."
           },
           {
             "id": "c",
             "label": "C",
-            "body": "If the target exists in the array, it lies within the current [lo, hi] window."
+            "body": "Every element in the window is equal to the target."
           },
           {
             "id": "d",
             "label": "D",
-            "body": "The window length doubles each step."
+            "body": "The array is partitioned around a pivot."
           }
         ],
-        "correctChoiceId": "c",
+        "correctChoiceId": "a",
         "hint": "Think about the precise definition before picking.",
         "explanation": "Binary search shrinks the candidate window by half each step while preserving the invariant that the target, if present, is inside the window.",
         "wrongAnswerExplanations": {
-          "a": "That's not maintained; the window contains both larger and smaller values.",
-          "b": "That's quicksort's partition step.",
-          "d": "It halves, not doubles."
+          "b": "It halves, not doubles.",
+          "c": "That's not maintained; the window contains both larger and smaller values.",
+          "d": "That's quicksort's partition step."
         },
         "difficulty": "easy",
         "source": {
@@ -661,26 +661,26 @@
           {
             "id": "b",
             "label": "B",
-            "body": "O(n log k)"
+            "body": "O(n log n)"
           },
           {
             "id": "c",
             "label": "C",
-            "body": "O(nk)"
+            "body": "O(n log k)"
           },
           {
             "id": "d",
             "label": "D",
-            "body": "O(n log n)"
+            "body": "O(nk)"
           }
         ],
         "correctChoiceId": "a",
         "hint": "Think about the precise definition before picking.",
         "explanation": "Counting sort builds a frequency array of size k+1 in O(n+k) and writes the output in one pass.",
         "wrongAnswerExplanations": {
-          "b": "There's no log factor in counting sort.",
-          "c": "Counting sort is linear, not the product of n and k.",
-          "d": "That's the comparison-sort lower bound; counting sort beats it because it isn't comparison-based."
+          "b": "That's the comparison-sort lower bound; counting sort beats it because it isn't comparison-based.",
+          "c": "There's no log factor in counting sort.",
+          "d": "Counting sort is linear, not the product of n and k."
         },
         "difficulty": "easy",
         "source": {
@@ -697,7 +697,7 @@
           {
             "id": "a",
             "label": "A",
-            "body": "\u0398(1)"
+            "body": "\u0398(log n)"
           },
           {
             "id": "b",
@@ -707,21 +707,21 @@
           {
             "id": "c",
             "label": "C",
-            "body": "\u0398(log n)"
+            "body": "\u0398(n)"
           },
           {
             "id": "d",
             "label": "D",
-            "body": "\u0398(n)"
+            "body": "\u0398(1)"
           }
         ],
-        "correctChoiceId": "c",
+        "correctChoiceId": "a",
         "hint": "Think about the precise definition before picking.",
         "explanation": "Inserting keys in random order produces a tree of expected height O(log n), even without explicit balancing.",
         "wrongAnswerExplanations": {
-          "a": "That would require a constant number of keys.",
           "b": "Square-root depth doesn't arise in BST analysis.",
-          "d": "That's the worst-case height for adversarial insertion orders."
+          "c": "That's the worst-case height for adversarial insertion orders.",
+          "d": "That would require a constant number of keys."
         },
         "difficulty": "easy",
         "source": {
@@ -743,26 +743,26 @@
           {
             "id": "b",
             "label": "B",
-            "body": "Probing other slots in the table according to a fixed sequence."
+            "body": "Storing colliding keys in a linked list at each slot."
           },
           {
             "id": "c",
             "label": "C",
-            "body": "Storing colliding keys in a linked list at each slot."
+            "body": "Discarding the colliding key."
           },
           {
             "id": "d",
             "label": "D",
-            "body": "Discarding the colliding key."
+            "body": "Probing other slots in the table according to a fixed sequence."
           }
         ],
-        "correctChoiceId": "b",
+        "correctChoiceId": "d",
         "hint": "Think about the precise definition before picking.",
         "explanation": "Open addressing keeps every key in the table itself; on collision it probes alternate slots (linear, quadratic, double hashing).",
         "wrongAnswerExplanations": {
           "a": "Rehashing happens on resize, not on each collision.",
-          "c": "That's separate chaining, not open addressing.",
-          "d": "Discarding would lose data; collisions must be resolved."
+          "b": "That's separate chaining, not open addressing.",
+          "c": "Discarding would lose data; collisions must be resolved."
         },
         "difficulty": "easy",
         "source": {
@@ -784,26 +784,26 @@
           {
             "id": "b",
             "label": "B",
-            "body": "Assigning shorter codes to the most-frequent symbols arbitrarily."
+            "body": "Sorting symbols alphabetically."
           },
           {
             "id": "c",
             "label": "C",
-            "body": "Sorting symbols alphabetically."
+            "body": "Splitting the alphabet in half by frequency."
           },
           {
             "id": "d",
             "label": "D",
-            "body": "Splitting the alphabet in half by frequency."
+            "body": "Assigning shorter codes to the most-frequent symbols arbitrarily."
           }
         ],
         "correctChoiceId": "a",
         "hint": "Think about the precise definition before picking.",
         "explanation": "Huffman's greedy step always combines the two minimum-weight subtrees, producing an optimal prefix-free code.",
         "wrongAnswerExplanations": {
-          "b": "Frequency rank alone doesn't yield an optimal code.",
-          "c": "Alphabetical order is irrelevant to code length.",
-          "d": "That's a Shannon\u2013Fano style top-down split, not Huffman."
+          "b": "Alphabetical order is irrelevant to code length.",
+          "c": "That's a Shannon\u2013Fano style top-down split, not Huffman.",
+          "d": "Frequency rank alone doesn't yield an optimal code."
         },
         "difficulty": "easy",
         "source": {
@@ -820,7 +820,7 @@
           {
             "id": "a",
             "label": "A",
-            "body": "P equals NP."
+            "body": "P is a subset of NP."
           },
           {
             "id": "b",
@@ -835,16 +835,16 @@
           {
             "id": "d",
             "label": "D",
-            "body": "P is a subset of NP."
+            "body": "P equals NP."
           }
         ],
-        "correctChoiceId": "d",
+        "correctChoiceId": "a",
         "hint": "Think about the precise definition before picking.",
         "explanation": "Every problem solvable in polynomial time is also verifiable in polynomial time, so P \u2286 NP. Whether the containment is strict is open.",
         "wrongAnswerExplanations": {
-          "a": "That's the famous open question; it isn't known to be true.",
           "b": "Many problems (e.g., shortest path) are in both.",
-          "c": "That would mean P = NP, also unknown."
+          "c": "That would mean P = NP, also unknown.",
+          "d": "That's the famous open question; it isn't known to be true."
         },
         "difficulty": "easy",
         "source": {
@@ -904,31 +904,31 @@
           {
             "id": "a",
             "label": "A",
-            "body": "f(n) = \u0398(n)"
+            "body": "f(n) = \u0398(n\u00b2)"
           },
           {
             "id": "b",
             "label": "B",
-            "body": "f(n) = \u03a9(n\u00b3)"
+            "body": "f(n) = O(n log n)"
           },
           {
             "id": "c",
             "label": "C",
-            "body": "f(n) = O(n log n)"
+            "body": "f(n) = \u03a9(n\u00b3)"
           },
           {
             "id": "d",
             "label": "D",
-            "body": "f(n) = \u0398(n\u00b2)"
+            "body": "f(n) = \u0398(n)"
           }
         ],
-        "correctChoiceId": "d",
+        "correctChoiceId": "a",
         "hint": "Think about the precise definition before picking.",
         "explanation": "The dominant term is 3n\u00b2, so f(n) is both O(n\u00b2) and \u03a9(n\u00b2) \u2014 hence \u0398(n\u00b2).",
         "wrongAnswerExplanations": {
-          "a": "Linear is too small; the n\u00b2 term dominates.",
-          "b": "f grows slower than n\u00b3, so the lower bound is wrong.",
-          "c": "n\u00b2 grows faster than n log n."
+          "b": "n\u00b2 grows faster than n log n.",
+          "c": "f grows slower than n\u00b3, so the lower bound is wrong.",
+          "d": "Linear is too small; the n\u00b2 term dominates."
         },
         "difficulty": "medium",
         "source": {
@@ -955,21 +955,21 @@
           {
             "id": "c",
             "label": "C",
-            "body": "\u0398(n^{log\u2082 3}) \u2248 \u0398(n^{1.585})"
+            "body": "\u0398(n log n)"
           },
           {
             "id": "d",
             "label": "D",
-            "body": "\u0398(n log n)"
+            "body": "\u0398(n^{log\u2082 3}) \u2248 \u0398(n^{1.585})"
           }
         ],
-        "correctChoiceId": "c",
+        "correctChoiceId": "d",
         "hint": "Think about the precise definition before picking.",
         "explanation": "a = 3, b = 2, so n^{log_b a} = n^{log\u2082 3} \u2248 n^{1.585}, which dominates f(n) = n. Case 1 applies.",
         "wrongAnswerExplanations": {
           "a": "Linear would require f(n) to dominate, which it doesn't here.",
           "b": "n\u00b2 grows faster than n^{1.585}; the recurrence doesn't reach it.",
-          "d": "That's case 2, requiring f(n) = \u0398(n^{log_b a}). Here log\u2082 3 > 1."
+          "c": "That's case 2, requiring f(n) = \u0398(n^{log_b a}). Here log\u2082 3 > 1."
         },
         "difficulty": "medium",
         "source": {
@@ -986,31 +986,31 @@
           {
             "id": "a",
             "label": "A",
-            "body": "Because every sort needs to copy the array at least log n times."
+            "body": "Because mergesort runs in n log n time."
           },
           {
             "id": "b",
             "label": "B",
-            "body": "Because mergesort runs in n log n time."
+            "body": "Because the input has n log n bits of entropy."
           },
           {
             "id": "c",
             "label": "C",
-            "body": "A decision tree distinguishing n! permutations has height at least log\u2082(n!) = \u0398(n log n)."
+            "body": "Because every sort needs to copy the array at least log n times."
           },
           {
             "id": "d",
             "label": "D",
-            "body": "Because the input has n log n bits of entropy."
+            "body": "A decision tree distinguishing n! permutations has height at least log\u2082(n!) = \u0398(n log n)."
           }
         ],
-        "correctChoiceId": "c",
+        "correctChoiceId": "d",
         "hint": "Think about the precise definition before picking.",
         "explanation": "Any deterministic comparison sort corresponds to a decision tree whose leaves are the n! permutations; height is at least the log of the leaf count.",
         "wrongAnswerExplanations": {
-          "a": "There's no such requirement; in-place sorts exist.",
-          "b": "That's an upper-bound example, not a proof of the lower bound.",
-          "d": "Closer to right in spirit, but the formal argument is the decision-tree height."
+          "a": "That's an upper-bound example, not a proof of the lower bound.",
+          "b": "Closer to right in spirit, but the formal argument is the decision-tree height.",
+          "c": "There's no such requirement; in-place sorts exist."
         },
         "difficulty": "medium",
         "source": {
@@ -1027,7 +1027,7 @@
           {
             "id": "a",
             "label": "A",
-            "body": "O(V\u00b2)"
+            "body": "O(V log V)"
           },
           {
             "id": "b",
@@ -1042,16 +1042,16 @@
           {
             "id": "d",
             "label": "D",
-            "body": "O(V log V)"
+            "body": "O(V\u00b2)"
           }
         ],
         "correctChoiceId": "c",
         "hint": "Think about the precise definition before picking.",
         "explanation": "Each vertex is extracted once (O(log V)) and each edge triggers at most one decrease-key (O(log V)), giving (V+E) log V.",
         "wrongAnswerExplanations": {
-          "a": "That's Dijkstra with an array-based priority queue, which can be faster for dense graphs.",
+          "a": "That omits the per-edge relaxation cost.",
           "b": "That's Bellman\u2013Ford's cost, not Dijkstra's with a heap.",
-          "d": "That omits the per-edge relaxation cost."
+          "d": "That's Dijkstra with an array-based priority queue, which can be faster for dense graphs."
         },
         "difficulty": "medium",
         "source": {
@@ -1073,26 +1073,26 @@
           {
             "id": "b",
             "label": "B",
-            "body": "O(2^n) time, since the problem is NP-hard."
+            "body": "O(n + W) time."
           },
           {
             "id": "c",
             "label": "C",
-            "body": "O(nW) time and O(nW) space (reducible to O(W) space)."
+            "body": "O(2^n) time, since the problem is NP-hard."
           },
           {
             "id": "d",
             "label": "D",
-            "body": "O(n + W) time."
+            "body": "O(nW) time and O(nW) space (reducible to O(W) space)."
           }
         ],
-        "correctChoiceId": "c",
+        "correctChoiceId": "d",
         "hint": "Think about the precise definition before picking.",
         "explanation": "The pseudo-polynomial DP fills an n \u00d7 W table; you can keep only the previous row to use O(W) space.",
         "wrongAnswerExplanations": {
           "a": "Too fast; each cell costs \u0398(1) and there are nW of them.",
-          "b": "Knapsack is NP-hard in the input length, but DP runs in pseudo-polynomial time O(nW).",
-          "d": "Far too fast; you must consider each item against each capacity."
+          "b": "Far too fast; you must consider each item against each capacity.",
+          "c": "Knapsack is NP-hard in the input length, but DP runs in pseudo-polynomial time O(nW)."
         },
         "difficulty": "medium",
         "source": {
@@ -1109,12 +1109,12 @@
           {
             "id": "a",
             "label": "A",
-            "body": "The interval with the earliest start time."
+            "body": "The interval overlapping the fewest others."
           },
           {
             "id": "b",
             "label": "B",
-            "body": "The interval overlapping the fewest others."
+            "body": "The interval with the earliest start time."
           },
           {
             "id": "c",
@@ -1131,8 +1131,8 @@
         "hint": "Think about the precise definition before picking.",
         "explanation": "Sorting by finish time and picking the earliest-finishing compatible interval leaves maximum room for the rest \u2014 exchange argument gives optimality.",
         "wrongAnswerExplanations": {
-          "a": "Earliest start can lock in a long interval that blocks many.",
-          "b": "Sounds reasonable but doesn't optimize; finish-time greedy is the proven rule.",
+          "a": "Sounds reasonable but doesn't optimize; finish-time greedy is the proven rule.",
+          "b": "Earliest start can lock in a long interval that blocks many.",
           "c": "Counterexample exists: a short interval can block two longer compatible ones."
         },
         "difficulty": "medium",
@@ -1150,31 +1150,31 @@
           {
             "id": "a",
             "label": "A",
-            "body": "Collisions only happen when keys are similar."
+            "body": "Pr[h(x) = h(y)] \u2264 1/m, taken over the random choice of h from the family."
           },
           {
             "id": "b",
             "label": "B",
-            "body": "No two distinct keys ever collide."
+            "body": "Every slot is hit exactly the same number of times."
           },
           {
             "id": "c",
             "label": "C",
-            "body": "Every slot is hit exactly the same number of times."
+            "body": "Collisions only happen when keys are similar."
           },
           {
             "id": "d",
             "label": "D",
-            "body": "Pr[h(x) = h(y)] \u2264 1/m, taken over the random choice of h from the family."
+            "body": "No two distinct keys ever collide."
           }
         ],
-        "correctChoiceId": "d",
+        "correctChoiceId": "a",
         "hint": "Think about the precise definition before picking.",
         "explanation": "A family H is universal if, picking h uniformly at random from H, any pair of distinct keys collides with probability at most 1/m.",
         "wrongAnswerExplanations": {
-          "a": "Universality is independent of key similarity.",
-          "b": "That's perfect hashing for a fixed set, not universal hashing in general.",
-          "c": "That would require a specific input, not a family property."
+          "b": "That would require a specific input, not a family property.",
+          "c": "Universality is independent of key similarity.",
+          "d": "That's perfect hashing for a fixed set, not universal hashing in general."
         },
         "difficulty": "medium",
         "source": {
@@ -1201,12 +1201,12 @@
           {
             "id": "c",
             "label": "C",
-            "body": "Vertices with no outgoing edges."
+            "body": "Self-loops of positive weight."
           },
           {
             "id": "d",
             "label": "D",
-            "body": "Self-loops of positive weight."
+            "body": "Vertices with no outgoing edges."
           }
         ],
         "correctChoiceId": "a",
@@ -1214,8 +1214,8 @@
         "explanation": "If a negative cycle is reachable, no shortest path is well-defined; Bellman\u2013Ford detects this on the (V\u22121)+1-th relaxation pass.",
         "wrongAnswerExplanations": {
           "b": "Unreachable vertices simply keep distance \u221e.",
-          "c": "Sinks are fine; the algorithm just doesn't relax through them.",
-          "d": "Positive self-loops never affect shortest paths."
+          "c": "Positive self-loops never affect shortest paths.",
+          "d": "Sinks are fine; the algorithm just doesn't relax through them."
         },
         "difficulty": "medium",
         "source": {
@@ -1232,31 +1232,31 @@
           {
             "id": "a",
             "label": "A",
-            "body": "extract-min and find-max"
+            "body": "find-min and insert"
           },
           {
             "id": "b",
             "label": "B",
-            "body": "insert and extract-min"
+            "body": "find-min and decrease-key only"
           },
           {
             "id": "c",
             "label": "C",
-            "body": "find-min and insert"
+            "body": "insert and extract-min"
           },
           {
             "id": "d",
             "label": "D",
-            "body": "find-min and decrease-key only"
+            "body": "extract-min and find-max"
           }
         ],
-        "correctChoiceId": "b",
+        "correctChoiceId": "c",
         "hint": "Think about the precise definition before picking.",
         "explanation": "find-min is O(1); insert and extract-min restore the heap property in O(log n) by sifting.",
         "wrongAnswerExplanations": {
-          "a": "find-max requires scanning leaves \u2014 \u0398(n) in a min-heap.",
-          "c": "find-min is O(1), not O(log n).",
-          "d": "find-min is O(1); decrease-key is O(log n), but extract-min is the canonical second op."
+          "a": "find-min is O(1), not O(log n).",
+          "b": "find-min is O(1); decrease-key is O(log n), but extract-min is the canonical second op.",
+          "d": "find-max requires scanning leaves \u2014 \u0398(n) in a min-heap."
         },
         "difficulty": "medium",
         "source": {
@@ -1273,31 +1273,31 @@
           {
             "id": "a",
             "label": "A",
-            "body": "\u0398((mn)\u00b2)"
+            "body": "\u0398(min(m, n))"
           },
           {
             "id": "b",
             "label": "B",
-            "body": "\u0398(mn)"
+            "body": "\u0398(m + n)"
           },
           {
             "id": "c",
             "label": "C",
-            "body": "\u0398(m + n)"
+            "body": "\u0398(mn)"
           },
           {
             "id": "d",
             "label": "D",
-            "body": "\u0398(min(m, n))"
+            "body": "\u0398((mn)\u00b2)"
           }
         ],
-        "correctChoiceId": "b",
+        "correctChoiceId": "c",
         "hint": "Think about the precise definition before picking.",
         "explanation": "The DP fills an (m+1)\u00d7(n+1) table; each cell is O(1) work, giving \u0398(mn) total.",
         "wrongAnswerExplanations": {
-          "a": "Each cell is O(1), not O(mn).",
-          "c": "That would require constant work per character of one string, but each cell depends on its row and column.",
-          "d": "Far too fast."
+          "a": "Far too fast.",
+          "b": "That would require constant work per character of one string, but each cell depends on its row and column.",
+          "d": "Each cell is O(1), not O(mn)."
         },
         "difficulty": "medium",
         "source": {
@@ -1314,31 +1314,31 @@
           {
             "id": "a",
             "label": "A",
-            "body": "Topological sort followed by Dijkstra."
+            "body": "A single BFS pass."
           },
           {
             "id": "b",
             "label": "B",
-            "body": "A single BFS pass."
+            "body": "Topological sort followed by Dijkstra."
           },
           {
             "id": "c",
             "label": "C",
-            "body": "Floyd\u2013Warshall."
+            "body": "Two DFS passes (Kosaraju's or Tarjan's algorithm)."
           },
           {
             "id": "d",
             "label": "D",
-            "body": "Two DFS passes (Kosaraju's or Tarjan's algorithm)."
+            "body": "Floyd\u2013Warshall."
           }
         ],
-        "correctChoiceId": "d",
+        "correctChoiceId": "c",
         "hint": "Think about the precise definition before picking.",
         "explanation": "Kosaraju runs DFS on G, then DFS on the transpose in reverse finishing order; both passes are O(V+E).",
         "wrongAnswerExplanations": {
-          "a": "Topological sort requires a DAG, which the graph may not be.",
-          "b": "BFS alone doesn't recover SCCs in directed graphs.",
-          "c": "That's O(V\u00b3) and unnecessary for SCCs."
+          "a": "BFS alone doesn't recover SCCs in directed graphs.",
+          "b": "Topological sort requires a DAG, which the graph may not be.",
+          "d": "That's O(V\u00b3) and unnecessary for SCCs."
         },
         "difficulty": "medium",
         "source": {
@@ -1355,31 +1355,31 @@
           {
             "id": "a",
             "label": "A",
-            "body": "Every partition is maximally unbalanced (e.g., already-sorted input with a deterministic pivot)."
+            "body": "The pivot is chosen at random."
           },
           {
             "id": "b",
             "label": "B",
-            "body": "The pivot is chosen at random."
+            "body": "The input is uniformly random."
           },
           {
             "id": "c",
             "label": "C",
-            "body": "The input is uniformly random."
+            "body": "The recursion depth is log n."
           },
           {
             "id": "d",
             "label": "D",
-            "body": "The recursion depth is log n."
+            "body": "Every partition is maximally unbalanced (e.g., already-sorted input with a deterministic pivot)."
           }
         ],
-        "correctChoiceId": "a",
+        "correctChoiceId": "d",
         "hint": "Think about the precise definition before picking.",
         "explanation": "Picking the first or last element as pivot on sorted data forces partitions of size 1 and n\u22121, giving \u0398(n\u00b2) work.",
         "wrongAnswerExplanations": {
-          "b": "Random pivots give expected \u0398(n log n) regardless of input.",
-          "c": "Random input gives expected \u0398(n log n).",
-          "d": "Log-depth recursion implies balanced partitions and \u0398(n log n)."
+          "a": "Random pivots give expected \u0398(n log n) regardless of input.",
+          "b": "Random input gives expected \u0398(n log n).",
+          "c": "Log-depth recursion implies balanced partitions and \u0398(n log n)."
         },
         "difficulty": "medium",
         "source": {
@@ -1396,31 +1396,31 @@
           {
             "id": "a",
             "label": "A",
-            "body": "It can be solved in polynomial time."
+            "body": "It is undecidable."
           },
           {
             "id": "b",
             "label": "B",
-            "body": "It is undecidable."
+            "body": "It is harder than every problem in NP."
           },
           {
             "id": "c",
             "label": "C",
-            "body": "It is harder than every problem in NP."
+            "body": "It's in NP and every NP problem reduces to it in polynomial time."
           },
           {
             "id": "d",
             "label": "D",
-            "body": "It's in NP and every NP problem reduces to it in polynomial time."
+            "body": "It can be solved in polynomial time."
           }
         ],
-        "correctChoiceId": "d",
+        "correctChoiceId": "c",
         "hint": "Think about the precise definition before picking.",
         "explanation": "NP-completeness means a problem is both in NP and NP-hard.",
         "wrongAnswerExplanations": {
-          "a": "Only if P = NP, which is open.",
-          "b": "3-SAT is decidable \u2014 brute force works in 2^n time.",
-          "c": "It's at most as hard as the hardest NP problems, not strictly harder."
+          "a": "3-SAT is decidable \u2014 brute force works in 2^n time.",
+          "b": "It's at most as hard as the hardest NP problems, not strictly harder.",
+          "d": "Only if P = NP, which is open."
         },
         "difficulty": "medium",
         "source": {
@@ -1442,7 +1442,7 @@
           {
             "id": "b",
             "label": "B",
-            "body": "Is still optimal."
+            "body": "Fails to give an optimal solution."
           },
           {
             "id": "c",
@@ -1452,16 +1452,16 @@
           {
             "id": "d",
             "label": "D",
-            "body": "Fails to give an optimal solution."
+            "body": "Is still optimal."
           }
         ],
-        "correctChoiceId": "d",
+        "correctChoiceId": "b",
         "hint": "Think about the precise definition before picking.",
         "explanation": "Once weights vary, greedy ignores the value tradeoff. The optimal algorithm is DP after sorting by finish time.",
         "wrongAnswerExplanations": {
           "a": "No such bound; greedy can be arbitrarily bad here.",
-          "b": "Weights break the exchange argument that justified greedy in the unweighted case.",
-          "c": "Greedy is fast \u2014 the issue is correctness, not speed."
+          "c": "Greedy is fast \u2014 the issue is correctness, not speed.",
+          "d": "Weights break the exchange argument that justified greedy in the unweighted case."
         },
         "difficulty": "medium",
         "source": {
@@ -1524,7 +1524,7 @@
           {
             "id": "b",
             "label": "B",
-            "body": "O(n\u00b2)"
+            "body": "O(d (n + b)) where b is the radix."
           },
           {
             "id": "c",
@@ -1534,16 +1534,16 @@
           {
             "id": "d",
             "label": "D",
-            "body": "O(d (n + b)) where b is the radix."
+            "body": "O(n\u00b2)"
           }
         ],
-        "correctChoiceId": "d",
+        "correctChoiceId": "b",
         "hint": "Think about the precise definition before picking.",
         "explanation": "Each of d passes runs counting sort in O(n + b); total is O(d(n+b)).",
         "wrongAnswerExplanations": {
           "a": "Radix avoids the comparison-sort lower bound.",
-          "b": "Each pass is linear; total is linear in d.",
-          "c": "Each pass is linear, not n log n."
+          "c": "Each pass is linear, not n log n.",
+          "d": "Each pass is linear; total is linear in d."
         },
         "difficulty": "medium",
         "source": {
@@ -1560,31 +1560,31 @@
           {
             "id": "a",
             "label": "A",
-            "body": "\u0398(V\u00b3)"
+            "body": "\u0398(VE)"
           },
           {
             "id": "b",
             "label": "B",
-            "body": "\u0398(E log V)"
+            "body": "\u0398(V\u00b2)"
           },
           {
             "id": "c",
             "label": "C",
-            "body": "\u0398(VE)"
+            "body": "\u0398(E log V)"
           },
           {
             "id": "d",
             "label": "D",
-            "body": "\u0398(V\u00b2)"
+            "body": "\u0398(V\u00b3)"
           }
         ],
-        "correctChoiceId": "a",
+        "correctChoiceId": "d",
         "hint": "Think about the precise definition before picking.",
         "explanation": "Three nested loops over V vertices give \u0398(V\u00b3).",
         "wrongAnswerExplanations": {
-          "b": "That's one Dijkstra run with a heap; you'd need V of them for all-pairs.",
-          "c": "That's V runs of Bellman\u2013Ford.",
-          "d": "Only enough for one source."
+          "a": "That's V runs of Bellman\u2013Ford.",
+          "b": "Only enough for one source.",
+          "c": "That's one Dijkstra run with a heap; you'd need V of them for all-pairs."
         },
         "difficulty": "medium",
         "source": {
@@ -1601,7 +1601,7 @@
           {
             "id": "a",
             "label": "A",
-            "body": "It uses no extra memory."
+            "body": "It only works for problems with optimal substructure."
           },
           {
             "id": "b",
@@ -1616,16 +1616,16 @@
           {
             "id": "d",
             "label": "D",
-            "body": "It only works for problems with optimal substructure."
+            "body": "It uses no extra memory."
           }
         ],
         "correctChoiceId": "b",
         "hint": "Think about the precise definition before picking.",
         "explanation": "Memoized recursion can skip unreachable cells of the DP table; bottom-up fills the whole table.",
         "wrongAnswerExplanations": {
-          "a": "Both styles store subproblem solutions.",
+          "a": "Optimal substructure is required for both styles.",
           "c": "Asymptotically they match; constants differ.",
-          "d": "Optimal substructure is required for both styles."
+          "d": "Both styles store subproblem solutions."
         },
         "difficulty": "medium",
         "source": {
@@ -1647,26 +1647,26 @@
           {
             "id": "b",
             "label": "B",
-            "body": "The hash function is universal."
+            "body": "The keys are integers."
           },
           {
             "id": "c",
             "label": "C",
-            "body": "The load factor approaches 1 (primary clustering)."
+            "body": "The hash function is universal."
           },
           {
             "id": "d",
             "label": "D",
-            "body": "The keys are integers."
+            "body": "The load factor approaches 1 (primary clustering)."
           }
         ],
-        "correctChoiceId": "c",
+        "correctChoiceId": "d",
         "hint": "Think about the precise definition before picking.",
         "explanation": "Long runs of occupied slots form clusters; expected probe length grows like 1/(1\u2212\u03b1)\u00b2 as \u03b1 \u2192 1.",
         "wrongAnswerExplanations": {
           "a": "Primes help linear probing, if anything.",
-          "b": "Universality helps, not hurts.",
-          "d": "Key type is irrelevant."
+          "b": "Key type is irrelevant.",
+          "c": "Universality helps, not hurts."
         },
         "difficulty": "medium",
         "source": {
@@ -1683,7 +1683,7 @@
           {
             "id": "a",
             "label": "A",
-            "body": "B is at least as hard as A (up to polynomial factors)."
+            "body": "A and B are equally hard."
           },
           {
             "id": "b",
@@ -1693,7 +1693,7 @@
           {
             "id": "c",
             "label": "C",
-            "body": "A and B are equally hard."
+            "body": "B is at least as hard as A (up to polynomial factors)."
           },
           {
             "id": "d",
@@ -1701,12 +1701,12 @@
             "body": "A is at least as hard as B."
           }
         ],
-        "correctChoiceId": "a",
+        "correctChoiceId": "c",
         "hint": "Think about the precise definition before picking.",
         "explanation": "If A reduces to B in poly time and B has a poly-time algorithm, so does A \u2014 so B is at least as hard.",
         "wrongAnswerExplanations": {
+          "a": "Only if reductions exist in both directions.",
           "b": "Reduction doesn't say where B sits; only how A relates to it.",
-          "c": "Only if reductions exist in both directions.",
           "d": "The arrow goes the other way: reductions transfer hardness *to* the target."
         },
         "difficulty": "medium",
@@ -1726,31 +1726,31 @@
           {
             "id": "a",
             "label": "A",
-            "body": "P = NP."
+            "body": "NP = coNP."
           },
           {
             "id": "b",
             "label": "B",
-            "body": "NP = coNP."
+            "body": "Nothing \u2014 3-SAT is already in P."
           },
           {
             "id": "c",
             "label": "C",
-            "body": "Every problem is in P."
+            "body": "P = NP."
           },
           {
             "id": "d",
             "label": "D",
-            "body": "Nothing \u2014 3-SAT is already in P."
+            "body": "Every problem is in P."
           }
         ],
-        "correctChoiceId": "a",
+        "correctChoiceId": "c",
         "hint": "Think about the precise definition before picking.",
         "explanation": "3-SAT is NP-complete, so a polynomial-time algorithm for it implies polynomial-time algorithms for every NP problem via reduction.",
         "wrongAnswerExplanations": {
-          "b": "P = NP implies NP = coNP, but the immediate consequence is P = NP.",
-          "c": "Only problems in NP would collapse; problems outside NP (e.g., undecidable ones) wouldn't.",
-          "d": "3-SAT is not known to be in P; that's the open question."
+          "a": "P = NP implies NP = coNP, but the immediate consequence is P = NP.",
+          "b": "3-SAT is not known to be in P; that's the open question.",
+          "d": "Only problems in NP would collapse; problems outside NP (e.g., undecidable ones) wouldn't."
         },
         "difficulty": "hard",
         "source": {
@@ -1767,7 +1767,7 @@
           {
             "id": "a",
             "label": "A",
-            "body": "Because each pass halves the remaining work."
+            "body": "Because the algorithm uses memoization."
           },
           {
             "id": "b",
@@ -1777,21 +1777,21 @@
           {
             "id": "c",
             "label": "C",
-            "body": "After V\u22121 passes, all shortest paths (which have at most V\u22121 edges) are computed; further changes signal a negative cycle."
+            "body": "Because each pass halves the remaining work."
           },
           {
             "id": "d",
             "label": "D",
-            "body": "Because the algorithm uses memoization."
+            "body": "After V\u22121 passes, all shortest paths (which have at most V\u22121 edges) are computed; further changes signal a negative cycle."
           }
         ],
-        "correctChoiceId": "c",
+        "correctChoiceId": "d",
         "hint": "Think about the precise definition before picking.",
         "explanation": "Any simple path has at most V\u22121 edges; V\u22121 relaxation rounds suffice unless a negative cycle keeps lowering some distance.",
         "wrongAnswerExplanations": {
-          "a": "Each pass is O(E); work doesn't shrink.",
+          "a": "It doesn't; it's an iterative relaxation.",
           "b": "Bellman\u2013Ford doesn't require sorted edges.",
-          "d": "It doesn't; it's an iterative relaxation."
+          "c": "Each pass is O(E); work doesn't shrink."
         },
         "difficulty": "hard",
         "source": {
@@ -1808,17 +1808,17 @@
           {
             "id": "a",
             "label": "A",
-            "body": "Contains no odd-length cycle."
+            "body": "Has at least two vertices."
           },
           {
             "id": "b",
             "label": "B",
-            "body": "Contains a Hamiltonian path."
+            "body": "Contains no odd-length cycle."
           },
           {
             "id": "c",
             "label": "C",
-            "body": "Has at least two vertices."
+            "body": "Contains a Hamiltonian path."
           },
           {
             "id": "d",
@@ -1826,12 +1826,12 @@
             "body": "Is connected."
           }
         ],
-        "correctChoiceId": "a",
+        "correctChoiceId": "b",
         "hint": "Think about the precise definition before picking.",
         "explanation": "A graph is bipartite (i.e., 2-colorable) iff every cycle has even length; BFS layering proves it constructively.",
         "wrongAnswerExplanations": {
-          "b": "Hamiltonicity is unrelated to chromatic number.",
-          "c": "Necessary but far from sufficient.",
+          "a": "Necessary but far from sufficient.",
+          "c": "Hamiltonicity is unrelated to chromatic number.",
           "d": "Many disconnected graphs are 2-colorable; many connected ones aren't."
         },
         "difficulty": "hard",
@@ -1859,21 +1859,21 @@
           {
             "id": "c",
             "label": "C",
-            "body": "Worst-case linear-time selection is impossible."
+            "body": "Adversarial inputs force unbalanced partitions giving \u0398(n\u00b2); deterministic worst-case linear requires median-of-medians."
           },
           {
             "id": "d",
             "label": "D",
-            "body": "Adversarial inputs force unbalanced partitions giving \u0398(n\u00b2); deterministic worst-case linear requires median-of-medians."
+            "body": "Worst-case linear-time selection is impossible."
           }
         ],
-        "correctChoiceId": "d",
+        "correctChoiceId": "c",
         "hint": "Think about the precise definition before picking.",
         "explanation": "Plain Quickselect can degenerate to \u0398(n\u00b2); median-of-medians chooses a guaranteed-balanced pivot for deterministic O(n).",
         "wrongAnswerExplanations": {
           "a": "Recursion isn't the issue.",
           "b": "Random pivots give expected linear, not exponential worst case.",
-          "c": "Median-of-medians achieves it."
+          "d": "Median-of-medians achieves it."
         },
         "difficulty": "hard",
         "source": {
@@ -1890,17 +1890,17 @@
           {
             "id": "a",
             "label": "A",
-            "body": "Switching to a greedy algorithm."
+            "body": "Recomputing on the fly without memoization."
           },
           {
             "id": "b",
             "label": "B",
-            "body": "Recomputing on the fly without memoization."
+            "body": "Keeping only the previous row (or column) of the table."
           },
           {
             "id": "c",
             "label": "C",
-            "body": "Keeping only the previous row (or column) of the table."
+            "body": "Switching to a greedy algorithm."
           },
           {
             "id": "d",
@@ -1908,12 +1908,12 @@
             "body": "Using a hash table instead of an array."
           }
         ],
-        "correctChoiceId": "c",
+        "correctChoiceId": "b",
         "hint": "Think about the precise definition before picking.",
         "explanation": "Each cell depends only on the cell above, left, and upper-left, so a single previous row suffices.",
         "wrongAnswerExplanations": {
-          "a": "Greedy doesn't solve edit distance optimally.",
-          "b": "That blows running time up exponentially.",
+          "a": "That blows running time up exponentially.",
+          "c": "Greedy doesn't solve edit distance optimally.",
           "d": "The same number of cells must still be computed."
         },
         "difficulty": "hard",
@@ -1931,31 +1931,31 @@
           {
             "id": "a",
             "label": "A",
-            "body": "Deletions are not supported."
+            "body": "Lookups occasionally take O(n) time."
           },
           {
             "id": "b",
             "label": "B",
-            "body": "Lookups occasionally take O(n) time."
+            "body": "Deletions are not supported."
           },
           {
             "id": "c",
             "label": "C",
-            "body": "It only works on integer keys."
+            "body": "Insertions may trigger a rehash and are O(1) only amortized in expectation."
           },
           {
             "id": "d",
             "label": "D",
-            "body": "Insertions may trigger a rehash and are O(1) only amortized in expectation."
+            "body": "It only works on integer keys."
           }
         ],
-        "correctChoiceId": "d",
+        "correctChoiceId": "c",
         "hint": "Think about the precise definition before picking.",
         "explanation": "Cuckoo hashing's lookup probes a constant number of slots, but insertions can chain evictions and may need a full rehash.",
         "wrongAnswerExplanations": {
-          "a": "Deletion is O(1) \u2014 just clear the slot you find the key in.",
-          "b": "Lookups always touch O(1) slots \u2014 that's the whole point.",
-          "c": "Any hashable key works."
+          "a": "Lookups always touch O(1) slots \u2014 that's the whole point.",
+          "b": "Deletion is O(1) \u2014 just clear the slot you find the key in.",
+          "d": "Any hashable key works."
         },
         "difficulty": "hard",
         "source": {
@@ -1972,17 +1972,17 @@
           {
             "id": "a",
             "label": "A",
-            "body": "K\u00f6nig's theorem."
+            "body": "Hall's marriage theorem."
           },
           {
             "id": "b",
             "label": "B",
-            "body": "Menger's theorem."
+            "body": "K\u00f6nig's theorem."
           },
           {
             "id": "c",
             "label": "C",
-            "body": "Hall's marriage theorem."
+            "body": "Menger's theorem."
           },
           {
             "id": "d",
@@ -1994,9 +1994,9 @@
         "hint": "Think about the precise definition before picking.",
         "explanation": "The max-flow min-cut theorem (Ford\u2013Fulkerson, 1956) equates the value of a maximum flow with the capacity of a minimum s\u2013t cut.",
         "wrongAnswerExplanations": {
-          "a": "K\u00f6nig relates max matching and min vertex cover in bipartite graphs.",
-          "b": "Menger relates max disjoint paths and min vertex/edge separators \u2014 a related but distinct result.",
-          "c": "Hall characterizes when a perfect matching exists in a bipartite graph."
+          "a": "Hall characterizes when a perfect matching exists in a bipartite graph.",
+          "b": "K\u00f6nig relates max matching and min vertex cover in bipartite graphs.",
+          "c": "Menger relates max disjoint paths and min vertex/edge separators \u2014 a related but distinct result."
         },
         "difficulty": "hard",
         "source": {
@@ -2013,12 +2013,12 @@
           {
             "id": "a",
             "label": "A",
-            "body": "(E, I) is a matroid \u2014 closed under subsets and satisfying the exchange property."
+            "body": "I is closed under intersection."
           },
           {
             "id": "b",
             "label": "B",
-            "body": "I is closed under intersection."
+            "body": "(E, I) is a matroid \u2014 closed under subsets and satisfying the exchange property."
           },
           {
             "id": "c",
@@ -2031,11 +2031,11 @@
             "body": "Weights are non-negative."
           }
         ],
-        "correctChoiceId": "a",
+        "correctChoiceId": "b",
         "hint": "Think about the precise definition before picking.",
         "explanation": "Edmonds showed that greedy maximization over (E, I) is correct iff (E, I) is a matroid.",
         "wrongAnswerExplanations": {
-          "b": "Matroids are closed under taking subsets of independent sets, not intersections.",
+          "a": "Matroids are closed under taking subsets of independent sets, not intersections.",
           "c": "Necessary for the problem to make sense, not sufficient.",
           "d": "Greedy on matroids works for any weights; negatives just get rejected."
         },
@@ -2054,7 +2054,7 @@
           {
             "id": "a",
             "label": "A",
-            "body": "Solutions can be enumerated in polynomial space."
+            "body": "No-instances have polynomial-time-verifiable witnesses."
           },
           {
             "id": "b",
@@ -2069,16 +2069,16 @@
           {
             "id": "d",
             "label": "D",
-            "body": "No-instances have polynomial-time-verifiable witnesses."
+            "body": "Solutions can be enumerated in polynomial space."
           }
         ],
-        "correctChoiceId": "d",
+        "correctChoiceId": "a",
         "hint": "Think about the precise definition before picking.",
         "explanation": "NP verifies yes-instances; coNP verifies no-instances. Example: tautology is in coNP because a falsifying assignment certifies non-tautology.",
         "wrongAnswerExplanations": {
-          "a": "That's PSPACE.",
           "b": "That's BPP or RP.",
-          "c": "That's NP, not coNP."
+          "c": "That's NP, not coNP.",
+          "d": "That's PSPACE."
         },
         "difficulty": "hard",
         "source": {
@@ -2095,31 +2095,31 @@
           {
             "id": "a",
             "label": "A",
-            "body": "O(n\u00b2)"
+            "body": "O(m)"
           },
           {
             "id": "b",
             "label": "B",
-            "body": "O(m \u03b1(n)) where \u03b1 is the inverse Ackermann function."
+            "body": "O(n\u00b2)"
           },
           {
             "id": "c",
             "label": "C",
-            "body": "O(m)"
+            "body": "O(m log n)"
           },
           {
             "id": "d",
             "label": "D",
-            "body": "O(m log n)"
+            "body": "O(m \u03b1(n)) where \u03b1 is the inverse Ackermann function."
           }
         ],
-        "correctChoiceId": "b",
+        "correctChoiceId": "d",
         "hint": "Think about the precise definition before picking.",
         "explanation": "Tarjan proved the amortized cost is \u0398(\u03b1(n)) per operation, which is effectively constant for any conceivable n.",
         "wrongAnswerExplanations": {
-          "a": "Way too pessimistic for these heuristics.",
-          "c": "Strict O(1) per operation isn't achievable.",
-          "d": "That's union-by-rank alone, without path compression."
+          "a": "Strict O(1) per operation isn't achievable.",
+          "b": "Way too pessimistic for these heuristics.",
+          "c": "That's union-by-rank alone, without path compression."
         },
         "difficulty": "hard",
         "source": {
@@ -2136,17 +2136,17 @@
           {
             "id": "a",
             "label": "A",
-            "body": "n/2 comparisons."
+            "body": "n \u2212 1 comparisons."
           },
           {
             "id": "b",
             "label": "B",
-            "body": "log n comparisons."
+            "body": "n/2 comparisons."
           },
           {
             "id": "c",
             "label": "C",
-            "body": "n \u2212 1 comparisons."
+            "body": "log n comparisons."
           },
           {
             "id": "d",
@@ -2154,12 +2154,12 @@
             "body": "n log n comparisons."
           }
         ],
-        "correctChoiceId": "c",
+        "correctChoiceId": "a",
         "hint": "Think about the precise definition before picking.",
         "explanation": "Every non-maximum element must lose at least one comparison; with n\u22121 non-maxima, you need n\u22121 comparisons.",
         "wrongAnswerExplanations": {
-          "a": "Not enough to eliminate n\u22121 non-maxima.",
-          "b": "Far too few; each comparison eliminates only one candidate from being the max.",
+          "b": "Not enough to eliminate n\u22121 non-maxima.",
+          "c": "Far too few; each comparison eliminates only one candidate from being the max.",
           "d": "That's a sort lower bound, not a max-finding bound."
         },
         "difficulty": "hard",
@@ -2177,12 +2177,12 @@
           {
             "id": "a",
             "label": "A",
-            "body": "Because cache effects limit the recursion."
+            "body": "Roughly 3n/10 elements are guaranteed smaller and 3n/10 guaranteed larger than the chosen pivot."
           },
           {
             "id": "b",
             "label": "B",
-            "body": "Because randomization removes 30% of elements."
+            "body": "Because cache effects limit the recursion."
           },
           {
             "id": "c",
@@ -2192,16 +2192,16 @@
           {
             "id": "d",
             "label": "D",
-            "body": "Roughly 3n/10 elements are guaranteed smaller and 3n/10 guaranteed larger than the chosen pivot."
+            "body": "Because randomization removes 30% of elements."
           }
         ],
-        "correctChoiceId": "d",
+        "correctChoiceId": "a",
         "hint": "Think about the precise definition before picking.",
         "explanation": "Grouping into fives and recursing on the median of medians leaves at most 7n/10 in either side of the partition.",
         "wrongAnswerExplanations": {
-          "a": "Cache isn't part of the analysis.",
-          "b": "Median-of-medians is deterministic.",
-          "c": "It isn't exactly half; the bound is 7n/10."
+          "b": "Cache isn't part of the analysis.",
+          "c": "It isn't exactly half; the bound is 7n/10.",
+          "d": "Median-of-medians is deterministic."
         },
         "difficulty": "hard",
         "source": {
@@ -2259,17 +2259,17 @@
           {
             "id": "a",
             "label": "A",
-            "body": "BFS requires a heap."
+            "body": "BFS only works on directed graphs."
           },
           {
             "id": "b",
             "label": "B",
-            "body": "BFS only works on directed graphs."
+            "body": "BFS doesn't terminate on cyclic graphs."
           },
           {
             "id": "c",
             "label": "C",
-            "body": "BFS doesn't terminate on cyclic graphs."
+            "body": "BFS requires a heap."
           },
           {
             "id": "d",
@@ -2281,9 +2281,9 @@
         "hint": "Think about the precise definition before picking.",
         "explanation": "BFS layers reflect edge counts; weighted shortest paths need a priority queue (Dijkstra) or relaxation (Bellman\u2013Ford).",
         "wrongAnswerExplanations": {
-          "a": "Plain BFS uses a FIFO queue.",
-          "b": "BFS works on both directed and undirected graphs.",
-          "c": "BFS with a visited set always terminates."
+          "a": "BFS works on both directed and undirected graphs.",
+          "b": "BFS with a visited set always terminates.",
+          "c": "Plain BFS uses a FIFO queue."
         },
         "difficulty": "hard",
         "source": {
@@ -2300,31 +2300,31 @@
           {
             "id": "a",
             "label": "A",
-            "body": "False positives, but never false negatives."
+            "body": "False negatives, but never false positives."
           },
           {
             "id": "b",
             "label": "B",
-            "body": "False negatives, but never false positives."
+            "body": "False positives, but never false negatives."
           },
           {
             "id": "c",
             "label": "C",
-            "body": "Neither \u2014 it's exact."
+            "body": "Both, with equal probability."
           },
           {
             "id": "d",
             "label": "D",
-            "body": "Both, with equal probability."
+            "body": "Neither \u2014 it's exact."
           }
         ],
-        "correctChoiceId": "a",
+        "correctChoiceId": "b",
         "hint": "Think about the precise definition before picking.",
         "explanation": "An item known to be inserted always tests positive; items never inserted may collide on all hashed bits and falsely test positive.",
         "wrongAnswerExplanations": {
-          "b": "Reversed: if a bit was set on insert, it stays set.",
-          "c": "A Bloom filter isn't exact; that's the point.",
-          "d": "Inserts don't clear bits, so negatives are reliable."
+          "a": "Reversed: if a bit was set on insert, it stays set.",
+          "c": "Inserts don't clear bits, so negatives are reliable.",
+          "d": "A Bloom filter isn't exact; that's the point."
         },
         "difficulty": "hard",
         "source": {
@@ -2351,12 +2351,12 @@
           {
             "id": "c",
             "label": "C",
-            "body": "EXPTIME \u2286 NP \u2286 PSPACE."
+            "body": "P = NP = PSPACE."
           },
           {
             "id": "d",
             "label": "D",
-            "body": "P = NP = PSPACE."
+            "body": "EXPTIME \u2286 NP \u2286 PSPACE."
           }
         ],
         "correctChoiceId": "a",
@@ -2364,8 +2364,8 @@
         "explanation": "Polynomial time is in polynomial space; NP and coNP are also in PSPACE (Savitch); PSPACE is in EXPTIME.",
         "wrongAnswerExplanations": {
           "b": "Reversed inclusions.",
-          "c": "EXPTIME is the largest of these; it isn't contained in NP.",
-          "d": "All equalities are open; the first two are believed false."
+          "c": "All equalities are open; the first two are believed false.",
+          "d": "EXPTIME is the largest of these; it isn't contained in NP."
         },
         "difficulty": "hard",
         "source": {
@@ -2382,12 +2382,12 @@
           {
             "id": "a",
             "label": "A",
-            "body": "\u0398(n^{log\u2082 7}) \u2248 \u0398(n^{2.807})"
+            "body": "\u0398(n\u00b3)"
           },
           {
             "id": "b",
             "label": "B",
-            "body": "\u0398(n\u00b2)"
+            "body": "\u0398(n^{log\u2082 7}) \u2248 \u0398(n^{2.807})"
           },
           {
             "id": "c",
@@ -2397,16 +2397,16 @@
           {
             "id": "d",
             "label": "D",
-            "body": "\u0398(n\u00b3)"
+            "body": "\u0398(n\u00b2)"
           }
         ],
-        "correctChoiceId": "a",
+        "correctChoiceId": "b",
         "hint": "Think about the precise definition before picking.",
         "explanation": "Seven recursive multiplications of n/2-sized blocks give T(n) = 7 T(n/2) + \u0398(n\u00b2), solving to n^{log\u2082 7}.",
         "wrongAnswerExplanations": {
-          "b": "The \u03a9(n\u00b2) lower bound is open; no algorithm is known at n\u00b2.",
+          "a": "That's the naive algorithm; Strassen beats it.",
           "c": "Far below known lower bounds for matrix multiplication.",
-          "d": "That's the naive algorithm; Strassen beats it."
+          "d": "The \u03a9(n\u00b2) lower bound is open; no algorithm is known at n\u00b2."
         },
         "difficulty": "hard",
         "source": {
@@ -2423,31 +2423,31 @@
           {
             "id": "a",
             "label": "A",
-            "body": "An additive factor, independent of n."
+            "body": "A constant factor, like 2."
           },
           {
             "id": "b",
             "label": "B",
-            "body": "Optimal, with no error."
+            "body": "An additive factor, independent of n."
           },
           {
             "id": "c",
             "label": "C",
-            "body": "H\u2099 \u2248 ln n (best possible unless P = NP)."
+            "body": "Optimal, with no error."
           },
           {
             "id": "d",
             "label": "D",
-            "body": "A constant factor, like 2."
+            "body": "H\u2099 \u2248 ln n (best possible unless P = NP)."
           }
         ],
-        "correctChoiceId": "c",
+        "correctChoiceId": "d",
         "hint": "Think about the precise definition before picking.",
         "explanation": "Greedy set cover is an (ln n)-approximation, and Feige showed no polynomial-time algorithm does asymptotically better unless P = NP.",
         "wrongAnswerExplanations": {
-          "a": "There's no additive bound known.",
-          "b": "Set cover is NP-hard; no efficient exact algorithm is known.",
-          "d": "Vertex cover is 2-approximable, not set cover in general."
+          "a": "Vertex cover is 2-approximable, not set cover in general.",
+          "b": "There's no additive bound known.",
+          "c": "Set cover is NP-hard; no efficient exact algorithm is known."
         },
         "difficulty": "hard",
         "source": {
@@ -2464,31 +2464,31 @@
           {
             "id": "a",
             "label": "A",
-            "body": "A balanced rotation invariant."
+            "body": "Hashing of keys to integers."
           },
           {
             "id": "b",
             "label": "B",
-            "body": "Hashing of keys to integers."
+            "body": "Doubling the underlying array."
           },
           {
             "id": "c",
             "label": "C",
-            "body": "Randomized layering \u2014 each node is promoted to higher levels with probability p."
+            "body": "A balanced rotation invariant."
           },
           {
             "id": "d",
             "label": "D",
-            "body": "Doubling the underlying array."
+            "body": "Randomized layering \u2014 each node is promoted to higher levels with probability p."
           }
         ],
-        "correctChoiceId": "c",
+        "correctChoiceId": "d",
         "hint": "Think about the precise definition before picking.",
         "explanation": "Coin flips decide each node's tower height; the expected longest tower is \u0398(log n), and search descends levels then walks forward.",
         "wrongAnswerExplanations": {
-          "a": "That's red-black or AVL trees.",
-          "b": "Skip lists don't hash.",
-          "d": "That's dynamic arrays, not skip lists."
+          "a": "Skip lists don't hash.",
+          "b": "That's dynamic arrays, not skip lists.",
+          "c": "That's red-black or AVL trees."
         },
         "difficulty": "hard",
         "source": {
@@ -2505,7 +2505,7 @@
           {
             "id": "a",
             "label": "A",
-            "body": "O(E log V)"
+            "body": "O(V + E)"
           },
           {
             "id": "b",
@@ -2515,7 +2515,7 @@
           {
             "id": "c",
             "label": "C",
-            "body": "O(V + E)"
+            "body": "O(E log V)"
           },
           {
             "id": "d",
@@ -2527,8 +2527,8 @@
         "hint": "Think about the precise definition before picking.",
         "explanation": "BFS finds shortest augmenting paths; at most O(VE) augmentations occur, each costing O(E).",
         "wrongAnswerExplanations": {
-          "a": "That's MST or Dijkstra territory, not max-flow.",
-          "c": "That's a single BFS; max-flow needs many.",
+          "a": "That's a single BFS; max-flow needs many.",
+          "c": "That's MST or Dijkstra territory, not max-flow.",
           "d": "Ford\u2013Fulkerson with poor pivots can be slow, but Edmonds\u2013Karp is polynomial."
         },
         "difficulty": "hard",

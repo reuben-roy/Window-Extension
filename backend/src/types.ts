@@ -407,6 +407,7 @@ export interface QuizPromptPayload {
   packId: string;
   packVersionId: string | null;
   topicId: string;
+  topicKey: string;
   topicLabel: string;
   packTitle: string;
   chapterTitle: string;

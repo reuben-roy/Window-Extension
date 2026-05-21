@@ -115,26 +115,26 @@
           {
             "id": "b",
             "label": "B",
-            "body": "Supervised is faster than unsupervised."
+            "body": "Supervised learning trains on labeled examples; unsupervised does not."
           },
           {
             "id": "c",
             "label": "C",
-            "body": "Supervised learning trains on labeled examples; unsupervised does not."
+            "body": "Supervised uses neural networks; unsupervised uses decision trees."
           },
           {
             "id": "d",
             "label": "D",
-            "body": "Supervised uses neural networks; unsupervised uses decision trees."
+            "body": "Supervised is faster than unsupervised."
           }
         ],
-        "correctChoiceId": "c",
+        "correctChoiceId": "b",
         "hint": "Think about the precise definition before picking.",
         "explanation": "Supervised learning fits a function from inputs to labels using (x, y) pairs; unsupervised methods (clustering, density estimation) work from x alone.",
         "wrongAnswerExplanations": {
           "a": "Hardware doesn't define the learning paradigm.",
-          "b": "Speed isn't a defining trait.",
-          "d": "Both paradigms use both model families."
+          "c": "Both paradigms use both model families.",
+          "d": "Speed isn't a defining trait."
         },
         "difficulty": "easy",
         "source": {
@@ -151,31 +151,31 @@
           {
             "id": "a",
             "label": "A",
-            "body": "Not at all \u2014 MSE measures variance, not error."
+            "body": "Quadratically \u2014 larger errors hurt disproportionately more."
           },
           {
             "id": "b",
             "label": "B",
-            "body": "Quadratically \u2014 larger errors hurt disproportionately more."
+            "body": "Logarithmically \u2014 large errors are softened."
           },
           {
             "id": "c",
             "label": "C",
-            "body": "Logarithmically \u2014 large errors are softened."
+            "body": "Linearly \u2014 every error counts the same per unit."
           },
           {
             "id": "d",
             "label": "D",
-            "body": "Linearly \u2014 every error counts the same per unit."
+            "body": "Not at all \u2014 MSE measures variance, not error."
           }
         ],
-        "correctChoiceId": "b",
+        "correctChoiceId": "a",
         "hint": "Think about the precise definition before picking.",
         "explanation": "MSE is the average of squared residuals; doubling an error quadruples its contribution.",
         "wrongAnswerExplanations": {
-          "a": "MSE measures error directly.",
-          "c": "MSE amplifies, not softens, large errors.",
-          "d": "That describes mean absolute error (L1)."
+          "b": "MSE amplifies, not softens, large errors.",
+          "c": "That describes mean absolute error (L1).",
+          "d": "MSE measures error directly."
         },
         "difficulty": "easy",
         "source": {
@@ -192,31 +192,31 @@
           {
             "id": "a",
             "label": "A",
-            "body": "A vector of one-hot probabilities."
+            "body": "A probability between 0 and 1 via the sigmoid function."
           },
           {
             "id": "b",
             "label": "B",
-            "body": "A probability between 0 and 1 via the sigmoid function."
+            "body": "The raw linear combination of features."
           },
           {
             "id": "c",
             "label": "C",
-            "body": "The raw linear combination of features."
+            "body": "An integer class label directly."
           },
           {
             "id": "d",
             "label": "D",
-            "body": "An integer class label directly."
+            "body": "A vector of one-hot probabilities."
           }
         ],
-        "correctChoiceId": "b",
+        "correctChoiceId": "a",
         "hint": "Think about the precise definition before picking.",
         "explanation": "Logistic regression passes w\u1d40x + b through \u03c3(z) = 1/(1 + e^{\u2212z}) to give P(y = 1 | x).",
         "wrongAnswerExplanations": {
-          "a": "That's softmax over multiple classes.",
-          "c": "That's linear regression's output before sigmoid.",
-          "d": "Labels come from thresholding the probability."
+          "b": "That's linear regression's output before sigmoid.",
+          "c": "Labels come from thresholding the probability.",
+          "d": "That's softmax over multiple classes."
         },
         "difficulty": "easy",
         "source": {
@@ -233,12 +233,12 @@
           {
             "id": "a",
             "label": "A",
-            "body": "Higher-degree polynomial features."
+            "body": "Exactly sparse weights (many zeros)."
           },
           {
             "id": "b",
             "label": "B",
-            "body": "Exactly sparse weights (many zeros)."
+            "body": "Higher-degree polynomial features."
           },
           {
             "id": "c",
@@ -255,8 +255,8 @@
         "hint": "Think about the precise definition before picking.",
         "explanation": "L2 (ridge) adds \u03bb \u2016w\u2016\u00b2 to the loss, pulling each weight toward zero in proportion to its magnitude.",
         "wrongAnswerExplanations": {
-          "a": "Regularization shrinks, it doesn't add features.",
-          "b": "Sparsity comes from L1 (lasso), not L2.",
+          "a": "Sparsity comes from L1 (lasso), not L2.",
+          "b": "Regularization shrinks, it doesn't add features.",
           "d": "Learning rate is an optimizer setting, unrelated to the penalty."
         },
         "difficulty": "easy",
@@ -274,31 +274,31 @@
           {
             "id": "a",
             "label": "A",
-            "body": "Always trains faster."
+            "body": "Encourages exact zeros, performing implicit feature selection."
           },
           {
             "id": "b",
             "label": "B",
-            "body": "Squares the weights."
+            "body": "Always trains faster."
           },
           {
             "id": "c",
             "label": "C",
-            "body": "Adds noise to the inputs."
+            "body": "Squares the weights."
           },
           {
             "id": "d",
             "label": "D",
-            "body": "Encourages exact zeros, performing implicit feature selection."
+            "body": "Adds noise to the inputs."
           }
         ],
-        "correctChoiceId": "d",
+        "correctChoiceId": "a",
         "hint": "Think about the precise definition before picking.",
         "explanation": "L1 penalty \u03bb\u2211|w\u1d62| has corners on the axes, so the optimum often sits with several weights exactly at zero.",
         "wrongAnswerExplanations": {
-          "a": "Speed isn't the distinguishing trait.",
-          "b": "That's L2.",
-          "c": "That's data augmentation or input dropout."
+          "b": "Speed isn't the distinguishing trait.",
+          "c": "That's L2.",
+          "d": "That's data augmentation or input dropout."
         },
         "difficulty": "easy",
         "source": {
@@ -315,12 +315,12 @@
           {
             "id": "a",
             "label": "A",
-            "body": "Estimates the gradient from a single sample or mini-batch each step."
+            "body": "Always converges in one epoch."
           },
           {
             "id": "b",
             "label": "B",
-            "body": "Requires no learning rate."
+            "body": "Estimates the gradient from a single sample or mini-batch each step."
           },
           {
             "id": "c",
@@ -330,16 +330,16 @@
           {
             "id": "d",
             "label": "D",
-            "body": "Always converges in one epoch."
+            "body": "Requires no learning rate."
           }
         ],
-        "correctChoiceId": "a",
+        "correctChoiceId": "b",
         "hint": "Think about the precise definition before picking.",
         "explanation": "SGD trades exactness for speed: noisy gradients but many more updates per pass through the data.",
         "wrongAnswerExplanations": {
-          "b": "Learning rate is critical for SGD.",
+          "a": "SGD typically needs many epochs.",
           "c": "That's Newton's method or quasi-Newton (L-BFGS).",
-          "d": "SGD typically needs many epochs."
+          "d": "Learning rate is critical for SGD."
         },
         "difficulty": "easy",
         "source": {
@@ -361,26 +361,26 @@
           {
             "id": "b",
             "label": "B",
-            "body": "Composing linear layers without non-linearity collapses to a single linear function."
+            "body": "Non-linear functions are faster to compute."
           },
           {
             "id": "c",
             "label": "C",
-            "body": "Non-linear functions are faster to compute."
+            "body": "Linear functions can't be differentiated."
           },
           {
             "id": "d",
             "label": "D",
-            "body": "Linear functions can't be differentiated."
+            "body": "Composing linear layers without non-linearity collapses to a single linear function."
           }
         ],
-        "correctChoiceId": "b",
+        "correctChoiceId": "d",
         "hint": "Think about the precise definition before picking.",
         "explanation": "Stacking Wx + b layers without a non-linearity yields another affine map, so depth gives no extra expressive power.",
         "wrongAnswerExplanations": {
           "a": "Non-linearity adds capacity, not less.",
-          "c": "Activations like ReLU are fast, but speed isn't the reason.",
-          "d": "Linear functions are trivially differentiable."
+          "b": "Activations like ReLU are fast, but speed isn't the reason.",
+          "c": "Linear functions are trivially differentiable."
         },
         "difficulty": "easy",
         "source": {
@@ -397,17 +397,17 @@
           {
             "id": "a",
             "label": "A",
-            "body": "x\u00b2"
+            "body": "1 / (1 + e^{\u2212x})"
           },
           {
             "id": "b",
             "label": "B",
-            "body": "tanh(x)"
+            "body": "x\u00b2"
           },
           {
             "id": "c",
             "label": "C",
-            "body": "1 / (1 + e^{\u2212x})"
+            "body": "tanh(x)"
           },
           {
             "id": "d",
@@ -419,9 +419,9 @@
         "hint": "Think about the precise definition before picking.",
         "explanation": "Rectified Linear Unit zeros out negatives and passes positives through unchanged.",
         "wrongAnswerExplanations": {
-          "a": "Squaring is rarely used as an activation; it's not piecewise-linear.",
-          "b": "Hyperbolic tangent ranges in (\u22121, 1) and is smooth everywhere.",
-          "c": "That's sigmoid."
+          "a": "That's sigmoid.",
+          "b": "Squaring is rarely used as an activation; it's not piecewise-linear.",
+          "c": "Hyperbolic tangent ranges in (\u22121, 1) and is smooth everywhere."
         },
         "difficulty": "easy",
         "source": {
@@ -438,31 +438,31 @@
           {
             "id": "a",
             "label": "A",
-            "body": "A clustering algorithm."
+            "body": "An application of the chain rule for computing gradients of a composed function."
           },
           {
             "id": "b",
             "label": "B",
-            "body": "A way to invert matrices quickly."
+            "body": "A clustering algorithm."
           },
           {
             "id": "c",
             "label": "C",
-            "body": "A regularization technique."
+            "body": "A way to invert matrices quickly."
           },
           {
             "id": "d",
             "label": "D",
-            "body": "An application of the chain rule for computing gradients of a composed function."
+            "body": "A regularization technique."
           }
         ],
-        "correctChoiceId": "d",
+        "correctChoiceId": "a",
         "hint": "Think about the precise definition before picking.",
         "explanation": "Backprop traverses the computation graph in reverse, multiplying local Jacobians via the chain rule.",
         "wrongAnswerExplanations": {
-          "a": "Clustering is unsupervised; backprop is gradient computation.",
-          "b": "Backprop computes gradients, not inverses.",
-          "c": "Backprop doesn't regularize; it differentiates."
+          "b": "Clustering is unsupervised; backprop is gradient computation.",
+          "c": "Backprop computes gradients, not inverses.",
+          "d": "Backprop doesn't regularize; it differentiates."
         },
         "difficulty": "easy",
         "source": {
@@ -479,31 +479,31 @@
           {
             "id": "a",
             "label": "A",
-            "body": "To balance class frequencies."
+            "body": "To estimate generalization to unseen data."
           },
           {
             "id": "b",
             "label": "B",
-            "body": "To reduce model size."
+            "body": "To balance class frequencies."
           },
           {
             "id": "c",
             "label": "C",
-            "body": "To estimate generalization to unseen data."
+            "body": "To increase training accuracy."
           },
           {
             "id": "d",
             "label": "D",
-            "body": "To increase training accuracy."
+            "body": "To reduce model size."
           }
         ],
-        "correctChoiceId": "c",
+        "correctChoiceId": "a",
         "hint": "Think about the precise definition before picking.",
         "explanation": "Test-set performance is the unbiased estimate of how the model will perform on new data drawn from the same distribution.",
         "wrongAnswerExplanations": {
-          "a": "Class balancing is a separate concern.",
-          "b": "Splits don't change the model.",
-          "d": "Holding out data lowers training accuracy if anything."
+          "b": "Class balancing is a separate concern.",
+          "c": "Holding out data lowers training accuracy if anything.",
+          "d": "Splits don't change the model."
         },
         "difficulty": "easy",
         "source": {
@@ -520,31 +520,31 @@
           {
             "id": "a",
             "label": "A",
-            "body": "A one-hot vector."
+            "body": "A binary mask."
           },
           {
             "id": "b",
             "label": "B",
-            "body": "A binary mask."
+            "body": "A probability distribution over classes that sums to 1."
           },
           {
             "id": "c",
             "label": "C",
-            "body": "A vector of unbounded reals."
+            "body": "A one-hot vector."
           },
           {
             "id": "d",
             "label": "D",
-            "body": "A probability distribution over classes that sums to 1."
+            "body": "A vector of unbounded reals."
           }
         ],
-        "correctChoiceId": "d",
+        "correctChoiceId": "b",
         "hint": "Think about the precise definition before picking.",
         "explanation": "softmax(z\u1d62) = e^{z\u1d62} / \u03a3\u2c7c e^{z\u2c7c} normalizes logits into a valid distribution.",
         "wrongAnswerExplanations": {
-          "a": "Argmax of softmax is one-hot; softmax itself isn't.",
-          "b": "Softmax outputs are continuous, not binary.",
-          "c": "Outputs are bounded in (0, 1)."
+          "a": "Softmax outputs are continuous, not binary.",
+          "c": "Argmax of softmax is one-hot; softmax itself isn't.",
+          "d": "Outputs are bounded in (0, 1)."
         },
         "difficulty": "easy",
         "source": {
@@ -561,7 +561,7 @@
           {
             "id": "a",
             "label": "A",
-            "body": "A larger model."
+            "body": "A lower-variance estimate of generalization performance."
           },
           {
             "id": "b",
@@ -571,7 +571,7 @@
           {
             "id": "c",
             "label": "C",
-            "body": "A lower-variance estimate of generalization performance."
+            "body": "A larger model."
           },
           {
             "id": "d",
@@ -579,12 +579,12 @@
             "body": "A guarantee against overfitting."
           }
         ],
-        "correctChoiceId": "c",
+        "correctChoiceId": "a",
         "hint": "Think about the precise definition before picking.",
         "explanation": "k-fold CV averages over k splits, reducing the variance of the performance estimate at the cost of k\u00d7 training.",
         "wrongAnswerExplanations": {
-          "a": "CV doesn't change model size.",
           "b": "CV is slower, not faster.",
+          "c": "CV doesn't change model size.",
           "d": "It estimates overfitting; doesn't prevent it."
         },
         "difficulty": "easy",
@@ -602,17 +602,17 @@
           {
             "id": "a",
             "label": "A",
-            "body": "Decreases the learning rate over time."
+            "body": "Adds an exponentially weighted average of past gradients to each update."
           },
           {
             "id": "b",
             "label": "B",
-            "body": "Adds an exponentially weighted average of past gradients to each update."
+            "body": "Trains multiple models in parallel."
           },
           {
             "id": "c",
             "label": "C",
-            "body": "Trains multiple models in parallel."
+            "body": "Decreases the learning rate over time."
           },
           {
             "id": "d",
@@ -620,12 +620,12 @@
             "body": "Rounds gradients to zero."
           }
         ],
-        "correctChoiceId": "b",
+        "correctChoiceId": "a",
         "hint": "Think about the precise definition before picking.",
         "explanation": "Momentum smooths the trajectory: v \u2190 \u03b2v + \u2207L, w \u2190 w \u2212 \u03b7 v. It accelerates along consistent directions.",
         "wrongAnswerExplanations": {
-          "a": "That's a learning-rate schedule, not momentum.",
-          "c": "That's parallelism, not momentum.",
+          "b": "That's parallelism, not momentum.",
+          "c": "That's a learning-rate schedule, not momentum.",
           "d": "Momentum keeps history, doesn't zero gradients."
         },
         "difficulty": "easy",
@@ -643,7 +643,7 @@
           {
             "id": "a",
             "label": "A",
-            "body": "Pruning weights below a threshold permanently."
+            "body": "Halving the batch size."
           },
           {
             "id": "b",
@@ -653,21 +653,21 @@
           {
             "id": "c",
             "label": "C",
-            "body": "Halving the batch size."
+            "body": "Randomly zeroing activations during training."
           },
           {
             "id": "d",
             "label": "D",
-            "body": "Randomly zeroing activations during training."
+            "body": "Pruning weights below a threshold permanently."
           }
         ],
-        "correctChoiceId": "d",
+        "correctChoiceId": "c",
         "hint": "Think about the precise definition before picking.",
         "explanation": "At each training step, units are kept with probability p; this prevents co-adaptation and acts like training an ensemble.",
         "wrongAnswerExplanations": {
-          "a": "That's magnitude pruning, not dropout.",
+          "a": "Batch size doesn't regularize directly.",
           "b": "L2 is weight decay; dropout is stochastic.",
-          "c": "Batch size doesn't regularize directly."
+          "d": "That's magnitude pruning, not dropout."
         },
         "difficulty": "easy",
         "source": {
@@ -684,7 +684,7 @@
           {
             "id": "a",
             "label": "A",
-            "body": "(TP + TN) / total \u2014 overall accuracy."
+            "body": "TP / (TP + FN) \u2014 fraction of actual positives recovered."
           },
           {
             "id": "b",
@@ -699,16 +699,16 @@
           {
             "id": "d",
             "label": "D",
-            "body": "TP / (TP + FN) \u2014 fraction of actual positives recovered."
+            "body": "(TP + TN) / total \u2014 overall accuracy."
           }
         ],
         "correctChoiceId": "c",
         "hint": "Think about the precise definition before picking.",
         "explanation": "Precision asks how many of your positive predictions were right.",
         "wrongAnswerExplanations": {
-          "a": "That's accuracy.",
+          "a": "That's recall (sensitivity).",
           "b": "That's the false-positive rate (1 \u2212 specificity).",
-          "d": "That's recall (sensitivity)."
+          "d": "That's accuracy."
         },
         "difficulty": "easy",
         "source": {
@@ -730,7 +730,7 @@
           {
             "id": "b",
             "label": "B",
-            "body": "Filters are randomly different at each location."
+            "body": "Each output pixel has its own learned weights."
           },
           {
             "id": "c",
@@ -740,16 +740,16 @@
           {
             "id": "d",
             "label": "D",
-            "body": "Each output pixel has its own learned weights."
+            "body": "Filters are randomly different at each location."
           }
         ],
         "correctChoiceId": "a",
         "hint": "Think about the precise definition before picking.",
         "explanation": "Sharing filter weights across the input grid gives translation equivariance and dramatically fewer parameters than a dense layer.",
         "wrongAnswerExplanations": {
-          "b": "There's no sharing in that case.",
+          "b": "That's a dense (fully-connected) layer.",
           "c": "Each filter has separate per-channel weights; sharing is spatial, not across channels.",
-          "d": "That's a dense (fully-connected) layer."
+          "d": "There's no sharing in that case."
         },
         "difficulty": "easy",
         "source": {
@@ -776,21 +776,21 @@
           {
             "id": "c",
             "label": "C",
-            "body": "Low bias and low variance."
+            "body": "High bias and low variance."
           },
           {
             "id": "d",
             "label": "D",
-            "body": "High bias and low variance."
+            "body": "Low bias and low variance."
           }
         ],
-        "correctChoiceId": "d",
+        "correctChoiceId": "c",
         "hint": "Think about the precise definition before picking.",
         "explanation": "Underfit models are too rigid: they miss the signal (high bias) and don't change much with new data (low variance).",
         "wrongAnswerExplanations": {
           "a": "That's a poorly-fit unstable model \u2014 rare for true underfitting.",
           "b": "That's overfitting.",
-          "c": "That's the ideal \u2014 not underfitting."
+          "d": "That's the ideal \u2014 not underfitting."
         },
         "difficulty": "easy",
         "source": {
@@ -848,31 +848,31 @@
           {
             "id": "a",
             "label": "A",
-            "body": "|y \u2212 p| averaged over classes."
+            "body": "(y \u2212 p)\u00b2 summed over classes."
           },
           {
             "id": "b",
             "label": "B",
-            "body": "p(y) \u2212 1 summed over classes."
+            "body": "\u2212log p(y) \u2014 negative log-likelihood of the true class."
           },
           {
             "id": "c",
             "label": "C",
-            "body": "\u2212log p(y) \u2014 negative log-likelihood of the true class."
+            "body": "|y \u2212 p| averaged over classes."
           },
           {
             "id": "d",
             "label": "D",
-            "body": "(y \u2212 p)\u00b2 summed over classes."
+            "body": "p(y) \u2212 1 summed over classes."
           }
         ],
-        "correctChoiceId": "c",
+        "correctChoiceId": "b",
         "hint": "Think about the precise definition before picking.",
         "explanation": "Cross-entropy with one-hot targets reduces to \u2212log p(y); minimizing it maximizes the likelihood of the true labels.",
         "wrongAnswerExplanations": {
-          "a": "That's L1.",
-          "b": "Not a standard loss.",
-          "d": "That's MSE applied to one-hot labels \u2014 not standard for classification."
+          "a": "That's MSE applied to one-hot labels \u2014 not standard for classification.",
+          "c": "That's L1.",
+          "d": "Not a standard loss."
         },
         "difficulty": "easy",
         "source": {
@@ -894,26 +894,26 @@
           {
             "id": "b",
             "label": "B",
-            "body": "Only on the test set."
+            "body": "Per individual sample."
           },
           {
             "id": "c",
             "label": "C",
-            "body": "Per mini-batch during training, with running averages used at inference."
+            "body": "Only on the test set."
           },
           {
             "id": "d",
             "label": "D",
-            "body": "Per individual sample."
+            "body": "Per mini-batch during training, with running averages used at inference."
           }
         ],
-        "correctChoiceId": "c",
+        "correctChoiceId": "d",
         "hint": "Think about the precise definition before picking.",
         "explanation": "BN standardizes (x \u2212 \u03bc_B) / \u03c3_B on each batch and learns a scale/shift; running estimates of \u03bc, \u03c3 are kept for inference.",
         "wrongAnswerExplanations": {
           "a": "Statistics are updated each batch.",
-          "b": "Reversed \u2014 train-time normalization is the whole point.",
-          "d": "That's layer normalization or instance normalization."
+          "b": "That's layer normalization or instance normalization.",
+          "c": "Reversed \u2014 train-time normalization is the whole point."
         },
         "difficulty": "easy",
         "source": {
@@ -937,7 +937,7 @@
           {
             "id": "b",
             "label": "B",
-            "body": "Momentum (first-moment estimate) and per-parameter adaptive learning rates (second-moment estimate)."
+            "body": "Coordinate descent and L2 regularization."
           },
           {
             "id": "c",
@@ -947,16 +947,16 @@
           {
             "id": "d",
             "label": "D",
-            "body": "Coordinate descent and L2 regularization."
+            "body": "Momentum (first-moment estimate) and per-parameter adaptive learning rates (second-moment estimate)."
           }
         ],
-        "correctChoiceId": "b",
+        "correctChoiceId": "d",
         "hint": "Think about the precise definition before picking.",
         "explanation": "Adam tracks m_t (moving average of gradients) and v_t (moving average of squared gradients), correcting bias and adapting the step per parameter.",
         "wrongAnswerExplanations": {
           "a": "Neither idea is part of Adam.",
-          "c": "Adam doesn't use exact Hessian information.",
-          "d": "Adam updates all parameters per step."
+          "b": "Adam updates all parameters per step.",
+          "c": "Adam doesn't use exact Hessian information."
         },
         "difficulty": "medium",
         "source": {
@@ -973,17 +973,17 @@
           {
             "id": "a",
             "label": "A",
-            "body": "Log-loss requires no gradient."
+            "body": "Log-loss is convex in the parameters and is the negative log-likelihood under the model."
           },
           {
             "id": "b",
             "label": "B",
-            "body": "Log-loss runs faster than MSE."
+            "body": "Log-loss requires no gradient."
           },
           {
             "id": "c",
             "label": "C",
-            "body": "Log-loss is convex in the parameters and is the negative log-likelihood under the model."
+            "body": "Log-loss runs faster than MSE."
           },
           {
             "id": "d",
@@ -991,12 +991,12 @@
             "body": "MSE doesn't work for probabilities."
           }
         ],
-        "correctChoiceId": "c",
+        "correctChoiceId": "a",
         "hint": "Think about the precise definition before picking.",
         "explanation": "Under the Bernoulli model, the MLE objective is precisely log-loss; MSE on sigmoid outputs is non-convex and has vanishing gradients far from 0.5.",
         "wrongAnswerExplanations": {
-          "a": "Log-loss is gradient-based like any loss.",
-          "b": "Speed isn't the reason; convexity and likelihood are.",
+          "b": "Log-loss is gradient-based like any loss.",
+          "c": "Speed isn't the reason; convexity and likelihood are.",
           "d": "MSE can be defined, but loses the MLE interpretation and convexity."
         },
         "difficulty": "medium",
@@ -1019,7 +1019,7 @@
           {
             "id": "b",
             "label": "B",
-            "body": "Increasing the learning rate."
+            "body": "Halting training when validation loss stops improving, implicitly constraining model capacity."
           },
           {
             "id": "c",
@@ -1029,16 +1029,16 @@
           {
             "id": "d",
             "label": "D",
-            "body": "Halting training when validation loss stops improving, implicitly constraining model capacity."
+            "body": "Increasing the learning rate."
           }
         ],
-        "correctChoiceId": "d",
+        "correctChoiceId": "b",
         "hint": "Think about the precise definition before picking.",
         "explanation": "Early stopping effectively limits how far parameters can move from initialization, similar in spirit to L2 in some regimes.",
         "wrongAnswerExplanations": {
           "a": "Stopping doesn't change architecture.",
-          "b": "Stopping is about when to halt, not step size.",
-          "c": "That's a separate technique."
+          "c": "That's a separate technique.",
+          "d": "Stopping is about when to halt, not step size."
         },
         "difficulty": "medium",
         "source": {
@@ -1060,26 +1060,26 @@
           {
             "id": "b",
             "label": "B",
-            "body": "Batch size is too small."
+            "body": "Gradients are explicitly set to zero."
           },
           {
             "id": "c",
             "label": "C",
-            "body": "Activations or weights repeatedly compress gradient magnitudes through many layers."
+            "body": "Batch size is too small."
           },
           {
             "id": "d",
             "label": "D",
-            "body": "Gradients are explicitly set to zero."
+            "body": "Activations or weights repeatedly compress gradient magnitudes through many layers."
           }
         ],
-        "correctChoiceId": "c",
+        "correctChoiceId": "d",
         "hint": "Think about the precise definition before picking.",
         "explanation": "Sigmoids saturate, and chained Jacobians with norms < 1 shrink the signal exponentially with depth.",
         "wrongAnswerExplanations": {
           "a": "Large LR causes explosion, not vanishing.",
-          "b": "Batch size affects variance, not systematic vanishing.",
-          "d": "That's gradient clipping with threshold 0, not the natural cause."
+          "b": "That's gradient clipping with threshold 0, not the natural cause.",
+          "c": "Batch size affects variance, not systematic vanishing."
         },
         "difficulty": "medium",
         "source": {
@@ -1096,31 +1096,31 @@
           {
             "id": "a",
             "label": "A",
-            "body": "5\u00d75"
+            "body": "2\u00d72"
           },
           {
             "id": "b",
             "label": "B",
-            "body": "3\u00d73"
+            "body": "5\u00d75"
           },
           {
             "id": "c",
             "label": "C",
-            "body": "7\u00d77"
+            "body": "3\u00d73"
           },
           {
             "id": "d",
             "label": "D",
-            "body": "2\u00d72"
+            "body": "7\u00d77"
           }
         ],
-        "correctChoiceId": "b",
+        "correctChoiceId": "c",
         "hint": "Think about the precise definition before picking.",
         "explanation": "Output size = (input \u2212 kernel) / stride + 1 = (5 \u2212 3)/1 + 1 = 3.",
         "wrongAnswerExplanations": {
-          "a": "Would require 'same' padding.",
-          "c": "Would require 'full' padding.",
-          "d": "That would correspond to stride 2."
+          "a": "That would correspond to stride 2.",
+          "b": "Would require 'same' padding.",
+          "d": "Would require 'full' padding."
         },
         "difficulty": "medium",
         "source": {
@@ -1137,12 +1137,12 @@
           {
             "id": "a",
             "label": "A",
-            "body": "Bias, with limited effect on variance."
+            "body": "Both equally."
           },
           {
             "id": "b",
             "label": "B",
-            "body": "Both equally."
+            "body": "Bias, with limited effect on variance."
           },
           {
             "id": "c",
@@ -1159,8 +1159,8 @@
         "hint": "Think about the precise definition before picking.",
         "explanation": "More data tightens the estimator's distribution (less variance) but doesn't change the model's expressivity (bias).",
         "wrongAnswerExplanations": {
-          "a": "Bias is mostly about model capacity, not data quantity.",
-          "b": "Variance shrinks much faster with data than bias does.",
+          "a": "Variance shrinks much faster with data than bias does.",
+          "b": "Bias is mostly about model capacity, not data quantity.",
           "c": "Data quantity matters substantially."
         },
         "difficulty": "medium",
@@ -1178,31 +1178,31 @@
           {
             "id": "a",
             "label": "A",
-            "body": "Start every weight at zero."
+            "body": "Make every weight equal to 1/n."
           },
           {
             "id": "b",
             "label": "B",
-            "body": "Randomize signs only, leaving magnitude fixed."
+            "body": "Start every weight at zero."
           },
           {
             "id": "c",
             "label": "C",
-            "body": "Keep the variance of activations and gradients roughly constant across layers."
+            "body": "Randomize signs only, leaving magnitude fixed."
           },
           {
             "id": "d",
             "label": "D",
-            "body": "Make every weight equal to 1/n."
+            "body": "Keep the variance of activations and gradients roughly constant across layers."
           }
         ],
-        "correctChoiceId": "c",
+        "correctChoiceId": "d",
         "hint": "Think about the precise definition before picking.",
         "explanation": "Variance \u221d 1/(fan-in + fan-out) keeps the forward signal and backward gradient at similar scale.",
         "wrongAnswerExplanations": {
-          "a": "All-zero init breaks symmetry and prevents learning.",
-          "b": "That's sign initialization, not Xavier.",
-          "d": "Glorot is a distribution, not a constant."
+          "a": "Glorot is a distribution, not a constant.",
+          "b": "All-zero init breaks symmetry and prevents learning.",
+          "c": "That's sign initialization, not Xavier."
         },
         "difficulty": "medium",
         "source": {
@@ -1224,26 +1224,26 @@
           {
             "id": "b",
             "label": "B",
-            "body": "Accuracy against batch size."
+            "body": "Loss against epoch."
           },
           {
             "id": "c",
             "label": "C",
-            "body": "Precision against recall across thresholds."
+            "body": "Accuracy against batch size."
           },
           {
             "id": "d",
             "label": "D",
-            "body": "Loss against epoch."
+            "body": "Precision against recall across thresholds."
           }
         ],
         "correctChoiceId": "a",
         "hint": "Think about the precise definition before picking.",
         "explanation": "ROC sweeps the decision threshold, plotting TPR vs FPR; AUC measures area under it.",
         "wrongAnswerExplanations": {
-          "b": "Not a standard plot.",
-          "c": "That's a PR curve, not ROC.",
-          "d": "That's a training curve."
+          "b": "That's a training curve.",
+          "c": "Not a standard plot.",
+          "d": "That's a PR curve, not ROC."
         },
         "difficulty": "medium",
         "source": {
@@ -1260,31 +1260,31 @@
           {
             "id": "a",
             "label": "A",
-            "body": "Batch size is 1."
+            "body": "Labels are noisy."
           },
           {
             "id": "b",
             "label": "B",
-            "body": "Training large models with adaptive optimizers like Adam, to avoid destabilizing early steps."
+            "body": "Batch size is 1."
           },
           {
             "id": "c",
             "label": "C",
-            "body": "The dataset is small."
+            "body": "Training large models with adaptive optimizers like Adam, to avoid destabilizing early steps."
           },
           {
             "id": "d",
             "label": "D",
-            "body": "Labels are noisy."
+            "body": "The dataset is small."
           }
         ],
-        "correctChoiceId": "b",
+        "correctChoiceId": "c",
         "hint": "Think about the precise definition before picking.",
         "explanation": "Warmup linearly ramps the LR from 0 to its target, letting Adam's running statistics stabilize before large updates.",
         "wrongAnswerExplanations": {
-          "a": "Warmup isn't tied to batch size of 1.",
-          "c": "Warmup is more about stable large-scale training.",
-          "d": "Label noise is a different problem."
+          "a": "Label noise is a different problem.",
+          "b": "Warmup isn't tied to batch size of 1.",
+          "d": "Warmup is more about stable large-scale training."
         },
         "difficulty": "medium",
         "source": {
@@ -1301,12 +1301,12 @@
           {
             "id": "a",
             "label": "A",
-            "body": "Bias\u00b2 + Variance + Irreducible noise."
+            "body": "Variance\u00b2 + Noise\u00b2."
           },
           {
             "id": "b",
             "label": "B",
-            "body": "Bias \u00d7 Variance + Noise."
+            "body": "Bias\u00b2 + Variance + Irreducible noise."
           },
           {
             "id": "c",
@@ -1316,16 +1316,16 @@
           {
             "id": "d",
             "label": "D",
-            "body": "Variance\u00b2 + Noise\u00b2."
+            "body": "Bias \u00d7 Variance + Noise."
           }
         ],
-        "correctChoiceId": "a",
+        "correctChoiceId": "b",
         "hint": "Think about the precise definition before picking.",
         "explanation": "E[(\u0177 \u2212 y)\u00b2] = (bias)\u00b2 + var + \u03c3\u00b2 when targets have inherent noise \u03c3\u00b2.",
         "wrongAnswerExplanations": {
-          "b": "The terms add, not multiply.",
+          "a": "Only bias is squared in the decomposition.",
           "c": "Missing the irreducible noise term.",
-          "d": "Only bias is squared in the decomposition."
+          "d": "The terms add, not multiply."
         },
         "difficulty": "medium",
         "source": {
@@ -1342,31 +1342,31 @@
           {
             "id": "a",
             "label": "A",
-            "body": "Non-linearity equivalent to ReLU."
+            "body": "Spatial downsampling and a small amount of translation invariance."
           },
           {
             "id": "b",
             "label": "B",
-            "body": "Regularization equivalent to dropout."
+            "body": "Parameter sharing across channels."
           },
           {
             "id": "c",
             "label": "C",
-            "body": "Spatial downsampling and a small amount of translation invariance."
+            "body": "Non-linearity equivalent to ReLU."
           },
           {
             "id": "d",
             "label": "D",
-            "body": "Parameter sharing across channels."
+            "body": "Regularization equivalent to dropout."
           }
         ],
-        "correctChoiceId": "c",
+        "correctChoiceId": "a",
         "hint": "Think about the precise definition before picking.",
         "explanation": "Pooling shrinks the spatial dimensions and gives a coarse invariance to small shifts.",
         "wrongAnswerExplanations": {
-          "a": "Max-pool is non-linear but isn't ReLU.",
-          "b": "Pooling isn't stochastic in the same sense.",
-          "d": "Pooling has no parameters."
+          "b": "Pooling has no parameters.",
+          "c": "Max-pool is non-linear but isn't ReLU.",
+          "d": "Pooling isn't stochastic in the same sense."
         },
         "difficulty": "medium",
         "source": {
@@ -1383,12 +1383,12 @@
           {
             "id": "a",
             "label": "A",
-            "body": "Gradients vanish or explode as they're propagated through many time steps."
+            "body": "RNNs cannot share parameters."
           },
           {
             "id": "b",
             "label": "B",
-            "body": "RNNs cannot share parameters."
+            "body": "RNNs use no non-linearity."
           },
           {
             "id": "c",
@@ -1398,16 +1398,16 @@
           {
             "id": "d",
             "label": "D",
-            "body": "RNNs use no non-linearity."
+            "body": "Gradients vanish or explode as they're propagated through many time steps."
           }
         ],
-        "correctChoiceId": "a",
+        "correctChoiceId": "d",
         "hint": "Think about the precise definition before picking.",
         "explanation": "Repeated multiplication by the recurrent Jacobian over many steps shrinks or blows up gradients exponentially.",
         "wrongAnswerExplanations": {
-          "b": "Parameter sharing across time is exactly what RNNs do.",
-          "c": "RNNs handle variable-length sequences.",
-          "d": "They typically use tanh or ReLU."
+          "a": "Parameter sharing across time is exactly what RNNs do.",
+          "b": "They typically use tanh or ReLU.",
+          "c": "RNNs handle variable-length sequences."
         },
         "difficulty": "medium",
         "source": {
@@ -1424,12 +1424,12 @@
           {
             "id": "a",
             "label": "A",
-            "body": "Doubling the number of layers."
+            "body": "Introducing gated additive paths so information can flow over many steps without repeated multiplication."
           },
           {
             "id": "b",
             "label": "B",
-            "body": "Introducing gated additive paths so information can flow over many steps without repeated multiplication."
+            "body": "Doubling the number of layers."
           },
           {
             "id": "c",
@@ -1442,11 +1442,11 @@
             "body": "Removing the hidden state."
           }
         ],
-        "correctChoiceId": "b",
+        "correctChoiceId": "a",
         "hint": "Think about the precise definition before picking.",
         "explanation": "The cell state in an LSTM accumulates additively; the gates control writes and reads, preserving gradient magnitude.",
         "wrongAnswerExplanations": {
-          "a": "More layers can worsen the problem.",
+          "b": "More layers can worsen the problem.",
           "c": "Gates use sigmoid, but that alone doesn't fix vanishing.",
           "d": "RNNs require state."
         },
@@ -1465,31 +1465,31 @@
           {
             "id": "a",
             "label": "A",
-            "body": "Adding regularization doubles the test error."
+            "body": "Training error always doubles before halving."
           },
           {
             "id": "b",
             "label": "B",
-            "body": "Test error decreases, rises, then decreases again as model capacity grows past the interpolation threshold."
+            "body": "The learning rate must be set in two phases."
           },
           {
             "id": "c",
             "label": "C",
-            "body": "Training error always doubles before halving."
+            "body": "Adding regularization doubles the test error."
           },
           {
             "id": "d",
             "label": "D",
-            "body": "The learning rate must be set in two phases."
+            "body": "Test error decreases, rises, then decreases again as model capacity grows past the interpolation threshold."
           }
         ],
-        "correctChoiceId": "b",
+        "correctChoiceId": "d",
         "hint": "Think about the precise definition before picking.",
         "explanation": "Over-parameterized models can generalize well past the classical U-shape, giving a second descent in test error.",
         "wrongAnswerExplanations": {
-          "a": "Regularization usually lowers it.",
-          "c": "Training error typically just decreases.",
-          "d": "That's a schedule, not double descent."
+          "a": "Training error typically just decreases.",
+          "b": "That's a schedule, not double descent.",
+          "c": "Regularization usually lowers it."
         },
         "difficulty": "medium",
         "source": {
@@ -1547,31 +1547,31 @@
           {
             "id": "a",
             "label": "A",
-            "body": "Slow convergence on convex problems."
+            "body": "Exploding gradients, especially in RNN training."
           },
           {
             "id": "b",
             "label": "B",
-            "body": "Exploding gradients, especially in RNN training."
+            "body": "Vanishing gradients in deep CNNs."
           },
           {
             "id": "c",
             "label": "C",
-            "body": "Overfitting on small datasets."
+            "body": "Slow convergence on convex problems."
           },
           {
             "id": "d",
             "label": "D",
-            "body": "Vanishing gradients in deep CNNs."
+            "body": "Overfitting on small datasets."
           }
         ],
-        "correctChoiceId": "b",
+        "correctChoiceId": "a",
         "hint": "Think about the precise definition before picking.",
         "explanation": "Clipping \u2016\u2207\u2016 to a max norm prevents single huge updates from destabilizing the optimizer.",
         "wrongAnswerExplanations": {
-          "a": "Step-size schedules help convergence; clipping handles spikes.",
-          "c": "Regularization, not clipping, handles overfitting.",
-          "d": "Clipping doesn't help when gradients are too small."
+          "b": "Clipping doesn't help when gradients are too small.",
+          "c": "Step-size schedules help convergence; clipping handles spikes.",
+          "d": "Regularization, not clipping, handles overfitting."
         },
         "difficulty": "medium",
         "source": {
@@ -1588,31 +1588,31 @@
           {
             "id": "a",
             "label": "A",
-            "body": "Information from the test set has influenced model training or selection."
+            "body": "The training set is too large."
           },
           {
             "id": "b",
             "label": "B",
-            "body": "The model uses leaky ReLU."
+            "body": "Test labels are missing."
           },
           {
             "id": "c",
             "label": "C",
-            "body": "The training set is too large."
+            "body": "Information from the test set has influenced model training or selection."
           },
           {
             "id": "d",
             "label": "D",
-            "body": "Test labels are missing."
+            "body": "The model uses leaky ReLU."
           }
         ],
-        "correctChoiceId": "a",
+        "correctChoiceId": "c",
         "hint": "Think about the precise definition before picking.",
         "explanation": "Common leaks: tuning hyperparameters on the test set, computing normalization stats over all data, or duplicate samples across splits.",
         "wrongAnswerExplanations": {
-          "b": "Activations are unrelated.",
-          "c": "Size isn't leakage.",
-          "d": "That's an unlabeled-test problem, not leakage."
+          "a": "Size isn't leakage.",
+          "b": "That's an unlabeled-test problem, not leakage.",
+          "d": "Activations are unrelated."
         },
         "difficulty": "medium",
         "source": {
@@ -1629,31 +1629,31 @@
           {
             "id": "a",
             "label": "A",
-            "body": "Dropout on the activations."
+            "body": "Data augmentation."
           },
           {
             "id": "b",
             "label": "B",
-            "body": "L2 regularization on the weights."
+            "body": "Dropout on the activations."
           },
           {
             "id": "c",
             "label": "C",
-            "body": "Data augmentation."
+            "body": "L1 regularization on the weights."
           },
           {
             "id": "d",
             "label": "D",
-            "body": "L1 regularization on the weights."
+            "body": "L2 regularization on the weights."
           }
         ],
-        "correctChoiceId": "b",
+        "correctChoiceId": "d",
         "hint": "Think about the precise definition before picking.",
         "explanation": "Adding \u03bbw to the gradient is the derivative of (\u03bb/2) \u2016w\u2016\u00b2, so SGD with weight decay implements L2.",
         "wrongAnswerExplanations": {
-          "a": "Dropout is stochastic; weight decay is deterministic.",
-          "c": "Augmentation transforms inputs; weight decay penalizes weights.",
-          "d": "L1's gradient is sign(w), not w."
+          "a": "Augmentation transforms inputs; weight decay penalizes weights.",
+          "b": "Dropout is stochastic; weight decay is deterministic.",
+          "c": "L1's gradient is sign(w), not w."
         },
         "difficulty": "medium",
         "source": {
@@ -1670,31 +1670,31 @@
           {
             "id": "a",
             "label": "A",
-            "body": "It expands the effective training distribution, exposing the model to nuisance variations."
+            "body": "It replaces validation data."
           },
           {
             "id": "b",
             "label": "B",
-            "body": "It reduces the number of parameters."
+            "body": "It expands the effective training distribution, exposing the model to nuisance variations."
           },
           {
             "id": "c",
             "label": "C",
-            "body": "It replaces validation data."
+            "body": "It speeds up forward passes."
           },
           {
             "id": "d",
             "label": "D",
-            "body": "It speeds up forward passes."
+            "body": "It reduces the number of parameters."
           }
         ],
-        "correctChoiceId": "a",
+        "correctChoiceId": "b",
         "hint": "Think about the precise definition before picking.",
         "explanation": "Augmentations encode invariances (rotation, crop, color jitter) so the model learns features robust to them.",
         "wrongAnswerExplanations": {
-          "b": "Architecture is unchanged.",
-          "c": "Held-out data is still needed.",
-          "d": "Augmentation typically slows training."
+          "a": "Held-out data is still needed.",
+          "c": "Augmentation typically slows training.",
+          "d": "Architecture is unchanged."
         },
         "difficulty": "medium",
         "source": {
@@ -1711,31 +1711,31 @@
           {
             "id": "a",
             "label": "A",
-            "body": "\u2212log(p \u2212 y)"
+            "body": "p \u00d7 (1 \u2212 p)"
           },
           {
             "id": "b",
             "label": "B",
-            "body": "(p \u2212 y)\u00b2"
+            "body": "p \u2212 y, where p is the softmax output and y is one-hot."
           },
           {
             "id": "c",
             "label": "C",
-            "body": "p \u00d7 (1 \u2212 p)"
+            "body": "\u2212log(p \u2212 y)"
           },
           {
             "id": "d",
             "label": "D",
-            "body": "p \u2212 y, where p is the softmax output and y is one-hot."
+            "body": "(p \u2212 y)\u00b2"
           }
         ],
-        "correctChoiceId": "d",
+        "correctChoiceId": "b",
         "hint": "Think about the precise definition before picking.",
         "explanation": "This clean form is one reason softmax + cross-entropy is the canonical pairing for classification.",
         "wrongAnswerExplanations": {
-          "a": "Not a valid gradient form.",
-          "b": "That would be a squared loss, not its gradient.",
-          "c": "That's \u03c3's derivative for a single sigmoid output."
+          "a": "That's \u03c3's derivative for a single sigmoid output.",
+          "c": "Not a valid gradient form.",
+          "d": "That would be a squared loss, not its gradient."
         },
         "difficulty": "medium",
         "source": {
@@ -1754,7 +1754,7 @@
           {
             "id": "a",
             "label": "A",
-            "body": "The initial under-estimate of the moving averages caused by zero initialization."
+            "body": "Non-stationarity of the gradient distribution."
           },
           {
             "id": "b",
@@ -1764,21 +1764,21 @@
           {
             "id": "c",
             "label": "C",
-            "body": "Non-stationarity of the gradient distribution."
+            "body": "Numerical overflow in the denominator."
           },
           {
             "id": "d",
             "label": "D",
-            "body": "Numerical overflow in the denominator."
+            "body": "The initial under-estimate of the moving averages caused by zero initialization."
           }
         ],
-        "correctChoiceId": "a",
+        "correctChoiceId": "d",
         "hint": "Think about the precise definition before picking.",
         "explanation": "Because m_0 = 0, m_t is biased toward zero for small t; dividing by 1 \u2212 \u03b2\u2081^t un-biases the estimate.",
         "wrongAnswerExplanations": {
+          "a": "Adam doesn't model non-stationarity explicitly.",
           "b": "Optimizer doesn't address imbalance.",
-          "c": "Adam doesn't model non-stationarity explicitly.",
-          "d": "Numerical stability is handled by the \u03b5 term."
+          "c": "Numerical stability is handled by the \u03b5 term."
         },
         "difficulty": "hard",
         "source": {
@@ -1795,31 +1795,31 @@
           {
             "id": "a",
             "label": "A",
-            "body": "Modern GPUs round gradients in a regularizing way."
+            "body": "The training data is always linearly separable."
           },
           {
             "id": "b",
             "label": "B",
-            "body": "Dropout is the only thing that makes it work."
+            "body": "Modern GPUs round gradients in a regularizing way."
           },
           {
             "id": "c",
             "label": "C",
-            "body": "The training data is always linearly separable."
+            "body": "Implicit bias of SGD selects low-norm or smooth interpolating solutions among many possible ones."
           },
           {
             "id": "d",
             "label": "D",
-            "body": "Implicit bias of SGD selects low-norm or smooth interpolating solutions among many possible ones."
+            "body": "Dropout is the only thing that makes it work."
           }
         ],
-        "correctChoiceId": "d",
+        "correctChoiceId": "c",
         "hint": "Think about the precise definition before picking.",
         "explanation": "Among interpolating models, SGD tends to find solutions in flat / low-norm regions that generalize; this is an active research area.",
         "wrongAnswerExplanations": {
-          "a": "Numerical noise isn't the explanation.",
-          "b": "Networks generalize even without dropout.",
-          "c": "Empirically false in most settings."
+          "a": "Empirically false in most settings.",
+          "b": "Numerical noise isn't the explanation.",
+          "d": "Networks generalize even without dropout."
         },
         "difficulty": "hard",
         "source": {
@@ -1836,31 +1836,31 @@
           {
             "id": "a",
             "label": "A",
-            "body": "A pooling layer."
+            "body": "A per-pixel linear combination across channels \u2014 essentially a channel-wise MLP applied independently at each spatial location."
           },
           {
             "id": "b",
             "label": "B",
-            "body": "An identity operation."
+            "body": "A normalization layer."
           },
           {
             "id": "c",
             "label": "C",
-            "body": "A normalization layer."
+            "body": "A pooling layer."
           },
           {
             "id": "d",
             "label": "D",
-            "body": "A per-pixel linear combination across channels \u2014 essentially a channel-wise MLP applied independently at each spatial location."
+            "body": "An identity operation."
           }
         ],
-        "correctChoiceId": "d",
+        "correctChoiceId": "a",
         "hint": "Think about the precise definition before picking.",
         "explanation": "1\u00d71 convs mix channels without changing spatial layout; used heavily in bottlenecks (Inception, ResNets).",
         "wrongAnswerExplanations": {
-          "a": "Pooling doesn't have learnable weights per channel.",
-          "b": "Only if weights are exactly identity; in general it's learned.",
-          "c": "Normalization standardizes statistics, not linear mix."
+          "b": "Normalization standardizes statistics, not linear mix.",
+          "c": "Pooling doesn't have learnable weights per channel.",
+          "d": "Only if weights are exactly identity; in general it's learned."
         },
         "difficulty": "hard",
         "source": {
@@ -1877,17 +1877,17 @@
           {
             "id": "a",
             "label": "A",
-            "body": "O(d\u00b2) where d is the embedding dim, independent of n."
+            "body": "O(n\u00b2) in time and memory for the attention matrix."
           },
           {
             "id": "b",
             "label": "B",
-            "body": "O(n log n)."
+            "body": "O(d\u00b2) where d is the embedding dim, independent of n."
           },
           {
             "id": "c",
             "label": "C",
-            "body": "O(n\u00b2) in time and memory for the attention matrix."
+            "body": "O(n log n)."
           },
           {
             "id": "d",
@@ -1895,12 +1895,12 @@
             "body": "O(n) \u2014 linear in sequence length."
           }
         ],
-        "correctChoiceId": "c",
+        "correctChoiceId": "a",
         "hint": "Think about the precise definition before picking.",
         "explanation": "Each token attends to every other, giving an n \u00d7 n attention matrix; reducing this is an active research area (linear attention, sparse attention).",
         "wrongAnswerExplanations": {
-          "a": "Per-token projections are O(d\u00b2) but attention itself is n-dependent.",
-          "b": "Not a standard cost class for attention.",
+          "b": "Per-token projections are O(d\u00b2) but attention itself is n-dependent.",
+          "c": "Not a standard cost class for attention.",
           "d": "Linear attention variants exist but plain self-attention is quadratic."
         },
         "difficulty": "hard",
@@ -1918,31 +1918,31 @@
           {
             "id": "a",
             "label": "A",
-            "body": "The labels."
+            "body": "The features of a single example, independent of the batch."
           },
           {
             "id": "b",
             "label": "B",
-            "body": "Time and channel dimensions of the batch jointly."
+            "body": "Multiple batches concatenated."
           },
           {
             "id": "c",
             "label": "C",
-            "body": "The features of a single example, independent of the batch."
+            "body": "Time and channel dimensions of the batch jointly."
           },
           {
             "id": "d",
             "label": "D",
-            "body": "Multiple batches concatenated."
+            "body": "The labels."
           }
         ],
-        "correctChoiceId": "c",
+        "correctChoiceId": "a",
         "hint": "Think about the precise definition before picking.",
         "explanation": "Layer norm is per-example, which makes it suitable for variable-length sequences and small batches.",
         "wrongAnswerExplanations": {
-          "a": "Norms operate on activations, not labels.",
-          "b": "That mixes examples \u2014 would be batch-like.",
-          "d": "That's the opposite of what layer norm does."
+          "b": "That's the opposite of what layer norm does.",
+          "c": "That mixes examples \u2014 would be batch-like.",
+          "d": "Norms operate on activations, not labels."
         },
         "difficulty": "hard",
         "source": {
@@ -1959,31 +1959,31 @@
           {
             "id": "a",
             "label": "A",
-            "body": "H(p) only."
+            "body": "KL(p \u2016 q) \u2014 H(p) is zero because p is deterministic."
           },
           {
             "id": "b",
             "label": "B",
-            "body": "KL(p \u2016 q) \u2014 H(p) is zero because p is deterministic."
+            "body": "H(p) only."
           },
           {
             "id": "c",
             "label": "C",
-            "body": "\u2212log q only when q is one-hot too."
+            "body": "Always 0."
           },
           {
             "id": "d",
             "label": "D",
-            "body": "Always 0."
+            "body": "\u2212log q only when q is one-hot too."
           }
         ],
-        "correctChoiceId": "b",
+        "correctChoiceId": "a",
         "hint": "Think about the precise definition before picking.",
         "explanation": "A deterministic distribution has zero entropy, so minimizing cross-entropy reduces to minimizing KL divergence to the empirical label.",
         "wrongAnswerExplanations": {
-          "a": "H(p) = 0 for one-hot p.",
-          "c": "\u2212log q is the cross-entropy for any q; one-hot q would be 0 or \u221e.",
-          "d": "Only if q = p exactly."
+          "b": "H(p) = 0 for one-hot p.",
+          "c": "Only if q = p exactly.",
+          "d": "\u2212log q is the cross-entropy for any q; one-hot q would be 0 or \u221e."
         },
         "difficulty": "hard",
         "source": {
@@ -2000,31 +2000,31 @@
           {
             "id": "a",
             "label": "A",
-            "body": "O(1/\u221at)"
+            "body": "O(log t)"
           },
           {
             "id": "b",
             "label": "B",
-            "body": "O(log t)"
+            "body": "O(e^{\u2212t})"
           },
           {
             "id": "c",
             "label": "C",
-            "body": "O(1/t) in function value."
+            "body": "O(1/\u221at)"
           },
           {
             "id": "d",
             "label": "D",
-            "body": "O(e^{\u2212t})"
+            "body": "O(1/t) in function value."
           }
         ],
-        "correctChoiceId": "c",
+        "correctChoiceId": "d",
         "hint": "Think about the precise definition before picking.",
         "explanation": "For L-smooth convex objectives, after t steps f(x_t) \u2212 f* \u2264 O(1/t); strongly convex gives geometric (e^{\u2212t}-style) convergence.",
         "wrongAnswerExplanations": {
-          "a": "That's subgradient method on non-smooth convex functions.",
-          "b": "Not a standard rate.",
-          "d": "That's strongly convex, not just smooth convex."
+          "a": "Not a standard rate.",
+          "b": "That's strongly convex, not just smooth convex.",
+          "c": "That's subgradient method on non-smooth convex functions."
         },
         "difficulty": "hard",
         "source": {
@@ -2041,31 +2041,31 @@
           {
             "id": "a",
             "label": "A",
-            "body": "To reduce labels' precision."
+            "body": "To run on TPUs only."
           },
           {
             "id": "b",
             "label": "B",
-            "body": "To compress the model permanently."
+            "body": "To reduce labels' precision."
           },
           {
             "id": "c",
             "label": "C",
-            "body": "To run on TPUs only."
+            "body": "To preserve numerical stability of small updates that would underflow in FP16."
           },
           {
             "id": "d",
             "label": "D",
-            "body": "To preserve numerical stability of small updates that would underflow in FP16."
+            "body": "To compress the model permanently."
           }
         ],
-        "correctChoiceId": "d",
+        "correctChoiceId": "c",
         "hint": "Think about the precise definition before picking.",
         "explanation": "Tiny gradient updates can be smaller than the FP16 smallest representable step; an FP32 master copy accumulates them without loss.",
         "wrongAnswerExplanations": {
-          "a": "Labels are typically integers.",
-          "b": "Mixed-precision is for training, not deployment compression.",
-          "c": "TPU/GPU compatibility differs by hardware; not the reason."
+          "a": "TPU/GPU compatibility differs by hardware; not the reason.",
+          "b": "Labels are typically integers.",
+          "d": "Mixed-precision is for training, not deployment compression."
         },
         "difficulty": "hard",
         "source": {
@@ -2082,31 +2082,31 @@
           {
             "id": "a",
             "label": "A",
-            "body": "No learning algorithm is universally best; performance depends on the data distribution's structure."
+            "body": "It means more data is always worse than less."
           },
           {
             "id": "b",
             "label": "B",
-            "body": "It says deep learning always wins."
+            "body": "It implies cross-validation is impossible."
           },
           {
             "id": "c",
             "label": "C",
-            "body": "It implies cross-validation is impossible."
+            "body": "It says deep learning always wins."
           },
           {
             "id": "d",
             "label": "D",
-            "body": "It means more data is always worse than less."
+            "body": "No learning algorithm is universally best; performance depends on the data distribution's structure."
           }
         ],
-        "correctChoiceId": "a",
+        "correctChoiceId": "d",
         "hint": "Think about the precise definition before picking.",
         "explanation": "Averaged over all possible problems, every algorithm performs equally; practical wins come from matching inductive bias to the data.",
         "wrongAnswerExplanations": {
-          "b": "Opposite \u2014 no method wins everywhere.",
-          "c": "CV is fine; NFL is about algorithm universality.",
-          "d": "Empirically false in most settings."
+          "a": "Empirically false in most settings.",
+          "b": "CV is fine; NFL is about algorithm universality.",
+          "c": "Opposite \u2014 no method wins everywhere."
         },
         "difficulty": "hard",
         "source": {
@@ -2128,26 +2128,26 @@
           {
             "id": "b",
             "label": "B",
-            "body": "Forcing each layer to learn the identity."
+            "body": "Providing identity gradient paths that mitigate optimization difficulty in deep networks."
           },
           {
             "id": "c",
             "label": "C",
-            "body": "Adding regularization equivalent to dropout."
+            "body": "Forcing each layer to learn the identity."
           },
           {
             "id": "d",
             "label": "D",
-            "body": "Providing identity gradient paths that mitigate optimization difficulty in deep networks."
+            "body": "Adding regularization equivalent to dropout."
           }
         ],
-        "correctChoiceId": "d",
+        "correctChoiceId": "b",
         "hint": "Think about the precise definition before picking.",
         "explanation": "Allowing y = x + F(x) means at worst a layer can pass the signal through; gradients flow unimpeded through the skip path.",
         "wrongAnswerExplanations": {
           "a": "Channel counts aren't changed.",
-          "b": "The opposite \u2014 they make the identity easy when useful, not required.",
-          "c": "Skip connections aren't a regularizer in this sense."
+          "c": "The opposite \u2014 they make the identity easy when useful, not required.",
+          "d": "Skip connections aren't a regularizer in this sense."
         },
         "difficulty": "hard",
         "source": {
@@ -2164,31 +2164,31 @@
           {
             "id": "a",
             "label": "A",
-            "body": "Random reshuffling requires sorting the data."
+            "body": "Both produce identical iterates given the same seed."
           },
           {
             "id": "b",
             "label": "B",
-            "body": "Random reshuffling is unbiased; with replacement is biased."
+            "body": "Random reshuffling typically converges faster in practice; with replacement is easier to analyze theoretically."
           },
           {
             "id": "c",
             "label": "C",
-            "body": "Both produce identical iterates given the same seed."
+            "body": "Random reshuffling requires sorting the data."
           },
           {
             "id": "d",
             "label": "D",
-            "body": "Random reshuffling typically converges faster in practice; with replacement is easier to analyze theoretically."
+            "body": "Random reshuffling is unbiased; with replacement is biased."
           }
         ],
-        "correctChoiceId": "d",
+        "correctChoiceId": "b",
         "hint": "Think about the precise definition before picking.",
         "explanation": "Theory often assumes replacement (i.i.d.) for clean bounds; practice prefers reshuffling per epoch for empirical speedup.",
         "wrongAnswerExplanations": {
-          "a": "No sorting \u2014 just permutation.",
-          "b": "Both are unbiased in expectation.",
-          "c": "Sampling rule differs, so iterates differ."
+          "a": "Sampling rule differs, so iterates differ.",
+          "c": "No sorting \u2014 just permutation.",
+          "d": "Both are unbiased in expectation."
         },
         "difficulty": "hard",
         "source": {
@@ -2205,31 +2205,31 @@
           {
             "id": "a",
             "label": "A",
-            "body": "Down-weighting easy examples via a (1 \u2212 p_t)^\u03b3 factor, focusing learning on hard ones."
+            "body": "Adding L2 to the logits."
           },
           {
             "id": "b",
             "label": "B",
-            "body": "Adding L2 to the logits."
+            "body": "Computing loss only on the top-k predictions."
           },
           {
             "id": "c",
             "label": "C",
-            "body": "Computing loss only on the top-k predictions."
+            "body": "Replacing softmax with sigmoid for multi-class."
           },
           {
             "id": "d",
             "label": "D",
-            "body": "Replacing softmax with sigmoid for multi-class."
+            "body": "Down-weighting easy examples via a (1 \u2212 p_t)^\u03b3 factor, focusing learning on hard ones."
           }
         ],
-        "correctChoiceId": "a",
+        "correctChoiceId": "d",
         "hint": "Think about the precise definition before picking.",
         "explanation": "Focal loss = \u2212(1 \u2212 p_t)^\u03b3 log p_t; high-confidence correct predictions contribute little, useful for heavily imbalanced detection tasks.",
         "wrongAnswerExplanations": {
-          "b": "Not the mechanism.",
-          "c": "Top-k isn't part of focal loss.",
-          "d": "That's a separate change."
+          "a": "Not the mechanism.",
+          "b": "Top-k isn't part of focal loss.",
+          "c": "That's a separate change."
         },
         "difficulty": "hard",
         "source": {
@@ -2251,26 +2251,26 @@
           {
             "id": "b",
             "label": "B",
-            "body": "Lie on a specific sphere of the parameter space."
+            "body": "Have the largest gradients."
           },
           {
             "id": "c",
             "label": "C",
-            "body": "Have the largest gradients."
+            "body": "Minimize the worst-case loss in a neighborhood around w, encouraging flat minima."
           },
           {
             "id": "d",
             "label": "D",
-            "body": "Minimize the worst-case loss in a neighborhood around w, encouraging flat minima."
+            "body": "Lie on a specific sphere of the parameter space."
           }
         ],
-        "correctChoiceId": "d",
+        "correctChoiceId": "c",
         "hint": "Think about the precise definition before picking.",
         "explanation": "SAM updates use \u2207L at w + \u03b5, where \u03b5 is the adversarial perturbation; this biases toward flat regions correlated with generalization.",
         "wrongAnswerExplanations": {
           "a": "Not a SAM objective specifically.",
-          "b": "Not an SAM property.",
-          "c": "Opposite of flat minima."
+          "b": "Opposite of flat minima.",
+          "d": "Not an SAM property."
         },
         "difficulty": "hard",
         "source": {
@@ -2287,12 +2287,12 @@
           {
             "id": "a",
             "label": "A",
-            "body": "The optimizer requires position labels."
+            "body": "Tokens have no embedding otherwise."
           },
           {
             "id": "b",
             "label": "B",
-            "body": "Layer norm uses positions internally."
+            "body": "The optimizer requires position labels."
           },
           {
             "id": "c",
@@ -2302,16 +2302,16 @@
           {
             "id": "d",
             "label": "D",
-            "body": "Tokens have no embedding otherwise."
+            "body": "Layer norm uses positions internally."
           }
         ],
         "correctChoiceId": "c",
         "hint": "Think about the precise definition before picking.",
         "explanation": "Permuting input tokens produces a permuted output unless positional encodings break the symmetry.",
         "wrongAnswerExplanations": {
-          "a": "Optimizer doesn't see positions.",
-          "b": "Layer norm doesn't use position.",
-          "d": "Tokens get content embeddings independently."
+          "a": "Tokens get content embeddings independently.",
+          "b": "Optimizer doesn't see positions.",
+          "d": "Layer norm doesn't use position."
         },
         "difficulty": "hard",
         "source": {
@@ -2328,7 +2328,7 @@
           {
             "id": "a",
             "label": "A",
-            "body": "The CPU rounds gradients down."
+            "body": "Each step overshoots local curvature, amplifying parameter updates and gradient magnitudes."
           },
           {
             "id": "b",
@@ -2343,16 +2343,16 @@
           {
             "id": "d",
             "label": "D",
-            "body": "Each step overshoots local curvature, amplifying parameter updates and gradient magnitudes."
+            "body": "The CPU rounds gradients down."
           }
         ],
-        "correctChoiceId": "d",
+        "correctChoiceId": "a",
         "hint": "Think about the precise definition before picking.",
         "explanation": "With LR > 2/L (L = local Lipschitz constant), GD on a quadratic diverges; in deep nets the effective L can be very large.",
         "wrongAnswerExplanations": {
-          "a": "Not the mechanism.",
           "b": "LR doesn't affect memory.",
-          "c": "Floating-point weights stay continuous."
+          "c": "Floating-point weights stay continuous.",
+          "d": "Not the mechanism."
         },
         "difficulty": "hard",
         "source": {
@@ -2374,12 +2374,12 @@
           {
             "id": "b",
             "label": "B",
-            "body": "Dropout."
+            "body": "L1 regularization on the weights."
           },
           {
             "id": "c",
             "label": "C",
-            "body": "L1 regularization on the weights."
+            "body": "Dropout."
           },
           {
             "id": "d",
@@ -2391,8 +2391,8 @@
         "hint": "Think about the precise definition before picking.",
         "explanation": "Log of a Gaussian prior contributes \u2212(\u03bb/2) \u2016w\u2016\u00b2 to the log-posterior, identical to L2 weight decay.",
         "wrongAnswerExplanations": {
-          "b": "Dropout has a Bayesian interpretation but a different one.",
-          "c": "L1 corresponds to a Laplace prior.",
+          "b": "L1 corresponds to a Laplace prior.",
+          "c": "Dropout has a Bayesian interpretation but a different one.",
           "d": "Uniform prior gives plain MLE."
         },
         "difficulty": "hard",
@@ -2415,26 +2415,26 @@
           {
             "id": "b",
             "label": "B",
-            "body": "Copying the teacher's parameters."
+            "body": "Training the student to match the teacher's soft probability outputs (often with a temperature)."
           },
           {
             "id": "c",
             "label": "C",
-            "body": "Quantizing the teacher's gradients."
+            "body": "Copying the teacher's parameters."
           },
           {
             "id": "d",
             "label": "D",
-            "body": "Training the student to match the teacher's soft probability outputs (often with a temperature)."
+            "body": "Quantizing the teacher's gradients."
           }
         ],
-        "correctChoiceId": "d",
+        "correctChoiceId": "b",
         "hint": "Think about the precise definition before picking.",
         "explanation": "Soft targets carry richer information than hard labels (dark knowledge); temperature smooths the distribution.",
         "wrongAnswerExplanations": {
           "a": "That's pruning, not distillation.",
-          "b": "Architectures usually differ; you can't copy directly.",
-          "c": "Quantization is a separate technique."
+          "c": "Architectures usually differ; you can't copy directly.",
+          "d": "Quantization is a separate technique."
         },
         "difficulty": "hard",
         "source": {
@@ -2451,31 +2451,31 @@
           {
             "id": "a",
             "label": "A",
-            "body": "Doubling kernel size."
+            "body": "Removing spatial structure entirely."
           },
           {
             "id": "b",
             "label": "B",
-            "body": "Removing spatial structure entirely."
+            "body": "Doubling kernel size."
           },
           {
             "id": "c",
             "label": "C",
-            "body": "Splitting standard convolution into per-channel spatial filtering followed by 1\u00d71 channel mixing."
+            "body": "Sharing weights across batches."
           },
           {
             "id": "d",
             "label": "D",
-            "body": "Sharing weights across batches."
+            "body": "Splitting standard convolution into per-channel spatial filtering followed by 1\u00d71 channel mixing."
           }
         ],
-        "correctChoiceId": "c",
+        "correctChoiceId": "d",
         "hint": "Think about the precise definition before picking.",
         "explanation": "If standard cost is k\u00b2 \u00b7 C_in \u00b7 C_out, separable is k\u00b2 \u00b7 C_in + C_in \u00b7 C_out \u2014 a major saving when C_out is large.",
         "wrongAnswerExplanations": {
-          "a": "Opposite direction.",
-          "b": "Spatial filtering is preserved per channel.",
-          "d": "Weights are already shared across batches."
+          "a": "Spatial filtering is preserved per channel.",
+          "b": "Opposite direction.",
+          "c": "Weights are already shared across batches."
         },
         "difficulty": "hard",
         "source": {
@@ -2492,31 +2492,31 @@
           {
             "id": "a",
             "label": "A",
-            "body": "(1 \u2212 \u03b1) on the true class and \u03b1/(K \u2212 1) on each other class."
+            "body": "All zeros."
           },
           {
             "id": "b",
             "label": "B",
-            "body": "Two-hot encodings."
+            "body": "(1 \u2212 \u03b1) on the true class and \u03b1/(K \u2212 1) on each other class."
           },
           {
             "id": "c",
             "label": "C",
-            "body": "All zeros."
+            "body": "Random labels."
           },
           {
             "id": "d",
             "label": "D",
-            "body": "Random labels."
+            "body": "Two-hot encodings."
           }
         ],
-        "correctChoiceId": "a",
+        "correctChoiceId": "b",
         "hint": "Think about the precise definition before picking.",
         "explanation": "Label smoothing tempers overconfidence and often improves calibration with marginal accuracy cost.",
         "wrongAnswerExplanations": {
-          "b": "Only used in multi-label problems.",
-          "c": "Then there's nothing to fit.",
-          "d": "That would corrupt training."
+          "a": "Then there's nothing to fit.",
+          "c": "That would corrupt training.",
+          "d": "Only used in multi-label problems."
         },
         "difficulty": "hard",
         "source": {
@@ -2533,31 +2533,31 @@
           {
             "id": "a",
             "label": "A",
-            "body": "It compresses the model."
+            "body": "It always reduces bias."
           },
           {
             "id": "b",
             "label": "B",
-            "body": "Averaging predictions cancels uncorrelated errors, reducing variance of the predictor."
+            "body": "It compresses the model."
           },
           {
             "id": "c",
             "label": "C",
-            "body": "It always reduces bias."
+            "body": "It eliminates training data needs."
           },
           {
             "id": "d",
             "label": "D",
-            "body": "It eliminates training data needs."
+            "body": "Averaging predictions cancels uncorrelated errors, reducing variance of the predictor."
           }
         ],
-        "correctChoiceId": "b",
+        "correctChoiceId": "d",
         "hint": "Think about the precise definition before picking.",
         "explanation": "If errors of base models are partially independent, the averaged predictor has lower variance and often lower expected error.",
         "wrongAnswerExplanations": {
-          "a": "Ensembles are larger, not smaller.",
-          "c": "Bias reduces only if base models systematically err in different directions.",
-          "d": "Each model still needs training data."
+          "a": "Bias reduces only if base models systematically err in different directions.",
+          "b": "Ensembles are larger, not smaller.",
+          "c": "Each model still needs training data."
         },
         "difficulty": "hard",
         "source": {

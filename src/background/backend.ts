@@ -16,6 +16,7 @@ import {
   isLearningFeatureEnabled,
   shouldPreserveActiveQuizPrompt,
   shouldPreserveActiveQuizResult,
+  shouldLockVisibleQuizDuringRefresh,
 } from '../shared/learning';
 import {
   applyIdeaDecision,
@@ -1083,12 +1084,11 @@ export async function refreshLearningState(): Promise<LearningState> {
   });
 
   try {
-    const [taxonomy, userTopics, suggestions, packs, review] = await Promise.all([
+    const [taxonomy, userTopics, suggestions, packs] = await Promise.all([
       learningBackendRequest<LearningTaxonomyResponse>('/v1/learning/taxonomy'),
       learningBackendRequest<LearningTopicsResponse>('/v1/learning/user-topics'),
       learningBackendRequest<LearningSuggestionsResponse>('/v1/learning/suggestions'),
       learningBackendRequest<LearningPacksResponse>('/v1/learning/packs'),
-      learningBackendRequest<LearningReviewResponse>('/v1/learning/review/next?origin=scheduled'),
     ]);
 
     const latest = await getLearningState();
@@ -1096,18 +1096,25 @@ export async function refreshLearningState(): Promise<LearningState> {
       ...latest,
       userTopics: userTopics.items,
     };
+    const lockVisibleQuiz = shouldLockVisibleQuizDuringRefresh(latestWithFreshTopics);
     const preserveActiveQuiz = shouldPreserveActiveQuizPrompt(latestWithFreshTopics);
     const preserveActiveQuizResult =
       preserveActiveQuiz && shouldPreserveActiveQuizResult(latestWithFreshTopics);
+    const review = lockVisibleQuiz
+      ? null
+      : await learningBackendRequest<LearningReviewResponse>('/v1/learning/review/next?origin=scheduled');
     const next: LearningState = {
       taxonomy: taxonomy.items.length > 0 ? taxonomy.items : DEFAULT_LEARNING_TAXONOMY,
       userTopics: userTopics.items,
       suggestions: suggestions.items.length > 0 ? suggestions.items : fallbackSuggestions,
       packs: packs.items,
-      reviewQueue: review.reviewQueue,
-      activeQuizPrompt: preserveActiveQuiz ? latestWithFreshTopics.activeQuizPrompt : review.prompt,
+      reviewQueue: review?.reviewQueue ?? latestWithFreshTopics.reviewQueue,
+      activeQuizPrompt:
+        preserveActiveQuiz || lockVisibleQuiz
+          ? latestWithFreshTopics.activeQuizPrompt
+          : review?.prompt ?? null,
       activeQuizResult: preserveActiveQuizResult ? latestWithFreshTopics.activeQuizResult : null,
-      activeQuizVisible: preserveActiveQuiz || review.prompt !== null,
+      activeQuizVisible: preserveActiveQuiz || lockVisibleQuiz || review?.prompt !== null,
       syncing: false,
       lastSyncedAt: new Date().toISOString(),
       lastError: null,
@@ -1215,10 +1222,22 @@ export async function submitQuizAnswer(input: {
   selectedChoiceId: string | null;
   sessionId?: string;
 }): Promise<QuizAnswerResult> {
-  const response = await learningBackendRequest<LearningAnswerResponse>('/v1/learning/answers', {
-    method: 'POST',
-    body: input,
-  });
+  let response: LearningAnswerResponse;
+  try {
+    response = await learningBackendRequest<LearningAnswerResponse>('/v1/learning/answers', {
+      method: 'POST',
+      body: input,
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (message === 'Quiz question not found.') {
+      await getNextQuizPrompt('retry');
+      throw new Error(
+        'That quiz card was out of date. Window loaded the next available question—submit your answer again.',
+      );
+    }
+    throw error;
+  }
   const current = await getLearningState();
   await setLearningState({
     ...current,
@@ -1505,19 +1524,32 @@ async function backendRequest<T>(
   return response.data as T;
 }
 
+function learningBackendRequestError(
+  path: string,
+  status: number,
+  data: BackendErrorPayload | undefined,
+): Error {
+  const apiMessage = typeof data?.error === 'string' ? data.error.trim() : '';
+  if (apiMessage) {
+    return new Error(apiMessage);
+  }
+
+  if (status === 404) {
+    return new Error(
+      `The configured backend (${BACKEND_BASE_URL}) does not expose ${path}. Learning is not deployed on that service yet.`,
+    );
+  }
+
+  return new Error(`Backend request failed with ${status}`);
+}
+
 async function learningBackendRequest<T>(
   path: string,
   init: BackendRequestInit = {},
 ): Promise<T> {
   const response = await backendRequestDetailed<T>(path, init);
   if (!response.ok) {
-    if (response.status === 404) {
-      throw new Error(
-        `The configured backend (${BACKEND_BASE_URL}) does not expose ${path}. Learning is not deployed on that service yet.`,
-      );
-    }
-
-    throw new Error(response.data?.error ?? `Backend request failed with ${response.status}`);
+    throw learningBackendRequestError(path, response.status, response.data);
   }
 
   return response.data as T;

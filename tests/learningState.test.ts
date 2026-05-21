@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   isRepeatedExcludedQuizPrompt,
+  shouldLockVisibleQuizDuringRefresh,
   shouldPreserveActiveQuizPrompt,
   shouldPreserveActiveQuizResult,
 } from '../src/shared/learning';
@@ -12,11 +13,12 @@ describe('shouldPreserveActiveQuizPrompt', () => {
         {
           activeQuizVisible: true,
           activeQuizPrompt: {
-            topicId: 'topic-1',
+            topicKey: 'probability',
           },
           userTopics: [
             {
-              id: 'topic-1',
+              id: 'user-topic-1',
+              topicKey: 'probability',
               active: true,
             },
           ],
@@ -31,11 +33,12 @@ describe('shouldPreserveActiveQuizPrompt', () => {
         {
           activeQuizVisible: true,
           activeQuizPrompt: {
-            topicId: 'topic-1',
+            topicKey: 'probability',
           },
           userTopics: [
             {
-              id: 'topic-2',
+              id: 'user-topic-2',
+              topicKey: 'linear-algebra',
               active: true,
             },
           ],
@@ -50,16 +53,41 @@ describe('shouldPreserveActiveQuizPrompt', () => {
         {
           activeQuizVisible: false,
           activeQuizPrompt: {
-            topicId: 'topic-1',
+            topicKey: 'probability',
           },
           userTopics: [
             {
-              id: 'topic-1',
+              id: 'user-topic-1',
+              topicKey: 'probability',
               active: true,
             },
           ],
         },
       ),
+    ).toBe(false);
+  });
+});
+
+describe('shouldLockVisibleQuizDuringRefresh', () => {
+  it('locks the visible unanswered quiz during background refresh', () => {
+    expect(
+      shouldLockVisibleQuizDuringRefresh({
+        activeQuizVisible: true,
+        activeQuizPrompt: { questionId: 'question-1' },
+        activeQuizResult: null,
+      }),
+    ).toBe(true);
+  });
+
+  it('does not lock once the answer result is showing', () => {
+    expect(
+      shouldLockVisibleQuizDuringRefresh({
+        activeQuizVisible: true,
+        activeQuizPrompt: { questionId: 'question-1' },
+        activeQuizResult: {
+          prompt: { questionId: 'question-1' },
+        },
+      }),
     ).toBe(false);
   });
 });
