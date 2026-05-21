@@ -27,6 +27,9 @@ tmp/
 
 *.tsbuildinfo
 
+__pycache__/
+*.py[cod]
+
 # Learning corpus pipeline (regeneratable; quizzes-cleaned/ is committed for deploy)
 backend/data/learning/chapters/
 backend/data/learning/raw/
