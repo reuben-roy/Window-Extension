@@ -1,0 +1,2545 @@
+{
+  "book": {
+    "title": "Operating Systems: Three Easy Pieces",
+    "parentTopic": "Computer Science",
+    "subtopic": "Operating Systems",
+    "slug": "operating-systems-ostep",
+    "sourceUrl": "https://pages.cs.wisc.edu/~remzi/OSTEP/",
+    "pdfSha256": ""
+  },
+  "chapterCount": 9,
+  "conceptCount": 60,
+  "chapters": [
+    {
+      "ordinal": 1,
+      "title": "Processes",
+      "startPage": 1,
+      "endPage": 1,
+      "path": ""
+    },
+    {
+      "ordinal": 2,
+      "title": "Threads",
+      "startPage": 1,
+      "endPage": 1,
+      "path": ""
+    },
+    {
+      "ordinal": 3,
+      "title": "Scheduling",
+      "startPage": 1,
+      "endPage": 1,
+      "path": ""
+    },
+    {
+      "ordinal": 4,
+      "title": "Virtual Memory",
+      "startPage": 1,
+      "endPage": 1,
+      "path": ""
+    },
+    {
+      "ordinal": 5,
+      "title": "Paging",
+      "startPage": 1,
+      "endPage": 1,
+      "path": ""
+    },
+    {
+      "ordinal": 6,
+      "title": "File Systems",
+      "startPage": 1,
+      "endPage": 1,
+      "path": ""
+    },
+    {
+      "ordinal": 7,
+      "title": "Concurrency",
+      "startPage": 1,
+      "endPage": 1,
+      "path": ""
+    },
+    {
+      "ordinal": 8,
+      "title": "Deadlocks",
+      "startPage": 1,
+      "endPage": 1,
+      "path": ""
+    },
+    {
+      "ordinal": 9,
+      "title": "I/O",
+      "startPage": 1,
+      "endPage": 1,
+      "path": ""
+    }
+  ],
+  "quizzes": {
+    "easy": [
+      {
+        "prompt": "What does a process control block (PCB) primarily store?",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "A list of every file ever opened on the system."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "The entire contents of the process heap and stack."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Only the program's machine code on disk."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Per-process kernel metadata such as registers, state, and scheduling info."
+          }
+        ],
+        "correctChoiceId": "d",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "The PCB is the kernel's record for a process: identifiers, CPU context, memory pointers, and scheduling state\u2014not a full memory dump.",
+        "wrongAnswerExplanations": {
+          "a": "Open files are tracked per process, but not as a global history of all system activity.",
+          "b": "Process memory lives in separate address-space structures; the PCB holds pointers and metadata, not full heaps.",
+          "c": "Executable code is stored in files and mapped pages, not duplicated wholesale in the PCB."
+        },
+        "difficulty": "easy",
+        "source": {
+          "term": "",
+          "chapterTitle": "Processes"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 1,
+        "cleanedOrdinal": 1
+      },
+      {
+        "prompt": "After a successful fork() in Unix, what does fork() return in the child?",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "The child's PID"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "0"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "\u22121"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "The parent's PID"
+          }
+        ],
+        "correctChoiceId": "b",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "fork() returns 0 to the child and the child's PID to the parent; \u22121 indicates failure.",
+        "wrongAnswerExplanations": {
+          "a": "The child receives 0; the parent receives the new PID.",
+          "c": "\u22121 signals failure, not success in the child.",
+          "d": "The parent gets the child's PID, not its own."
+        },
+        "difficulty": "easy",
+        "source": {
+          "term": "",
+          "chapterTitle": "Processes"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 2,
+        "cleanedOrdinal": 2
+      },
+      {
+        "prompt": "A context switch between two processes requires the kernel to\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Save and restore CPU register state and switch to the other process's address space."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Copy the entire disk image of each process."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Recompile both programs from source."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Flush every file on the system to disk."
+          }
+        ],
+        "correctChoiceId": "a",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Scheduling swaps the running context: register image, stack pointer, page tables or address-space ID, and related kernel bookkeeping.",
+        "wrongAnswerExplanations": {
+          "b": "Processes are not duplicated at the storage layer on each switch.",
+          "c": "Executables are already loaded; switching is a runtime operation.",
+          "d": "Context switches do not require global filesystem sync."
+        },
+        "difficulty": "easy",
+        "source": {
+          "term": "",
+          "chapterTitle": "Processes"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 3,
+        "cleanedOrdinal": 3
+      },
+      {
+        "prompt": "Threads in the same process typically share\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Nothing; each thread is a separate process"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Independent copies of the entire heap only"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Address space, open file descriptors, and signal disposition."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Separate private address spaces"
+          }
+        ],
+        "correctChoiceId": "c",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Threads are lightweight execution units within one process: they share memory and OS resources attached to that process.",
+        "wrongAnswerExplanations": {
+          "a": "Threads deliberately share process resources; processes do not.",
+          "b": "Sharing is broader than heap copies and includes code, globals, and OS handles.",
+          "d": "That describes different processes, not threads in one process."
+        },
+        "difficulty": "easy",
+        "source": {
+          "term": "",
+          "chapterTitle": "Threads"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 4,
+        "cleanedOrdinal": 4
+      },
+      {
+        "prompt": "On a single-core CPU, running multiple threads can still improve overall throughput when\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Some threads block on I/O while others run."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "All threads are CPU-bound and never block"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Threads eliminate the need for the scheduler"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Each thread must busy-wait on a lock"
+          }
+        ],
+        "correctChoiceId": "a",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Overlapping computation with I/O waits keeps the CPU busy; pure CPU-bound work on one core does not speed up with more threads.",
+        "wrongAnswerExplanations": {
+          "b": "With no blocking, one core cannot run threads in parallel\u2014only interleaved.",
+          "c": "More threads increase scheduling work, not remove it.",
+          "d": "Busy-waiting wastes CPU time and hurts throughput."
+        },
+        "difficulty": "easy",
+        "source": {
+          "term": "",
+          "chapterTitle": "Threads"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 5,
+        "cleanedOrdinal": 5
+      },
+      {
+        "prompt": "First-Come, First-Served (FCFS) scheduling is\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Non-preemptive: a job runs until it finishes or blocks."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Preemptive on every memory access"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Identical to shortest-remaining-time-first"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Always optimal for average turnaround time"
+          }
+        ],
+        "correctChoiceId": "a",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "FCFS runs jobs in arrival order without time-slice preemption, which can cause convoy effects behind long jobs.",
+        "wrongAnswerExplanations": {
+          "b": "FCFS does not preempt based on memory references.",
+          "c": "SRTF preempts on remaining time; FCFS does not.",
+          "d": "Long jobs at the front can inflate waiting time for everyone behind them."
+        },
+        "difficulty": "easy",
+        "source": {
+          "term": "",
+          "chapterTitle": "Scheduling"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 6,
+        "cleanedOrdinal": 6
+      },
+      {
+        "prompt": "Round-robin scheduling requires defining\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "That all jobs have equal memory footprints"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "A static priority that never changes"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "A time quantum (time slice)."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "The exact burst time of every job in advance"
+          }
+        ],
+        "correctChoiceId": "c",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "RR gives each ready job up to one quantum before moving it to the tail of the ready queue.",
+        "wrongAnswerExplanations": {
+          "a": "Memory size is unrelated to RR's time-slice rule.",
+          "b": "Priorities are central to priority schedulers, not basic RR.",
+          "d": "RR is preemptive by time, not by known burst lengths."
+        },
+        "difficulty": "easy",
+        "source": {
+          "term": "",
+          "chapterTitle": "Scheduling"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 7,
+        "cleanedOrdinal": 7
+      },
+      {
+        "prompt": "Non-preemptive Shortest Job First (SJF) minimizes which metric for a given set of jobs (all available at time 0)?",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Average waiting time."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Maximum turnaround time for every job"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "CPU utilization on a multi-core machine only"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Number of context switches in a real-time system with deadlines"
+          }
+        ],
+        "correctChoiceId": "a",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Among non-preemptive orders with known bursts, SJF is optimal for average waiting time; it is not optimal for every per-job metric.",
+        "wrongAnswerExplanations": {
+          "b": "A very short job last could still have high turnaround; SJF optimizes averages, not every max.",
+          "c": "SJF is a uniprocessor ordering property here, not a multicore utilization guarantee.",
+          "d": "Context switches and deadline feasibility are different objectives."
+        },
+        "difficulty": "easy",
+        "source": {
+          "term": "",
+          "chapterTitle": "Scheduling"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 8,
+        "cleanedOrdinal": 8
+      },
+      {
+        "prompt": "A primary reason operating systems use virtual memory is to\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Give each process a large, private address space while mapping only used pages to RAM."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Store all data only on the CPU stack"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Guarantee zero page faults after startup"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Make physical RAM unnecessary"
+          }
+        ],
+        "correctChoiceId": "a",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Virtual memory decouples logical addresses from physical frames, enabling protection, sharing, and demand loading.",
+        "wrongAnswerExplanations": {
+          "b": "Processes use heap, mappings, and files\u2014not just the stack.",
+          "c": "Demand paging causes faults when pages are first touched.",
+          "d": "Virtual memory still backs hot pages with physical RAM."
+        },
+        "difficulty": "easy",
+        "source": {
+          "term": "",
+          "chapterTitle": "Virtual Memory"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 9,
+        "cleanedOrdinal": 9
+      },
+      {
+        "prompt": "A page fault on a demand-paged system usually means\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "The disk is full so the OS must halt"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "The process has no valid page table"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "The referenced page is not currently mapped in physical memory (or permissions failed)."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "The CPU has failed permanently"
+          }
+        ],
+        "correctChoiceId": "c",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "A fault traps to the OS, which may load the page, grow the stack, or deliver a segmentation fault for illegal access.",
+        "wrongAnswerExplanations": {
+          "a": "Faults can occur for many reasons; full disk is one possible failure mode, not the definition.",
+          "b": "User processes have page tables; faults reference valid tables with missing or protected entries.",
+          "d": "Page faults are normal control events handled by the OS."
+        },
+        "difficulty": "easy",
+        "source": {
+          "term": "",
+          "chapterTitle": "Virtual Memory"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 10,
+        "cleanedOrdinal": 10
+      },
+      {
+        "prompt": "In a paging system, a virtual address is commonly split into\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "A page number and an offset within the page."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "A process ID and thread ID only"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "An inode number and block offset only"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "A segment name and line number only"
+          }
+        ],
+        "correctChoiceId": "a",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "The page number indexes the page table; the offset indexes a byte within the chosen frame.",
+        "wrongAnswerExplanations": {
+          "b": "Identifiers are not the standard virtual-address partition for paging.",
+          "c": "Inode/block pairs belong to file indexing, not CPU virtual addresses.",
+          "d": "That mixes segmentation terminology with unrelated line numbers."
+        },
+        "difficulty": "easy",
+        "source": {
+          "term": "",
+          "chapterTitle": "Paging"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 11,
+        "cleanedOrdinal": 11
+      },
+      {
+        "prompt": "Internal fragmentation in paging refers to\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Free space between unrelated processes on disk"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Bytes lost when segments of different sizes are packed"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Time wasted in the scheduler queue"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Unused bytes within the last page allocated to a region."
+          }
+        ],
+        "correctChoiceId": "d",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "If a process needs slightly more than k pages, the final page may be only partly used\u2014waste inside the page granularity.",
+        "wrongAnswerExplanations": {
+          "a": "That is not the usual definition of internal fragmentation in paging.",
+          "b": "Variable-sized segments relate to segmentation/external fragmentation concepts.",
+          "c": "That is scheduling delay, not memory fragmentation."
+        },
+        "difficulty": "easy",
+        "source": {
+          "term": "",
+          "chapterTitle": "Paging"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 12,
+        "cleanedOrdinal": 12
+      },
+      {
+        "prompt": "In Unix-like systems, an inode primarily stores\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "The directory path string as the canonical name"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "The user's password hash"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "File metadata (permissions, size, timestamps, block pointers) but not the file name."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "The list of all running processes"
+          }
+        ],
+        "correctChoiceId": "c",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Directory entries map names to inode numbers; the inode holds on-disk structure for the file object itself.",
+        "wrongAnswerExplanations": {
+          "a": "Paths are resolved via directory entries; names live in directories, not inodes.",
+          "b": "Authentication data lives in system databases, not per-file inodes.",
+          "d": "Process tables are kernel structures unrelated to inodes."
+        },
+        "difficulty": "easy",
+        "source": {
+          "term": "",
+          "chapterTitle": "File Systems"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 13,
+        "cleanedOrdinal": 13
+      },
+      {
+        "prompt": "A directory entry in a typical Unix file system associates a file name with\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "The PID of the process that created the file"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "An inode number."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "The file's entire data blocks inline"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "The physical sector of the disk motor"
+          }
+        ],
+        "correctChoiceId": "b",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Lookup reads the directory mapping name \u2192 inode, then loads metadata from the inode.",
+        "wrongAnswerExplanations": {
+          "a": "Creation PID is not the standard directory entry payload.",
+          "c": "Directory entries are small; data blocks are referenced from the inode.",
+          "d": "Directories map names to inode indices, not hardware motor sectors."
+        },
+        "difficulty": "easy",
+        "source": {
+          "term": "",
+          "chapterTitle": "File Systems"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 14,
+        "cleanedOrdinal": 14
+      },
+      {
+        "prompt": "A critical section is\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Code that accesses shared mutable state and must not run concurrently with other such code."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "A region of virtual memory that is always read-only"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "The boot loader's first 512 bytes"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Any function that performs I/O to disk"
+          }
+        ],
+        "correctChoiceId": "a",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Mutual exclusion protects critical sections so updates to shared data remain consistent.",
+        "wrongAnswerExplanations": {
+          "b": "Read-only mappings need no mutex for writers.",
+          "c": "That is a disk layout artifact, not a synchronization concept.",
+          "d": "I/O alone does not define a critical section; sharing and mutation do."
+        },
+        "difficulty": "easy",
+        "source": {
+          "term": "",
+          "chapterTitle": "Concurrency"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 15,
+        "cleanedOrdinal": 15
+      },
+      {
+        "prompt": "A mutex (lock) is used to\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Ensure at most one thread executes a protected critical section at a time."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Increase parallelism by allowing unlimited concurrent writers"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Replace the need for any page table"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Sort ready-queue jobs by shortest burst time"
+          }
+        ],
+        "correctChoiceId": "a",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Locks serialize access so invariants on shared structures hold during updates.",
+        "wrongAnswerExplanations": {
+          "b": "Mutexes restrict concurrency to preserve correctness.",
+          "c": "Memory translation is unrelated to locking.",
+          "d": "That is a scheduling policy, not mutual exclusion."
+        },
+        "difficulty": "easy",
+        "source": {
+          "term": "",
+          "chapterTitle": "Concurrency"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 16,
+        "cleanedOrdinal": 16
+      },
+      {
+        "prompt": "Which condition is NOT required for deadlock in Coffman's classic four conditions?",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Hold and wait"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Circular wait"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Mutual exclusion"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Preemption of resources (resources can be forcibly taken away)."
+          }
+        ],
+        "correctChoiceId": "d",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Deadlock needs mutual exclusion, hold-and-wait, no preemption, and circular wait; preemption prevents deadlock by breaking hold-and-wait chains.",
+        "wrongAnswerExplanations": {
+          "a": "Hold and wait is required for deadlock to arise.",
+          "b": "Circular wait completes the cycle of waiting processes.",
+          "c": "Mutual exclusion is one of the four necessary conditions."
+        },
+        "difficulty": "easy",
+        "source": {
+          "term": "",
+          "chapterTitle": "Deadlocks"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 17,
+        "cleanedOrdinal": 17
+      },
+      {
+        "prompt": "Hold and wait means a process\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Must finish I/O before requesting the CPU"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Releases all resources before requesting any"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Keeps resources it already holds while waiting for additional resources."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Cannot block in the kernel"
+          }
+        ],
+        "correctChoiceId": "c",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Hold-and-wait allows partial allocation, which can create cycles when combined with other conditions.",
+        "wrongAnswerExplanations": {
+          "a": "I/O ordering is unrelated to resource hold-and-wait.",
+          "b": "That would violate hold-and-wait; some designs avoid deadlock by requiring atomic acquisition.",
+          "d": "Processes block routinely; hold-and-wait is about resources, not blocking itself."
+        },
+        "difficulty": "easy",
+        "source": {
+          "term": "",
+          "chapterTitle": "Deadlocks"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 18,
+        "cleanedOrdinal": 18
+      },
+      {
+        "prompt": "With programmed I/O (polling), the CPU\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Repeatedly checks a device status register until the operation completes."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Sleeps until the device sends an interrupt"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Transfers data without ever touching device registers"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Offloads all copying to another process's page table"
+          }
+        ],
+        "correctChoiceId": "a",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Polling keeps the CPU in a tight loop testing ready bits\u2014simple but wasteful while waiting.",
+        "wrongAnswerExplanations": {
+          "b": "That describes interrupt-driven I/O, not polling.",
+          "c": "Programmed I/O explicitly uses device registers.",
+          "d": "Page tables are unrelated to device polling."
+        },
+        "difficulty": "easy",
+        "source": {
+          "term": "",
+          "chapterTitle": "I/O"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 19,
+        "cleanedOrdinal": 19
+      },
+      {
+        "prompt": "Interrupt-driven I/O allows the CPU to\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Guarantee devices need no buffers"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Eliminate all device drivers"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Do other work until the device signals completion."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Avoid handling trap frames in the kernel"
+          }
+        ],
+        "correctChoiceId": "c",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "The device raises an interrupt when attention is needed, reducing busy-wait compared with pure polling.",
+        "wrongAnswerExplanations": {
+          "a": "Buffering is still required for speed mismatches.",
+          "b": "Drivers still manage devices; interrupts are how they get CPU attention.",
+          "d": "Interrupts enter the kernel via trap/interrupt handling."
+        },
+        "difficulty": "easy",
+        "source": {
+          "term": "",
+          "chapterTitle": "I/O"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 20,
+        "cleanedOrdinal": 20
+      }
+    ],
+    "medium": [
+      {
+        "prompt": "Shortest Remaining Time First (SRTF) differs from non-preemptive SJF because SRTF\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Never preempts and runs jobs strictly in arrival order"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Preempts the running job when a newly arrived job has shorter remaining time."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Ignores remaining burst time and uses only static priorities"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Requires jobs to perform I/O after exactly one time quantum"
+          }
+        ],
+        "correctChoiceId": "b",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "SRTF is preemptive SJF: the CPU may switch when a shorter job becomes ready.",
+        "wrongAnswerExplanations": {
+          "a": "That describes FCFS, not SRTF.",
+          "c": "SRTF is explicitly based on remaining time, not static priority alone.",
+          "d": "I/O patterns are not part of SRTF's definition."
+        },
+        "difficulty": "medium",
+        "source": {
+          "term": "",
+          "chapterTitle": "Scheduling"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 1,
+        "cleanedOrdinal": 1
+      },
+      {
+        "prompt": "Priority inversion occurs when\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "A high-priority task waits indirectly because a low-priority task holds a needed lock."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "A page fault replaces the wrong physical frame"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "The CPU runs idle while the ready queue is empty"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "All tasks run at the same priority"
+          }
+        ],
+        "correctChoiceId": "a",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "A medium-priority task can preempt the low-priority lock holder, delaying the high-priority waiter\u2014classic inversion.",
+        "wrongAnswerExplanations": {
+          "b": "That is a memory-management error, unrelated to scheduling priorities.",
+          "c": "That is idleness, not inversion.",
+          "d": "Equal priorities do not create inversion between high and low tasks."
+        },
+        "difficulty": "medium",
+        "source": {
+          "term": "",
+          "chapterTitle": "Scheduling"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 2,
+        "cleanedOrdinal": 2
+      },
+      {
+        "prompt": "Multilevel feedback queues (MLFQ) often use priority aging to\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Store executable code inside the ready queue nodes"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Guarantee zero context switches"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Eliminate the need for time quanta"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Prevent starvation by gradually increasing the priority of long-waiting jobs."
+          }
+        ],
+        "correctChoiceId": "d",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Without aging, low-priority jobs may never run; boosting priority after waiting addresses fairness.",
+        "wrongAnswerExplanations": {
+          "a": "Queues hold scheduling entities, not program binaries.",
+          "b": "MLFQ scheduling still context-switches between jobs.",
+          "c": "Lower levels still commonly use quanta similar to round robin."
+        },
+        "difficulty": "medium",
+        "source": {
+          "term": "",
+          "chapterTitle": "Scheduling"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 3,
+        "cleanedOrdinal": 3
+      },
+      {
+        "prompt": "A zombie process in Unix is one that\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Shares no memory with its parent after fork"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Consumes maximum CPU in an infinite loop"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Has exited but whose exit status has not yet been reaped by its parent."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Has no page table and cannot run user code"
+          }
+        ],
+        "correctChoiceId": "c",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "The kernel retains a minimal PCB until wait() collects the exit code\u2014hence 'zombie.'",
+        "wrongAnswerExplanations": {
+          "a": "Memory sharing is unrelated to zombie state after exit.",
+          "b": "Zombies are not running; they are terminated entries awaiting reap.",
+          "d": "Zombies are dead processes, but the definition is about unreaped exit state."
+        },
+        "difficulty": "medium",
+        "source": {
+          "term": "",
+          "chapterTitle": "Processes"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 4,
+        "cleanedOrdinal": 4
+      },
+      {
+        "prompt": "The exec family of system calls replaces\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Only the parent process with a new child PID"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "The kernel's interrupt vector table"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Every thread in the system with a single global stack"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "The current process image with a new program while keeping the same PID (in the same process)."
+          }
+        ],
+        "correctChoiceId": "d",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "fork() duplicates; exec() loads a new executable into the calling process's address space.",
+        "wrongAnswerExplanations": {
+          "a": "exec does not create a new PID; fork does.",
+          "b": "exec affects user process memory, not CPU trap vectors globally.",
+          "c": "exec affects one process image, not all threads system-wide."
+        },
+        "difficulty": "medium",
+        "source": {
+          "term": "",
+          "chapterTitle": "Processes"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 5,
+        "cleanedOrdinal": 5
+      },
+      {
+        "prompt": "Kernel-level threads are advantageous because\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "They always use less memory than a single-threaded process"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "The kernel can schedule threads independently, even if one thread blocks in the kernel."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "User code can ignore all synchronization"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "The kernel never needs to context-switch"
+          }
+        ],
+        "correctChoiceId": "b",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Blocking in the kernel on one user thread does not necessarily block all threads if they are kernel threads.",
+        "wrongAnswerExplanations": {
+          "a": "Thread structures add overhead; the benefit is schedulability, not guaranteed smaller footprint.",
+          "c": "Shared memory still requires locks regardless of thread model.",
+          "d": "More kernel threads can mean more switching, not less."
+        },
+        "difficulty": "medium",
+        "source": {
+          "term": "",
+          "chapterTitle": "Threads"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 6,
+        "cleanedOrdinal": 6
+      },
+      {
+        "prompt": "Copy-on-write (COW) after fork() is used to\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Defer copying physical pages until one process writes, sharing read-only mappings initially."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Copy every page eagerly at fork time always"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Prevent parent and child from ever sharing memory"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Disable page tables in the child"
+          }
+        ],
+        "correctChoiceId": "a",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "COW marks shared pages read-only and copies a frame only on write, making fork() cheaper.",
+        "wrongAnswerExplanations": {
+          "b": "Eager copy is the opposite of COW's lazy strategy.",
+          "c": "COW explicitly shares until a write occurs.",
+          "d": "Both processes need valid page tables with shared read-only mappings."
+        },
+        "difficulty": "medium",
+        "source": {
+          "term": "",
+          "chapterTitle": "Virtual Memory"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 7,
+        "cleanedOrdinal": 7
+      },
+      {
+        "prompt": "The working set model approximates a process's demand by tracking\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Pages referenced in a recent time window (working set size/limit)."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "The number of threads in other processes"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Every file name in the filesystem cache"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Only pages never accessed since boot"
+          }
+        ],
+        "correctChoiceId": "a",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Thrashing can be reduced by ensuring enough frames to cover the working set of active pages.",
+        "wrongAnswerExplanations": {
+          "b": "Cross-process thread counts do not define a process's working set.",
+          "c": "Working sets refer to virtual pages a process touches, not directory names.",
+          "d": "Cold pages are the opposite of the actively referenced working set."
+        },
+        "difficulty": "medium",
+        "source": {
+          "term": "",
+          "chapterTitle": "Virtual Memory"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 8,
+        "cleanedOrdinal": 8
+      },
+      {
+        "prompt": "A translation lookaside buffer (TLB) caches\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "CPU microcode patches only"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Recent virtual-to-physical translations to avoid full page-table walks."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Entire disk blocks for journaling"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "User passwords for authentication"
+          }
+        ],
+        "correctChoiceId": "b",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "On a TLB hit, the MMU finds the frame quickly; on a miss, the OS or hardware walks page tables.",
+        "wrongAnswerExplanations": {
+          "a": "Microcode is separate from per-address translation caching.",
+          "c": "TLBs cache address translations, not filesystem journal blocks.",
+          "d": "Security credentials are unrelated to the MMU."
+        },
+        "difficulty": "medium",
+        "source": {
+          "term": "",
+          "chapterTitle": "Paging"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 9,
+        "cleanedOrdinal": 9
+      },
+      {
+        "prompt": "A multi-level page table's main benefit is\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Making every virtual address have the same page number"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Sparse address spaces: only allocate inner tables for used virtual regions."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Eliminating all page faults"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Removing the need for physical memory"
+          }
+        ],
+        "correctChoiceId": "b",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Single huge tables waste memory; hierarchical tables allocate pages of page-table entries on demand.",
+        "wrongAnswerExplanations": {
+          "a": "Page numbers vary with virtual addresses.",
+          "c": "Page faults still occur for demand paging and protection.",
+          "d": "Multi-level tables still map to physical frames."
+        },
+        "difficulty": "medium",
+        "source": {
+          "term": "",
+          "chapterTitle": "Paging"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 10,
+        "cleanedOrdinal": 10
+      },
+      {
+        "prompt": "Effective memory access time with a TLB combines hit rate and costs. If a memory reference takes 100 ns, a TLB hit takes 1 ns extra, a TLB miss adds a 100 ns table walk, and TLB hit rate is 99%, the effective time is approximately\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "200 ns"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "101 ns"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "201 ns"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "100 ns"
+          }
+        ],
+        "correctChoiceId": "b",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "EAT \u2248 hit_rate \u00d7 (100+1) + (1\u2212hit_rate) \u00d7 (100+100+1) = 0.99\u00d7101 + 0.01\u00d7201 \u2248 101 ns.",
+        "wrongAnswerExplanations": {
+          "a": "That would ignore the high hit rate and assume every access pays a full walk.",
+          "c": "That is the miss cost only, not the weighted average.",
+          "d": "That omits TLB overhead even on hits."
+        },
+        "difficulty": "medium",
+        "source": {
+          "term": "",
+          "chapterTitle": "Paging"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 11,
+        "cleanedOrdinal": 11
+      },
+      {
+        "prompt": "Journaling in a file system is primarily intended to\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Store data only in the CPU cache"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Encrypt all file names with a per-user key"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Eliminate the need for directories"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Make crash recovery consistent by recording intended updates before applying them."
+          }
+        ],
+        "correctChoiceId": "d",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Write-ahead logging lets the system replay or undo partial operations after power loss.",
+        "wrongAnswerExplanations": {
+          "a": "Persistent files still live on block storage.",
+          "b": "Encryption is orthogonal to journaling's consistency goal.",
+          "c": "Namespaces still need directory structure."
+        },
+        "difficulty": "medium",
+        "source": {
+          "term": "",
+          "chapterTitle": "File Systems"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 12,
+        "cleanedOrdinal": 12
+      },
+      {
+        "prompt": "A hard link and a symbolic (soft) link differ because a hard link\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Cannot reference files, only directories"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Always points to a different inode with duplicate data blocks immediately"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Requires the target file to be on a different file system"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Adds another directory entry for the same inode, while a symlink stores a path string."
+          }
+        ],
+        "correctChoiceId": "d",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Hard links share the inode; symlinks are separate files containing a pathname that may dangle.",
+        "wrongAnswerExplanations": {
+          "a": "Hard links typically reference files; symlinks can name paths broadly.",
+          "b": "Hard links share the inode; duplicate data is not created.",
+          "c": "Hard links must be on the same file system; symlinks can cross mounts."
+        },
+        "difficulty": "medium",
+        "source": {
+          "term": "",
+          "chapterTitle": "File Systems"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 13,
+        "cleanedOrdinal": 13
+      },
+      {
+        "prompt": "A counting semaphore initialized to 1 can serve as\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "A replacement for virtual memory"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "A page-replacement policy"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "A disk scheduling elevator"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "A mutex if only one thread waits on it at a time and no owner tracking is required."
+          }
+        ],
+        "correctChoiceId": "d",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Binary semaphores can serialize access like locks, though mutexes often include ownership semantics.",
+        "wrongAnswerExplanations": {
+          "a": "Semaphores synchronize threads; they do not translate addresses.",
+          "b": "Page replacement picks frames; semaphores coordinate threads.",
+          "c": "Elevator algorithms reorder disk requests, not thread admission."
+        },
+        "difficulty": "medium",
+        "source": {
+          "term": "",
+          "chapterTitle": "Concurrency"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 14,
+        "cleanedOrdinal": 14
+      },
+      {
+        "prompt": "A monitor bundles\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Only spinlocks with no waiting queues"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "CPU microcode and device firmware in one struct"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "A filesystem inode and disk superblock"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Mutual exclusion with condition variables for wait/signal on shared state."
+          }
+        ],
+        "correctChoiceId": "d",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Monitors encapsulate data and operations so only one thread runs inside at a time, with condition queues for coordination.",
+        "wrongAnswerExplanations": {
+          "a": "Monitors rely on blocking and condition queues, not busy-wait alone.",
+          "b": "That mixes unrelated low-level components.",
+          "c": "Monitors are a concurrency construct, not on-disk metadata."
+        },
+        "difficulty": "medium",
+        "source": {
+          "term": "",
+          "chapterTitle": "Concurrency"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 15,
+        "cleanedOrdinal": 15
+      },
+      {
+        "prompt": "Spinlocks are most appropriate when\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Threads may sleep while holding the lock"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "The system is always single-core with long critical sections"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "The critical section is very short and the lock will not be held across blocking calls."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Page faults must be handled inside the critical section"
+          }
+        ],
+        "correctChoiceId": "c",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Spinning wastes CPU if waits are long or the holder blocks; short, non-blocking sections on multicore can favor spinlocks.",
+        "wrongAnswerExplanations": {
+          "a": "Sleeping while holding a spinlock would waste CPUs spinning for a long time.",
+          "b": "On one core, spinning during long sections is especially wasteful.",
+          "d": "Faults may block; spinlocks should not be held across blocking events."
+        },
+        "difficulty": "medium",
+        "source": {
+          "term": "",
+          "chapterTitle": "Concurrency"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 16,
+        "cleanedOrdinal": 16
+      },
+      {
+        "prompt": "In the banker's algorithm, a state is safe if\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "No process may request additional resources"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Every process holds the maximum resources it might ever need"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "There exists an ordering in which every process can finish with currently available resources."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "The system has detected a cycle in the wait-for graph"
+          }
+        ],
+        "correctChoiceId": "c",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Safety is a forecast: some sequence of completions releases enough resources for everyone to terminate.",
+        "wrongAnswerExplanations": {
+          "a": "Future requests are modeled via claim/max matrices; safety considers them.",
+          "b": "That describes allocation at the limit, not the definition of a safe sequence.",
+          "d": "A cycle suggests deadlock; safety is a preventive test before granting."
+        },
+        "difficulty": "medium",
+        "source": {
+          "term": "",
+          "chapterTitle": "Deadlocks"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 17,
+        "cleanedOrdinal": 17
+      },
+      {
+        "prompt": "A cycle in a resource-allocation graph indicates deadlock only if\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Every resource has unlimited instances"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Each resource in the cycle has a single instance (no multi-unit resources)."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "No process is waiting"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "All edges are request edges only with no assignment edges"
+          }
+        ],
+        "correctChoiceId": "b",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "With multiple instances, a cycle is necessary but not sufficient; with single-instance resources, a cycle implies deadlock.",
+        "wrongAnswerExplanations": {
+          "a": "Unlimited instances break deadlock via cycles because requests can always be satisfied.",
+          "c": "Deadlock requires waiting processes; no waiting means no deadlock.",
+          "d": "Assignment edges show ownership; cycles need both assignment and request structure."
+        },
+        "difficulty": "medium",
+        "source": {
+          "term": "",
+          "chapterTitle": "Deadlocks"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 18,
+        "cleanedOrdinal": 18
+      },
+      {
+        "prompt": "Direct Memory Access (DMA) allows\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Disks to modify page tables without the OS"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Devices to transfer data to or from memory without per-word CPU copying."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Processes to bypass all permission checks automatically"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "The CPU to execute user programs in device firmware"
+          }
+        ],
+        "correctChoiceId": "b",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "The CPU sets up DMA descriptors; the device moves bytes, then interrupts when done.",
+        "wrongAnswerExplanations": {
+          "a": "Page tables are managed by the OS/MMU, not autonomously by disks.",
+          "c": "DMA is set up by the kernel with IOMMUs/permissions on modern systems.",
+          "d": "DMA moves data; it does not run arbitrary user programs on the device."
+        },
+        "difficulty": "medium",
+        "source": {
+          "term": "",
+          "chapterTitle": "I/O"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 19,
+        "cleanedOrdinal": 19
+      },
+      {
+        "prompt": "Device drivers present a uniform interface to the kernel by\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Translating OS requests (open/read/write/ioctl) into device-specific commands and interrupts."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Storing files only in the TLB"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Eliminating the need for hardware interrupts"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Running all devices at the same clock frequency"
+          }
+        ],
+        "correctChoiceId": "a",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Drivers hide hardware details while the kernel exposes a consistent I/O abstraction.",
+        "wrongAnswerExplanations": {
+          "b": "Files live on persistent media; the TLB caches translations only.",
+          "c": "Most devices still use interrupts or polling; drivers handle both.",
+          "d": "Clocking is hardware-dependent, not unified by drivers."
+        },
+        "difficulty": "medium",
+        "source": {
+          "term": "",
+          "chapterTitle": "I/O"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 20,
+        "cleanedOrdinal": 20
+      }
+    ],
+    "hard": [
+      {
+        "prompt": "Belady's anomaly demonstrates that with FIFO page replacement\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Increasing the number of frames can sometimes increase the number of page faults."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Fault rate is strictly decreasing in the number of frames"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Optimal replacement is implementable in real hardware without future knowledge"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "LRU always performs worse than random replacement"
+          }
+        ],
+        "correctChoiceId": "a",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "FIFO lacks stack property; more memory does not guarantee fewer faults for all reference strings.",
+        "wrongAnswerExplanations": {
+          "b": "Belady's anomaly is exactly the failure of monotonic improvement.",
+          "c": "OPT needs future reference information and is a theoretical benchmark.",
+          "d": "LRU is not the policy exhibiting Belady's anomaly in the classic result."
+        },
+        "difficulty": "hard",
+        "source": {
+          "term": "",
+          "chapterTitle": "Paging"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 1,
+        "cleanedOrdinal": 1
+      },
+      {
+        "prompt": "The clock (second-chance) page replacement algorithm approximates LRU by\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Scanning frames in a circular list and clearing reference bits before evicting."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Never using a hardware reference bit"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Always evicting the most recently used page"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Sorting frames by physical address each nanosecond"
+          }
+        ],
+        "correctChoiceId": "a",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "A set reference bit gives a page a second chance; cleared bits identify less recently used victims.",
+        "wrongAnswerExplanations": {
+          "b": "The algorithm depends on reference bits maintained by hardware/OS.",
+          "c": "That would maximize faults, opposite of LRU's goal.",
+          "d": "Clock scans in ring order, not by sorting physical addresses continuously."
+        },
+        "difficulty": "hard",
+        "source": {
+          "term": "",
+          "chapterTitle": "Paging"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 2,
+        "cleanedOrdinal": 2
+      },
+      {
+        "prompt": "Huge pages (large pages) can improve TLB coverage because\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Each TLB entry maps a larger virtual range, reducing misses for sequential/access-local workloads."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "They prevent any process from sharing memory"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "They eliminate the need for page tables entirely"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "They guarantee zero internal fragmentation"
+          }
+        ],
+        "correctChoiceId": "a",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Fewer translations cover more bytes; the tradeoff is potential internal fragmentation and allocation granularity.",
+        "wrongAnswerExplanations": {
+          "b": "Shared mappings can use large pages when aligned and supported.",
+          "c": "Page tables still exist; mappings are just coarser.",
+          "d": "Larger granularity can increase internal fragmentation within a huge page."
+        },
+        "difficulty": "hard",
+        "source": {
+          "term": "",
+          "chapterTitle": "Paging"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 3,
+        "cleanedOrdinal": 3
+      },
+      {
+        "prompt": "An inverted page table indexes entries by\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Physical frame number, recording which virtual page (and process) occupies each frame."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "File inode number and byte offset"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Virtual page number only, one global table without process context"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Thread ID and stack pointer exclusively"
+          }
+        ],
+        "correctChoiceId": "a",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Inverted tables scale with physical memory size but need hashing/collision handling to search by virtual address.",
+        "wrongAnswerExplanations": {
+          "b": "That is filesystem addressing, not inverted page tables.",
+          "c": "Classic multi-level tables index by virtual page; inverted flips the keying.",
+          "d": "Address translation keys on virtual pages and process context, not stack pointers alone."
+        },
+        "difficulty": "hard",
+        "source": {
+          "term": "",
+          "chapterTitle": "Virtual Memory"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 4,
+        "cleanedOrdinal": 4
+      },
+      {
+        "prompt": "Address Space Layout Randomization (ASLR) improves security by\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Encrypting every virtual page with a user-supplied password"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Disabling all page faults"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Running the kernel in user mode"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Randomizing bases of stack, heap, and mappings so exploits cannot rely on fixed addresses."
+          }
+        ],
+        "correctChoiceId": "d",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Uncertainty in layout reduces success of return-oriented and buffer-overflow attacks that jump to known addresses.",
+        "wrongAnswerExplanations": {
+          "a": "ASLR changes placement, not per-page user encryption.",
+          "b": "Faults still occur; ASLR only varies where regions are placed.",
+          "c": "Privilege levels are unchanged; layout is randomized."
+        },
+        "difficulty": "hard",
+        "source": {
+          "term": "",
+          "chapterTitle": "Virtual Memory"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 5,
+        "cleanedOrdinal": 5
+      },
+      {
+        "prompt": "On a preemptive uniprocessor, Earliest-Deadline-First (EDF) is optimal for\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Maximizing disk throughput on a RAID array"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Guaranteeing zero page faults for all processes"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Minimizing lateness among independent jobs with known deadlines, if total utilization \u2264 1."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Eliminating priority inversion without any locks"
+          }
+        ],
+        "correctChoiceId": "c",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "EDF dynamically prioritizes the job with the nearest deadline; overload (U > 1) still makes some jobs miss deadlines.",
+        "wrongAnswerExplanations": {
+          "a": "That is storage scheduling, not uniprocessor real-time task scheduling.",
+          "b": "Memory behavior is unrelated to EDF's deadline optimality.",
+          "d": "Inversion is a locking/scheduling interaction; EDF does not remove locks."
+        },
+        "difficulty": "hard",
+        "source": {
+          "term": "",
+          "chapterTitle": "Scheduling"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 6,
+        "cleanedOrdinal": 6
+      },
+      {
+        "prompt": "Priority inheritance is used to\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Disable preemption globally forever"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Temporarily boost the priority of a lock holder so it finishes and releases the lock a high-priority waiter needs."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Permanently assign all threads to priority 0"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Replace mutexes with busy-wait spinlocks only"
+          }
+        ],
+        "correctChoiceId": "b",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Boosting the holder reduces indirect blocking of high-priority tasks in priority inversion scenarios.",
+        "wrongAnswerExplanations": {
+          "a": "The system remains preemptive; only specific priorities are adjusted.",
+          "c": "Inheritance is temporary and targeted, not a global downgrade.",
+          "d": "Inheritance complements proper locking; it does not eliminate mutexes."
+        },
+        "difficulty": "hard",
+        "source": {
+          "term": "",
+          "chapterTitle": "Scheduling"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 7,
+        "cleanedOrdinal": 7
+      },
+      {
+        "prompt": "The many-to-one (M:1) user-thread model can perform poorly on multiprocessors because\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "The kernel schedules only the single underlying kernel thread, limiting true parallel execution of user threads."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "User threads cannot block on I/O"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "The kernel creates a new process for every mutex lock"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Each user thread always gets its own hardware page table root"
+          }
+        ],
+        "correctChoiceId": "a",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Without a kernel thread per user thread, blocking one user thread can block all, and other cores may sit idle.",
+        "wrongAnswerExplanations": {
+          "b": "Blocking is exactly what exposes M:1 limitations.",
+          "c": "Locks do not spawn processes.",
+          "d": "M:1 shares one kernel context; separate page table roots are not per user thread by default."
+        },
+        "difficulty": "hard",
+        "source": {
+          "term": "",
+          "chapterTitle": "Threads"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 8,
+        "cleanedOrdinal": 8
+      },
+      {
+        "prompt": "After fork() with copy-on-write, a write to a shared page in the parent typically causes the kernel to\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Mark the page executable only in the child"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Immediately terminate both parent and child"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Flush the entire TLB and disk cache before any user instruction runs"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Trap on write, allocate a new frame, copy the page, and remap the writer's page table entry."
+          }
+        ],
+        "correctChoiceId": "d",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Write protection on shared mappings triggers a COW fault handled by copying and updating permissions.",
+        "wrongAnswerExplanations": {
+          "a": "COW copies data pages; permissions follow policy for both address spaces.",
+          "b": "COW is a normal path, not a fatal error.",
+          "c": "Only affected mappings/TLB entries need updating, not global flush of all caches."
+        },
+        "difficulty": "hard",
+        "source": {
+          "term": "",
+          "chapterTitle": "Processes"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 9,
+        "cleanedOrdinal": 9
+      },
+      {
+        "prompt": "Log-structured file systems (LFS) optimize write performance by\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Forbidding any form of buffering or caching"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Storing data only in CPU registers"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Updating every inode in place randomly across the disk"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Appending all changes sequentially to a log and cleaning segments later."
+          }
+        ],
+        "correctChoiceId": "d",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Sequential writes match disk bandwidth; garbage collection reclaims space from old segments.",
+        "wrongAnswerExplanations": {
+          "a": "Buffer caches remain important; layout is what changes.",
+          "b": "LFS still persists to block storage.",
+          "c": "That resembles traditional layouts LFS tries to avoid for write cost."
+        },
+        "difficulty": "hard",
+        "source": {
+          "term": "",
+          "chapterTitle": "File Systems"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 10,
+        "cleanedOrdinal": 10
+      },
+      {
+        "prompt": "Copy-on-write tree structures (as in some snapshotting file systems) create snapshots by\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Storing snapshots only in the TLB"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Deleting all previous versions immediately on each write"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Pointing new metadata roots at old blocks and copying only blocks that would be modified."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Duplicating the entire disk image eagerly on every read"
+          }
+        ],
+        "correctChoiceId": "c",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "COW trees share unchanged blocks between versions, paying space for divergent writes only.",
+        "wrongAnswerExplanations": {
+          "a": "Snapshots are persistent metadata/block structures, not TLB entries.",
+          "b": "Snapshots retain old roots reachable for prior versions.",
+          "d": "Reads should remain cheap; duplication happens on write to shared blocks."
+        },
+        "difficulty": "hard",
+        "source": {
+          "term": "",
+          "chapterTitle": "File Systems"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 11,
+        "cleanedOrdinal": 11
+      },
+      {
+        "prompt": "Peterson's algorithm solves mutual exclusion for two threads using only loads/stores when\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "The CPU disables interrupts in user space without kernel help"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "More than two threads share one flag array of size 1"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Shared variables (flag, turn) are accessed with proper memory ordering or on sequentially consistent hardware."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "No shared variables exist"
+          }
+        ],
+        "correctChoiceId": "c",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Peterson's is a classic two-thread spin algorithm; correctness requires visible ordering of flag/turn updates.",
+        "wrongAnswerExplanations": {
+          "a": "User programs cannot rely on interrupt masking alone on modern preemptive OSes.",
+          "b": "Peterson's is defined for two participants; more threads need different algorithms.",
+          "d": "The algorithm explicitly uses shared flag and turn variables."
+        },
+        "difficulty": "hard",
+        "source": {
+          "term": "",
+          "chapterTitle": "Concurrency"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 12,
+        "cleanedOrdinal": 12
+      },
+      {
+        "prompt": "Mesa semantics for condition variables differ from Hoare semantics because Mesa\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Requires the waiter to re-check the condition after wakeup (while loop), not assume it holds immediately."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Forbids using while loops around wait"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Automatically transfers monitor ownership to the signaled thread on signal"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Guarantees the signaled thread runs before the signaler continues"
+          }
+        ],
+        "correctChoiceId": "a",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "With Mesa, signal/broadcast moves threads to ready; they compete and must verify predicates before proceeding.",
+        "wrongAnswerExplanations": {
+          "b": "Mesa-style code mandates re-testing conditions in a loop.",
+          "c": "That is closer to Hoare; Mesa does not hand over the monitor immediately.",
+          "d": "Hoare gives stronger immediate handoff; Mesa does not."
+        },
+        "difficulty": "hard",
+        "source": {
+          "term": "",
+          "chapterTitle": "Concurrency"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 13,
+        "cleanedOrdinal": 13
+      },
+      {
+        "prompt": "The ABA problem in lock-free programming occurs when\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Virtual memory is disabled"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Two threads never run concurrently"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "A location appears unchanged (A\u2192B\u2192A) but its structure was modified, fooling compare-and-swap checks."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "All locks are implemented with semaphores only"
+          }
+        ],
+        "correctChoiceId": "c",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "CAS only compares values, not histories; reuse of the same pointer/value after pop/push can succeed incorrectly.",
+        "wrongAnswerExplanations": {
+          "a": "ABA is about pointer/value identity, not paging on/off.",
+          "b": "ABA arises under concurrency with reuse of nodes/values.",
+          "d": "ABA is specific to lock-free CAS-based structures."
+        },
+        "difficulty": "hard",
+        "source": {
+          "term": "",
+          "chapterTitle": "Concurrency"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 14,
+        "cleanedOrdinal": 14
+      },
+      {
+        "prompt": "A memory barrier (fence) in concurrent code ensures\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Heap allocations require no synchronization"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Page replacement chooses OPT automatically"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Ordering constraints so some loads/stores cannot be reordered across the fence by compiler or CPU."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "All threads run on the same CPU core"
+          }
+        ],
+        "correctChoiceId": "c",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Barriers publish/consume shared data safely on weak memory models.",
+        "wrongAnswerExplanations": {
+          "a": "Allocation and memory ordering are separate concerns.",
+          "b": "OPT is unrelated to CPU memory ordering fences.",
+          "d": "Barriers matter especially when threads run on different cores with reordering."
+        },
+        "difficulty": "hard",
+        "source": {
+          "term": "",
+          "chapterTitle": "Concurrency"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 15,
+        "cleanedOrdinal": 15
+      },
+      {
+        "prompt": "Deadlock prevention by breaking 'hold and wait' typically requires\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Granting every request immediately without checking safety"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Allowing circular wait chains to form freely"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Processes to request all needed resources atomically before starting (or release all before new requests)."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Ignoring maximum claim vectors in the banker algorithm"
+          }
+        ],
+        "correctChoiceId": "c",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "If a process cannot hold partial allocations while waiting, circular wait chains cannot form via held resources.",
+        "wrongAnswerExplanations": {
+          "a": "Immediate unsafe grants cause deadlock rather than prevent it.",
+          "b": "That would not prevent deadlock.",
+          "d": "Claims are central to avoidance algorithms, not this prevention tactic."
+        },
+        "difficulty": "hard",
+        "source": {
+          "term": "",
+          "chapterTitle": "Deadlocks"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 16,
+        "cleanedOrdinal": 16
+      },
+      {
+        "prompt": "Deadlock detection with multiple instances of resources often uses\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "A wait-for graph or reduction of the resource-allocation state to see if a safe sequence exists."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "ASLR entropy values"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "TLB hit rate measurements"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Only the FCFS CPU scheduling rule"
+          }
+        ],
+        "correctChoiceId": "a",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Detection examines whether processes can finish with current availability, similar in spirit to safety checks.",
+        "wrongAnswerExplanations": {
+          "b": "Security randomization does not detect resource deadlocks.",
+          "c": "TLB statistics measure translation performance, not deadlock.",
+          "d": "FCFS is unrelated to resource deadlock detection."
+        },
+        "difficulty": "hard",
+        "source": {
+          "term": "",
+          "chapterTitle": "Deadlocks"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 17,
+        "cleanedOrdinal": 17
+      },
+      {
+        "prompt": "An I/O scheduler elevator (e.g., SCAN) reduces seek cost on disks by\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Caching virtual addresses in the TLB"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Issuing every request in random order always"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Disabling DMA transfers entirely"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Serving requests in one direction along the disk until the end, then reversing."
+          }
+        ],
+        "correctChoiceId": "d",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Directional scanning batches nearby cylinder requests, improving throughput versus pure FCFS on rotating media.",
+        "wrongAnswerExplanations": {
+          "a": "TLBs are for memory translation, not disk arm scheduling.",
+          "b": "Random ordering increases seeks; elevators sort spatially.",
+          "c": "DMA and arm scheduling are independent optimizations."
+        },
+        "difficulty": "hard",
+        "source": {
+          "term": "",
+          "chapterTitle": "I/O"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 18,
+        "cleanedOrdinal": 18
+      },
+      {
+        "prompt": "Spurious wakeups on condition variables imply that correct code should\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Assume the predicate is true without checking"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Disable the scheduler entirely"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Never call signal or broadcast"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Re-test the waited-on predicate in a loop after returning from wait."
+          }
+        ],
+        "correctChoiceId": "d",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Threads may wake without the condition holding; loops prevent proceeding on false wakeups.",
+        "wrongAnswerExplanations": {
+          "a": "That races with concurrent changes and spurious wakeups.",
+          "b": "Scheduling continues; waiters must verify state.",
+          "c": "Signaling is still required; callers must handle spurious wakeups."
+        },
+        "difficulty": "hard",
+        "source": {
+          "term": "",
+          "chapterTitle": "I/O"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 19,
+        "cleanedOrdinal": 19
+      },
+      {
+        "prompt": "Thrashing in a demand-paging system is best described as\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "A filesystem journaling mode"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "A state where no page faults occur"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Optimal CPU-bound throughput with infinite frames"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Excessive paging where CPU time is dominated by fault handling and little useful work completes."
+          }
+        ],
+        "correctChoiceId": "d",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "When the working set does not fit, processes fault constantly, queue grows, and performance collapses.",
+        "wrongAnswerExplanations": {
+          "a": "Thrashing is a memory overcommit phenomenon, not a log mode.",
+          "b": "Thrashing involves very high fault rates, not zero faults.",
+          "c": "Enough frames prevent thrashing; infinite memory is not the definition."
+        },
+        "difficulty": "hard",
+        "source": {
+          "term": "",
+          "chapterTitle": "Virtual Memory"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 20,
+        "cleanedOrdinal": 20
+      }
+    ]
+  }
+}

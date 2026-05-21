@@ -68,12 +68,12 @@
           {
             "id": "a",
             "label": "A",
-            "body": "1/12"
+            "body": "7/36"
           },
           {
             "id": "b",
             "label": "B",
-            "body": "7/36"
+            "body": "1/36"
           },
           {
             "id": "c",
@@ -83,16 +83,16 @@
           {
             "id": "d",
             "label": "D",
-            "body": "1/36"
+            "body": "1/12"
           }
         ],
         "correctChoiceId": "c",
         "hint": "Think about the precise definition before picking.",
         "explanation": "There are 36 equally-likely outcomes; six of them sum to 7: (1,6),(2,5),(3,4),(4,3),(5,2),(6,1). So 6/36 = 1/6.",
         "wrongAnswerExplanations": {
-          "a": "Half of the correct answer \u2014 this misses three of the six outcomes.",
-          "b": "There are six outcomes summing to 7, not seven.",
-          "d": "That's the probability of a single specific pair like (1,6)."
+          "a": "There are six outcomes summing to 7, not seven.",
+          "b": "That's the probability of a single specific pair like (1,6).",
+          "d": "Half of the correct answer \u2014 this misses three of the six outcomes."
         },
         "difficulty": "easy",
         "source": {
@@ -109,31 +109,31 @@
           {
             "id": "a",
             "label": "A",
-            "body": "2/3"
+            "body": "1/6"
           },
           {
             "id": "b",
             "label": "B",
-            "body": "5/6"
+            "body": "1/3"
           },
           {
             "id": "c",
             "label": "C",
-            "body": "1/6"
+            "body": "2/3"
           },
           {
             "id": "d",
             "label": "D",
-            "body": "1/3"
+            "body": "5/6"
           }
         ],
-        "correctChoiceId": "c",
+        "correctChoiceId": "a",
         "hint": "Think about the precise definition before picking.",
         "explanation": "P(A \u2229 B) = P(B|A) \u00b7 P(A) = (1/3)(1/2) = 1/6.",
         "wrongAnswerExplanations": {
-          "a": "Not derivable from the given numbers.",
-          "b": "That's roughly P(A) + P(B|A), which isn't a valid formula.",
-          "d": "That's P(B|A) \u2014 the conditional, not the joint."
+          "b": "That's P(B|A) \u2014 the conditional, not the joint.",
+          "c": "Not derivable from the given numbers.",
+          "d": "That's roughly P(A) + P(B|A), which isn't a valid formula."
         },
         "difficulty": "easy",
         "source": {
@@ -150,31 +150,31 @@
           {
             "id": "a",
             "label": "A",
-            "body": "P(A) = P(B)."
+            "body": "P(A | B) = 0."
           },
           {
             "id": "b",
             "label": "B",
-            "body": "P(A \u2229 B) = P(A) \u00b7 P(B)."
+            "body": "P(A) = P(B)."
           },
           {
             "id": "c",
             "label": "C",
-            "body": "P(A | B) = 0."
+            "body": "P(A \u222a B) = P(A) + P(B)."
           },
           {
             "id": "d",
             "label": "D",
-            "body": "P(A \u222a B) = P(A) + P(B)."
+            "body": "P(A \u2229 B) = P(A) \u00b7 P(B)."
           }
         ],
-        "correctChoiceId": "b",
+        "correctChoiceId": "d",
         "hint": "Think about the precise definition before picking.",
         "explanation": "Independence is defined by factorization of the joint; equivalent forms: P(A|B) = P(A) when P(B) > 0.",
         "wrongAnswerExplanations": {
-          "a": "Equal probabilities don't imply independence.",
-          "c": "That says A and B can't co-occur \u2014 also mutual exclusivity.",
-          "d": "That's mutual exclusivity, not independence."
+          "a": "That says A and B can't co-occur \u2014 also mutual exclusivity.",
+          "b": "Equal probabilities don't imply independence.",
+          "c": "That's mutual exclusivity, not independence."
         },
         "difficulty": "easy",
         "source": {
@@ -196,7 +196,7 @@
           {
             "id": "b",
             "label": "B",
-            "body": "p"
+            "body": "1/p"
           },
           {
             "id": "c",
@@ -206,16 +206,16 @@
           {
             "id": "d",
             "label": "D",
-            "body": "1/p"
+            "body": "p"
           }
         ],
-        "correctChoiceId": "b",
+        "correctChoiceId": "d",
         "hint": "Think about the precise definition before picking.",
         "explanation": "E[X] = 1\u00b7p + 0\u00b7(1\u2212p) = p.",
         "wrongAnswerExplanations": {
           "a": "That's the variance of a Bernoulli.",
-          "c": "Not a Bernoulli mean.",
-          "d": "That's E[X] for a Geometric distribution."
+          "b": "That's E[X] for a Geometric distribution.",
+          "c": "Not a Bernoulli mean."
         },
         "difficulty": "easy",
         "source": {
@@ -232,31 +232,31 @@
           {
             "id": "a",
             "label": "A",
-            "body": "n \u2212 p"
+            "body": "np(1 \u2212 p)"
           },
           {
             "id": "b",
             "label": "B",
-            "body": "p"
+            "body": "n \u2212 p"
           },
           {
             "id": "c",
             "label": "C",
-            "body": "np(1 \u2212 p)"
+            "body": "np"
           },
           {
             "id": "d",
             "label": "D",
-            "body": "np"
+            "body": "p"
           }
         ],
-        "correctChoiceId": "d",
+        "correctChoiceId": "c",
         "hint": "Think about the precise definition before picking.",
         "explanation": "A Binomial is the sum of n independent Bernoulli(p)'s, so E[X] = np.",
         "wrongAnswerExplanations": {
-          "a": "Not a standard quantity.",
-          "b": "That's E[X] for a single Bernoulli.",
-          "c": "That's the variance of a Binomial."
+          "a": "That's the variance of a Binomial.",
+          "b": "Not a standard quantity.",
+          "d": "That's E[X] for a single Bernoulli."
         },
         "difficulty": "easy",
         "source": {
@@ -273,12 +273,12 @@
           {
             "id": "a",
             "label": "A",
-            "body": "Always, even when X and Y are dependent."
+            "body": "Only for discrete random variables."
           },
           {
             "id": "b",
             "label": "B",
-            "body": "Only for discrete random variables."
+            "body": "Always, even when X and Y are dependent."
           },
           {
             "id": "c",
@@ -291,11 +291,11 @@
             "body": "Only when X and Y are independent."
           }
         ],
-        "correctChoiceId": "a",
+        "correctChoiceId": "b",
         "hint": "Think about the precise definition before picking.",
         "explanation": "Linearity holds regardless of dependence \u2014 a key reason it's so useful.",
         "wrongAnswerExplanations": {
-          "b": "It holds for continuous too.",
+          "a": "It holds for continuous too.",
           "c": "Identical distributions aren't required.",
           "d": "Independence is required for variance, not expectation."
         },
@@ -319,26 +319,26 @@
           {
             "id": "b",
             "label": "B",
-            "body": "X = Y."
+            "body": "X and Y have the same mean."
           },
           {
             "id": "c",
             "label": "C",
-            "body": "X and Y are uncorrelated."
+            "body": "X = Y."
           },
           {
             "id": "d",
             "label": "D",
-            "body": "X and Y have the same mean."
+            "body": "X and Y are uncorrelated."
           }
         ],
-        "correctChoiceId": "c",
+        "correctChoiceId": "d",
         "hint": "Think about the precise definition before picking.",
         "explanation": "Var(X+Y) = Var(X) + Var(Y) + 2 Cov(X, Y); the cross term vanishes when correlation is zero.",
         "wrongAnswerExplanations": {
           "a": "Same distribution doesn't imply independence.",
-          "b": "Then Var(2X) = 4 Var(X), not 2 Var(X).",
-          "d": "Means don't affect the variance identity."
+          "b": "Means don't affect the variance identity.",
+          "c": "Then Var(2X) = 4 Var(X), not 2 Var(X)."
         },
         "difficulty": "easy",
         "source": {
@@ -365,21 +365,21 @@
           {
             "id": "c",
             "label": "C",
-            "body": "C(n, k) p^k (1 \u2212 p)^{n \u2212 k}"
+            "body": "p^k"
           },
           {
             "id": "d",
             "label": "D",
-            "body": "p^k"
+            "body": "C(n, k) p^k (1 \u2212 p)^{n \u2212 k}"
           }
         ],
-        "correctChoiceId": "c",
+        "correctChoiceId": "d",
         "hint": "Think about the precise definition before picking.",
         "explanation": "That's the Binomial probability mass function.",
         "wrongAnswerExplanations": {
           "a": "Not a probability at all.",
           "b": "Off \u2014 needs p^k and the failure term.",
-          "d": "Missing the combinatorial coefficient and the failure factor."
+          "c": "Missing the combinatorial coefficient and the failure factor."
         },
         "difficulty": "easy",
         "source": {
@@ -396,31 +396,31 @@
           {
             "id": "a",
             "label": "A",
-            "body": "P(A) \u2212 P(B)"
+            "body": "P(A | B) \u00b7 P(B)"
           },
           {
             "id": "b",
             "label": "B",
-            "body": "P(A) \u00b7 P(B)"
+            "body": "P(A) \u2212 P(B)"
           },
           {
             "id": "c",
             "label": "C",
-            "body": "P(A | B) \u00b7 P(B)"
+            "body": "P(B | A) \u00b7 P(A) / P(B)"
           },
           {
             "id": "d",
             "label": "D",
-            "body": "P(B | A) \u00b7 P(A) / P(B)"
+            "body": "P(A) \u00b7 P(B)"
           }
         ],
-        "correctChoiceId": "d",
+        "correctChoiceId": "c",
         "hint": "Think about the precise definition before picking.",
         "explanation": "Bayes rewrites the conditional via the symmetry P(A \u2229 B) = P(A|B)P(B) = P(B|A)P(A).",
         "wrongAnswerExplanations": {
-          "a": "Not a probability formula.",
-          "b": "That's the joint when A, B are independent \u2014 not Bayes.",
-          "c": "Circular \u2014 that just gives P(A \u2229 B)."
+          "a": "Circular \u2014 that just gives P(A \u2229 B).",
+          "b": "Not a probability formula.",
+          "d": "That's the joint when A, B are independent \u2014 not Bayes."
         },
         "difficulty": "easy",
         "source": {
@@ -437,31 +437,31 @@
           {
             "id": "a",
             "label": "A",
-            "body": "P(A) \u00b7 P(B)"
+            "body": "max(P(A), P(B))"
           },
           {
             "id": "b",
             "label": "B",
-            "body": "max(P(A), P(B))"
+            "body": "P(A) + P(B)"
           },
           {
             "id": "c",
             "label": "C",
-            "body": "P(A) + P(B)"
+            "body": "P(A) + P(B) \u2212 P(A) P(B)"
           },
           {
             "id": "d",
             "label": "D",
-            "body": "P(A) + P(B) \u2212 P(A) P(B)"
+            "body": "P(A) \u00b7 P(B)"
           }
         ],
-        "correctChoiceId": "c",
+        "correctChoiceId": "b",
         "hint": "Think about the precise definition before picking.",
         "explanation": "Disjoint events can't co-occur, so the inclusion-exclusion term P(A \u2229 B) is zero.",
         "wrongAnswerExplanations": {
-          "a": "That's the joint under independence \u2014 not the union.",
-          "b": "Only true in degenerate cases.",
-          "d": "Inclusion-exclusion with independence assumption \u2014 not for disjoint events."
+          "a": "Only true in degenerate cases.",
+          "c": "Inclusion-exclusion with independence assumption \u2014 not for disjoint events.",
+          "d": "That's the joint under independence \u2014 not the union."
         },
         "difficulty": "easy",
         "source": {
@@ -478,12 +478,12 @@
           {
             "id": "a",
             "label": "A",
-            "body": "\u03bb"
+            "body": "1/\u03bb"
           },
           {
             "id": "b",
             "label": "B",
-            "body": "\u03bb\u00b2"
+            "body": "\u03bb"
           },
           {
             "id": "c",
@@ -493,16 +493,16 @@
           {
             "id": "d",
             "label": "D",
-            "body": "1/\u03bb"
+            "body": "\u03bb\u00b2"
           }
         ],
-        "correctChoiceId": "a",
+        "correctChoiceId": "b",
         "hint": "Think about the precise definition before picking.",
         "explanation": "E[X] = \u03a3 k \u00b7 e^{\u2212\u03bb} \u03bb^k / k! = \u03bb; the Poisson is also its own variance.",
         "wrongAnswerExplanations": {
-          "b": "Not a Poisson moment.",
+          "a": "That's the mean of an Exponential.",
           "c": "Not a Poisson quantity.",
-          "d": "That's the mean of an Exponential."
+          "d": "Not a Poisson moment."
         },
         "difficulty": "easy",
         "source": {
@@ -519,17 +519,17 @@
           {
             "id": "a",
             "label": "A",
-            "body": "1/\u03bb"
+            "body": "\u03bb"
           },
           {
             "id": "b",
             "label": "B",
-            "body": "\u03bb"
+            "body": "ln \u03bb"
           },
           {
             "id": "c",
             "label": "C",
-            "body": "ln \u03bb"
+            "body": "1/\u03bb"
           },
           {
             "id": "d",
@@ -537,12 +537,12 @@
             "body": "\u03bb\u00b2"
           }
         ],
-        "correctChoiceId": "a",
+        "correctChoiceId": "c",
         "hint": "Think about the precise definition before picking.",
         "explanation": "The exponential pdf f(x) = \u03bbe^{\u2212\u03bbx} integrates with x to give 1/\u03bb.",
         "wrongAnswerExplanations": {
-          "b": "That's the rate parameter, not the mean.",
-          "c": "Not a standard quantity.",
+          "a": "That's the rate parameter, not the mean.",
+          "b": "Not a standard quantity.",
           "d": "Not a moment of the Exponential."
         },
         "difficulty": "easy",
@@ -560,31 +560,31 @@
           {
             "id": "a",
             "label": "A",
-            "body": "6"
+            "body": "7"
           },
           {
             "id": "b",
             "label": "B",
-            "body": "7"
+            "body": "6"
           },
           {
             "id": "c",
             "label": "C",
-            "body": "6.5"
+            "body": "8"
           },
           {
             "id": "d",
             "label": "D",
-            "body": "8"
+            "body": "6.5"
           }
         ],
-        "correctChoiceId": "b",
+        "correctChoiceId": "a",
         "hint": "Think about the precise definition before picking.",
         "explanation": "Average of 1 through 13 is (1+13)/2 = 7; each rank has equal probability.",
         "wrongAnswerExplanations": {
-          "a": "Off by one.",
-          "c": "That's the mean of 1..12 \u2014 wrong upper bound.",
-          "d": "Off by one in the other direction."
+          "b": "Off by one.",
+          "c": "Off by one in the other direction.",
+          "d": "That's the mean of 1..12 \u2014 wrong upper bound."
         },
         "difficulty": "easy",
         "source": {
@@ -601,31 +601,31 @@
           {
             "id": "a",
             "label": "A",
-            "body": "3/4"
+            "body": "1/2"
           },
           {
             "id": "b",
             "label": "B",
-            "body": "1/4"
+            "body": "3/8"
           },
           {
             "id": "c",
             "label": "C",
-            "body": "3/8"
+            "body": "3/4"
           },
           {
             "id": "d",
             "label": "D",
-            "body": "1/2"
+            "body": "1/4"
           }
         ],
-        "correctChoiceId": "c",
+        "correctChoiceId": "b",
         "hint": "Think about the precise definition before picking.",
         "explanation": "Three outcomes out of eight have exactly two heads: HHT, HTH, THH.",
         "wrongAnswerExplanations": {
-          "a": "Doesn't match the count.",
-          "b": "That's two specific outcomes, not three.",
-          "d": "That's the probability of any head appearing once or more (excluding all-tails would be 7/8)."
+          "a": "That's the probability of any head appearing once or more (excluding all-tails would be 7/8).",
+          "c": "Doesn't match the count.",
+          "d": "That's two specific outcomes, not three."
         },
         "difficulty": "easy",
         "source": {
@@ -647,12 +647,12 @@
           {
             "id": "b",
             "label": "B",
-            "body": "About 17%."
+            "body": "About 99%."
           },
           {
             "id": "c",
             "label": "C",
-            "body": "About 99%."
+            "body": "About 17%."
           },
           {
             "id": "d",
@@ -660,12 +660,12 @@
             "body": "About 1%."
           }
         ],
-        "correctChoiceId": "b",
+        "correctChoiceId": "c",
         "hint": "Think about the precise definition before picking.",
         "explanation": "Bayes: P(D | +) = 0.99\u00b70.01 / (0.99\u00b70.01 + 0.05\u00b70.99) \u2248 0.0099 / 0.0594 \u2248 0.167.",
         "wrongAnswerExplanations": {
           "a": "Confusing test specificity with posterior probability.",
-          "c": "Confusing sensitivity with posterior probability \u2014 base-rate fallacy.",
+          "b": "Confusing sensitivity with posterior probability \u2014 base-rate fallacy.",
           "d": "That's the prior, before conditioning on the positive test."
         },
         "difficulty": "easy",
@@ -683,12 +683,12 @@
           {
             "id": "a",
             "label": "A",
-            "body": "(a + b) / 2"
+            "body": "(b \u2212 a)\u00b2 / 6"
           },
           {
             "id": "b",
             "label": "B",
-            "body": "(b \u2212 a)\u00b2 / 6"
+            "body": "(b \u2212 a) / 2"
           },
           {
             "id": "c",
@@ -698,16 +698,16 @@
           {
             "id": "d",
             "label": "D",
-            "body": "(b \u2212 a) / 2"
+            "body": "(a + b) / 2"
           }
         ],
         "correctChoiceId": "c",
         "hint": "Think about the precise definition before picking.",
         "explanation": "By integration, \u03c3\u00b2 = (b \u2212 a)\u00b2 / 12; the mean is (a+b)/2.",
         "wrongAnswerExplanations": {
-          "a": "That's the mean.",
-          "b": "Off by a factor of 2.",
-          "d": "Half the range, not a variance."
+          "a": "Off by a factor of 2.",
+          "b": "Half the range, not a variance.",
+          "d": "That's the mean."
         },
         "difficulty": "easy",
         "source": {
@@ -724,7 +724,7 @@
           {
             "id": "a",
             "label": "A",
-            "body": "p"
+            "body": "p(1 \u2212 p)"
           },
           {
             "id": "b",
@@ -734,21 +734,21 @@
           {
             "id": "c",
             "label": "C",
-            "body": "1 \u2212 p"
+            "body": "p"
           },
           {
             "id": "d",
             "label": "D",
-            "body": "p(1 \u2212 p)"
+            "body": "1 \u2212 p"
           }
         ],
-        "correctChoiceId": "d",
+        "correctChoiceId": "a",
         "hint": "Think about the precise definition before picking.",
         "explanation": "Var = E[X\u00b2] \u2212 E[X]\u00b2 = p \u2212 p\u00b2 = p(1 \u2212 p).",
         "wrongAnswerExplanations": {
-          "a": "That's the mean.",
           "b": "Off \u2014 missing the (1 \u2212 p) factor.",
-          "c": "That's the failure probability, not the variance."
+          "c": "That's the mean.",
+          "d": "That's the failure probability, not the variance."
         },
         "difficulty": "easy",
         "source": {
@@ -770,26 +770,26 @@
           {
             "id": "b",
             "label": "B",
-            "body": "1/p"
+            "body": "p(1 \u2212 p)"
           },
           {
             "id": "c",
             "label": "C",
-            "body": "p(1 \u2212 p)"
+            "body": "1/(1 \u2212 p)"
           },
           {
             "id": "d",
             "label": "D",
-            "body": "1/(1 \u2212 p)"
+            "body": "1/p"
           }
         ],
-        "correctChoiceId": "b",
+        "correctChoiceId": "d",
         "hint": "Think about the precise definition before picking.",
         "explanation": "By the formula for the geometric mean, on average you need 1/p trials.",
         "wrongAnswerExplanations": {
           "a": "That's the success probability per trial.",
-          "c": "Not a moment of the geometric.",
-          "d": "That's the mean of a Geometric counting failures, off by convention."
+          "b": "Not a moment of the geometric.",
+          "c": "That's the mean of a Geometric counting failures, off by convention."
         },
         "difficulty": "easy",
         "source": {
@@ -806,17 +806,17 @@
           {
             "id": "a",
             "label": "A",
-            "body": "0.7"
+            "body": "0"
           },
           {
             "id": "b",
             "label": "B",
-            "body": "0.3"
+            "body": "0.7"
           },
           {
             "id": "c",
             "label": "C",
-            "body": "0"
+            "body": "0.3"
           },
           {
             "id": "d",
@@ -824,12 +824,12 @@
             "body": "1"
           }
         ],
-        "correctChoiceId": "a",
+        "correctChoiceId": "b",
         "hint": "Think about the precise definition before picking.",
         "explanation": "P(A) + P(A^c) = 1, so P(A^c) = 1 \u2212 0.3.",
         "wrongAnswerExplanations": {
-          "b": "That's P(A) itself.",
-          "c": "Only if A is certain.",
+          "a": "Only if A is certain.",
+          "c": "That's P(A) itself.",
           "d": "Only if A is impossible."
         },
         "difficulty": "easy",
@@ -847,17 +847,17 @@
           {
             "id": "a",
             "label": "A",
-            "body": "15"
+            "body": "5"
           },
           {
             "id": "b",
             "label": "B",
-            "body": "5"
+            "body": "17"
           },
           {
             "id": "c",
             "label": "C",
-            "body": "17"
+            "body": "15"
           },
           {
             "id": "d",
@@ -865,12 +865,12 @@
             "body": "13"
           }
         ],
-        "correctChoiceId": "c",
+        "correctChoiceId": "b",
         "hint": "Think about the precise definition before picking.",
         "explanation": "Linearity: E[3X + 2] = 3 E[X] + 2 = 15 + 2.",
         "wrongAnswerExplanations": {
-          "a": "Forgot to add 2.",
-          "b": "That's E[X], not E[Y].",
+          "a": "That's E[X], not E[Y].",
+          "c": "Forgot to add 2.",
           "d": "Off by 4 \u2014 arithmetic error."
         },
         "difficulty": "easy",
@@ -895,7 +895,7 @@
           {
             "id": "b",
             "label": "B",
-            "body": "20"
+            "body": "27"
           },
           {
             "id": "c",
@@ -905,7 +905,7 @@
           {
             "id": "d",
             "label": "D",
-            "body": "27"
+            "body": "20"
           }
         ],
         "correctChoiceId": "c",
@@ -913,8 +913,8 @@
         "explanation": "Var(aX + b) = a\u00b2 Var(X) = 25 \u00b7 4. Constants don't change variance.",
         "wrongAnswerExplanations": {
           "a": "Added the constant; constants don't affect variance.",
-          "b": "Used a, not a\u00b2, for the scaling.",
-          "d": "Mixed up \u2014 would result from incorrect formula."
+          "b": "Mixed up \u2014 would result from incorrect formula.",
+          "d": "Used a, not a\u00b2, for the scaling."
         },
         "difficulty": "medium",
         "source": {
@@ -936,26 +936,26 @@
           {
             "id": "b",
             "label": "B",
-            "body": "0.95"
+            "body": "0.99"
           },
           {
             "id": "c",
             "label": "C",
-            "body": "0.99"
+            "body": "0.5"
           },
           {
             "id": "d",
             "label": "D",
-            "body": "0.5"
+            "body": "0.95"
           }
         ],
-        "correctChoiceId": "b",
+        "correctChoiceId": "d",
         "hint": "Think about the precise definition before picking.",
         "explanation": "1.96 standard deviations from the mean covers about 95% of a standard normal.",
         "wrongAnswerExplanations": {
           "a": "That's the one-sigma range (\u00b11).",
-          "c": "That's roughly the \u00b12.58 range.",
-          "d": "That would be P(Z > 0) or P(Z < 0)."
+          "b": "That's roughly the \u00b12.58 range.",
+          "c": "That would be P(Z > 0) or P(Z < 0)."
         },
         "difficulty": "medium",
         "source": {
@@ -1013,17 +1013,17 @@
           {
             "id": "a",
             "label": "A",
-            "body": "Not Gaussian in general."
+            "body": "Normal(\u03bc_X + \u03bc_Y, \u03c3_X + \u03c3_Y)"
           },
           {
             "id": "b",
             "label": "B",
-            "body": "Normal(\u03bc_X + \u03bc_Y, \u03c3_X + \u03c3_Y)"
+            "body": "Normal(\u03bc_X \u00b7 \u03bc_Y, \u03c3_X \u00b7 \u03c3_Y)"
           },
           {
             "id": "c",
             "label": "C",
-            "body": "Normal(\u03bc_X \u00b7 \u03bc_Y, \u03c3_X \u00b7 \u03c3_Y)"
+            "body": "Not Gaussian in general."
           },
           {
             "id": "d",
@@ -1035,9 +1035,9 @@
         "hint": "Think about the precise definition before picking.",
         "explanation": "Means add, variances (not standard deviations) add when the variables are independent.",
         "wrongAnswerExplanations": {
-          "a": "Sum of independent normals is normal.",
-          "b": "Variances add \u2014 standard deviations do not add directly.",
-          "c": "Products of normals aren't normal in general."
+          "a": "Variances add \u2014 standard deviations do not add directly.",
+          "b": "Products of normals aren't normal in general.",
+          "c": "Sum of independent normals is normal."
         },
         "difficulty": "medium",
         "source": {
@@ -1054,12 +1054,12 @@
           {
             "id": "a",
             "label": "A",
-            "body": "P(A \u2229 B) = 0."
+            "body": "P(B | A) = P(B)."
           },
           {
             "id": "b",
             "label": "B",
-            "body": "P(B | A) = P(B)."
+            "body": "P(A \u2229 B) = 0."
           },
           {
             "id": "c",
@@ -1072,11 +1072,11 @@
             "body": "P(A \u222a B) = 1."
           }
         ],
-        "correctChoiceId": "b",
+        "correctChoiceId": "a",
         "hint": "Think about the precise definition before picking.",
         "explanation": "Independence is symmetric: knowing A doesn't change P(B) iff knowing B doesn't change P(A).",
         "wrongAnswerExplanations": {
-          "a": "That's mutual exclusivity \u2014 typically incompatible with independence unless one has probability 0.",
+          "b": "That's mutual exclusivity \u2014 typically incompatible with independence unless one has probability 0.",
           "c": "Equal probabilities doesn't imply independence.",
           "d": "Covering the sample space isn't independence."
         },
@@ -1095,12 +1095,12 @@
           {
             "id": "a",
             "label": "A",
-            "body": "k(1 \u2212 p)"
+            "body": "1 \u2212 p^k"
           },
           {
             "id": "b",
             "label": "B",
-            "body": "1 \u2212 p^k"
+            "body": "p^k"
           },
           {
             "id": "c",
@@ -1110,16 +1110,16 @@
           {
             "id": "d",
             "label": "D",
-            "body": "p^k"
+            "body": "k(1 \u2212 p)"
           }
         ],
         "correctChoiceId": "c",
         "hint": "Think about the precise definition before picking.",
         "explanation": "X > k means the first k trials are all failures, each with probability (1 \u2212 p).",
         "wrongAnswerExplanations": {
-          "a": "Not a probability.",
-          "b": "Not the survival function for Geometric.",
-          "d": "That's k successes in a row."
+          "a": "Not the survival function for Geometric.",
+          "b": "That's k successes in a row.",
+          "d": "Not a probability."
         },
         "difficulty": "medium",
         "source": {
@@ -1136,31 +1136,31 @@
           {
             "id": "a",
             "label": "A",
-            "body": "2 Var(X)"
+            "body": "0"
           },
           {
             "id": "b",
             "label": "B",
-            "body": "1"
+            "body": "Var(X)"
           },
           {
             "id": "c",
             "label": "C",
-            "body": "Var(X)"
+            "body": "1"
           },
           {
             "id": "d",
             "label": "D",
-            "body": "0"
+            "body": "2 Var(X)"
           }
         ],
-        "correctChoiceId": "c",
+        "correctChoiceId": "b",
         "hint": "Think about the precise definition before picking.",
         "explanation": "Cov(X, Y) = E[(X\u2212\u03bc_X)(Y\u2212\u03bc_Y)]; with Y = X this is Var(X).",
         "wrongAnswerExplanations": {
-          "a": "Off by a factor.",
-          "b": "Only true for the correlation of X with itself.",
-          "d": "Only true for independent X, Y."
+          "a": "Only true for independent X, Y.",
+          "c": "Only true for the correlation of X with itself.",
+          "d": "Off by a factor."
         },
         "difficulty": "medium",
         "source": {
@@ -1177,31 +1177,31 @@
           {
             "id": "a",
             "label": "A",
-            "body": "n and p are both around 0.5."
+            "body": "n is large and p is small with np = \u03bb moderate."
           },
           {
             "id": "b",
             "label": "B",
-            "body": "p approaches 1."
+            "body": "n is small."
           },
           {
             "id": "c",
             "label": "C",
-            "body": "n is large and p is small with np = \u03bb moderate."
+            "body": "n and p are both around 0.5."
           },
           {
             "id": "d",
             "label": "D",
-            "body": "n is small."
+            "body": "p approaches 1."
           }
         ],
-        "correctChoiceId": "c",
+        "correctChoiceId": "a",
         "hint": "Think about the precise definition before picking.",
         "explanation": "Poisson(np) is the limiting distribution as n \u2192 \u221e, p \u2192 0 with np fixed.",
         "wrongAnswerExplanations": {
-          "a": "Normal approximation is better there.",
-          "b": "Symmetric to the relevant regime but the Poisson approximates rare events.",
-          "d": "The approximation is asymptotic in n."
+          "b": "The approximation is asymptotic in n.",
+          "c": "Normal approximation is better there.",
+          "d": "Symmetric to the relevant regime but the Poisson approximates rare events."
         },
         "difficulty": "medium",
         "source": {
@@ -1218,17 +1218,17 @@
           {
             "id": "a",
             "label": "A",
-            "body": "(n + 1) / 2"
+            "body": "(n + 1)(2n + 1) / 6"
           },
           {
             "id": "b",
             "label": "B",
-            "body": "(n + 1)(2n + 1) / 6"
+            "body": "n\u00b2 / 2"
           },
           {
             "id": "c",
             "label": "C",
-            "body": "n\u00b2 / 2"
+            "body": "(n + 1) / 2"
           },
           {
             "id": "d",
@@ -1236,12 +1236,12 @@
             "body": "(2n + 1) / 3"
           }
         ],
-        "correctChoiceId": "b",
+        "correctChoiceId": "a",
         "hint": "Think about the precise definition before picking.",
         "explanation": "E[X\u00b2] = (1/n) \u03a3 k\u00b2 = (1/n) \u00b7 n(n+1)(2n+1)/6 = (n+1)(2n+1)/6.",
         "wrongAnswerExplanations": {
-          "a": "That's E[X], not E[X\u00b2].",
-          "c": "Not the right closed form.",
+          "b": "Not the right closed form.",
+          "c": "That's E[X], not E[X\u00b2].",
           "d": "Not a standard moment."
         },
         "difficulty": "medium",
@@ -1264,12 +1264,12 @@
           {
             "id": "b",
             "label": "B",
-            "body": "An initial distribution alone."
+            "body": "A reward function only."
           },
           {
             "id": "c",
             "label": "C",
-            "body": "A reward function only."
+            "body": "An initial distribution alone."
           },
           {
             "id": "d",
@@ -1281,8 +1281,8 @@
         "hint": "Think about the precise definition before picking.",
         "explanation": "Together with an initial distribution \u03c0_0, the transition matrix fully determines the chain.",
         "wrongAnswerExplanations": {
-          "b": "Needed but not sufficient.",
-          "c": "Rewards are an MDP concept; not needed for a chain.",
+          "b": "Rewards are an MDP concept; not needed for a chain.",
+          "c": "Needed but not sufficient.",
           "d": "Markov chains have dependence by definition."
         },
         "difficulty": "medium",
@@ -1300,31 +1300,31 @@
           {
             "id": "a",
             "label": "A",
-            "body": "P\u03c0 = \u03c0."
+            "body": "\u03c0 = (1, 0, 0, \u2026, 0)."
           },
           {
             "id": "b",
             "label": "B",
-            "body": "\u03c0 = (1, 0, 0, \u2026, 0)."
+            "body": "P\u03c0 = \u03c0."
           },
           {
             "id": "c",
             "label": "C",
-            "body": "\u03c0 = 0."
+            "body": "\u03c0P = \u03c0 (a left eigenvector with eigenvalue 1)."
           },
           {
             "id": "d",
             "label": "D",
-            "body": "\u03c0P = \u03c0 (a left eigenvector with eigenvalue 1)."
+            "body": "\u03c0 = 0."
           }
         ],
-        "correctChoiceId": "d",
+        "correctChoiceId": "c",
         "hint": "Think about the precise definition before picking.",
         "explanation": "Stationarity means the distribution is preserved after one step: \u03c0_j = \u03a3_i \u03c0_i P_{ij}.",
         "wrongAnswerExplanations": {
-          "a": "Wrong direction \u2014 \u03c0 should be a row vector multiplied on the left.",
-          "b": "Only stationary if state 1 absorbs.",
-          "c": "Probabilities can't all be zero."
+          "a": "Only stationary if state 1 absorbs.",
+          "b": "Wrong direction \u2014 \u03c0 should be a row vector multiplied on the left.",
+          "d": "Probabilities can't all be zero."
         },
         "difficulty": "medium",
         "source": {
@@ -1341,31 +1341,31 @@
           {
             "id": "a",
             "label": "A",
-            "body": "f_X(g(y))"
+            "body": "f_X(y) \u00b7 g'(y)"
           },
           {
             "id": "b",
             "label": "B",
-            "body": "f_X(y) \u00b7 g'(y)"
+            "body": "f_X(g^{\u22121}(y)) / |g'(g^{\u22121}(y))|"
           },
           {
             "id": "c",
             "label": "C",
-            "body": "f_X(y)"
+            "body": "f_X(g(y))"
           },
           {
             "id": "d",
             "label": "D",
-            "body": "f_X(g^{\u22121}(y)) / |g'(g^{\u22121}(y))|"
+            "body": "f_X(y)"
           }
         ],
-        "correctChoiceId": "d",
+        "correctChoiceId": "b",
         "hint": "Think about the precise definition before picking.",
         "explanation": "Change-of-variables for densities; the Jacobian factor accounts for the stretching of probability mass.",
         "wrongAnswerExplanations": {
-          "a": "Missing the Jacobian.",
-          "b": "Multiplied instead of divided by the derivative \u2014 wrong direction.",
-          "c": "Ignores g entirely."
+          "a": "Multiplied instead of divided by the derivative \u2014 wrong direction.",
+          "c": "Missing the Jacobian.",
+          "d": "Ignores g entirely."
         },
         "difficulty": "medium",
         "source": {
@@ -1382,31 +1382,31 @@
           {
             "id": "a",
             "label": "A",
-            "body": "P(X \u2264 a) \u2264 E[X] / a."
+            "body": "P(X \u2265 a) \u2265 a / E[X]."
           },
           {
             "id": "b",
             "label": "B",
-            "body": "P(X \u2265 a) = E[X] / a."
+            "body": "P(X \u2265 a) \u2264 E[X] / a."
           },
           {
             "id": "c",
             "label": "C",
-            "body": "P(X \u2265 a) \u2265 a / E[X]."
+            "body": "P(X \u2265 a) = E[X] / a."
           },
           {
             "id": "d",
             "label": "D",
-            "body": "P(X \u2265 a) \u2264 E[X] / a."
+            "body": "P(X \u2264 a) \u2264 E[X] / a."
           }
         ],
-        "correctChoiceId": "d",
+        "correctChoiceId": "b",
         "hint": "Think about the precise definition before picking.",
         "explanation": "A general but often loose inequality; sharper variants (Chebyshev, Chernoff) use more information about X.",
         "wrongAnswerExplanations": {
-          "a": "Wrong direction on the inequality.",
-          "b": "It's an inequality, not equality, in general.",
-          "c": "Reversed direction."
+          "a": "Reversed direction.",
+          "c": "It's an inequality, not equality, in general.",
+          "d": "Wrong direction on the inequality."
         },
         "difficulty": "medium",
         "source": {
@@ -1423,31 +1423,31 @@
           {
             "id": "a",
             "label": "A",
-            "body": "k / \u03c3"
+            "body": "e^{\u2212k}"
           },
           {
             "id": "b",
             "label": "B",
-            "body": "1/k"
+            "body": "1/k\u00b2"
           },
           {
             "id": "c",
             "label": "C",
-            "body": "e^{\u2212k}"
+            "body": "1/k"
           },
           {
             "id": "d",
             "label": "D",
-            "body": "1/k\u00b2"
+            "body": "k / \u03c3"
           }
         ],
-        "correctChoiceId": "d",
+        "correctChoiceId": "b",
         "hint": "Think about the precise definition before picking.",
         "explanation": "For any distribution with mean \u03bc and variance \u03c3\u00b2, the chance of being k stdev from the mean is at most 1/k\u00b2.",
         "wrongAnswerExplanations": {
-          "a": "Not a probability bound.",
-          "b": "Off \u2014 Chebyshev is in 1/k\u00b2, which is tighter for large k.",
-          "c": "That's a Chernoff-style bound, needing MGF assumptions."
+          "a": "That's a Chernoff-style bound, needing MGF assumptions.",
+          "c": "Off \u2014 Chebyshev is in 1/k\u00b2, which is tighter for large k.",
+          "d": "Not a probability bound."
         },
         "difficulty": "medium",
         "source": {
@@ -1464,7 +1464,7 @@
           {
             "id": "a",
             "label": "A",
-            "body": "B is a subset of A."
+            "body": "P(B | A) > P(B), i.e., A and B are positively associated."
           },
           {
             "id": "b",
@@ -1479,16 +1479,16 @@
           {
             "id": "d",
             "label": "D",
-            "body": "P(B | A) > P(B), i.e., A and B are positively associated."
+            "body": "B is a subset of A."
           }
         ],
-        "correctChoiceId": "d",
+        "correctChoiceId": "a",
         "hint": "Think about the precise definition before picking.",
         "explanation": "By Bayes, P(A|B)/P(A) = P(B|A)/P(B); they exceed 1 together.",
         "wrongAnswerExplanations": {
-          "a": "That gives P(A | B) = 1 \u2265 P(A), but isn't the iff.",
           "b": "Mutual exclusivity would force P(A | B) = 0.",
-          "c": "Magnitudes aren't what positive association is about."
+          "c": "Magnitudes aren't what positive association is about.",
+          "d": "That gives P(A | B) = 1 \u2265 P(A), but isn't the iff."
         },
         "difficulty": "medium",
         "source": {
@@ -1546,12 +1546,12 @@
           {
             "id": "a",
             "label": "A",
-            "body": "i is the most probable initial state."
+            "body": "P_{ii} = 1 (the chain stays in i forever once entered)."
           },
           {
             "id": "b",
             "label": "B",
-            "body": "P_{ij} = 0 for all j \u2260 i and P_{ii} = 0."
+            "body": "i is the most probable initial state."
           },
           {
             "id": "c",
@@ -1561,16 +1561,16 @@
           {
             "id": "d",
             "label": "D",
-            "body": "P_{ii} = 1 (the chain stays in i forever once entered)."
+            "body": "P_{ij} = 0 for all j \u2260 i and P_{ii} = 0."
           }
         ],
-        "correctChoiceId": "d",
+        "correctChoiceId": "a",
         "hint": "Think about the precise definition before picking.",
         "explanation": "Absorbing states have a self-loop probability of 1.",
         "wrongAnswerExplanations": {
-          "a": "Initial distribution is unrelated to absorption.",
-          "b": "Inconsistent: probabilities wouldn't sum to 1.",
-          "c": "Opposite \u2014 that means i is left immediately."
+          "b": "Initial distribution is unrelated to absorption.",
+          "c": "Opposite \u2014 that means i is left immediately.",
+          "d": "Inconsistent: probabilities wouldn't sum to 1."
         },
         "difficulty": "medium",
         "source": {
@@ -1592,26 +1592,26 @@
           {
             "id": "b",
             "label": "B",
-            "body": "Not necessarily uncorrelated."
+            "body": "Identically distributed."
           },
           {
             "id": "c",
             "label": "C",
-            "body": "Identically distributed."
+            "body": "Equal up to sign."
           },
           {
             "id": "d",
             "label": "D",
-            "body": "Equal up to sign."
+            "body": "Not necessarily uncorrelated."
           }
         ],
         "correctChoiceId": "a",
         "hint": "Think about the precise definition before picking.",
         "explanation": "For jointly normal variables, zero correlation does imply independence (unlike the general case).",
         "wrongAnswerExplanations": {
-          "b": "They are uncorrelated by assumption.",
-          "c": "Marginal distributions can differ.",
-          "d": "No such implication."
+          "b": "Marginal distributions can differ.",
+          "c": "No such implication.",
+          "d": "They are uncorrelated by assumption."
         },
         "difficulty": "medium",
         "source": {
@@ -1628,7 +1628,7 @@
           {
             "id": "a",
             "label": "A",
-            "body": "E[X | Y] for all Y."
+            "body": "E[ E[X | Y] ] for any random variable Y."
           },
           {
             "id": "b",
@@ -1638,7 +1638,7 @@
           {
             "id": "c",
             "label": "C",
-            "body": "E[ E[X | Y] ] for any random variable Y."
+            "body": "E[X | Y] for all Y."
           },
           {
             "id": "d",
@@ -1646,12 +1646,12 @@
             "body": "E[X] \u00b7 P(Y)."
           }
         ],
-        "correctChoiceId": "c",
+        "correctChoiceId": "a",
         "hint": "Think about the precise definition before picking.",
         "explanation": "Tower property / iterated expectation; powerful for conditioning arguments.",
         "wrongAnswerExplanations": {
-          "a": "E[X | Y] is itself random.",
           "b": "That's a worst-case conditional, not the mean.",
+          "c": "E[X | Y] is itself random.",
           "d": "That's just E[X] times a probability."
         },
         "difficulty": "medium",
@@ -1669,12 +1669,12 @@
           {
             "id": "a",
             "label": "A",
-            "body": "Bernoulli(\u03bb)"
+            "body": "Uniform(0, \u03bb)"
           },
           {
             "id": "b",
             "label": "B",
-            "body": "Normal(0, 1/\u03bb)"
+            "body": "Bernoulli(\u03bb)"
           },
           {
             "id": "c",
@@ -1684,16 +1684,16 @@
           {
             "id": "d",
             "label": "D",
-            "body": "Uniform(0, \u03bb)"
+            "body": "Normal(0, 1/\u03bb)"
           }
         ],
         "correctChoiceId": "c",
         "hint": "Think about the precise definition before picking.",
         "explanation": "Inverse-CDF sampling: the inverse CDF of Exponential(\u03bb) is \u2212ln(1 \u2212 u) / \u03bb.",
         "wrongAnswerExplanations": {
-          "a": "Bernoulli is discrete.",
-          "b": "Not how Gaussian sampling works from uniform.",
-          "d": "Wrong distribution shape."
+          "a": "Wrong distribution shape.",
+          "b": "Bernoulli is discrete.",
+          "d": "Not how Gaussian sampling works from uniform."
         },
         "difficulty": "medium",
         "source": {
@@ -1712,7 +1712,7 @@
           {
             "id": "a",
             "label": "A",
-            "body": "= t / \u221an"
+            "body": "\u2264 exp(\u2212t / \u03c3)"
           },
           {
             "id": "b",
@@ -1722,7 +1722,7 @@
           {
             "id": "c",
             "label": "C",
-            "body": "\u2264 exp(\u2212t / \u03c3)"
+            "body": "= t / \u221an"
           },
           {
             "id": "d",
@@ -1734,9 +1734,9 @@
         "hint": "Think about the precise definition before picking.",
         "explanation": "For X_i \u2208 [a, b], Hoeffding gives exponential concentration in n.",
         "wrongAnswerExplanations": {
-          "a": "That's an asymptotic order of magnitude, not a bound.",
+          "a": "Not Hoeffding's form.",
           "b": "Wrong direction.",
-          "c": "Not Hoeffding's form."
+          "c": "That's an asymptotic order of magnitude, not a bound."
         },
         "difficulty": "hard",
         "source": {
@@ -1753,31 +1753,31 @@
           {
             "id": "a",
             "label": "A",
-            "body": "In probability only."
+            "body": "In distribution only."
           },
           {
             "id": "b",
             "label": "B",
-            "body": "Only in L\u00b2."
+            "body": "Almost surely."
           },
           {
             "id": "c",
             "label": "C",
-            "body": "In distribution only."
+            "body": "In probability only."
           },
           {
             "id": "d",
             "label": "D",
-            "body": "Almost surely."
+            "body": "Only in L\u00b2."
           }
         ],
-        "correctChoiceId": "d",
+        "correctChoiceId": "b",
         "hint": "Think about the precise definition before picking.",
         "explanation": "SLLN gives almost-sure convergence; the weak law gives convergence in probability.",
         "wrongAnswerExplanations": {
-          "a": "That's the weak law (WLLN).",
-          "b": "L\u00b2 convergence is yet another mode; SLLN is almost-sure.",
-          "c": "Convergence in distribution is weaker still."
+          "a": "Convergence in distribution is weaker still.",
+          "c": "That's the weak law (WLLN).",
+          "d": "L\u00b2 convergence is yet another mode; SLLN is almost-sure."
         },
         "difficulty": "hard",
         "source": {
@@ -1794,31 +1794,31 @@
           {
             "id": "a",
             "label": "A",
-            "body": "0."
+            "body": "M_n + 1."
           },
           {
             "id": "b",
             "label": "B",
-            "body": "M_n + 1."
+            "body": "E[M_n] for all n."
           },
           {
             "id": "c",
             "label": "C",
-            "body": "E[M_n] for all n."
+            "body": "M_n."
           },
           {
             "id": "d",
             "label": "D",
-            "body": "M_n."
+            "body": "0."
           }
         ],
-        "correctChoiceId": "d",
+        "correctChoiceId": "c",
         "hint": "Think about the precise definition before picking.",
         "explanation": "The defining property of a martingale: the next value is, on average given the past, equal to the current value.",
         "wrongAnswerExplanations": {
-          "a": "That would make every martingale zero.",
-          "b": "That's a submartingale with deterministic drift.",
-          "c": "Conditional expectation can depend on the path."
+          "a": "That's a submartingale with deterministic drift.",
+          "b": "Conditional expectation can depend on the path.",
+          "d": "That would make every martingale zero."
         },
         "difficulty": "hard",
         "source": {
@@ -1835,7 +1835,7 @@
           {
             "id": "a",
             "label": "A",
-            "body": "Chi-squared with 1 degree of freedom."
+            "body": "Standard normal."
           },
           {
             "id": "b",
@@ -1850,16 +1850,16 @@
           {
             "id": "d",
             "label": "D",
-            "body": "Standard normal."
+            "body": "Chi-squared with 1 degree of freedom."
           }
         ],
-        "correctChoiceId": "a",
+        "correctChoiceId": "d",
         "hint": "Think about the precise definition before picking.",
         "explanation": "X\u00b2 with X ~ N(0,1) is \u03c7\u00b2_1 by definition; sum of k independent squared normals is \u03c7\u00b2_k.",
         "wrongAnswerExplanations": {
+          "a": "Squaring a normal is not normal.",
           "b": "Probability integral transform applies to F(X), not X\u00b2.",
-          "c": "Exp(1/2) actually equals \u03c7\u00b2_2, not \u03c7\u00b2_1.",
-          "d": "Squaring a normal is not normal."
+          "c": "Exp(1/2) actually equals \u03c7\u00b2_2, not \u03c7\u00b2_1."
         },
         "difficulty": "hard",
         "source": {
@@ -1876,12 +1876,12 @@
           {
             "id": "a",
             "label": "A",
-            "body": "Multiple stationary distributions."
+            "body": "No stationary distribution."
           },
           {
             "id": "b",
             "label": "B",
-            "body": "No stationary distribution."
+            "body": "A stationary distribution only for symmetric chains."
           },
           {
             "id": "c",
@@ -1891,16 +1891,16 @@
           {
             "id": "d",
             "label": "D",
-            "body": "A stationary distribution only for symmetric chains."
+            "body": "Multiple stationary distributions."
           }
         ],
         "correctChoiceId": "c",
         "hint": "Think about the precise definition before picking.",
         "explanation": "Perron\u2013Frobenius / Markov chain convergence theorem.",
         "wrongAnswerExplanations": {
-          "a": "Irreducibility ensures uniqueness.",
-          "b": "Finite irreducible chains always have one.",
-          "d": "Symmetry isn't required."
+          "a": "Finite irreducible chains always have one.",
+          "b": "Symmetry isn't required.",
+          "d": "Irreducibility ensures uniqueness."
         },
         "difficulty": "hard",
         "source": {
@@ -1917,17 +1917,17 @@
           {
             "id": "a",
             "label": "A",
-            "body": "They are the same distribution."
+            "body": "They have the same mean only."
           },
           {
             "id": "b",
             "label": "B",
-            "body": "They have the same mean only."
+            "body": "They are jointly normal."
           },
           {
             "id": "c",
             "label": "C",
-            "body": "They are jointly normal."
+            "body": "They are the same distribution."
           },
           {
             "id": "d",
@@ -1935,12 +1935,12 @@
             "body": "They have the same support only."
           }
         ],
-        "correctChoiceId": "a",
+        "correctChoiceId": "c",
         "hint": "Think about the precise definition before picking.",
         "explanation": "MGFs determine distributions when they exist on an open interval around 0.",
         "wrongAnswerExplanations": {
-          "b": "MGF carries all moments.",
-          "c": "Joint normality is unrelated.",
+          "a": "MGF carries all moments.",
+          "b": "Joint normality is unrelated.",
           "d": "Support equality is weaker than full distribution equality."
         },
         "difficulty": "hard",
@@ -1958,31 +1958,31 @@
           {
             "id": "a",
             "label": "A",
-            "body": "E[\u03d5(X)] \u2265 \u03d5(E[X])"
+            "body": "E[\u03d5(X)] \u2264 \u03d5(E[X])"
           },
           {
             "id": "b",
             "label": "B",
-            "body": "E[\u03d5(X)] = \u03d5(E[X])"
+            "body": "\u03d5(X) is constant."
           },
           {
             "id": "c",
             "label": "C",
-            "body": "E[\u03d5(X)] \u2264 \u03d5(E[X])"
+            "body": "E[\u03d5(X)] \u2265 \u03d5(E[X])"
           },
           {
             "id": "d",
             "label": "D",
-            "body": "\u03d5(X) is constant."
+            "body": "E[\u03d5(X)] = \u03d5(E[X])"
           }
         ],
-        "correctChoiceId": "a",
+        "correctChoiceId": "c",
         "hint": "Think about the precise definition before picking.",
         "explanation": "For concave \u03d5 the inequality reverses; this is why log E \u2265 E log under typical use of MLE-related inequalities.",
         "wrongAnswerExplanations": {
-          "b": "Equality holds only if \u03d5 is affine or X is degenerate.",
-          "c": "That's the concave case.",
-          "d": "Not a general consequence."
+          "a": "That's the concave case.",
+          "b": "Not a general consequence.",
+          "d": "Equality holds only if \u03d5 is affine or X is degenerate."
         },
         "difficulty": "hard",
         "source": {
@@ -1999,7 +1999,7 @@
           {
             "id": "a",
             "label": "A",
-            "body": "1"
+            "body": "n"
           },
           {
             "id": "b",
@@ -2009,21 +2009,21 @@
           {
             "id": "c",
             "label": "C",
-            "body": "(n \u2212 1)"
+            "body": "1"
           },
           {
             "id": "d",
             "label": "D",
-            "body": "n"
+            "body": "(n \u2212 1)"
           }
         ],
-        "correctChoiceId": "c",
+        "correctChoiceId": "d",
         "hint": "Think about the precise definition before picking.",
         "explanation": "Dividing by n\u22121 corrects for using X\u0304 in place of \u03bc (Bessel's correction).",
         "wrongAnswerExplanations": {
-          "a": "Sum of squared deviations isn't a variance.",
+          "a": "Divides yields a biased (low) estimator.",
           "b": "Not a standard formula.",
-          "d": "Divides yields a biased (low) estimator."
+          "c": "Sum of squared deviations isn't a variance."
         },
         "difficulty": "hard",
         "source": {
@@ -2040,31 +2040,31 @@
           {
             "id": "a",
             "label": "A",
-            "body": "The mode of X."
+            "body": "The mean E[X]."
           },
           {
             "id": "b",
             "label": "B",
-            "body": "E[X | Y]."
+            "body": "Y itself."
           },
           {
             "id": "c",
             "label": "C",
-            "body": "The mean E[X]."
+            "body": "E[X | Y]."
           },
           {
             "id": "d",
             "label": "D",
-            "body": "Y itself."
+            "body": "The mode of X."
           }
         ],
-        "correctChoiceId": "b",
+        "correctChoiceId": "c",
         "hint": "Think about the precise definition before picking.",
         "explanation": "E[X | Y] is the L\u00b2-projection of X onto the \u03c3-algebra of Y; it minimizes mean squared error.",
         "wrongAnswerExplanations": {
-          "a": "Mode minimizes 0-1 loss, not MSE.",
-          "c": "Only optimal if X is independent of Y.",
-          "d": "Y need not be on the right scale or even the right variable."
+          "a": "Only optimal if X is independent of Y.",
+          "b": "Y need not be on the right scale or even the right variable.",
+          "d": "Mode minimizes 0-1 loss, not MSE."
         },
         "difficulty": "hard",
         "source": {
@@ -2086,26 +2086,26 @@
           {
             "id": "b",
             "label": "B",
-            "body": "MGFs determine distributions."
+            "body": "All events have probability 0 or 1."
           },
           {
             "id": "c",
             "label": "C",
-            "body": "Tail events of independent sequences have probability 0 or 1."
+            "body": "MGFs determine distributions."
           },
           {
             "id": "d",
             "label": "D",
-            "body": "All events have probability 0 or 1."
+            "body": "Tail events of independent sequences have probability 0 or 1."
           }
         ],
-        "correctChoiceId": "c",
+        "correctChoiceId": "d",
         "hint": "Think about the precise definition before picking.",
         "explanation": "Useful in establishing 'event happens infinitely often' results for independent sequences.",
         "wrongAnswerExplanations": {
           "a": "Garbage statement.",
-          "b": "True but unrelated to the 0-1 law.",
-          "d": "Only tail events."
+          "b": "Only tail events.",
+          "c": "True but unrelated to the 0-1 law."
         },
         "difficulty": "hard",
         "source": {
@@ -2122,31 +2122,31 @@
           {
             "id": "a",
             "label": "A",
-            "body": "Convergence in L\u00b9."
+            "body": "Convergence in distribution."
           },
           {
             "id": "b",
             "label": "B",
-            "body": "Almost-sure convergence."
+            "body": "Convergence of all moments."
           },
           {
             "id": "c",
             "label": "C",
-            "body": "Convergence in distribution."
+            "body": "Almost-sure convergence."
           },
           {
             "id": "d",
             "label": "D",
-            "body": "Convergence of all moments."
+            "body": "Convergence in L\u00b9."
           }
         ],
-        "correctChoiceId": "c",
+        "correctChoiceId": "a",
         "hint": "Think about the precise definition before picking.",
         "explanation": "Probability \u21d2 distribution; the reverse implications generally don't hold without extra conditions.",
         "wrongAnswerExplanations": {
-          "a": "Needs uniform integrability.",
-          "b": "Requires stronger assumptions (e.g., dominated convergence or BC).",
-          "d": "Requires UI of powers."
+          "b": "Requires UI of powers.",
+          "c": "Requires stronger assumptions (e.g., dominated convergence or BC).",
+          "d": "Needs uniform integrability."
         },
         "difficulty": "hard",
         "source": {
@@ -2163,7 +2163,7 @@
           {
             "id": "a",
             "label": "A",
-            "body": "The mean vector."
+            "body": "The dependence structure between random variables, separated from their marginals."
           },
           {
             "id": "b",
@@ -2173,21 +2173,21 @@
           {
             "id": "c",
             "label": "C",
-            "body": "The variance only."
+            "body": "The mean vector."
           },
           {
             "id": "d",
             "label": "D",
-            "body": "The dependence structure between random variables, separated from their marginals."
+            "body": "The variance only."
           }
         ],
-        "correctChoiceId": "d",
+        "correctChoiceId": "a",
         "hint": "Think about the precise definition before picking.",
         "explanation": "Sklar's theorem: any joint CDF F decomposes as C(F_X, F_Y) where C is a copula.",
         "wrongAnswerExplanations": {
-          "a": "Means aren't a dependence object.",
           "b": "Opposite \u2014 copulas leave marginals out.",
-          "c": "Variance is a marginal property."
+          "c": "Means aren't a dependence object.",
+          "d": "Variance is a marginal property."
         },
         "difficulty": "hard",
         "source": {
@@ -2209,7 +2209,7 @@
           {
             "id": "b",
             "label": "B",
-            "body": "Using only deterministic moves."
+            "body": "Sampling \u03c0 directly."
           },
           {
             "id": "c",
@@ -2219,7 +2219,7 @@
           {
             "id": "d",
             "label": "D",
-            "body": "Sampling \u03c0 directly."
+            "body": "Using only deterministic moves."
           }
         ],
         "correctChoiceId": "c",
@@ -2227,8 +2227,8 @@
         "explanation": "Detailed balance is satisfied by this acceptance rule, even when the proposal q is asymmetric.",
         "wrongAnswerExplanations": {
           "a": "That's hill-climbing; loses ergodicity.",
-          "b": "Randomness is essential.",
-          "d": "MH is for when you can't sample \u03c0 directly."
+          "b": "MH is for when you can't sample \u03c0 directly.",
+          "d": "Randomness is essential."
         },
         "difficulty": "hard",
         "source": {
@@ -2255,12 +2255,12 @@
           {
             "id": "c",
             "label": "C",
-            "body": "Y_n + X."
+            "body": "Nothing in general."
           },
           {
             "id": "d",
             "label": "D",
-            "body": "Nothing in general."
+            "body": "Y_n + X."
           }
         ],
         "correctChoiceId": "b",
@@ -2268,8 +2268,8 @@
         "explanation": "Slutsky lets you combine a distributional limit with a probability limit cleanly.",
         "wrongAnswerExplanations": {
           "a": "Wrong unless c and X are both 0.",
-          "c": "Not a limit object.",
-          "d": "The theorem gives a clean limit."
+          "c": "The theorem gives a clean limit.",
+          "d": "Not a limit object."
         },
         "difficulty": "hard",
         "source": {
@@ -2286,7 +2286,7 @@
           {
             "id": "a",
             "label": "A",
-            "body": "Var(X)."
+            "body": "Var(X + Y)."
           },
           {
             "id": "b",
@@ -2301,16 +2301,16 @@
           {
             "id": "d",
             "label": "D",
-            "body": "Var(X + Y)."
+            "body": "Var(X)."
           }
         ],
         "correctChoiceId": "b",
         "hint": "Think about the precise definition before picking.",
         "explanation": "Definition of covariance.",
         "wrongAnswerExplanations": {
-          "a": "Variance is the covariance of X with itself.",
+          "a": "That includes variances plus 2 Cov.",
           "c": "Only when X and Y are uncorrelated.",
-          "d": "That includes variances plus 2 Cov."
+          "d": "Variance is the covariance of X with itself."
         },
         "difficulty": "hard",
         "source": {
@@ -2368,31 +2368,31 @@
           {
             "id": "a",
             "label": "A",
-            "body": "The standard normal distribution."
+            "body": "A Cauchy distribution."
           },
           {
             "id": "b",
             "label": "B",
-            "body": "A uniform distribution on [0, 1]."
+            "body": "The standard normal distribution."
           },
           {
             "id": "c",
             "label": "C",
-            "body": "A chi-squared distribution."
+            "body": "A uniform distribution on [0, 1]."
           },
           {
             "id": "d",
             "label": "D",
-            "body": "A Cauchy distribution."
+            "body": "A chi-squared distribution."
           }
         ],
-        "correctChoiceId": "a",
+        "correctChoiceId": "b",
         "hint": "Think about the precise definition before picking.",
         "explanation": "Standardization centers and scales any normal to Standard Normal.",
         "wrongAnswerExplanations": {
-          "b": "Applying \u03a6 to X would.",
-          "c": "Squaring it would give \u03c7\u00b2_1.",
-          "d": "Cauchy is unrelated."
+          "a": "Cauchy is unrelated.",
+          "c": "Applying \u03a6 to X would.",
+          "d": "Squaring it would give \u03c7\u00b2_1."
         },
         "difficulty": "hard",
         "source": {
@@ -2409,31 +2409,31 @@
           {
             "id": "a",
             "label": "A",
-            "body": "P(data | T) does not depend on \u03b8."
+            "body": "T = \u03b8."
           },
           {
             "id": "b",
             "label": "B",
-            "body": "T is unbiased."
+            "body": "T equals the MLE."
           },
           {
             "id": "c",
             "label": "C",
-            "body": "T = \u03b8."
+            "body": "T is unbiased."
           },
           {
             "id": "d",
             "label": "D",
-            "body": "T equals the MLE."
+            "body": "P(data | T) does not depend on \u03b8."
           }
         ],
-        "correctChoiceId": "a",
+        "correctChoiceId": "d",
         "hint": "Think about the precise definition before picking.",
         "explanation": "Sufficiency captures all information about \u03b8 in the data \u2014 Fisher\u2013Neyman factorization.",
         "wrongAnswerExplanations": {
-          "b": "Unbiasedness is a separate concept.",
-          "c": "T is a function of data, not the parameter.",
-          "d": "MLE is one estimator; sufficiency is broader."
+          "a": "T is a function of data, not the parameter.",
+          "b": "MLE is one estimator; sufficiency is broader.",
+          "c": "Unbiasedness is a separate concept."
         },
         "difficulty": "hard",
         "source": {
@@ -2450,12 +2450,12 @@
           {
             "id": "a",
             "label": "A",
-            "body": "P(A_n happens infinitely often) = 0."
+            "body": "\u03a3P(A_n) = 1."
           },
           {
             "id": "b",
             "label": "B",
-            "body": "\u03a3P(A_n) = 1."
+            "body": "P(A_n happens infinitely often) = 0."
           },
           {
             "id": "c",
@@ -2468,11 +2468,11 @@
             "body": "P(A_n happens infinitely often) = 1."
           }
         ],
-        "correctChoiceId": "a",
+        "correctChoiceId": "b",
         "hint": "Think about the precise definition before picking.",
         "explanation": "Convergent sum forces almost-sure finiteness of how often the events happen.",
         "wrongAnswerExplanations": {
-          "b": "Not what the lemma says.",
+          "a": "Not what the lemma says.",
           "c": "First Borel\u2013Cantelli doesn't assume independence.",
           "d": "That's the second Borel\u2013Cantelli (under independence + divergent sum)."
         },
@@ -2496,7 +2496,7 @@
           {
             "id": "b",
             "label": "B",
-            "body": "P_{ij} = P_{ji} for all i, j."
+            "body": "\u03c0_i P_{ij} = \u03c0_j P_{ji} for all i, j."
           },
           {
             "id": "c",
@@ -2506,16 +2506,16 @@
           {
             "id": "d",
             "label": "D",
-            "body": "\u03c0_i P_{ij} = \u03c0_j P_{ji} for all i, j."
+            "body": "P_{ij} = P_{ji} for all i, j."
           }
         ],
-        "correctChoiceId": "d",
+        "correctChoiceId": "b",
         "hint": "Think about the precise definition before picking.",
         "explanation": "Reversibility under detailed balance ensures \u03c0 is stationary; the chain is also called reversible.",
         "wrongAnswerExplanations": {
           "a": "Uniform stationarity isn't the same as detailed balance.",
-          "b": "That's a symmetric P, a special case.",
-          "c": "Reversible chains can have non-uniform \u03c0."
+          "c": "Reversible chains can have non-uniform \u03c0.",
+          "d": "That's a symmetric P, a special case."
         },
         "difficulty": "hard",
         "source": {

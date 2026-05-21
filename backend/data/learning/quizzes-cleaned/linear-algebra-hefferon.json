@@ -1,10 +1,10 @@
 {
   "book": {
-    "title": "forall x: Calgary",
-    "parentTopic": "Philosophy & Psychology",
-    "subtopic": "Logic",
-    "slug": "logic-forallx-calgary",
-    "sourceUrl": "https://openlogicproject.org/",
+    "title": "Linear Algebra",
+    "parentTopic": "Mathematics",
+    "subtopic": "Linear Algebra",
+    "slug": "linear-algebra-hefferon",
+    "sourceUrl": "https://hefferon.net/linearalgebra/",
     "pdfSha256": ""
   },
   "chapterCount": 9,
@@ -12,63 +12,63 @@
   "chapters": [
     {
       "ordinal": 1,
-      "title": "Propositional Logic",
+      "title": "Vectors",
       "startPage": 1,
       "endPage": 1,
       "path": ""
     },
     {
       "ordinal": 2,
-      "title": "Truth Tables",
+      "title": "Matrices",
       "startPage": 1,
       "endPage": 1,
       "path": ""
     },
     {
       "ordinal": 3,
-      "title": "Logical Equivalence",
+      "title": "Row Reduction",
       "startPage": 1,
       "endPage": 1,
       "path": ""
     },
     {
       "ordinal": 4,
-      "title": "Validity",
+      "title": "Determinants",
       "startPage": 1,
       "endPage": 1,
       "path": ""
     },
     {
       "ordinal": 5,
-      "title": "Predicate Logic",
+      "title": "Eigenvalues",
       "startPage": 1,
       "endPage": 1,
       "path": ""
     },
     {
       "ordinal": 6,
-      "title": "Inference Rules",
+      "title": "Linear Independence",
       "startPage": 1,
       "endPage": 1,
       "path": ""
     },
     {
       "ordinal": 7,
-      "title": "Proof",
+      "title": "Span",
       "startPage": 1,
       "endPage": 1,
       "path": ""
     },
     {
       "ordinal": 8,
-      "title": "Soundness",
+      "title": "Orthogonality",
       "startPage": 1,
       "endPage": 1,
       "path": ""
     },
     {
       "ordinal": 9,
-      "title": "Modal Logic",
+      "title": "Least Squares",
       "startPage": 1,
       "endPage": 1,
       "path": ""
@@ -77,504 +77,627 @@
   "quizzes": {
     "easy": [
       {
-        "prompt": "Which of these is a tautology?",
+        "prompt": "What is the length (Euclidean norm) of the vector (3, 4) in \u211d\u00b2?",
         "choices": [
           {
             "id": "a",
             "label": "A",
-            "body": "P \u2227 \u00acP"
+            "body": "\u221a7"
           },
           {
             "id": "b",
             "label": "B",
-            "body": "P \u2192 \u00acP"
+            "body": "25"
           },
           {
             "id": "c",
             "label": "C",
-            "body": "P \u2228 \u00acP"
+            "body": "7"
           },
           {
             "id": "d",
             "label": "D",
-            "body": "P \u2194 \u00acP"
+            "body": "5"
           }
         ],
-        "correctChoiceId": "c",
+        "correctChoiceId": "d",
         "hint": "Think about the precise definition before picking.",
-        "explanation": "The law of excluded middle: any proposition is either true or false, so P \u2228 \u00acP is always true.",
+        "explanation": "\u2016(3,4)\u2016 = \u221a(3\u00b2 + 4\u00b2) = \u221a(9 + 16) = 5.",
         "wrongAnswerExplanations": {
-          "a": "That's a contradiction \u2014 always false.",
-          "b": "True only when P is false.",
-          "d": "Always false (a proposition can't be equivalent to its own negation)."
+          "a": "Not \u221a(9 + 16).",
+          "b": "That's the squared norm 3\u00b2 + 4\u00b2; take the square root for the length.",
+          "c": "That's 3 + 4, not the Pythagorean combination of components."
         },
         "difficulty": "easy",
         "source": {
           "term": "",
-          "chapterTitle": "Propositional Logic"
+          "chapterTitle": "Vectors"
         },
         "qualityScore": 100,
         "originalOrdinal": 1,
         "cleanedOrdinal": 1
       },
       {
-        "prompt": "What does the connective \u2227 stand for?",
+        "prompt": "Compute the dot product (1, 2) \u00b7 (3, 4).",
         "choices": [
           {
             "id": "a",
             "label": "A",
-            "body": "Conjunction (and)."
+            "body": "7"
           },
           {
             "id": "b",
             "label": "B",
-            "body": "Negation (not)."
+            "body": "11"
           },
           {
             "id": "c",
             "label": "C",
-            "body": "Disjunction (or)."
+            "body": "10"
           },
           {
             "id": "d",
             "label": "D",
-            "body": "Implication (if-then)."
+            "body": "14"
           }
         ],
-        "correctChoiceId": "a",
+        "correctChoiceId": "b",
         "hint": "Think about the precise definition before picking.",
-        "explanation": "P \u2227 Q is true exactly when both P and Q are true.",
+        "explanation": "(1)(3) + (2)(4) = 3 + 8 = 11.",
         "wrongAnswerExplanations": {
-          "b": "That's \u00ac.",
-          "c": "That's \u2228.",
-          "d": "That's \u2192."
+          "a": "That's 1 + 2 + 3 + 4, not componentwise multiplication summed.",
+          "c": "Off by one in the arithmetic.",
+          "d": "That's 2\u00b77 or another product \u2014 use (1)(3) + (2)(4)."
         },
         "difficulty": "easy",
         "source": {
           "term": "",
-          "chapterTitle": "Propositional Logic"
+          "chapterTitle": "Vectors"
         },
         "qualityScore": 100,
         "originalOrdinal": 2,
         "cleanedOrdinal": 2
       },
       {
-        "prompt": "The truth table for P \u2192 Q is false in exactly which case?",
+        "prompt": "In \u211d\u00b3, the standard basis vector e\u2082 is\u2026",
         "choices": [
           {
             "id": "a",
             "label": "A",
-            "body": "P is false and Q is false."
+            "body": "(1, 0, 0)"
           },
           {
             "id": "b",
             "label": "B",
-            "body": "P is false and Q is true."
+            "body": "(0, 1, 0)"
           },
           {
             "id": "c",
             "label": "C",
-            "body": "P is true and Q is false."
+            "body": "(1, 1, 1)"
           },
           {
             "id": "d",
             "label": "D",
-            "body": "P is true and Q is true."
+            "body": "(0, 0, 1)"
           }
         ],
-        "correctChoiceId": "c",
+        "correctChoiceId": "b",
         "hint": "Think about the precise definition before picking.",
-        "explanation": "Material implication is true except when a true antecedent leads to a false consequent.",
+        "explanation": "e\u2082 has a 1 in the second coordinate and 0 elsewhere.",
         "wrongAnswerExplanations": {
-          "a": "Vacuously true.",
-          "b": "Vacuously true.",
-          "d": "True \u2014 antecedent and consequent both hold."
+          "a": "That's e\u2081, not e\u2082.",
+          "c": "Not a standard basis vector.",
+          "d": "That's e\u2083."
         },
         "difficulty": "easy",
         "source": {
           "term": "",
-          "chapterTitle": "Truth Tables"
+          "chapterTitle": "Vectors"
         },
         "qualityScore": 100,
         "originalOrdinal": 3,
         "cleanedOrdinal": 3
       },
       {
-        "prompt": "P \u2194 Q is true exactly when\u2026",
+        "prompt": "What is the 2 \u00d7 2 identity matrix I\u2082?",
         "choices": [
           {
             "id": "a",
             "label": "A",
-            "body": "At least one of P or Q is true."
+            "body": "[[1, 1], [1, 1]]"
           },
           {
             "id": "b",
             "label": "B",
-            "body": "Both P and Q are false."
+            "body": "[[0, 1], [1, 0]]"
           },
           {
             "id": "c",
             "label": "C",
-            "body": "P and Q have the same truth value."
+            "body": "[[1, 0], [0, 1]]"
           },
           {
             "id": "d",
             "label": "D",
-            "body": "Both P and Q are true."
+            "body": "[[1, 0], [1, 0]]"
           }
         ],
         "correctChoiceId": "c",
         "hint": "Think about the precise definition before picking.",
-        "explanation": "Biconditional is equivalence: both true or both false.",
+        "explanation": "I\u2082 has ones on the diagonal and zeros elsewhere; it leaves vectors unchanged under multiplication.",
         "wrongAnswerExplanations": {
-          "a": "That's disjunction.",
-          "b": "Also only half.",
-          "d": "That's only half of the biconditional's true cases."
+          "a": "That matrix is singular and does not preserve all vectors.",
+          "b": "That swaps coordinates \u2014 it's a permutation matrix, not the identity.",
+          "d": "Rows are dependent; not the identity."
         },
         "difficulty": "easy",
         "source": {
           "term": "",
-          "chapterTitle": "Truth Tables"
+          "chapterTitle": "Matrices"
         },
         "qualityScore": 100,
         "originalOrdinal": 4,
         "cleanedOrdinal": 4
       },
       {
-        "prompt": "Which is logically equivalent to \u00ac(P \u2227 Q)?",
+        "prompt": "A matrix with 2 rows and 3 columns is described as\u2026",
         "choices": [
           {
             "id": "a",
             "label": "A",
-            "body": "\u00acP \u2227 \u00acQ"
+            "body": "2 \u00d7 2"
           },
           {
             "id": "b",
             "label": "B",
-            "body": "P \u2228 Q"
+            "body": "2 \u00d7 3"
           },
           {
             "id": "c",
             "label": "C",
-            "body": "\u00acP \u2228 \u00acQ"
+            "body": "3 \u00d7 3"
           },
           {
             "id": "d",
             "label": "D",
-            "body": "P \u2192 Q"
+            "body": "3 \u00d7 2"
           }
         ],
-        "correctChoiceId": "c",
+        "correctChoiceId": "b",
         "hint": "Think about the precise definition before picking.",
-        "explanation": "De Morgan's law: the negation of a conjunction is the disjunction of negations.",
+        "explanation": "By convention, m \u00d7 n means m rows and n columns.",
         "wrongAnswerExplanations": {
-          "a": "That's the negation of (P \u2228 Q), not (P \u2227 Q).",
-          "b": "Unrelated.",
-          "d": "Not equivalent to \u00ac(P \u2227 Q)."
+          "a": "A 2 \u00d7 2 matrix has only two columns.",
+          "c": "That requires three rows and three columns.",
+          "d": "That would be 3 rows and 2 columns \u2014 dimensions are reversed."
         },
         "difficulty": "easy",
         "source": {
           "term": "",
-          "chapterTitle": "Logical Equivalence"
+          "chapterTitle": "Matrices"
         },
         "qualityScore": 100,
         "originalOrdinal": 5,
         "cleanedOrdinal": 5
       },
       {
-        "prompt": "P \u2192 Q is logically equivalent to which of the following?",
+        "prompt": "In row echelon form, the leading entry of each nonzero row (the pivot) lies\u2026",
         "choices": [
           {
             "id": "a",
             "label": "A",
-            "body": "P \u2227 Q"
+            "body": "Only in the last column"
           },
           {
             "id": "b",
             "label": "B",
-            "body": "\u00acP \u2228 Q"
+            "body": "Below the pivot in the same column"
           },
           {
             "id": "c",
             "label": "C",
-            "body": "Q \u2192 P"
+            "body": "Strictly to the right of the pivot in the row above."
           },
           {
             "id": "d",
             "label": "D",
-            "body": "\u00ac(P \u2227 Q)"
+            "body": "In the same column as every other pivot"
           }
         ],
-        "correctChoiceId": "b",
+        "correctChoiceId": "c",
         "hint": "Think about the precise definition before picking.",
-        "explanation": "Material implication is true unless P is true and Q is false \u2014 same truth table as \u00acP \u2228 Q.",
+        "explanation": "Echelon form forces pivots to move right as you go down the rows.",
         "wrongAnswerExplanations": {
-          "a": "Far stricter than implication.",
-          "c": "That's the converse; not equivalent in general.",
-          "d": "False only when both are true \u2014 wrong table."
+          "a": "Pivots appear across columns depending on the matrix.",
+          "b": "That would be a zero below each pivot in REF, not the definition of pivot position.",
+          "d": "Pivots generally shift right; they need not share a column."
         },
         "difficulty": "easy",
         "source": {
           "term": "",
-          "chapterTitle": "Logical Equivalence"
+          "chapterTitle": "Row Reduction"
         },
         "qualityScore": 100,
         "originalOrdinal": 6,
         "cleanedOrdinal": 6
       },
       {
-        "prompt": "An argument is valid if and only if\u2026",
+        "prompt": "What is det [[1, 2], [3, 4]]?",
         "choices": [
           {
             "id": "a",
             "label": "A",
-            "body": "The premises are true."
+            "body": "2"
           },
           {
             "id": "b",
             "label": "B",
-            "body": "The conclusion is true."
+            "body": "10"
           },
           {
             "id": "c",
             "label": "C",
-            "body": "It is impossible for the premises to be true and the conclusion false."
+            "body": "\u221210"
           },
           {
             "id": "d",
             "label": "D",
-            "body": "It uses only true premises."
+            "body": "\u22122"
           }
         ],
-        "correctChoiceId": "c",
+        "correctChoiceId": "d",
         "hint": "Think about the precise definition before picking.",
-        "explanation": "Validity is about preservation of truth from premises to conclusion, not about whether premises are actually true.",
+        "explanation": "det = (1)(4) \u2212 (2)(3) = 4 \u2212 6 = \u22122.",
         "wrongAnswerExplanations": {
-          "a": "That's soundness combined with validity.",
-          "b": "Valid arguments can have false conclusions when premises are false.",
-          "d": "That's about soundness too."
+          "a": "That's ad + bc or a sign error \u2014 use ad \u2212 bc.",
+          "b": "That's 1 + 2 + 3 + 4, not a determinant.",
+          "c": "Wrong combination of products."
         },
         "difficulty": "easy",
         "source": {
           "term": "",
-          "chapterTitle": "Validity"
+          "chapterTitle": "Determinants"
         },
         "qualityScore": 100,
         "originalOrdinal": 7,
         "cleanedOrdinal": 7
       },
       {
-        "prompt": "A sound argument is one that is\u2026",
+        "prompt": "A scalar \u03bb is an eigenvalue of A if there exists a nonzero vector v with\u2026",
         "choices": [
           {
             "id": "a",
             "label": "A",
-            "body": "Has a true conclusion."
+            "body": "Av = 0 for every v"
           },
           {
             "id": "b",
             "label": "B",
-            "body": "Valid and has all true premises."
+            "body": "A = \u03bbI"
           },
           {
             "id": "c",
             "label": "C",
-            "body": "Valid only."
+            "body": "det A = \u03bb"
           },
           {
             "id": "d",
             "label": "D",
-            "body": "Uses no quantifiers."
+            "body": "Av = \u03bbv"
           }
         ],
-        "correctChoiceId": "b",
+        "correctChoiceId": "d",
         "hint": "Think about the precise definition before picking.",
-        "explanation": "Soundness requires both validity and actually true premises; this guarantees a true conclusion.",
+        "explanation": "Eigenvalues are defined through nontrivial solutions to (A \u2212 \u03bbI)v = 0.",
         "wrongAnswerExplanations": {
-          "a": "A true conclusion can come from invalid reasoning.",
-          "c": "Validity alone allows false premises.",
-          "d": "Quantifiers don't bear on soundness."
+          "a": "That would mean A is the zero matrix on all inputs, not an eigenpair.",
+          "b": "That would mean every vector is an eigenvector with the same \u03bb \u2014 far stronger than one eigenpair.",
+          "c": "det A is a single number for the matrix, not the eigenvalue condition."
         },
         "difficulty": "easy",
         "source": {
           "term": "",
-          "chapterTitle": "Validity"
+          "chapterTitle": "Eigenvalues"
         },
         "qualityScore": 100,
         "originalOrdinal": 8,
         "cleanedOrdinal": 8
       },
       {
-        "prompt": "In first-order logic, \u2200x F(x) means\u2026",
+        "prompt": "The vectors (1, 2) and (2, 4) in \u211d\u00b2 are\u2026",
         "choices": [
           {
             "id": "a",
             "label": "A",
-            "body": "Exactly one element has property F."
+            "body": "Orthogonal"
           },
           {
             "id": "b",
             "label": "B",
-            "body": "No element has property F."
+            "body": "Linearly dependent (one is a scalar multiple of the other)."
           },
           {
             "id": "c",
             "label": "C",
-            "body": "Some element has property F."
+            "body": "Linearly independent"
           },
           {
             "id": "d",
             "label": "D",
-            "body": "Every element of the domain has property F."
+            "body": "A basis for \u211d\u00b3"
           }
         ],
-        "correctChoiceId": "d",
+        "correctChoiceId": "b",
         "hint": "Think about the precise definition before picking.",
-        "explanation": "Universal quantification: F(x) holds for all x in the domain.",
+        "explanation": "(2, 4) = 2(1, 2), so one lies in the span of the other.",
         "wrongAnswerExplanations": {
-          "a": "That's \u2203!x F(x).",
-          "b": "That's \u00ac\u2203x F(x).",
-          "c": "That's \u2203x F(x)."
+          "a": "Their dot product is 1\u00b72 + 2\u00b74 = 10 \u2260 0.",
+          "c": "A nontrivial combination 2\u00b7(1,2) \u2212 1\u00b7(2,4) = 0 shows dependence.",
+          "d": "They live in \u211d\u00b2 and there are only two vectors anyway."
         },
         "difficulty": "easy",
         "source": {
           "term": "",
-          "chapterTitle": "Predicate Logic"
+          "chapterTitle": "Linear Independence"
         },
         "qualityScore": 100,
         "originalOrdinal": 9,
         "cleanedOrdinal": 9
       },
       {
-        "prompt": "\u2203x F(x) is logically equivalent to\u2026",
+        "prompt": "The span of a single nonzero vector v in \u211d\u207f is\u2026",
         "choices": [
           {
             "id": "a",
             "label": "A",
-            "body": "\u2200x \u00acF(x)."
+            "body": "All scalar multiples of v (a line through the origin)."
           },
           {
             "id": "b",
             "label": "B",
-            "body": "\u2200x F(x)."
+            "body": "Only the zero vector"
           },
           {
             "id": "c",
             "label": "C",
-            "body": "\u00ac\u2200x \u00acF(x)."
+            "body": "The set of unit vectors"
           },
           {
             "id": "d",
             "label": "D",
-            "body": "\u00ac\u2200x F(x)."
+            "body": "All of \u211d\u207f"
           }
         ],
-        "correctChoiceId": "c",
+        "correctChoiceId": "a",
         "hint": "Think about the precise definition before picking.",
-        "explanation": "Quantifier interchange: 'some F' iff 'not all are non-F'.",
+        "explanation": "Span{v} = {cv : c \u2208 \u211d}, a one-dimensional subspace when v \u2260 0.",
         "wrongAnswerExplanations": {
-          "a": "That means 'no F'.",
-          "b": "Far too strong.",
-          "d": "That means 'some non-F', not 'some F'."
+          "b": "cv includes v itself when c = 1.",
+          "c": "Scalar multiples need not have length 1.",
+          "d": "One nonzero vector cannot reach every direction in \u211d\u207f unless n = 1."
         },
         "difficulty": "easy",
         "source": {
           "term": "",
-          "chapterTitle": "Predicate Logic"
+          "chapterTitle": "Span"
         },
         "qualityScore": 100,
         "originalOrdinal": 10,
         "cleanedOrdinal": 10
       },
       {
-        "prompt": "From P \u2192 Q and P, we may conclude Q. This rule is called\u2026",
+        "prompt": "Two vectors u and v are orthogonal when\u2026",
         "choices": [
           {
             "id": "a",
             "label": "A",
-            "body": "Disjunctive syllogism."
+            "body": "u \u00d7 v = 0 in \u211d\u00b2"
           },
           {
             "id": "b",
             "label": "B",
-            "body": "Modus ponens."
+            "body": "u \u00b7 v = 0"
           },
           {
             "id": "c",
             "label": "C",
-            "body": "Modus tollens."
+            "body": "\u2016u\u2016 = \u2016v\u2016"
           },
           {
             "id": "d",
             "label": "D",
-            "body": "Conjunction introduction."
+            "body": "u = v"
           }
         ],
         "correctChoiceId": "b",
         "hint": "Think about the precise definition before picking.",
-        "explanation": "MP is the basic rule for eliminating implications.",
+        "explanation": "Orthogonality in Euclidean space is defined by zero inner product.",
         "wrongAnswerExplanations": {
-          "a": "DS uses disjunctions: P \u2228 Q and \u00acP give Q.",
-          "c": "MT goes from P \u2192 Q and \u00acQ to \u00acP.",
-          "d": "That introduces \u2227, not eliminating \u2192."
+          "a": "The cross product is a 3D tool; in \u211d\u00b2 use the dot product.",
+          "c": "Equal length does not imply perpendicularity.",
+          "d": "Identical nonzero vectors are parallel, not orthogonal."
         },
         "difficulty": "easy",
         "source": {
           "term": "",
-          "chapterTitle": "Inference Rules"
+          "chapterTitle": "Orthogonality"
         },
         "qualityScore": 100,
         "originalOrdinal": 11,
         "cleanedOrdinal": 11
       },
       {
-        "prompt": "From P \u2192 Q and \u00acQ, we may conclude \u00acP. This rule is called\u2026",
+        "prompt": "When Ax = b has no exact solution (overdetermined inconsistent system), least squares seeks x that\u2026",
         "choices": [
           {
             "id": "a",
             "label": "A",
-            "body": "Modus tollens."
+            "body": "Minimizes \u2016Ax \u2212 b\u2016"
           },
           {
             "id": "b",
             "label": "B",
-            "body": "Modus ponens."
+            "body": "Makes Ax = b exactly"
           },
           {
             "id": "c",
             "label": "C",
-            "body": "Reductio ad absurdum."
+            "body": "Sets x = 0 always"
           },
           {
             "id": "d",
             "label": "D",
-            "body": "Hypothetical syllogism."
+            "body": "Maximizes \u2016Ax \u2212 b\u2016"
           }
         ],
         "correctChoiceId": "a",
         "hint": "Think about the precise definition before picking.",
-        "explanation": "MT contrapositive reasoning.",
+        "explanation": "Least squares minimizes the residual norm, giving the best fit in the column space of A.",
         "wrongAnswerExplanations": {
-          "b": "MP needs P, not \u00acQ.",
-          "c": "RAA derives a contradiction to refute an assumption.",
-          "d": "HS chains two implications."
+          "b": "If no exact solution exists, that goal is impossible.",
+          "c": "x = 0 is optimal only in special cases.",
+          "d": "That would be the worst fit, not the best."
         },
         "difficulty": "easy",
         "source": {
           "term": "",
-          "chapterTitle": "Inference Rules"
+          "chapterTitle": "Least Squares"
         },
         "qualityScore": 100,
         "originalOrdinal": 12,
         "cleanedOrdinal": 12
       },
       {
-        "prompt": "How many rows does the truth table of a formula with n distinct atomic propositions have?",
+        "prompt": "If u = (1, \u22121) and v = (2, 3), then u + v equals\u2026",
         "choices": [
           {
             "id": "a",
             "label": "A",
-            "body": "2^n"
+            "body": "(3, 2)"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "(\u22121, 4)"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "(2, \u22123)"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "(1, \u22123)"
+          }
+        ],
+        "correctChoiceId": "a",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Add componentwise: (1+2, \u22121+3) = (3, 2).",
+        "wrongAnswerExplanations": {
+          "b": "That's v \u2212 u.",
+          "c": "Mixed components from multiplication, not addition.",
+          "d": "That's u \u2212 v or a sign error on the second component."
+        },
+        "difficulty": "easy",
+        "source": {
+          "term": "",
+          "chapterTitle": "Vectors"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 13,
+        "cleanedOrdinal": 13
+      },
+      {
+        "prompt": "If A is 2 \u00d7 3 and B is 3 \u00d7 4, the product AB has size\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "3 \u00d7 4"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "2 \u00d7 3"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "2 \u00d7 4"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "3 \u00d7 3"
+          }
+        ],
+        "correctChoiceId": "c",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Inner dimensions must match (3); the result has the outer dimensions 2 \u00d7 4.",
+        "wrongAnswerExplanations": {
+          "a": "That's the size of B, not the product.",
+          "b": "That's the size of A, not the product.",
+          "d": "That's only when both factors are 3 \u00d7 3."
+        },
+        "difficulty": "easy",
+        "source": {
+          "term": "",
+          "chapterTitle": "Matrices"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 14,
+        "cleanedOrdinal": 14
+      },
+      {
+        "prompt": "An augmented matrix [A | b] represents the linear system\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "xA = b"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Ax = b"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Ab = x"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "A = bx"
+          }
+        ],
+        "correctChoiceId": "b",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Columns of A combine with entries of x to produce b.",
+        "wrongAnswerExplanations": {
+          "a": "Variables are usually written as a column on the right of A.",
+          "c": "Matrix sizes would not align for ordinary matrix-vector multiplication.",
+          "d": "Not the standard form of a linear system."
+        },
+        "difficulty": "easy",
+        "source": {
+          "term": "",
+          "chapterTitle": "Row Reduction"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 15,
+        "cleanedOrdinal": 15
+      },
+      {
+        "prompt": "For any n, det(I\u2099) equals\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "\u22121"
           },
           {
             "id": "b",
@@ -584,313 +707,190 @@
           {
             "id": "c",
             "label": "C",
-            "body": "n!"
+            "body": "0"
           },
           {
             "id": "d",
             "label": "D",
-            "body": "n\u00b2"
+            "body": "1"
           }
         ],
-        "correctChoiceId": "a",
+        "correctChoiceId": "d",
         "hint": "Think about the precise definition before picking.",
-        "explanation": "Each atomic proposition can be T or F independently.",
+        "explanation": "The identity matrix is invertible with determinant product of diagonal ones.",
         "wrongAnswerExplanations": {
-          "b": "Underestimates the number of distinct valuations.",
-          "c": "Permutation count, not assignment count.",
-          "d": "Not how combinations grow."
+          "a": "Determinant \u22121 arises from an odd number of row swaps of I\u2099, not I\u2099 itself.",
+          "b": "That's the trace for I\u2099, not the determinant.",
+          "c": "A singular matrix has determinant zero; I\u2099 is nonsingular."
         },
         "difficulty": "easy",
         "source": {
           "term": "",
-          "chapterTitle": "Propositional Logic"
-        },
-        "qualityScore": 100,
-        "originalOrdinal": 13,
-        "cleanedOrdinal": 13
-      },
-      {
-        "prompt": "Which formula is a contradiction?",
-        "choices": [
-          {
-            "id": "a",
-            "label": "A",
-            "body": "P \u2194 P"
-          },
-          {
-            "id": "b",
-            "label": "B",
-            "body": "P \u2227 \u00acP"
-          },
-          {
-            "id": "c",
-            "label": "C",
-            "body": "P \u2228 \u00acP"
-          },
-          {
-            "id": "d",
-            "label": "D",
-            "body": "P \u2192 P"
-          }
-        ],
-        "correctChoiceId": "b",
-        "hint": "Think about the precise definition before picking.",
-        "explanation": "A proposition can't be true and false simultaneously.",
-        "wrongAnswerExplanations": {
-          "a": "Tautology.",
-          "c": "Tautology.",
-          "d": "Tautology \u2014 implication from any P to itself."
-        },
-        "difficulty": "easy",
-        "source": {
-          "term": "",
-          "chapterTitle": "Propositional Logic"
-        },
-        "qualityScore": 100,
-        "originalOrdinal": 14,
-        "cleanedOrdinal": 14
-      },
-      {
-        "prompt": "The contrapositive of P \u2192 Q is\u2026",
-        "choices": [
-          {
-            "id": "a",
-            "label": "A",
-            "body": "Q \u2192 P."
-          },
-          {
-            "id": "b",
-            "label": "B",
-            "body": "\u00acQ \u2192 \u00acP."
-          },
-          {
-            "id": "c",
-            "label": "C",
-            "body": "\u00acP \u2192 \u00acQ."
-          },
-          {
-            "id": "d",
-            "label": "D",
-            "body": "P \u2192 \u00acQ."
-          }
-        ],
-        "correctChoiceId": "b",
-        "hint": "Think about the precise definition before picking.",
-        "explanation": "Contrapositive is logically equivalent to the original implication.",
-        "wrongAnswerExplanations": {
-          "a": "That's the converse \u2014 not equivalent.",
-          "c": "That's the inverse \u2014 not equivalent.",
-          "d": "That's the negation of the consequent, not contrapositive."
-        },
-        "difficulty": "easy",
-        "source": {
-          "term": "",
-          "chapterTitle": "Logical Equivalence"
-        },
-        "qualityScore": 100,
-        "originalOrdinal": 15,
-        "cleanedOrdinal": 15
-      },
-      {
-        "prompt": "Affirming the consequent is the invalid pattern:",
-        "choices": [
-          {
-            "id": "a",
-            "label": "A",
-            "body": "From P \u2192 Q and \u00acP, infer \u00acQ."
-          },
-          {
-            "id": "b",
-            "label": "B",
-            "body": "From P \u2192 Q and P, infer Q."
-          },
-          {
-            "id": "c",
-            "label": "C",
-            "body": "From P \u2192 Q and Q, infer P."
-          },
-          {
-            "id": "d",
-            "label": "D",
-            "body": "From P \u2192 Q and \u00acQ, infer \u00acP."
-          }
-        ],
-        "correctChoiceId": "c",
-        "hint": "Think about the precise definition before picking.",
-        "explanation": "Q can be true for many reasons besides P; assuming P is a fallacy.",
-        "wrongAnswerExplanations": {
-          "a": "Denying the antecedent \u2014 also invalid, but different from affirming the consequent.",
-          "b": "Modus ponens \u2014 valid.",
-          "d": "Modus tollens \u2014 valid."
-        },
-        "difficulty": "easy",
-        "source": {
-          "term": "",
-          "chapterTitle": "Validity"
+          "chapterTitle": "Determinants"
         },
         "qualityScore": 100,
         "originalOrdinal": 16,
         "cleanedOrdinal": 16
       },
       {
-        "prompt": "\u00ac\u2203x F(x) is logically equivalent to\u2026",
+        "prompt": "If Av = 3v for nonzero v, then 3 is\u2026",
         "choices": [
           {
             "id": "a",
             "label": "A",
-            "body": "\u2200x F(x)."
+            "body": "The determinant of A"
           },
           {
             "id": "b",
             "label": "B",
-            "body": "\u2203x \u00acF(x)."
+            "body": "Not related to A"
           },
           {
             "id": "c",
             "label": "C",
-            "body": "\u2200x \u00acF(x)."
+            "body": "An eigenvalue of A with eigenvector v"
           },
           {
             "id": "d",
             "label": "D",
-            "body": "\u00ac\u2200x F(x)."
+            "body": "Always the only eigenvalue"
           }
         ],
         "correctChoiceId": "c",
         "hint": "Think about the precise definition before picking.",
-        "explanation": "Quantifier negation: 'no F exists' iff 'every x is non-F'.",
+        "explanation": "The equation matches Av = \u03bbv with \u03bb = 3.",
         "wrongAnswerExplanations": {
-          "a": "Opposite of the original.",
-          "b": "That's 'some non-F exists', not 'no F exists'.",
-          "d": "That's 'some non-F' (in disguise)."
+          "a": "det A equals the product of eigenvalues (with multiplicity) only in specific cases, not from one eigenpair alone.",
+          "b": "It is the eigenvalue in the defining equation.",
+          "d": "A may have other eigenvalues and eigenvectors."
         },
         "difficulty": "easy",
         "source": {
           "term": "",
-          "chapterTitle": "Predicate Logic"
+          "chapterTitle": "Eigenvalues"
         },
         "qualityScore": 100,
         "originalOrdinal": 17,
         "cleanedOrdinal": 17
       },
       {
-        "prompt": "P \u2228 Q is false exactly when\u2026",
+        "prompt": "Any three vectors in \u211d\u00b2 are\u2026",
         "choices": [
           {
             "id": "a",
             "label": "A",
-            "body": "P is true."
+            "body": "Always orthogonal"
           },
           {
             "id": "b",
             "label": "B",
-            "body": "At least one is false."
+            "body": "Linearly dependent"
           },
           {
             "id": "c",
             "label": "C",
-            "body": "Both P and Q are false."
+            "body": "Always a basis"
           },
           {
             "id": "d",
             "label": "D",
-            "body": "P and Q are the same."
+            "body": "Always linearly independent"
           }
         ],
-        "correctChoiceId": "c",
+        "correctChoiceId": "b",
         "hint": "Think about the precise definition before picking.",
-        "explanation": "Disjunction is inclusive: at least one true makes it true.",
+        "explanation": "dim \u211d\u00b2 = 2, so more than two vectors must satisfy a nontrivial dependence relation.",
         "wrongAnswerExplanations": {
-          "a": "That makes the disjunction true.",
-          "b": "The other could still be true.",
-          "d": "Could be both true or both false."
+          "a": "Dependence does not force orthogonality.",
+          "c": "A basis of \u211d\u00b2 has exactly two independent vectors.",
+          "d": "Impossible when count exceeds dimension."
         },
         "difficulty": "easy",
         "source": {
           "term": "",
-          "chapterTitle": "Truth Tables"
+          "chapterTitle": "Linear Independence"
         },
         "qualityScore": 100,
         "originalOrdinal": 18,
         "cleanedOrdinal": 18
       },
       {
-        "prompt": "A free variable in a formula is one that\u2026",
+        "prompt": "The standard basis {e\u2081, \u2026, e\u2099} spans\u2026",
         "choices": [
           {
             "id": "a",
             "label": "A",
-            "body": "Appears more than once."
+            "body": "Only the first coordinate axis"
           },
           {
             "id": "b",
             "label": "B",
-            "body": "Has no value assigned in any model."
+            "body": "Only vectors with positive entries"
           },
           {
             "id": "c",
             "label": "C",
-            "body": "Is not bound by a quantifier within the formula."
+            "body": "All of \u211d\u207f"
           },
           {
             "id": "d",
             "label": "D",
-            "body": "Is preceded by \u00ac."
+            "body": "The empty set"
           }
         ],
         "correctChoiceId": "c",
         "hint": "Think about the precise definition before picking.",
-        "explanation": "Free variables stand in for arbitrary objects; sentences (no free variables) are what get truth values.",
+        "explanation": "Every vector is a linear combination of basis vectors with coefficients its entries.",
         "wrongAnswerExplanations": {
-          "a": "Multiplicity doesn't matter for being free.",
-          "b": "Models do assign values; free variables are just not bound in the formula.",
-          "d": "Negation doesn't affect binding."
+          "a": "e\u2082, \u2026, e\u2099 are needed for other coordinates.",
+          "b": "Negative coefficients allow negative entries in combinations.",
+          "d": "Each e\u1d62 is in the span, so the span is nonempty."
         },
         "difficulty": "easy",
         "source": {
           "term": "",
-          "chapterTitle": "Predicate Logic"
+          "chapterTitle": "Span"
         },
         "qualityScore": 100,
         "originalOrdinal": 19,
         "cleanedOrdinal": 19
       },
       {
-        "prompt": "From P \u2228 Q and \u00acP, we may conclude Q. This rule is called\u2026",
+        "prompt": "The projection of (4, 0) onto the x-axis in \u211d\u00b2 is\u2026",
         "choices": [
           {
             "id": "a",
             "label": "A",
-            "body": "Existential introduction."
+            "body": "(0, 0)"
           },
           {
             "id": "b",
             "label": "B",
-            "body": "Modus ponens."
+            "body": "(4, 0)"
           },
           {
             "id": "c",
             "label": "C",
-            "body": "Disjunctive syllogism."
+            "body": "(0, 4)"
           },
           {
             "id": "d",
             "label": "D",
-            "body": "Conjunction elimination."
+            "body": "(2, 2)"
           }
         ],
-        "correctChoiceId": "c",
+        "correctChoiceId": "b",
         "hint": "Think about the precise definition before picking.",
-        "explanation": "Disjunctive syllogism uses one disjunct's falsity to assert the other.",
+        "explanation": "The vector already lies on the x-axis, so projection leaves it unchanged.",
         "wrongAnswerExplanations": {
-          "a": "That's about quantifiers.",
-          "b": "MP works on implications, not disjunctions.",
-          "d": "That uses \u2227, not \u2228."
+          "a": "Only the zero vector projects to zero here; (4,0) is nonzero on the axis.",
+          "c": "That's alignment with the y-axis, not the x-axis.",
+          "d": "Not collinear with the x-axis."
         },
         "difficulty": "easy",
         "source": {
           "term": "",
-          "chapterTitle": "Inference Rules"
+          "chapterTitle": "Orthogonality"
         },
         "qualityScore": 100,
         "originalOrdinal": 20,
@@ -899,820 +899,820 @@
     ],
     "medium": [
       {
-        "prompt": "Which of the following is logically equivalent to (P \u2192 Q) \u2227 (Q \u2192 P)?",
+        "prompt": "Find a unit vector in the direction of v = (3, \u22124).",
         "choices": [
           {
             "id": "a",
             "label": "A",
-            "body": "P \u2227 Q"
+            "body": "(3, \u22124)"
           },
           {
             "id": "b",
             "label": "B",
-            "body": "P \u2228 Q"
+            "body": "(\u22123/5, 4/5)"
           },
           {
             "id": "c",
             "label": "C",
-            "body": "\u00ac(P \u2194 Q)"
+            "body": "(3/5, \u22124/5)"
           },
           {
             "id": "d",
             "label": "D",
-            "body": "P \u2194 Q"
+            "body": "(4/5, 3/5)"
           }
         ],
-        "correctChoiceId": "d",
+        "correctChoiceId": "c",
         "hint": "Think about the precise definition before picking.",
-        "explanation": "Biconditional is defined as the conjunction of an implication and its converse.",
+        "explanation": "\u2016v\u2016 = 5, so v/\u2016v\u2016 = (3/5, \u22124/5).",
         "wrongAnswerExplanations": {
-          "a": "True only when both are true; biconditional also accepts both false.",
-          "b": "Doesn't require the truth values to match.",
-          "c": "The negation of the biconditional, the opposite."
+          "a": "That has length 5, not 1.",
+          "b": "Opposite direction \u2014 still parallel but wrong sign if matching v's direction.",
+          "d": "Swaps and signs \u2014 not parallel to (3, \u22124)."
         },
         "difficulty": "medium",
         "source": {
           "term": "",
-          "chapterTitle": "Logical Equivalence"
+          "chapterTitle": "Vectors"
         },
         "qualityScore": 100,
         "originalOrdinal": 1,
         "cleanedOrdinal": 1
       },
       {
-        "prompt": "An argument is logically valid iff\u2026",
+        "prompt": "Compute [[1, 2], [0, 3]] [[1], [2]].",
         "choices": [
           {
             "id": "a",
             "label": "A",
-            "body": "It is short."
+            "body": "[[1], [6]]"
           },
           {
             "id": "b",
             "label": "B",
-            "body": "Its conclusion is true in every model."
+            "body": "[[5], [3]]"
           },
           {
             "id": "c",
             "label": "C",
-            "body": "Its conclusion is true in every model where its premises are true."
+            "body": "[[5], [6]]"
           },
           {
             "id": "d",
             "label": "D",
-            "body": "Its premises are true in every model."
+            "body": "[[3], [6]]"
           }
         ],
         "correctChoiceId": "c",
         "hint": "Think about the precise definition before picking.",
-        "explanation": "Validity is semantic preservation: no countermodel where premises hold and conclusion fails.",
+        "explanation": "Row 1: 1\u00b71 + 2\u00b72 = 5; row 2: 0\u00b71 + 3\u00b72 = 6.",
         "wrongAnswerExplanations": {
-          "a": "Length is irrelevant.",
-          "b": "That makes the conclusion a tautology \u2014 stronger than validity of an argument.",
-          "d": "That makes premises tautologies, also stronger."
+          "a": "Missed the contribution of the second column to the first row.",
+          "b": "Second row should be 6, not 3.",
+          "d": "First-row arithmetic used 1+2 instead of 1\u00b71 + 2\u00b72."
         },
         "difficulty": "medium",
         "source": {
           "term": "",
-          "chapterTitle": "Validity"
+          "chapterTitle": "Matrices"
         },
         "qualityScore": 100,
         "originalOrdinal": 2,
         "cleanedOrdinal": 2
       },
       {
-        "prompt": "\u2200x \u2203y R(x, y) and \u2203y \u2200x R(x, y) differ in that the second\u2026",
+        "prompt": "How many free variables can a 3 \u00d7 5 coefficient matrix have at most?",
         "choices": [
           {
             "id": "a",
             "label": "A",
-            "body": "Requires a single y that works for every x."
+            "body": "5"
           },
           {
             "id": "b",
             "label": "B",
-            "body": "Cannot be expressed in first-order logic."
+            "body": "2"
           },
           {
             "id": "c",
             "label": "C",
-            "body": "Is logically equivalent to the first."
+            "body": "0"
           },
           {
             "id": "d",
             "label": "D",
-            "body": "Is always false."
+            "body": "3"
           }
         ],
         "correctChoiceId": "a",
         "hint": "Think about the precise definition before picking.",
-        "explanation": "Order of quantifiers matters: 'some y works for all x' is strictly stronger than 'for every x, some y'.",
+        "explanation": "With 5 unknowns, free variables = 5 \u2212 rank; rank can be as low as 0, giving up to 5 free variables.",
         "wrongAnswerExplanations": {
-          "b": "Both are first-order.",
-          "c": "They're not equivalent in general.",
-          "d": "It depends on R."
+          "b": "That's the minimum free count when rank is 3, not the maximum.",
+          "c": "Zero free variables require rank 5, impossible with only 3 rows unless the matrix is degenerate in a different sense.",
+          "d": "That's the maximum rank (row count), not the maximum free variables."
         },
         "difficulty": "medium",
         "source": {
           "term": "",
-          "chapterTitle": "Predicate Logic"
+          "chapterTitle": "Row Reduction"
         },
         "qualityScore": 100,
         "originalOrdinal": 3,
         "cleanedOrdinal": 3
       },
       {
-        "prompt": "Which formula has the same truth table as P \u2194 \u00acQ?",
+        "prompt": "If A is 3 \u00d7 3 with det A = 2, then det(2A) equals\u2026",
         "choices": [
           {
             "id": "a",
             "label": "A",
-            "body": "P \u2227 \u00acQ"
+            "body": "6"
           },
           {
             "id": "b",
             "label": "B",
-            "body": "P \u2228 Q"
+            "body": "4"
           },
           {
             "id": "c",
             "label": "C",
-            "body": "\u00ac(P \u2194 Q)"
+            "body": "12"
           },
           {
             "id": "d",
             "label": "D",
-            "body": "P \u2192 Q"
+            "body": "16"
           }
         ],
-        "correctChoiceId": "c",
+        "correctChoiceId": "d",
         "hint": "Think about the precise definition before picking.",
-        "explanation": "Both are true exactly when P and Q have different truth values.",
+        "explanation": "Scaling a 3 \u00d7 3 matrix by 2 multiplies the determinant by 2\u00b3 = 8; 8 \u00b7 2 = 16.",
         "wrongAnswerExplanations": {
-          "a": "Only true when P true and Q false; the biconditional with \u00acQ also accepts P false, Q true.",
-          "b": "Different table.",
-          "d": "Has a different table."
+          "a": "Added 2 to det A instead of multiplying by 2\u00b3.",
+          "b": "Used factor 2 once instead of 2\u00b3.",
+          "c": "Used 2\u00b2 instead of 2\u00b3."
         },
         "difficulty": "medium",
         "source": {
           "term": "",
-          "chapterTitle": "Truth Tables"
+          "chapterTitle": "Determinants"
         },
         "qualityScore": 100,
         "originalOrdinal": 4,
         "cleanedOrdinal": 4
       },
       {
-        "prompt": "Proof by contradiction (reductio ad absurdum) works by\u2026",
+        "prompt": "The eigenvalues of [[2, 0], [0, 3]] are\u2026",
         "choices": [
           {
             "id": "a",
             "label": "A",
-            "body": "Listing all possible cases."
+            "body": "0 and 5"
           },
           {
             "id": "b",
             "label": "B",
-            "body": "Assuming P and showing it's true."
+            "body": "2 and 3"
           },
           {
             "id": "c",
             "label": "C",
-            "body": "Assuming \u00acP, deriving a contradiction, and concluding P."
+            "body": "1 and 6"
           },
           {
             "id": "d",
             "label": "D",
-            "body": "Constructing an example."
+            "body": "2 and 0"
           }
         ],
-        "correctChoiceId": "c",
+        "correctChoiceId": "b",
         "hint": "Think about the precise definition before picking.",
-        "explanation": "RAA exploits the law of non-contradiction.",
+        "explanation": "Diagonal matrices have eigenvalues on the diagonal.",
         "wrongAnswerExplanations": {
-          "a": "That's proof by cases.",
-          "b": "That's circular.",
-          "d": "That's a direct example/construction."
+          "a": "Confused trace/determinant with individual eigenvalues.",
+          "c": "Not the diagonal entries.",
+          "d": "The second eigenvalue is 3, not 0."
         },
         "difficulty": "medium",
         "source": {
           "term": "",
-          "chapterTitle": "Proof"
+          "chapterTitle": "Eigenvalues"
         },
         "qualityScore": 100,
         "originalOrdinal": 5,
         "cleanedOrdinal": 5
       },
       {
-        "prompt": "An interpretation (model) for a first-order language must specify\u2026",
+        "prompt": "Which set is linearly independent in \u211d\u00b3?",
         "choices": [
           {
             "id": "a",
             "label": "A",
-            "body": "A non-empty domain and an assignment to each predicate, function symbol, and constant."
+            "body": "{(1,0,0), (0,1,0), (0,0,1)}"
           },
           {
             "id": "b",
             "label": "B",
-            "body": "Only truth values for atomic sentences."
+            "body": "{(1,0,0), (2,0,0)}"
           },
           {
             "id": "c",
             "label": "C",
-            "body": "Only the truth value of \u22a5."
+            "body": "{(1,1,0), (2,2,0), (0,0,1)}"
           },
           {
             "id": "d",
             "label": "D",
-            "body": "Only a domain."
+            "body": "{(1,0,0), (0,1,0), (1,1,0)}"
           }
         ],
         "correctChoiceId": "a",
         "hint": "Think about the precise definition before picking.",
-        "explanation": "Truth of a sentence is defined relative to a complete interpretation.",
+        "explanation": "The standard basis has no nontrivial combination giving zero.",
         "wrongAnswerExplanations": {
-          "b": "Atomic truth depends on the underlying interpretation.",
-          "c": "\u22a5 is logically false in every model.",
-          "d": "You also need to interpret the non-logical symbols."
+          "b": "Second vector is 2 times the first \u2014 dependent.",
+          "c": "(1,1,0) and (2,2,0) are multiples \u2014 dependent triple.",
+          "d": "Third vector is the sum of the first two \u2014 dependent."
         },
         "difficulty": "medium",
         "source": {
           "term": "",
-          "chapterTitle": "Predicate Logic"
+          "chapterTitle": "Linear Independence"
         },
         "qualityScore": 100,
         "originalOrdinal": 6,
         "cleanedOrdinal": 6
       },
       {
-        "prompt": "Universal instantiation lets you conclude\u2026",
+        "prompt": "The span of {(1,0), (0,1)} in \u211d\u00b2 is\u2026",
         "choices": [
           {
             "id": "a",
             "label": "A",
-            "body": "\u2203x F(x) from F(c)."
+            "body": "The empty set"
           },
           {
             "id": "b",
             "label": "B",
-            "body": "\u2200x F(x) from F(c)."
+            "body": "All of \u211d\u00b2"
           },
           {
             "id": "c",
             "label": "C",
-            "body": "\u00acF(c) from \u2200x F(x)."
+            "body": "A line y = x"
           },
           {
             "id": "d",
             "label": "D",
-            "body": "F(c) from \u2200x F(x), for any term c in the language."
+            "body": "Only the x-axis"
           }
         ],
-        "correctChoiceId": "d",
+        "correctChoiceId": "b",
         "hint": "Think about the precise definition before picking.",
-        "explanation": "UI eliminates a universal by picking any term.",
+        "explanation": "The two vectors are the standard basis for \u211d\u00b2.",
         "wrongAnswerExplanations": {
-          "a": "That's existential introduction.",
-          "b": "That's universal generalization (with side conditions).",
-          "c": "Wrong direction."
+          "a": "Contains (1,0) and (0,1).",
+          "c": "That line is span{(1,1)}, not the coordinate axes.",
+          "d": "(0,1) is not on the x-axis but is in the span."
         },
         "difficulty": "medium",
         "source": {
           "term": "",
-          "chapterTitle": "Inference Rules"
+          "chapterTitle": "Span"
         },
         "qualityScore": 100,
         "originalOrdinal": 7,
         "cleanedOrdinal": 7
       },
       {
-        "prompt": "Existential instantiation: from \u2203x F(x), you may assume F(c) for a fresh constant c. The 'fresh' restriction is required because\u2026",
+        "prompt": "Apply Gram\u2013Schmidt to v\u2081 = (1, 0) and v\u2082 = (1, 1). The orthogonal second vector is\u2026",
         "choices": [
           {
             "id": "a",
             "label": "A",
-            "body": "Without it, you could illicitly identify the existential witness with previously-used terms."
+            "body": "(1, 0)"
           },
           {
             "id": "b",
             "label": "B",
-            "body": "The system uses only finite proofs."
+            "body": "(0, 0)"
           },
           {
             "id": "c",
             "label": "C",
-            "body": "Otherwise the deduction is too long."
+            "body": "(0, 1)"
           },
           {
             "id": "d",
             "label": "D",
-            "body": "Constants must always be fresh in logic."
+            "body": "(1, 1)"
           }
         ],
-        "correctChoiceId": "a",
+        "correctChoiceId": "c",
         "hint": "Think about the precise definition before picking.",
-        "explanation": "EI introduces a temporary name for an unknown witness; reusing names would over-specify.",
+        "explanation": "proj_{v\u2081} v\u2082 = (1,0); v\u2082 \u2212 proj = (1,1) \u2212 (1,0) = (0,1).",
         "wrongAnswerExplanations": {
-          "b": "Length isn't the reason.",
-          "c": "Length is unrelated to soundness.",
-          "d": "Other rules allow reuse."
+          "a": "That's v\u2081, not the component perpendicular to v\u2081.",
+          "b": "v\u2082 is not parallel to v\u2081, so the perpendicular part is nonzero.",
+          "d": "Not orthogonal to v\u2081 \u2014 dot product is 1."
         },
         "difficulty": "medium",
         "source": {
           "term": "",
-          "chapterTitle": "Inference Rules"
+          "chapterTitle": "Orthogonality"
         },
         "qualityScore": 100,
         "originalOrdinal": 8,
         "cleanedOrdinal": 8
       },
       {
-        "prompt": "The formula \u00ac\u2200x F(x) is logically equivalent to\u2026",
+        "prompt": "The normal equations for least squares with full column rank A are\u2026",
         "choices": [
           {
             "id": "a",
             "label": "A",
-            "body": "\u00ac\u2203x F(x)."
+            "body": "AAx = b"
           },
           {
             "id": "b",
             "label": "B",
-            "body": "\u2203x \u00acF(x)."
+            "body": "Ax = b"
           },
           {
             "id": "c",
             "label": "C",
-            "body": "\u2200x \u00acF(x)."
+            "body": "x = A\u207b\u00b9b"
           },
           {
             "id": "d",
             "label": "D",
-            "body": "\u2203x F(x)."
+            "body": "A\u1d40Ax = A\u1d40b"
           }
         ],
-        "correctChoiceId": "b",
+        "correctChoiceId": "d",
         "hint": "Think about the precise definition before picking.",
-        "explanation": "Negating a universal yields an existential of the negation.",
+        "explanation": "Minimizing \u2016Ax \u2212 b\u2016\u00b2 leads to A\u1d40Ax = A\u1d40b when A\u1d40A is invertible.",
         "wrongAnswerExplanations": {
-          "a": "Equivalent to \u2200x \u00acF(x), not to \u00ac\u2200x F(x).",
-          "c": "That's the negation of an existential, not a universal.",
-          "d": "Doesn't account for the outer negation."
+          "a": "Missing transpose on the first factor \u2014 wrong derivation.",
+          "b": "Used when an exact solution exists, not the least-squares substitute.",
+          "c": "A may not be square or invertible."
         },
         "difficulty": "medium",
         "source": {
           "term": "",
-          "chapterTitle": "Logical Equivalence"
+          "chapterTitle": "Least Squares"
         },
         "qualityScore": 100,
         "originalOrdinal": 9,
         "cleanedOrdinal": 9
       },
       {
-        "prompt": "A countermodel to an argument is\u2026",
+        "prompt": "The angle between u = (1, 0) and v = (1, 1) satisfies cos \u03b8 = \u2026",
         "choices": [
           {
             "id": "a",
             "label": "A",
-            "body": "An interpretation in which all premises are true and the conclusion is false."
+            "body": "0"
           },
           {
             "id": "b",
             "label": "B",
-            "body": "An interpretation in which all premises are false."
+            "body": "1/\u221a2"
           },
           {
             "id": "c",
             "label": "C",
-            "body": "Any model of the conclusion."
+            "body": "1/2"
           },
           {
             "id": "d",
             "label": "D",
-            "body": "An interpretation in which the conclusion is true."
+            "body": "\u221a2"
           }
         ],
-        "correctChoiceId": "a",
+        "correctChoiceId": "b",
         "hint": "Think about the precise definition before picking.",
-        "explanation": "A single countermodel suffices to show invalidity.",
+        "explanation": "u\u00b7v = 1, \u2016u\u2016 = 1, \u2016v\u2016 = \u221a2, so cos \u03b8 = 1/\u221a2.",
         "wrongAnswerExplanations": {
-          "b": "That doesn't show invalidity.",
-          "c": "Models of the conclusion alone tell us nothing about validity.",
-          "d": "Conclusion truth doesn't matter for invalidity."
+          "a": "Would mean orthogonal vectors.",
+          "c": "Would correspond to \u03b8 = 60\u00b0 in a different configuration.",
+          "d": "Cosine cannot exceed 1."
         },
         "difficulty": "medium",
         "source": {
           "term": "",
-          "chapterTitle": "Validity"
+          "chapterTitle": "Vectors"
         },
         "qualityScore": 100,
         "originalOrdinal": 10,
         "cleanedOrdinal": 10
       },
       {
-        "prompt": "Conjunctive Normal Form (CNF) expresses a formula as\u2026",
+        "prompt": "Which matrix is invertible?",
         "choices": [
           {
             "id": "a",
             "label": "A",
-            "body": "A single implication."
+            "body": "[[1, 2], [2, 4]]"
           },
           {
             "id": "b",
             "label": "B",
-            "body": "A disjunction of conjunctions of literals."
+            "body": "[[1, 1], [1, 1]]"
           },
           {
             "id": "c",
             "label": "C",
-            "body": "A list of equivalences."
+            "body": "[[0, 0], [1, 1]]"
           },
           {
             "id": "d",
             "label": "D",
-            "body": "A conjunction of disjunctions of literals."
+            "body": "[[1, 2], [3, 7]]"
           }
         ],
         "correctChoiceId": "d",
         "hint": "Think about the precise definition before picking.",
-        "explanation": "CNF is the canonical form for SAT solvers and resolution.",
+        "explanation": "det [[1,2],[3,7]] = 7 \u2212 6 = 1 \u2260 0; the others have dependent rows.",
         "wrongAnswerExplanations": {
-          "a": "Doesn't generalize.",
-          "b": "That's DNF.",
-          "c": "Not a standard normal form."
+          "a": "Row 2 is 2\u00d7 row 1 \u2014 determinant zero.",
+          "b": "Identical rows \u2014 singular.",
+          "c": "Zero row \u2014 singular."
         },
         "difficulty": "medium",
         "source": {
           "term": "",
-          "chapterTitle": "Propositional Logic"
+          "chapterTitle": "Matrices"
         },
         "qualityScore": 100,
         "originalOrdinal": 11,
         "cleanedOrdinal": 11
       },
       {
-        "prompt": "\u00ac(P \u2192 Q) is logically equivalent to\u2026",
+        "prompt": "A homogeneous system Ax = 0 with more unknowns than equations (n > m) always has\u2026",
         "choices": [
           {
             "id": "a",
             "label": "A",
-            "body": "\u00acP \u2228 Q."
+            "body": "Exactly one solution"
           },
           {
             "id": "b",
             "label": "B",
-            "body": "P \u2227 \u00acQ."
+            "body": "No solution"
           },
           {
             "id": "c",
             "label": "C",
-            "body": "Q \u2192 P."
+            "body": "Determinant 1"
           },
           {
             "id": "d",
             "label": "D",
-            "body": "\u00acP \u2227 \u00acQ."
+            "body": "A nontrivial solution"
           }
         ],
-        "correctChoiceId": "b",
+        "correctChoiceId": "d",
         "hint": "Think about the precise definition before picking.",
-        "explanation": "P \u2192 Q is false iff P is true and Q is false; that's exactly P \u2227 \u00acQ.",
+        "explanation": "Rank \u2264 m < n, so there are free variables and infinitely many solutions including x \u2260 0.",
         "wrongAnswerExplanations": {
-          "a": "That's P \u2192 Q itself, not its negation.",
-          "c": "Different table.",
-          "d": "True only when both are false."
+          "a": "Free variables prevent uniqueness when n > rank.",
+          "b": "x = 0 is always a solution for homogeneous systems.",
+          "c": "A need not be square."
         },
         "difficulty": "medium",
         "source": {
           "term": "",
-          "chapterTitle": "Logical Equivalence"
+          "chapterTitle": "Row Reduction"
         },
         "qualityScore": 100,
         "originalOrdinal": 12,
         "cleanedOrdinal": 12
       },
       {
-        "prompt": "In \u2200x (P(x) \u2192 Q(x)), the variable x is\u2026",
+        "prompt": "If A and B are 2 \u00d7 2, then det(AB) equals\u2026",
         "choices": [
           {
             "id": "a",
             "label": "A",
-            "body": "Free."
+            "body": "det A \u00b7 det B"
           },
           {
             "id": "b",
             "label": "B",
-            "body": "Undefined."
+            "body": "det A / det B"
           },
           {
             "id": "c",
             "label": "C",
-            "body": "Bound by \u2200x throughout the entire scope."
+            "body": "det A + det B"
           },
           {
             "id": "d",
             "label": "D",
-            "body": "Both free and bound."
+            "body": "det(A + B)"
           }
         ],
-        "correctChoiceId": "c",
+        "correctChoiceId": "a",
         "hint": "Think about the precise definition before picking.",
-        "explanation": "x appears under the scope of \u2200x, so it's bound.",
+        "explanation": "Determinant is multiplicative: det(AB) = det A det B.",
         "wrongAnswerExplanations": {
-          "a": "It would be free outside the quantifier's scope.",
-          "b": "It's defined as bound by \u2200x.",
-          "d": "Inside this formula, x is bound."
+          "b": "Not the product rule.",
+          "c": "Determinant is not additive in general.",
+          "d": "det(A + B) rarely equals det A det B."
         },
         "difficulty": "medium",
         "source": {
           "term": "",
-          "chapterTitle": "Predicate Logic"
+          "chapterTitle": "Determinants"
         },
         "qualityScore": 100,
         "originalOrdinal": 13,
         "cleanedOrdinal": 13
       },
       {
-        "prompt": "From P, infer P \u2228 Q for any Q. This rule is\u2026",
+        "prompt": "The characteristic polynomial of A = [[0, 1], [1, 0]] is\u2026",
         "choices": [
           {
             "id": "a",
             "label": "A",
-            "body": "Existential introduction."
+            "body": "\u03bb\u00b2 \u2212 1"
           },
           {
             "id": "b",
             "label": "B",
-            "body": "Conjunction introduction."
+            "body": "\u03bb\u00b2"
           },
           {
             "id": "c",
             "label": "C",
-            "body": "Disjunction elimination."
+            "body": "\u03bb \u2212 1"
           },
           {
             "id": "d",
             "label": "D",
-            "body": "Disjunction introduction (\u2228I)."
+            "body": "\u03bb\u00b2 + 1"
           }
         ],
-        "correctChoiceId": "d",
+        "correctChoiceId": "a",
         "hint": "Think about the precise definition before picking.",
-        "explanation": "Adding a disjunct to a known truth preserves truth.",
+        "explanation": "det([[\u2212\u03bb, 1], [1, \u2212\u03bb]]) = \u03bb\u00b2 \u2212 1; eigenvalues \u00b11.",
         "wrongAnswerExplanations": {
-          "a": "That's a quantifier rule.",
-          "b": "That builds \u2227.",
-          "c": "That uses a disjunction to derive something else."
+          "b": "Missed the 1 from off-diagonal.",
+          "c": "Degree 1 \u2014 characteristic polynomial is degree 2 for 2 \u00d7 2.",
+          "d": "Sign error on the diagonal product."
         },
         "difficulty": "medium",
         "source": {
           "term": "",
-          "chapterTitle": "Inference Rules"
+          "chapterTitle": "Eigenvalues"
         },
         "qualityScore": 100,
         "originalOrdinal": 14,
         "cleanedOrdinal": 14
       },
       {
-        "prompt": "Conditional proof / \u2192-introduction lets you derive P \u2192 Q by\u2026",
+        "prompt": "A set containing the zero vector is always\u2026",
         "choices": [
           {
             "id": "a",
             "label": "A",
-            "body": "Assuming P in a subproof and deriving Q, then discharging the assumption."
+            "body": "Linearly independent"
           },
           {
             "id": "b",
             "label": "B",
-            "body": "Showing Q is a tautology."
+            "body": "Linearly dependent"
           },
           {
             "id": "c",
             "label": "C",
-            "body": "Showing P is a tautology."
+            "body": "A basis"
           },
           {
             "id": "d",
             "label": "D",
-            "body": "Assuming Q and deriving P."
+            "body": "Orthonormal"
           }
         ],
-        "correctChoiceId": "a",
+        "correctChoiceId": "b",
         "hint": "Think about the precise definition before picking.",
-        "explanation": "Standard deduction theorem rule: assume the antecedent, prove the consequent, conclude the implication.",
+        "explanation": "1\u00b70 + 0\u00b7(other vectors) = 0 is a nontrivial dependence on the zero vector alone.",
         "wrongAnswerExplanations": {
-          "b": "Q being a tautology gives \u2192 trivially, but isn't the general rule.",
-          "c": "Not how \u2192 is introduced.",
-          "d": "Wrong direction."
+          "a": "The zero vector alone gives a nontrivial combination.",
+          "c": "Bases consist of independent vectors; zero cannot be in a basis.",
+          "d": "Independence fails before discussing normalization."
         },
         "difficulty": "medium",
         "source": {
           "term": "",
-          "chapterTitle": "Proof"
+          "chapterTitle": "Linear Independence"
         },
         "qualityScore": 100,
         "originalOrdinal": 15,
         "cleanedOrdinal": 15
       },
       {
-        "prompt": "Universal generalization allows you to conclude \u2200x F(x) from F(c) provided\u2026",
+        "prompt": "If S = {(1,0,0), (0,1,0)}, then dim(span S) equals\u2026",
         "choices": [
           {
             "id": "a",
             "label": "A",
-            "body": "x is bound elsewhere."
+            "body": "2"
           },
           {
             "id": "b",
             "label": "B",
-            "body": "c is arbitrary \u2014 it does not appear in the assumptions or in F(x)."
+            "body": "1"
           },
           {
             "id": "c",
             "label": "C",
-            "body": "c is a specific constant in the language."
+            "body": "0"
           },
           {
             "id": "d",
             "label": "D",
-            "body": "F(c) is a premise."
+            "body": "3"
           }
         ],
-        "correctChoiceId": "b",
+        "correctChoiceId": "a",
         "hint": "Think about the precise definition before picking.",
-        "explanation": "The constant must not be 'tainted' by other commitments; this guarantees the proof works for any object.",
+        "explanation": "The two vectors are independent and lie in a plane in \u211d\u00b3.",
         "wrongAnswerExplanations": {
-          "a": "Binding elsewhere is irrelevant.",
-          "c": "Specific constants can't be generalized this freely.",
-          "d": "Premises can't be universally generalized."
+          "b": "They are not parallel.",
+          "c": "Span contains nonzero vectors.",
+          "d": "Two non-coplanar-independent vectors in \u211d\u00b3 span a plane, not all of \u211d\u00b3."
         },
         "difficulty": "medium",
         "source": {
           "term": "",
-          "chapterTitle": "Predicate Logic"
+          "chapterTitle": "Span"
         },
         "qualityScore": 100,
         "originalOrdinal": 16,
         "cleanedOrdinal": 16
       },
       {
-        "prompt": "A logical consequence relation \u22a8 is defined so that \u0393 \u22a8 \u03c6 iff\u2026",
+        "prompt": "If Q is an orthogonal matrix, then Q\u1d40Q equals\u2026",
         "choices": [
           {
             "id": "a",
             "label": "A",
-            "body": "\u03c6 is provable from \u0393 in some proof system."
+            "body": "Q"
           },
           {
             "id": "b",
             "label": "B",
-            "body": "\u0393 and \u03c6 have the same truth value."
+            "body": "0"
           },
           {
             "id": "c",
             "label": "C",
-            "body": "Every model that makes all of \u0393 true also makes \u03c6 true."
+            "body": "I"
           },
           {
             "id": "d",
             "label": "D",
-            "body": "Some model makes all of \u0393 true and \u03c6 true."
+            "body": "Q\u00b2"
           }
         ],
         "correctChoiceId": "c",
         "hint": "Think about the precise definition before picking.",
-        "explanation": "Semantic entailment is preservation of truth across all models.",
+        "explanation": "Orthogonal means Q\u1d40 = Q\u207b\u00b9, so Q\u1d40Q = I.",
         "wrongAnswerExplanations": {
-          "a": "That's syntactic consequence (\u22a2); they coincide by soundness/completeness.",
-          "b": "Not a standard logical relation.",
-          "d": "That's joint satisfiability, not entailment."
+          "a": "Would imply Q\u1d40 = I, not generally true.",
+          "b": "Orthogonal matrices are invertible.",
+          "d": "Not the defining identity."
         },
         "difficulty": "medium",
         "source": {
           "term": "",
-          "chapterTitle": "Validity"
+          "chapterTitle": "Orthogonality"
         },
         "qualityScore": 100,
         "originalOrdinal": 17,
         "cleanedOrdinal": 17
       },
       {
-        "prompt": "Hypothetical syllogism is the rule\u2026",
+        "prompt": "Fitting a line y = a + bx to data points minimizes\u2026",
         "choices": [
           {
             "id": "a",
             "label": "A",
-            "body": "From P \u2192 Q and Q \u2192 R, infer P \u2192 R."
+            "body": "Maximum single residual only"
           },
           {
             "id": "b",
             "label": "B",
-            "body": "From P \u2228 Q and \u00acP, infer Q."
+            "body": "Sum of squared x-values"
           },
           {
             "id": "c",
             "label": "C",
-            "body": "From P \u2227 Q, infer P."
+            "body": "Sum of absolute x-coordinates"
           },
           {
             "id": "d",
             "label": "D",
-            "body": "From P \u2192 Q and \u00acQ, infer \u00acP."
+            "body": "Sum of squared vertical residuals"
           }
         ],
-        "correctChoiceId": "a",
+        "correctChoiceId": "d",
         "hint": "Think about the precise definition before picking.",
-        "explanation": "Chaining implications.",
+        "explanation": "Ordinary least squares penalizes (y\u1d62 \u2212 a \u2212 bx\u1d62)\u00b2.",
         "wrongAnswerExplanations": {
-          "b": "Disjunctive syllogism.",
-          "c": "Conjunction elimination.",
-          "d": "That's modus tollens."
+          "a": "That describes minimax (Chebyshev) fit, not least squares.",
+          "b": "x\u1d62 are fixed inputs, not residuals.",
+          "c": "Independent variable error is not the standard least-squares objective."
         },
         "difficulty": "medium",
         "source": {
           "term": "",
-          "chapterTitle": "Inference Rules"
+          "chapterTitle": "Least Squares"
         },
         "qualityScore": 100,
         "originalOrdinal": 18,
         "cleanedOrdinal": 18
       },
       {
-        "prompt": "First-order logic is undecidable in the following sense:",
+        "prompt": "The cross product (0, 0, 1) \u00d7 (0, 1, 0) in \u211d\u00b3 equals\u2026",
         "choices": [
           {
             "id": "a",
             "label": "A",
-            "body": "First-order logic has no models."
+            "body": "(\u22121, 0, 0)"
           },
           {
             "id": "b",
             "label": "B",
-            "body": "No formulas are valid."
+            "body": "(0, 1, 1)"
           },
           {
             "id": "c",
             "label": "C",
-            "body": "There is no algorithm that, given any formula, decides whether it is valid."
+            "body": "(0, 0, \u22121)"
           },
           {
             "id": "d",
             "label": "D",
-            "body": "Every valid formula is also satisfiable."
+            "body": "(1, 0, 0)"
           }
         ],
-        "correctChoiceId": "c",
+        "correctChoiceId": "a",
         "hint": "Think about the precise definition before picking.",
-        "explanation": "Church and Turing's undecidability theorem: validity in FOL is recursively enumerable but not decidable.",
+        "explanation": "Standard right-hand rule: i \u00d7 j = k, so k \u00d7 j = \u2212i.",
         "wrongAnswerExplanations": {
-          "a": "False; it has many.",
-          "b": "Many are.",
-          "d": "True but not what undecidability means."
+          "b": "Not orthogonal to (0,1,0).",
+          "c": "Result must be perpendicular to both factors \u2014 not along z.",
+          "d": "Sign reversed from k \u00d7 j."
         },
         "difficulty": "medium",
         "source": {
           "term": "",
-          "chapterTitle": "Predicate Logic"
+          "chapterTitle": "Vectors"
         },
         "qualityScore": 100,
         "originalOrdinal": 19,
         "cleanedOrdinal": 19
       },
       {
-        "prompt": "A proof system is sound if\u2026",
+        "prompt": "The transpose of [[1, 2, 3], [4, 5, 6]] is\u2026",
         "choices": [
           {
             "id": "a",
             "label": "A",
-            "body": "Every derivable formula is logically valid."
+            "body": "[[6, 5, 4], [3, 2, 1]]"
           },
           {
             "id": "b",
             "label": "B",
-            "body": "Every valid formula is derivable."
+            "body": "[[1, 2], [3, 4], [5, 6]]"
           },
           {
             "id": "c",
             "label": "C",
-            "body": "It has finitely many rules."
+            "body": "[[1, 4], [2, 5], [3, 6]]"
           },
           {
             "id": "d",
             "label": "D",
-            "body": "It contains all axioms of arithmetic."
+            "body": "[[1, 2, 3], [4, 5, 6]]"
           }
         ],
-        "correctChoiceId": "a",
+        "correctChoiceId": "c",
         "hint": "Think about the precise definition before picking.",
-        "explanation": "Soundness \u22a2 \u21d2 \u22a8: provability respects truth.",
+        "explanation": "Transpose swaps rows and columns: 2 \u00d7 3 becomes 3 \u00d7 2.",
         "wrongAnswerExplanations": {
-          "b": "That's completeness.",
-          "c": "Finite rules don't imply soundness.",
-          "d": "Soundness is a logic property, not arithmetic."
+          "a": "That's a 180\u00b0 reversal, not transpose.",
+          "b": "Wrong dimensions and entries.",
+          "d": "Only symmetric matrices equal their transpose."
         },
         "difficulty": "medium",
         "source": {
           "term": "",
-          "chapterTitle": "Soundness"
+          "chapterTitle": "Matrices"
         },
         "qualityScore": 100,
         "originalOrdinal": 20,
@@ -1721,820 +1721,820 @@
     ],
     "hard": [
       {
-        "prompt": "G\u00f6del's completeness theorem (for first-order logic) says\u2026",
+        "prompt": "What is the rank of [[1, 2, 3], [2, 4, 6], [1, 1, 1]]?",
         "choices": [
           {
             "id": "a",
             "label": "A",
-            "body": "Every true formula has a finite proof."
+            "body": "1"
           },
           {
             "id": "b",
             "label": "B",
-            "body": "Every logically valid formula is provable in standard proof systems."
+            "body": "0"
           },
           {
             "id": "c",
             "label": "C",
-            "body": "Every theorem of arithmetic is true."
+            "body": "2"
           },
           {
             "id": "d",
             "label": "D",
-            "body": "First-order logic is decidable."
+            "body": "3"
           }
         ],
-        "correctChoiceId": "b",
+        "correctChoiceId": "c",
         "hint": "Think about the precise definition before picking.",
-        "explanation": "Together with soundness, completeness gives \u22a8 \u21d4 \u22a2 for FOL.",
+        "explanation": "Row 2 equals 2\u00d7 row 1; eliminating leaves two pivot rows \u2014 rank 2.",
         "wrongAnswerExplanations": {
-          "a": "Only formulas valid in all models do.",
-          "c": "That's incompleteness-adjacent territory.",
-          "d": "It isn't."
+          "a": "Rows 1 and 3 are not multiples of each other.",
+          "b": "Matrix is nonzero.",
+          "d": "Row 2 is dependent, so there cannot be three independent rows."
         },
         "difficulty": "hard",
         "source": {
           "term": "",
-          "chapterTitle": "Soundness"
+          "chapterTitle": "Row Reduction"
         },
         "qualityScore": 100,
         "originalOrdinal": 1,
         "cleanedOrdinal": 1
       },
       {
-        "prompt": "Compactness theorem: a set \u0393 of first-order formulas is satisfiable iff\u2026",
+        "prompt": "If A is 4 \u00d7 4 with det A = 5, then det(A\u207b\u00b9) equals\u2026",
         "choices": [
           {
             "id": "a",
             "label": "A",
-            "body": "\u0393 is finite."
+            "body": "1/625"
           },
           {
             "id": "b",
             "label": "B",
-            "body": "Every finite subset of \u0393 is satisfiable."
+            "body": "1/5"
           },
           {
             "id": "c",
             "label": "C",
-            "body": "\u0393 is decidable."
+            "body": "5"
           },
           {
             "id": "d",
             "label": "D",
-            "body": "\u0393 contains a tautology."
+            "body": "\u22125"
           }
         ],
         "correctChoiceId": "b",
         "hint": "Think about the precise definition before picking.",
-        "explanation": "Compactness has rich consequences: existence of non-standard models of arithmetic, L\u00f6wenheim\u2013Skolem applications, etc.",
+        "explanation": "det(A\u207b\u00b9) = 1/det A = 1/5.",
         "wrongAnswerExplanations": {
-          "a": "Finiteness isn't required.",
-          "c": "Decidability is irrelevant.",
-          "d": "Tautologies are trivially satisfiable but don't characterize compactness."
+          "a": "Would be (det A)\u207b\u2074, not the correct exponent.",
+          "c": "That's det A, not det(A\u207b\u00b9).",
+          "d": "Determinant of inverse is reciprocal, not negated."
         },
         "difficulty": "hard",
         "source": {
           "term": "",
-          "chapterTitle": "Validity"
+          "chapterTitle": "Determinants"
         },
         "qualityScore": 100,
         "originalOrdinal": 2,
         "cleanedOrdinal": 2
       },
       {
-        "prompt": "L\u00f6wenheim\u2013Skolem (downward) says that every satisfiable first-order theory in a countable language has\u2026",
+        "prompt": "A 2 \u00d7 2 matrix with trace 5 and determinant 6 has eigenvalues\u2026",
         "choices": [
           {
             "id": "a",
             "label": "A",
-            "body": "Only finite models."
+            "body": "1 and 4"
           },
           {
             "id": "b",
             "label": "B",
-            "body": "Exactly one model."
+            "body": "\u22122 and \u22123"
           },
           {
             "id": "c",
             "label": "C",
-            "body": "A countable model."
+            "body": "2 and 3"
           },
           {
             "id": "d",
             "label": "D",
-            "body": "Only uncountable models."
+            "body": "5 and 6"
           }
         ],
         "correctChoiceId": "c",
         "hint": "Think about the precise definition before picking.",
-        "explanation": "Downward LS guarantees a countable model, even for theories aiming at uncountable structures (Skolem's paradox).",
+        "explanation": "Eigenvalues solve \u03bb\u00b2 \u2212 (tr)\u03bb + det = \u03bb\u00b2 \u2212 5\u03bb + 6 = (\u03bb\u22122)(\u03bb\u22123).",
         "wrongAnswerExplanations": {
-          "a": "First-order theories can have infinite models.",
-          "b": "First-order theories with infinite models have many models of each cardinality.",
-          "d": "Opposite of the theorem."
+          "a": "Sum 5 but product 4, not 6.",
+          "b": "Product would be 6 but sum would be \u22125, not 5.",
+          "d": "Confused trace and determinant with eigenvalues."
         },
         "difficulty": "hard",
         "source": {
           "term": "",
-          "chapterTitle": "Predicate Logic"
+          "chapterTitle": "Eigenvalues"
         },
         "qualityScore": 100,
         "originalOrdinal": 3,
         "cleanedOrdinal": 3
       },
       {
-        "prompt": "G\u00f6del's first incompleteness theorem applies to\u2026",
+        "prompt": "The dimension of the space of 2 \u00d7 2 symmetric matrices is\u2026",
         "choices": [
           {
             "id": "a",
             "label": "A",
-            "body": "Every formal theory whatsoever."
+            "body": "1"
           },
           {
             "id": "b",
             "label": "B",
-            "body": "Propositional logic."
+            "body": "2"
           },
           {
             "id": "c",
             "label": "C",
-            "body": "Any consistent, recursively axiomatized theory strong enough to express elementary arithmetic."
+            "body": "3"
           },
           {
             "id": "d",
             "label": "D",
-            "body": "Only Peano Arithmetic."
+            "body": "4"
           }
         ],
         "correctChoiceId": "c",
         "hint": "Think about the precise definition before picking.",
-        "explanation": "Incompleteness needs enough arithmetic for self-reference; weaker systems (e.g., presburger arithmetic) are complete.",
+        "explanation": "Symmetric 2 \u00d7 2 matrices depend on three parameters: two diagonal entries and one off-diagonal (equal top-right and bottom-left).",
         "wrongAnswerExplanations": {
-          "a": "Some theories are complete (e.g., the theory of real closed fields).",
-          "b": "Propositional logic is complete and decidable.",
-          "d": "It applies more broadly."
+          "a": "More than one independent symmetric matrix exists.",
+          "b": "Too few \u2014 diagonal and off-diagonal constraints need three degrees of freedom.",
+          "d": "That's all 2 \u00d7 2 matrices without symmetry."
         },
         "difficulty": "hard",
         "source": {
           "term": "",
-          "chapterTitle": "Soundness"
+          "chapterTitle": "Linear Independence"
         },
         "qualityScore": 100,
         "originalOrdinal": 4,
         "cleanedOrdinal": 4
       },
       {
-        "prompt": "Resolution is a refutation-complete proof method for\u2026",
+        "prompt": "The column space of a 3 \u00d7 2 matrix A with rank 2 in \u211d\u00b3 is\u2026",
         "choices": [
           {
             "id": "a",
             "label": "A",
-            "body": "First-order logic restricted to clausal (CNF) form."
+            "body": "The empty set"
           },
           {
             "id": "b",
             "label": "B",
-            "body": "Intuitionistic logic only."
+            "body": "All of \u211d\u00b3"
           },
           {
             "id": "c",
             "label": "C",
-            "body": "Modal logic only."
+            "body": "A line through the origin only"
           },
           {
             "id": "d",
             "label": "D",
-            "body": "Higher-order logic."
+            "body": "A plane through the origin (2-dimensional subspace)"
           }
         ],
-        "correctChoiceId": "a",
+        "correctChoiceId": "d",
         "hint": "Think about the precise definition before picking.",
-        "explanation": "Resolution proves \u0393 \u22a8 \u03c6 by deriving the empty clause from \u0393 \u222a {\u00ac\u03c6} in CNF.",
+        "explanation": "Rank 2 with two columns means the two columns are independent and span a 2D subspace.",
         "wrongAnswerExplanations": {
-          "b": "Resolution is classical.",
-          "c": "Modal logics need different proof systems.",
-          "d": "HOL isn't complete in general."
+          "a": "Column space always contains 0 and column vectors.",
+          "b": "Would require rank 3.",
+          "c": "Would require rank 1."
         },
         "difficulty": "hard",
         "source": {
           "term": "",
-          "chapterTitle": "Inference Rules"
+          "chapterTitle": "Span"
         },
         "qualityScore": 100,
         "originalOrdinal": 5,
         "cleanedOrdinal": 5
       },
       {
-        "prompt": "An n-ary relation R on a domain D is interpreted in a model as\u2026",
+        "prompt": "If W is a subspace of \u211d\u207f, then (W\u22a5)\u22a5 equals\u2026",
         "choices": [
           {
             "id": "a",
             "label": "A",
-            "body": "A formula in the language."
+            "body": "\u211d\u207f"
           },
           {
             "id": "b",
             "label": "B",
-            "body": "A subset of D^n."
+            "body": "W"
           },
           {
             "id": "c",
             "label": "C",
-            "body": "A function from D to D."
+            "body": "W\u22a5"
           },
           {
             "id": "d",
             "label": "D",
-            "body": "An element of D."
+            "body": "{0}"
           }
         ],
         "correctChoiceId": "b",
         "hint": "Think about the precise definition before picking.",
-        "explanation": "Relations correspond to sets of tuples.",
+        "explanation": "In finite-dimensional inner product spaces, double orthogonal complement returns W.",
         "wrongAnswerExplanations": {
-          "a": "Formulas are syntax; relations are semantics.",
-          "c": "That's a unary function.",
-          "d": "That's a constant."
+          "a": "Only true when W = {0} or W = \u211d\u207f in special cases.",
+          "c": "One complement is not the double complement.",
+          "d": "Only when W = \u211d\u207f."
         },
         "difficulty": "hard",
         "source": {
           "term": "",
-          "chapterTitle": "Predicate Logic"
+          "chapterTitle": "Orthogonality"
         },
         "qualityScore": 100,
         "originalOrdinal": 6,
         "cleanedOrdinal": 6
       },
       {
-        "prompt": "The propositional SAT problem is NP-complete. Which transformation is canonical for the reduction?",
+        "prompt": "If the columns of A are orthonormal, the least-squares solution to Ax \u2248 b is\u2026",
         "choices": [
           {
             "id": "a",
             "label": "A",
-            "body": "Showing SAT is in P-complete."
+            "body": "x = b"
           },
           {
             "id": "b",
             "label": "B",
-            "body": "Cook's reduction: encoding any nondeterministic Turing machine's accepting computation as a CNF formula."
+            "body": "x = A\u1d40b"
           },
           {
             "id": "c",
             "label": "C",
-            "body": "Reducing SAT to QBF."
+            "body": "x = (A\u1d40A)\u207b\u00b9A\u1d40b only when A is not orthonormal"
           },
           {
             "id": "d",
             "label": "D",
-            "body": "Reducing 3-coloring to SAT via Kempe chains."
+            "body": "x = A\u207b\u00b9b"
           }
         ],
         "correctChoiceId": "b",
         "hint": "Think about the precise definition before picking.",
-        "explanation": "Cook's theorem (1971) showed SAT is NP-complete via direct simulation of NDTMs.",
+        "explanation": "With orthonormal columns, A\u1d40A = I and the normal equations reduce to x = A\u1d40b.",
         "wrongAnswerExplanations": {
-          "a": "P-completeness is for log-space reductions, not NP.",
-          "c": "That places SAT in PSPACE, but doesn't show NP-completeness.",
-          "d": "That's a reduction from 3-coloring, but Cook\u2013Levin is the seminal NP-completeness proof."
+          "a": "b need not lie in the column space.",
+          "c": "That formula always holds; it simplifies to A\u1d40b when columns are orthonormal.",
+          "d": "A is typically rectangular \u2014 no ordinary inverse."
         },
         "difficulty": "hard",
         "source": {
           "term": "",
-          "chapterTitle": "Propositional Logic"
+          "chapterTitle": "Least Squares"
         },
         "qualityScore": 100,
         "originalOrdinal": 7,
         "cleanedOrdinal": 7
       },
       {
-        "prompt": "Two formulas \u03c6 and \u03c8 are logically equivalent iff\u2026",
+        "prompt": "Let u, v be nonzero. \u2016u + v\u2016 = \u2016u\u2016 + \u2016v\u2016 holds if and only if\u2026",
         "choices": [
           {
             "id": "a",
             "label": "A",
-            "body": "They share a propositional letter."
+            "body": "u and v are nonnegative scalar multiples in the same direction"
           },
           {
             "id": "b",
             "label": "B",
-            "body": "They have the same number of connectives."
+            "body": "u = \u2212v"
           },
           {
             "id": "c",
             "label": "C",
-            "body": "One implies the other."
+            "body": "u and v are orthogonal"
           },
           {
             "id": "d",
             "label": "D",
-            "body": "They have the same truth value in every model."
+            "body": "Always for any u, v"
           }
         ],
-        "correctChoiceId": "d",
+        "correctChoiceId": "a",
         "hint": "Think about the precise definition before picking.",
-        "explanation": "Equivalence is mutual entailment: \u03c6 \u22a8 \u03c8 and \u03c8 \u22a8 \u03c6.",
+        "explanation": "Triangle inequality is equality exactly when vectors are parallel and point the same way.",
         "wrongAnswerExplanations": {
-          "a": "Sharing letters doesn't imply equivalence.",
-          "b": "Syntactic length is irrelevant.",
-          "c": "That's one-way entailment, not equivalence."
+          "b": "Then u + v = 0, not full norm additivity of positive lengths in the same direction sense.",
+          "c": "Orthogonal nonzero vectors give strict inequality.",
+          "d": "Triangle inequality is usually strict."
         },
         "difficulty": "hard",
         "source": {
           "term": "",
-          "chapterTitle": "Logical Equivalence"
+          "chapterTitle": "Vectors"
         },
         "qualityScore": 100,
         "originalOrdinal": 8,
         "cleanedOrdinal": 8
       },
       {
-        "prompt": "Skolemization eliminates existential quantifiers by\u2026",
+        "prompt": "If A is m \u00d7 n with rank r, how many pivot columns appear in any echelon form of A?",
         "choices": [
           {
             "id": "a",
             "label": "A",
-            "body": "Replacing them with new constants only, regardless of context."
+            "body": "n"
           },
           {
             "id": "b",
             "label": "B",
-            "body": "Removing them entirely."
+            "body": "m + n"
           },
           {
             "id": "c",
             "label": "C",
-            "body": "Replacing existentially-quantified variables with fresh function symbols of the surrounding universal variables."
+            "body": "m"
           },
           {
             "id": "d",
             "label": "D",
-            "body": "Converting them to disjunctions."
+            "body": "r"
           }
         ],
-        "correctChoiceId": "c",
+        "correctChoiceId": "d",
         "hint": "Think about the precise definition before picking.",
-        "explanation": "If \u2200x \u2203y R(x, y), Skolemize to \u2200x R(x, f(x)) where f is a new function.",
+        "explanation": "Pivot count equals rank \u2014 dimension of column space.",
         "wrongAnswerExplanations": {
-          "a": "Constants only suffice when no enclosing \u2200; in general you need functions.",
-          "b": "Just dropping \u2203 changes meaning.",
-          "d": "That's not Skolemization."
+          "a": "Column count can exceed rank when columns are dependent.",
+          "b": "Not a standard invariant.",
+          "c": "Row count upper-bounds rank but pivots equal rank, not always m."
         },
         "difficulty": "hard",
         "source": {
           "term": "",
-          "chapterTitle": "Predicate Logic"
+          "chapterTitle": "Matrices"
         },
         "qualityScore": 100,
         "originalOrdinal": 9,
         "cleanedOrdinal": 9
       },
       {
-        "prompt": "In modal logic, \u25a1P is read as 'necessarily P'. In Kripke semantics, \u25a1P holds at world w iff\u2026",
+        "prompt": "The solution set of Ax = b with a particular solution x\u209a and homogeneous solutions x\u2095 is\u2026",
         "choices": [
           {
             "id": "a",
             "label": "A",
-            "body": "P is a tautology."
+            "body": "only x\u209a"
           },
           {
             "id": "b",
             "label": "B",
-            "body": "P holds at w."
+            "body": "null(A) only"
           },
           {
             "id": "c",
             "label": "C",
-            "body": "P holds at every world accessible from w."
+            "body": "empty unless b = 0"
           },
           {
             "id": "d",
             "label": "D",
-            "body": "P holds at some world accessible from w."
+            "body": "x\u209a + null(A)"
           }
         ],
-        "correctChoiceId": "c",
+        "correctChoiceId": "d",
         "hint": "Think about the precise definition before picking.",
-        "explanation": "The accessibility relation R determines which worlds are 'reachable'; \u25a1 is universal over them.",
+        "explanation": "Affine line/plane/hyperplane: translate the null space by any particular solution.",
         "wrongAnswerExplanations": {
-          "a": "Tautologies are necessary in every system, but \u25a1P generally isn't a tautology.",
-          "b": "Modal operators look beyond the current world.",
-          "d": "That's \u25c7P (possibility)."
+          "a": "Homogeneous solutions can be added when the null space is nontrivial.",
+          "b": "Misses the particular solution shift unless b = 0.",
+          "c": "Consistent inhomogeneous systems have solutions."
         },
         "difficulty": "hard",
         "source": {
           "term": "",
-          "chapterTitle": "Modal Logic"
+          "chapterTitle": "Row Reduction"
         },
         "qualityScore": 100,
         "originalOrdinal": 10,
         "cleanedOrdinal": 10
       },
       {
-        "prompt": "\u0141o\u015b's theorem about ultraproducts implies which classical result?",
+        "prompt": "Swapping two rows of A multiplies det A by\u2026",
         "choices": [
           {
             "id": "a",
             "label": "A",
-            "body": "The compactness theorem of first-order logic."
+            "body": "2"
           },
           {
             "id": "b",
             "label": "B",
-            "body": "The Church\u2013Turing thesis."
+            "body": "0"
           },
           {
             "id": "c",
             "label": "C",
-            "body": "Tarski's truth definition."
+            "body": "\u22121"
           },
           {
             "id": "d",
             "label": "D",
-            "body": "G\u00f6del's incompleteness theorems."
+            "body": "1"
           }
         ],
-        "correctChoiceId": "a",
+        "correctChoiceId": "c",
         "hint": "Think about the precise definition before picking.",
-        "explanation": "\u0141o\u015b's theorem gives a slick model-theoretic proof of compactness via ultraproducts.",
+        "explanation": "A single row interchange flips the sign of the determinant.",
         "wrongAnswerExplanations": {
-          "b": "Computability, not model theory.",
-          "c": "Tarski's work is foundational but separate.",
-          "d": "Different territory entirely."
+          "a": "Scaling rows by 2 affects det differently from swapping.",
+          "b": "Swapping rows does not zero the determinant unless it was already zero for other reasons.",
+          "d": "Would mean determinant unchanged \u2014 false for one swap."
         },
         "difficulty": "hard",
         "source": {
           "term": "",
-          "chapterTitle": "Validity"
+          "chapterTitle": "Determinants"
         },
         "qualityScore": 100,
         "originalOrdinal": 11,
         "cleanedOrdinal": 11
       },
       {
-        "prompt": "Sequent calculus's cut rule is admissible in classical logic, which means\u2026",
+        "prompt": "A matrix A with A\u1d40 = \u2212A (real skew-symmetric, n odd) must have eigenvalue 0 because\u2026",
         "choices": [
           {
             "id": "a",
             "label": "A",
-            "body": "Cut cannot be applied at all."
+            "body": "All eigenvalues are positive"
           },
           {
             "id": "b",
             "label": "B",
-            "body": "Cut implies completeness."
+            "body": "A is always diagonal"
           },
           {
             "id": "c",
             "label": "C",
-            "body": "Cut creates inconsistency."
+            "body": "Trace equals sum of squares of entries"
           },
           {
             "id": "d",
             "label": "D",
-            "body": "Any proof using cut can be transformed into a cut-free proof."
+            "body": "det A = (\u22121)\u207f det A forces det A = 0 when n is odd"
           }
         ],
         "correctChoiceId": "d",
         "hint": "Think about the precise definition before picking.",
-        "explanation": "Gentzen's Hauptsatz: cut elimination yields the subformula property, useful for proof analysis.",
+        "explanation": "For odd n, det A = \u2212det A implies det A = 0, so 0 is an eigenvalue.",
         "wrongAnswerExplanations": {
-          "a": "Cut is a legal rule; it's just removable.",
-          "b": "Cut elimination is a structural result.",
-          "c": "It doesn't."
+          "a": "Skew-symmetric eigenvalues are purely imaginary (zero real part).",
+          "b": "Skew-symmetric matrices are usually not diagonal.",
+          "c": "Trace is zero for skew-symmetric A."
         },
         "difficulty": "hard",
         "source": {
           "term": "",
-          "chapterTitle": "Proof"
+          "chapterTitle": "Eigenvalues"
         },
         "qualityScore": 100,
         "originalOrdinal": 12,
         "cleanedOrdinal": 12
       },
       {
-        "prompt": "A first-order theory is consistent iff\u2026",
+        "prompt": "If {v\u2081, v\u2082, v\u2083} is a basis of \u211d\u00b3 and T: \u211d\u00b3 \u2192 \u211d\u00b3 is linear with T(v\u1d62) = e\u1d62 (standard basis), then T is\u2026",
         "choices": [
           {
             "id": "a",
             "label": "A",
-            "body": "It has at least one model."
+            "body": "Singular with rank 1"
           },
           {
             "id": "b",
             "label": "B",
-            "body": "It contains the law of excluded middle."
+            "body": "Not linear"
           },
           {
             "id": "c",
             "label": "C",
-            "body": "It is finite."
+            "body": "The zero map"
           },
           {
             "id": "d",
             "label": "D",
-            "body": "It is complete."
+            "body": "Invertible (an isomorphism)"
           }
         ],
-        "correctChoiceId": "a",
+        "correctChoiceId": "d",
         "hint": "Think about the precise definition before picking.",
-        "explanation": "G\u00f6del's completeness theorem: consistency (syntactic) \u21d4 satisfiability (semantic).",
+        "explanation": "Mapping a basis to a basis extends to an invertible linear transformation.",
         "wrongAnswerExplanations": {
-          "b": "Classical theories typically do, but consistency is independent.",
-          "c": "Theories can be infinite.",
-          "d": "Consistency and completeness are different."
+          "a": "Rank 3 \u2014 spans all of \u211d\u00b3.",
+          "b": "Given by linear extension from basis images.",
+          "c": "Sends basis vectors to e\u1d62, not to 0."
         },
         "difficulty": "hard",
         "source": {
           "term": "",
-          "chapterTitle": "Soundness"
+          "chapterTitle": "Linear Independence"
         },
         "qualityScore": 100,
         "originalOrdinal": 13,
         "cleanedOrdinal": 13
       },
       {
-        "prompt": "Robinson Arithmetic Q is weaker than Peano Arithmetic in that\u2026",
+        "prompt": "The null space of [[1, 1, 0], [2, 2, 0]] is all vectors of the form\u2026",
         "choices": [
           {
             "id": "a",
             "label": "A",
-            "body": "It has no equality."
+            "body": "t(\u22121, 1, 0) + s(0, 0, 1)"
           },
           {
             "id": "b",
             "label": "B",
-            "body": "It has no successor function."
+            "body": "only (0, 0, 0)"
           },
           {
             "id": "c",
             "label": "C",
-            "body": "It lacks the induction schema."
+            "body": "t(1, 1, 0)"
           },
           {
             "id": "d",
             "label": "D",
-            "body": "It uses second-order quantifiers."
+            "body": "all of \u211d\u00b3 with no restriction"
           }
         ],
-        "correctChoiceId": "c",
+        "correctChoiceId": "a",
         "hint": "Think about the precise definition before picking.",
-        "explanation": "Q is finitely axiomatized and still allows G\u00f6del's incompleteness theorem to apply.",
+        "explanation": "x\u2081 + x\u2082 = 0 gives x\u2082 = \u2212x\u2081; x\u2083 is free \u2014 two-parameter family.",
         "wrongAnswerExplanations": {
-          "a": "Q has equality.",
-          "b": "It has S.",
-          "d": "Q is first-order."
+          "b": "Free variables yield infinitely many solutions.",
+          "c": "Violates x\u2081 + x\u2082 = 0 unless t = 0.",
+          "d": "Equation x\u2081 + x\u2082 = 0 restricts the first two coordinates."
         },
         "difficulty": "hard",
         "source": {
           "term": "",
-          "chapterTitle": "Predicate Logic"
+          "chapterTitle": "Span"
         },
         "qualityScore": 100,
         "originalOrdinal": 14,
         "cleanedOrdinal": 14
       },
       {
-        "prompt": "Natural deduction's reductio rule lets you conclude \u00acP from a subproof in which P leads to \u22a5. This rule is\u2026",
+        "prompt": "The matrix of the orthogonal projection onto the line spanned by unit vector u is\u2026",
         "choices": [
           {
             "id": "a",
             "label": "A",
-            "body": "Conjunction elimination."
+            "body": "I \u2212 uu\u1d40"
           },
           {
             "id": "b",
             "label": "B",
-            "body": "Negation elimination."
+            "body": "uu"
           },
           {
             "id": "c",
             "label": "C",
-            "body": "Negation introduction (\u00acI)."
+            "body": "u\u1d40u"
           },
           {
             "id": "d",
             "label": "D",
-            "body": "Modus ponens."
+            "body": "uu\u1d40"
           }
         ],
-        "correctChoiceId": "c",
+        "correctChoiceId": "d",
         "hint": "Think about the precise definition before picking.",
-        "explanation": "\u00acI packages a contradiction-from-assumption into a negation.",
+        "explanation": "P = u(u\u1d40) for unit u; (u\u1d40x)u = (uu\u1d40)x.",
         "wrongAnswerExplanations": {
-          "a": "That works on \u2227.",
-          "b": "That's how \u00ac is used, not introduced.",
-          "d": "MP eliminates \u2192."
+          "a": "That's projection onto the orthogonal complement.",
+          "b": "Missing transpose \u2014 wrong dimensions for \u211d\u207f.",
+          "c": "That's the scalar 1 for unit u, not the projection matrix."
         },
         "difficulty": "hard",
         "source": {
           "term": "",
-          "chapterTitle": "Inference Rules"
+          "chapterTitle": "Orthogonality"
         },
         "qualityScore": 100,
         "originalOrdinal": 15,
         "cleanedOrdinal": 15
       },
       {
-        "prompt": "Two formulas \u03c6, \u03c8 are interderivable iff\u2026",
+        "prompt": "Multicollinearity (nearly dependent columns of A) in least squares mainly harms\u2026",
         "choices": [
           {
             "id": "a",
             "label": "A",
-            "body": "Both are tautologies."
+            "body": "The fact that residuals are perpendicular to Col(A)"
           },
           {
             "id": "b",
             "label": "B",
-            "body": "They are syntactically identical."
+            "body": "Numerical stability of (A\u1d40A)\u207b\u00b9A\u1d40b"
           },
           {
             "id": "c",
             "label": "C",
-            "body": "Both have the same length."
+            "body": "Existence of a minimizer"
           },
           {
             "id": "d",
             "label": "D",
-            "body": "\u03c6 \u22a2 \u03c8 and \u03c8 \u22a2 \u03c6 in the chosen proof system."
+            "body": "Linearity of the model"
           }
         ],
-        "correctChoiceId": "d",
+        "correctChoiceId": "b",
         "hint": "Think about the precise definition before picking.",
-        "explanation": "Interderivability is the syntactic counterpart of equivalence.",
+        "explanation": "A\u1d40A becomes ill-conditioned; small data changes swing coefficients even though a minimizer exists.",
         "wrongAnswerExplanations": {
-          "a": "Both being tautologies makes them equivalent vacuously, but interderivability is stronger relational notion.",
-          "b": "Identity is far stricter.",
-          "c": "Length doesn't matter."
+          "a": "Geometry of the residual stays; coefficient estimates become unstable.",
+          "c": "A least-squares minimizer still exists.",
+          "d": "The model remains linear in parameters."
         },
         "difficulty": "hard",
         "source": {
           "term": "",
-          "chapterTitle": "Validity"
+          "chapterTitle": "Least Squares"
         },
         "qualityScore": 100,
         "originalOrdinal": 16,
         "cleanedOrdinal": 16
       },
       {
-        "prompt": "Tarski's truth definition for first-order logic is recursive on\u2026",
+        "prompt": "The reflection of vector x across the line spanned by unit u is\u2026",
         "choices": [
           {
             "id": "a",
             "label": "A",
-            "body": "Step numbers in a derivation."
+            "body": "2x \u2212 u"
           },
           {
             "id": "b",
             "label": "B",
-            "body": "The structure of formulas, using variable assignments."
+            "body": "x \u2212 2(u\u1d40x)u"
           },
           {
             "id": "c",
             "label": "C",
-            "body": "Possible worlds."
+            "body": "(u\u1d40x)u"
           },
           {
             "id": "d",
             "label": "D",
-            "body": "Type levels."
+            "body": "2(u\u1d40x)u \u2212 x"
           }
         ],
-        "correctChoiceId": "b",
+        "correctChoiceId": "d",
         "hint": "Think about the precise definition before picking.",
-        "explanation": "T-schema-style recursion: define satisfaction over atomic, then connectives and quantifiers.",
+        "explanation": "Reflect = 2\u00b7proj_u x \u2212 x = 2uu\u1d40x \u2212 x.",
         "wrongAnswerExplanations": {
-          "a": "That's proof-theoretic, not semantic.",
-          "c": "That's Kripke semantics for modal logic.",
-          "d": "Type theory is a different framework."
+          "a": "Not the standard reflection formula.",
+          "b": "That's reflection across the orthogonal complement hyperplane.",
+          "c": "That's projection onto u, not reflection."
         },
         "difficulty": "hard",
         "source": {
           "term": "",
-          "chapterTitle": "Propositional Logic"
+          "chapterTitle": "Vectors"
         },
         "qualityScore": 100,
         "originalOrdinal": 17,
         "cleanedOrdinal": 17
       },
       {
-        "prompt": "Why is propositional logic decidable while first-order logic is not?",
+        "prompt": "If A has singular value decomposition A = U\u03a3V\u1d40 with \u03a3 diagonal nonnegative, then \u2016A\u2016\u2082 (operator 2-norm) equals\u2026",
         "choices": [
           {
             "id": "a",
             "label": "A",
-            "body": "Propositional logic has no models."
+            "body": "The smallest singular value"
           },
           {
             "id": "b",
             "label": "B",
-            "body": "First-order logic has too many connectives."
+            "body": "det A"
           },
           {
             "id": "c",
             "label": "C",
-            "body": "Truth in propositional logic can be checked by enumerating 2^n valuations; first-order quantification ranges over potentially infinite domains."
+            "body": "trace A"
           },
           {
             "id": "d",
             "label": "D",
-            "body": "Propositional logic uses 1-ary predicates."
+            "body": "The largest singular value \u03c3\u2081"
           }
         ],
-        "correctChoiceId": "c",
+        "correctChoiceId": "d",
         "hint": "Think about the precise definition before picking.",
-        "explanation": "The undecidability of FOL is a corollary of Church and Turing's work.",
+        "explanation": "The spectral norm equals the top singular value.",
         "wrongAnswerExplanations": {
-          "a": "It does \u2014 valuations are models.",
-          "b": "Connective count is finite.",
-          "d": "Propositional logic has no predicates or variables."
+          "a": "That's related to the smallest stretch, not the maximum.",
+          "b": "Only defined for square A and not the operator norm.",
+          "c": "Not the maximum stretch factor."
         },
         "difficulty": "hard",
         "source": {
           "term": "",
-          "chapterTitle": "Soundness"
+          "chapterTitle": "Matrices"
         },
         "qualityScore": 100,
         "originalOrdinal": 18,
         "cleanedOrdinal": 18
       },
       {
-        "prompt": "If a first-order theory has an infinite model, then by the L\u00f6wenheim\u2013Skolem theorems it has\u2026",
+        "prompt": "For inconsistent system [A|b], a least-squares solution minimizes \u2016Ax \u2212 b\u2016. Geometrically, Ax is the orthogonal projection of b onto\u2026",
         "choices": [
           {
             "id": "a",
             "label": "A",
-            "body": "Only finite models."
+            "body": "Row(A)"
           },
           {
             "id": "b",
             "label": "B",
-            "body": "A model whose cardinality is a prime."
+            "body": "\u211d\u207f"
           },
           {
             "id": "c",
             "label": "C",
-            "body": "Only one infinite model up to isomorphism."
+            "body": "Null(A)"
           },
           {
             "id": "d",
             "label": "D",
-            "body": "Models of every infinite cardinality."
+            "body": "Col(A)"
           }
         ],
         "correctChoiceId": "d",
         "hint": "Think about the precise definition before picking.",
-        "explanation": "Upward + downward LS together give models of every infinite cardinality \u2265 |language|.",
+        "explanation": "The closest point in the column space is the orthogonal projection of b.",
         "wrongAnswerExplanations": {
-          "a": "Opposite.",
-          "b": "Arbitrary.",
-          "c": "Categoricity in all cardinalities is impossible by LS."
+          "a": "Row space lives in domain space \u211d\u207f, not target space where b lies.",
+          "b": "Too large unless A is square and invertible \u2014 generally b's closest point is in Col(A) \u2282 \u211d\u1d50.",
+          "c": "Null space contains only vectors mapped to 0, not approximations to b."
         },
         "difficulty": "hard",
         "source": {
           "term": "",
-          "chapterTitle": "Predicate Logic"
+          "chapterTitle": "Row Reduction"
         },
         "qualityScore": 100,
         "originalOrdinal": 19,
         "cleanedOrdinal": 19
       },
       {
-        "prompt": "The modal axiom T (\u25a1P \u2192 P) corresponds to the property of the accessibility relation being\u2026",
+        "prompt": "An n \u00d7 n matrix A is singular if and only if\u2026",
         "choices": [
           {
             "id": "a",
             "label": "A",
-            "body": "Reflexive."
+            "body": "det A = 0"
           },
           {
             "id": "b",
             "label": "B",
-            "body": "Transitive."
+            "body": "trace A = 0"
           },
           {
             "id": "c",
             "label": "C",
-            "body": "Functional."
+            "body": "A has a zero row"
           },
           {
             "id": "d",
             "label": "D",
-            "body": "Symmetric."
+            "body": "A is not symmetric"
           }
         ],
         "correctChoiceId": "a",
         "hint": "Think about the precise definition before picking.",
-        "explanation": "Sahlqvist correspondence: T \u2194 reflexive, 4 \u2194 transitive, 5 \u2194 Euclidean, B \u2194 symmetric.",
+        "explanation": "Invertibility and nonzero determinant are equivalent for square matrices.",
         "wrongAnswerExplanations": {
-          "b": "That's axiom 4.",
-          "c": "That gives a different axiom.",
-          "d": "That's axiom B."
+          "b": "Trace zero does not imply singularity.",
+          "c": "Sufficient for singularity but not equivalent \u2014 singular matrices may have no zero row.",
+          "d": "Many nonsymmetric matrices are invertible."
         },
         "difficulty": "hard",
         "source": {
           "term": "",
-          "chapterTitle": "Modal Logic"
+          "chapterTitle": "Determinants"
         },
         "qualityScore": 100,
         "originalOrdinal": 20,

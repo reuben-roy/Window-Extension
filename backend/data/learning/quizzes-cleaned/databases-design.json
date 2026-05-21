@@ -1,0 +1,2545 @@
+{
+  "book": {
+    "title": "Database Design",
+    "parentTopic": "Computer Science",
+    "subtopic": "Databases",
+    "slug": "databases-design",
+    "sourceUrl": "https://open.umn.edu/opentextbooks/textbooks/database-design-2nd-edition",
+    "pdfSha256": ""
+  },
+  "chapterCount": 9,
+  "conceptCount": 60,
+  "chapters": [
+    {
+      "ordinal": 1,
+      "title": "Relational Model",
+      "startPage": 1,
+      "endPage": 1,
+      "path": ""
+    },
+    {
+      "ordinal": 2,
+      "title": "Schema Design",
+      "startPage": 1,
+      "endPage": 1,
+      "path": ""
+    },
+    {
+      "ordinal": 3,
+      "title": "SQL",
+      "startPage": 1,
+      "endPage": 1,
+      "path": ""
+    },
+    {
+      "ordinal": 4,
+      "title": "Normalization",
+      "startPage": 1,
+      "endPage": 1,
+      "path": ""
+    },
+    {
+      "ordinal": 5,
+      "title": "Indexes",
+      "startPage": 1,
+      "endPage": 1,
+      "path": ""
+    },
+    {
+      "ordinal": 6,
+      "title": "Transactions",
+      "startPage": 1,
+      "endPage": 1,
+      "path": ""
+    },
+    {
+      "ordinal": 7,
+      "title": "ACID",
+      "startPage": 1,
+      "endPage": 1,
+      "path": ""
+    },
+    {
+      "ordinal": 8,
+      "title": "Isolation Levels",
+      "startPage": 1,
+      "endPage": 1,
+      "path": ""
+    },
+    {
+      "ordinal": 9,
+      "title": "Query Planning",
+      "startPage": 1,
+      "endPage": 1,
+      "path": ""
+    }
+  ],
+  "quizzes": {
+    "easy": [
+      {
+        "prompt": "In the relational model, what is a relation?",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "A foreign-key link between two tables."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "A query that joins multiple tables."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "A table \u2014 a set of tuples (rows) sharing the same attributes (columns)."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "A single row identified by a primary key."
+          }
+        ],
+        "correctChoiceId": "c",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "A relation is the mathematical name for a table: a set of rows with a fixed schema.",
+        "wrongAnswerExplanations": {
+          "a": "That describes a referential constraint, not a relation.",
+          "b": "A join is an operation over relations, not the relation itself.",
+          "d": "A row is a tuple; the whole table is the relation."
+        },
+        "difficulty": "easy",
+        "source": {
+          "term": "",
+          "chapterTitle": "Relational Model"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 1,
+        "cleanedOrdinal": 1
+      },
+      {
+        "prompt": "What is the purpose of a primary key?",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "To uniquely identify each row in a table."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "To link a child row to a parent row in another table."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "To speed up every SELECT query automatically."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "To store the largest value in each column."
+          }
+        ],
+        "correctChoiceId": "a",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "A primary key guarantees entity integrity: no two rows share the same key value.",
+        "wrongAnswerExplanations": {
+          "b": "That is the role of a foreign key.",
+          "c": "Indexes may help lookups, but that is not the definition of a primary key.",
+          "d": "Keys identify rows; they are not aggregate summaries."
+        },
+        "difficulty": "easy",
+        "source": {
+          "term": "",
+          "chapterTitle": "Relational Model"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 2,
+        "cleanedOrdinal": 2
+      },
+      {
+        "prompt": "A foreign key enforces what kind of integrity?",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Referential integrity between child and parent rows."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Domain integrity on numeric columns only."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Transactional durability after COMMIT."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Entity integrity within a single table."
+          }
+        ],
+        "correctChoiceId": "a",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Foreign keys require that referenced parent values exist (or use defined ON DELETE/UPDATE actions).",
+        "wrongAnswerExplanations": {
+          "b": "Domain constraints apply to data types and allowed values, not cross-table links.",
+          "c": "Durability is an ACID property, not referential integrity.",
+          "d": "Entity integrity is enforced by the primary key."
+        },
+        "difficulty": "easy",
+        "source": {
+          "term": "",
+          "chapterTitle": "Relational Model"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 3,
+        "cleanedOrdinal": 3
+      },
+      {
+        "prompt": "In an ER diagram, a one-to-many relationship between Department and Employee means\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Each employee belongs to at most one department; a department can have many employees."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Departments and employees must share the same primary key."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Each employee can belong to many departments simultaneously in this relationship."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Each department has exactly one employee."
+          }
+        ],
+        "correctChoiceId": "a",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "One-to-many is the usual works-for pattern: many employees, one department per assignment.",
+        "wrongAnswerExplanations": {
+          "b": "Related tables use separate keys linked by foreign keys.",
+          "c": "That describes many-to-many.",
+          "d": "That would be one-to-one, not one-to-many."
+        },
+        "difficulty": "easy",
+        "source": {
+          "term": "",
+          "chapterTitle": "Schema Design"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 4,
+        "cleanedOrdinal": 4
+      },
+      {
+        "prompt": "Which SQL clause filters rows before they are grouped?",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "ORDER BY"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "GROUP BY"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "WHERE"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "HAVING"
+          }
+        ],
+        "correctChoiceId": "c",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "WHERE filters individual rows; HAVING filters groups after aggregation.",
+        "wrongAnswerExplanations": {
+          "a": "ORDER BY sorts the final result set.",
+          "b": "GROUP BY forms groups; it does not filter row-level predicates.",
+          "d": "HAVING applies predicates to grouped results, not to raw rows."
+        },
+        "difficulty": "easy",
+        "source": {
+          "term": "",
+          "chapterTitle": "SQL"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 5,
+        "cleanedOrdinal": 5
+      },
+      {
+        "prompt": "What does SELECT DISTINCT do?",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Sorts rows in ascending order."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Locks the table for exclusive write access."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Returns only the first row of the table."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Removes duplicate rows from the query result."
+          }
+        ],
+        "correctChoiceId": "d",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "DISTINCT applies to the full projected row: identical combinations appear once.",
+        "wrongAnswerExplanations": {
+          "a": "Use ORDER BY to sort.",
+          "b": "Locking is a transaction concern, not DISTINCT.",
+          "c": "Use LIMIT 1 for a single row; DISTINCT removes duplicates, not all but one."
+        },
+        "difficulty": "easy",
+        "source": {
+          "term": "",
+          "chapterTitle": "SQL"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 6,
+        "cleanedOrdinal": 6
+      },
+      {
+        "prompt": "Which statement adds a new row to an existing table?",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "INSERT"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "CREATE TABLE"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "ALTER TABLE"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "UPDATE"
+          }
+        ],
+        "correctChoiceId": "a",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "INSERT supplies values for a new tuple; UPDATE modifies existing rows.",
+        "wrongAnswerExplanations": {
+          "b": "CREATE TABLE defines a new relation.",
+          "c": "ALTER changes schema (columns, constraints), not row data.",
+          "d": "UPDATE changes existing rows."
+        },
+        "difficulty": "easy",
+        "source": {
+          "term": "",
+          "chapterTitle": "SQL"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 7,
+        "cleanedOrdinal": 7
+      },
+      {
+        "prompt": "DELETE removes rows; what does DROP TABLE do?",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Removes only rows that fail a WHERE clause but keeps the table."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Rolls back the last transaction."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Removes the table definition and all its data from the schema."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Renames the table while preserving all rows."
+          }
+        ],
+        "correctChoiceId": "c",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "DROP is DDL that destroys the relation; DELETE is DML that removes selected rows.",
+        "wrongAnswerExplanations": {
+          "a": "That describes DELETE with a predicate.",
+          "b": "Use ROLLBACK to undo a transaction.",
+          "d": "Use RENAME/ALTER RENAME for renaming."
+        },
+        "difficulty": "easy",
+        "source": {
+          "term": "",
+          "chapterTitle": "SQL"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 8,
+        "cleanedOrdinal": 8
+      },
+      {
+        "prompt": "First normal form (1NF) requires that\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Every determinant is a candidate key."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Each cell holds a single atomic (indivisible) value and repeating groups are eliminated."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "No non-key attribute depends on another non-key attribute."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "All joins are lossless without projection."
+          }
+        ],
+        "correctChoiceId": "b",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "1NF bans nested lists and multi-valued cells in a single column.",
+        "wrongAnswerExplanations": {
+          "a": "That characterizes BCNF, not 1NF.",
+          "c": "That is 3NF-style dependency rules.",
+          "d": "Lossless join is a decomposition property, not 1NF."
+        },
+        "difficulty": "easy",
+        "source": {
+          "term": "",
+          "chapterTitle": "Normalization"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 9,
+        "cleanedOrdinal": 9
+      },
+      {
+        "prompt": "A relation is in 2NF if it is in 1NF and\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Every table has exactly one column."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "No non-key attribute depends on a proper subset of a composite primary key."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "All foreign keys reference surrogate keys only."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Every index is clustered on the primary key."
+          }
+        ],
+        "correctChoiceId": "b",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "2NF removes partial dependencies: attributes must depend on the whole key, not part of it.",
+        "wrongAnswerExplanations": {
+          "a": "2NF allows composite keys; it concerns partial dependencies.",
+          "c": "Surrogate keys are a design choice, not part of 2NF.",
+          "d": "Indexing is physical design, not normal form."
+        },
+        "difficulty": "easy",
+        "source": {
+          "term": "",
+          "chapterTitle": "Normalization"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 10,
+        "cleanedOrdinal": 10
+      },
+      {
+        "prompt": "Why are indexes created on database columns?",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "To replace the need for a primary key."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "To speed up data retrieval at the cost of extra storage and write overhead."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "To guarantee that every query returns sorted results."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "To enforce that no two transactions run concurrently."
+          }
+        ],
+        "correctChoiceId": "b",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Indexes are auxiliary access paths (often B-trees) that reduce scan cost for selective lookups.",
+        "wrongAnswerExplanations": {
+          "a": "Primary keys enforce uniqueness; indexes are optional helpers.",
+          "c": "ORDER BY controls sort order; indexes only help if the planner uses them.",
+          "d": "Concurrency is controlled by locking and isolation, not indexes."
+        },
+        "difficulty": "easy",
+        "source": {
+          "term": "",
+          "chapterTitle": "Indexes"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 11,
+        "cleanedOrdinal": 11
+      },
+      {
+        "prompt": "A typical B-tree index supports which operation efficiently?",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Arbitrary Cartesian products without sorting."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Point lookups and range scans on the indexed key order."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Full table scans faster than reading heap pages."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Guaranteed O(1) lookup regardless of table size."
+          }
+        ],
+        "correctChoiceId": "b",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "B-trees keep keys sorted in balanced pages, enabling log-time seeks and ordered range reads.",
+        "wrongAnswerExplanations": {
+          "a": "Join algorithms still matter; indexes do not eliminate join cost.",
+          "c": "Sequential heap scans often beat random index probes for low selectivity.",
+          "d": "B-tree height grows with table size (logarithmic, not constant)."
+        },
+        "difficulty": "easy",
+        "source": {
+          "term": "",
+          "chapterTitle": "Indexes"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 12,
+        "cleanedOrdinal": 12
+      },
+      {
+        "prompt": "What is a database transaction?",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "A network connection between client and server."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Any SELECT statement that returns more than one row."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "A sequence of operations executed as a single logical unit of work."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "A permanent schema change applied with ALTER TABLE."
+          }
+        ],
+        "correctChoiceId": "c",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Transactions group reads and writes so they commit or roll back together.",
+        "wrongAnswerExplanations": {
+          "a": "A session/connection can host many transactions.",
+          "b": "A multi-row SELECT is not necessarily transactional.",
+          "d": "DDL may be transactional in some systems but is not the definition."
+        },
+        "difficulty": "easy",
+        "source": {
+          "term": "",
+          "chapterTitle": "Transactions"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 13,
+        "cleanedOrdinal": 13
+      },
+      {
+        "prompt": "Atomicity in ACID means\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Every query runs in constant time."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "The database schema never changes."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Concurrent transactions never block each other."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Either all operations in a transaction take effect, or none do."
+          }
+        ],
+        "correctChoiceId": "d",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Atomicity is all-or-nothing: partial updates are rolled back on failure.",
+        "wrongAnswerExplanations": {
+          "a": "Complexity is unrelated to atomicity.",
+          "b": "Schema can change; atomicity applies to a transaction's effects.",
+          "c": "That would ignore locking; isolation handles concurrency."
+        },
+        "difficulty": "easy",
+        "source": {
+          "term": "",
+          "chapterTitle": "ACID"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 14,
+        "cleanedOrdinal": 14
+      },
+      {
+        "prompt": "Consistency in ACID means\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "No transaction may ever abort."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "All replicas return identical answers at every instant."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "A committed transaction moves the database from one valid state to another, honoring constraints."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Indexes are always kept in memory."
+          }
+        ],
+        "correctChoiceId": "c",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Consistency is about invariant rules (keys, checks, triggers) holding after commit.",
+        "wrongAnswerExplanations": {
+          "a": "Transactions may abort to preserve consistency.",
+          "b": "That is a distributed replication concern, not the ACID definition.",
+          "d": "Storage layout is implementation detail."
+        },
+        "difficulty": "easy",
+        "source": {
+          "term": "",
+          "chapterTitle": "ACID"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 15,
+        "cleanedOrdinal": 15
+      },
+      {
+        "prompt": "Isolation in ACID means\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Every table has at most one row."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Backups run only on weekends."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Concurrent transactions behave as if they did not interleave in problematic ways."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Data is encrypted on disk."
+          }
+        ],
+        "correctChoiceId": "c",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Isolation levels define which interleavings are visible (dirty reads, phantoms, etc.).",
+        "wrongAnswerExplanations": {
+          "a": "Tables can have many rows.",
+          "b": "Backup scheduling is operational, not ACID isolation.",
+          "d": "Encryption is security, not isolation."
+        },
+        "difficulty": "easy",
+        "source": {
+          "term": "",
+          "chapterTitle": "ACID"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 16,
+        "cleanedOrdinal": 16
+      },
+      {
+        "prompt": "Durability in ACID means\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Queries never use the write-ahead log."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Uncommitted changes are visible to all users."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Indexes are rebuilt on every SELECT."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Committed changes survive crashes and restarts."
+          }
+        ],
+        "correctChoiceId": "d",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Once COMMIT succeeds, the system must recover committed data after failure (often via WAL).",
+        "wrongAnswerExplanations": {
+          "a": "WAL is a common durability mechanism.",
+          "b": "That would violate isolation, not define durability.",
+          "c": "SELECT should not rebuild indexes."
+        },
+        "difficulty": "easy",
+        "source": {
+          "term": "",
+          "chapterTitle": "ACID"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 17,
+        "cleanedOrdinal": 17
+      },
+      {
+        "prompt": "What does COMMIT do?",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Makes a transaction's changes permanent and visible to other sessions (per isolation rules)."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Creates a new index on every column."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Deletes the database file."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Undoes all changes made since the transaction began."
+          }
+        ],
+        "correctChoiceId": "a",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "COMMIT ends the transaction successfully; ROLLBACK discards changes.",
+        "wrongAnswerExplanations": {
+          "b": "Indexes are created explicitly with DDL.",
+          "c": "COMMIT persists work; it does not drop the database.",
+          "d": "That is ROLLBACK."
+        },
+        "difficulty": "easy",
+        "source": {
+          "term": "",
+          "chapterTitle": "Transactions"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 18,
+        "cleanedOrdinal": 18
+      },
+      {
+        "prompt": "What does ROLLBACK do?",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Increases the isolation level to SERIALIZABLE automatically."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Permanently saves changes to disk."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Exports the entire schema to CSV."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Discards uncommitted changes made in the current transaction."
+          }
+        ],
+        "correctChoiceId": "d",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "ROLLBACK aborts the transaction and restores the pre-transaction view for that session.",
+        "wrongAnswerExplanations": {
+          "a": "Isolation is set explicitly, not by ROLLBACK.",
+          "b": "That is COMMIT.",
+          "c": "Export tools are separate from transaction control."
+        },
+        "difficulty": "easy",
+        "source": {
+          "term": "",
+          "chapterTitle": "Transactions"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 19,
+        "cleanedOrdinal": 19
+      },
+      {
+        "prompt": "A surrogate key is\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "An artificial identifier (e.g., auto-increment ID) with no business meaning."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "A foreign key pointing to two parent tables at once."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "A checksum of all non-key columns."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "A natural key derived from government-issued numbers only."
+          }
+        ],
+        "correctChoiceId": "a",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Surrogate keys stabilize joins when natural keys are composite or change over time.",
+        "wrongAnswerExplanations": {
+          "b": "A foreign key references one parent relation (possibly composite).",
+          "c": "Checksums detect corruption; they are not primary keys.",
+          "d": "Natural keys come from the domain (email, ISBN), not surrogates."
+        },
+        "difficulty": "easy",
+        "source": {
+          "term": "",
+          "chapterTitle": "Schema Design"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 20,
+        "cleanedOrdinal": 20
+      }
+    ],
+    "medium": [
+      {
+        "prompt": "An INNER JOIN between Orders and Customers returns\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "All orders plus customers with NULLs where no match exists."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "All customers even if they placed no orders."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Only rows with matching keys in both tables."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "The Cartesian product of every order with every customer."
+          }
+        ],
+        "correctChoiceId": "c",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "INNER JOIN keeps matches on the join predicate; non-matching rows are dropped.",
+        "wrongAnswerExplanations": {
+          "a": "That describes a LEFT OUTER JOIN from orders.",
+          "b": "That is RIGHT/LEFT OUTER from the customer side.",
+          "d": "CROSS JOIN omits an equality predicate; INNER JOIN requires one."
+        },
+        "difficulty": "medium",
+        "source": {
+          "term": "",
+          "chapterTitle": "SQL"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 1,
+        "cleanedOrdinal": 1
+      },
+      {
+        "prompt": "Which clause filters groups after aggregation?",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "LIMIT"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "SELECT DISTINCT"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "HAVING"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "WHERE"
+          }
+        ],
+        "correctChoiceId": "c",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "HAVING predicates apply to grouped aggregates (e.g., COUNT(*) > 10).",
+        "wrongAnswerExplanations": {
+          "a": "LIMIT caps row count after the query is evaluated.",
+          "b": "DISTINCT removes duplicate result rows.",
+          "d": "WHERE filters rows before grouping."
+        },
+        "difficulty": "medium",
+        "source": {
+          "term": "",
+          "chapterTitle": "SQL"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 2,
+        "cleanedOrdinal": 2
+      },
+      {
+        "prompt": "A LEFT OUTER JOIN from A to B keeps\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Only rows from B when A has no match."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Rows from A only if B has at least two matching rows."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Only rows that match in both A and B."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "All rows from A, with NULLs in B's columns when no B row matches."
+          }
+        ],
+        "correctChoiceId": "d",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "LEFT OUTER preserves the left side entirely and pads missing right-side values with NULL.",
+        "wrongAnswerExplanations": {
+          "a": "That would be RIGHT OUTER from B's perspective.",
+          "b": "Joins do not require multiple matches on the right.",
+          "c": "That is an INNER JOIN."
+        },
+        "difficulty": "medium",
+        "source": {
+          "term": "",
+          "chapterTitle": "SQL"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 3,
+        "cleanedOrdinal": 3
+      },
+      {
+        "prompt": "Third normal form (3NF) eliminates\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Transitive dependencies: non-key attributes depending on other non-key attributes."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Repeating groups within a single cell."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Multivalued dependencies between independent facts."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Partial dependencies on part of a composite key only."
+          }
+        ],
+        "correctChoiceId": "a",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "3NF requires non-key attributes depend only on keys, not on other non-key attributes.",
+        "wrongAnswerExplanations": {
+          "b": "That is addressed by 1NF.",
+          "c": "That is 4NF.",
+          "d": "That is 2NF."
+        },
+        "difficulty": "medium",
+        "source": {
+          "term": "",
+          "chapterTitle": "Normalization"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 4,
+        "cleanedOrdinal": 4
+      },
+      {
+        "prompt": "Boyce-Codd Normal Form (BCNF) requires that\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "All attributes are multi-valued."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Foreign keys may not exist."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Every table has no more than three columns."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Every determinant of a functional dependency is a candidate key."
+          }
+        ],
+        "correctChoiceId": "d",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "BCNF strengthens 3NF: if X \u2192 Y, then X must be a superkey.",
+        "wrongAnswerExplanations": {
+          "a": "BCNF assumes relational values (1NF).",
+          "b": "BCNF allows foreign keys.",
+          "c": "BCNF is about dependencies, not column count."
+        },
+        "difficulty": "medium",
+        "source": {
+          "term": "",
+          "chapterTitle": "Normalization"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 5,
+        "cleanedOrdinal": 5
+      },
+      {
+        "prompt": "Denormalization is often used to\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Reduce join cost and speed read-heavy workloads at the expense of update anomalies."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Eliminate the need for indexes entirely."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Guarantee BCNF in every table automatically."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Prevent any redundant data from ever existing."
+          }
+        ],
+        "correctChoiceId": "a",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Denormalization trades redundancy for performance in OLAP or hot read paths.",
+        "wrongAnswerExplanations": {
+          "b": "Indexes remain useful on denormalized tables.",
+          "c": "Denormalization intentionally introduces redundancy.",
+          "d": "Denormalization adds redundant copies."
+        },
+        "difficulty": "medium",
+        "source": {
+          "term": "",
+          "chapterTitle": "Schema Design"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 6,
+        "cleanedOrdinal": 6
+      },
+      {
+        "prompt": "A composite index on (last_name, first_name) helps most when a query\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Filters only on first_name with no predicate on last_name."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Selects all rows with SELECT * without a WHERE clause."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Updates unrelated columns in random order."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Filters or sorts on last_name, or on both columns in that order."
+          }
+        ],
+        "correctChoiceId": "d",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Composite B-tree indexes support left-prefix matching: leading column must be constrained for efficiency.",
+        "wrongAnswerExplanations": {
+          "a": "Skipping the leading column often prevents index use.",
+          "b": "Full scans ignore selective index benefit.",
+          "c": "Write patterns affect maintenance cost but not this lookup rule."
+        },
+        "difficulty": "medium",
+        "source": {
+          "term": "",
+          "chapterTitle": "Indexes"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 7,
+        "cleanedOrdinal": 7
+      },
+      {
+        "prompt": "A covering index for a query is one that\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Stores only NULL values for faster scans."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Includes all columns needed by the query so the engine can satisfy it from the index alone."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Replaces the primary key constraint."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Spans every table in the database schema."
+          }
+        ],
+        "correctChoiceId": "b",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Index-only scans avoid heap lookups when projected columns are in the index payload.",
+        "wrongAnswerExplanations": {
+          "a": "NULL handling exists but covering means included columns, not NULL-only.",
+          "c": "Covering indexes complement, not replace, keys.",
+          "d": "Indexes are per-table (or per-partition) structures."
+        },
+        "difficulty": "medium",
+        "source": {
+          "term": "",
+          "chapterTitle": "Indexes"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 8,
+        "cleanedOrdinal": 8
+      },
+      {
+        "prompt": "A deadlock occurs when\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "An index is missing on a foreign key."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Two or more transactions wait on each other's locks in a cycle."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "A single transaction runs longer than one second."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "The database runs out of disk space during SELECT."
+          }
+        ],
+        "correctChoiceId": "b",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Circular wait-for graphs cause deadlock; engines abort one victim transaction.",
+        "wrongAnswerExplanations": {
+          "a": "Missing indexes hurt performance but do not define deadlock.",
+          "c": "Long transactions are problematic but not deadlock by definition.",
+          "d": "That is resource exhaustion, not lock cycling."
+        },
+        "difficulty": "medium",
+        "source": {
+          "term": "",
+          "chapterTitle": "Transactions"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 9,
+        "cleanedOrdinal": 9
+      },
+      {
+        "prompt": "A lost update anomaly happens when\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "The database loses power before COMMIT."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "A transaction reads uncommitted data from another session."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "A transaction sees new rows inserted by another transaction on re-read."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Two transactions read the same value, compute new values independently, and the later write overwrites the earlier without merging."
+          }
+        ],
+        "correctChoiceId": "d",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Lost update is a write-write conflict without proper locking or versioning.",
+        "wrongAnswerExplanations": {
+          "a": "That concerns durability, not lost updates.",
+          "b": "That is a dirty read.",
+          "c": "That is a phantom read."
+        },
+        "difficulty": "medium",
+        "source": {
+          "term": "",
+          "chapterTitle": "Isolation Levels"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 10,
+        "cleanedOrdinal": 10
+      },
+      {
+        "prompt": "A dirty read is\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Reading the same row twice with identical results under repeatable read."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Reading data written by another transaction that has not yet committed."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Reading only committed data at snapshot time."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Reading an empty table after TRUNCATE in another session that rolled back."
+          }
+        ],
+        "correctChoiceId": "b",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Dirty reads see uncommitted changes that may be rolled back.",
+        "wrongAnswerExplanations": {
+          "a": "Repeatable read prevents non-repeatable reads, not dirty reads by definition.",
+          "c": "That is consistent snapshot behavior.",
+          "d": "If the other transaction rolled back, you should not see TRUNCATE effects\u2014dirty read is about uncommitted writes."
+        },
+        "difficulty": "medium",
+        "source": {
+          "term": "",
+          "chapterTitle": "Isolation Levels"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 11,
+        "cleanedOrdinal": 11
+      },
+      {
+        "prompt": "READ COMMITTED isolation typically prevents\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Dirty reads."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Deadlocks entirely."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "All write skew anomalies without extra locking."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "All phantom reads in every database engine."
+          }
+        ],
+        "correctChoiceId": "a",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "READ COMMITTED hides uncommitted data; phantoms and write skew may still occur.",
+        "wrongAnswerExplanations": {
+          "b": "Deadlocks can occur at any isolation level.",
+          "c": "Write skew needs careful constraints or SERIALIZABLE.",
+          "d": "Phantom prevention usually needs higher isolation or locking."
+        },
+        "difficulty": "medium",
+        "source": {
+          "term": "",
+          "chapterTitle": "Isolation Levels"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 12,
+        "cleanedOrdinal": 12
+      },
+      {
+        "prompt": "REPEATABLE READ usually guarantees that\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Rows read earlier in the transaction appear unchanged on subsequent reads in the same transaction."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "All sessions see identical global snapshots forever."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "No new rows can ever be inserted into the database."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Every SELECT uses a full table lock on all tables."
+          }
+        ],
+        "correctChoiceId": "a",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Repeatable read stabilizes existing rows; phantoms may still appear depending on engine.",
+        "wrongAnswerExplanations": {
+          "b": "Snapshots are per-transaction, not permanent.",
+          "c": "Inserts by others may still occur (phantoms).",
+          "d": "Engines use row/version mechanisms, not global SELECT locks."
+        },
+        "difficulty": "medium",
+        "source": {
+          "term": "",
+          "chapterTitle": "Isolation Levels"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 13,
+        "cleanedOrdinal": 13
+      },
+      {
+        "prompt": "SERIALIZABLE isolation aims to ensure\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Indexes are disabled to avoid deadlocks."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Only one table may be referenced per transaction."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Transaction schedules are equivalent to some serial (one-at-a-time) order."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "All queries execute in parallel without any locks."
+          }
+        ],
+        "correctChoiceId": "c",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Serializable is the strongest ANSI level: no anomalies from interleaving.",
+        "wrongAnswerExplanations": {
+          "a": "Indexes remain active.",
+          "b": "Multi-table transactions are allowed.",
+          "d": "Serializable still uses locking or validation."
+        },
+        "difficulty": "medium",
+        "source": {
+          "term": "",
+          "chapterTitle": "Isolation Levels"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 14,
+        "cleanedOrdinal": 14
+      },
+      {
+        "prompt": "A SQL view is\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "A stored query definition that behaves like a virtual table."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "An index organized by column cardinality."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "A transaction isolation level."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "A physical copy of data refreshed only on database restart."
+          }
+        ],
+        "correctChoiceId": "a",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Views encapsulate queries; some are updatable under strict rules.",
+        "wrongAnswerExplanations": {
+          "b": "Indexes are storage structures, not view definitions.",
+          "c": "Isolation levels are transaction properties.",
+          "d": "That describes a materialized view."
+        },
+        "difficulty": "medium",
+        "source": {
+          "term": "",
+          "chapterTitle": "SQL"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 15,
+        "cleanedOrdinal": 15
+      },
+      {
+        "prompt": "ON DELETE CASCADE on a foreign key means\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Deletes are forbidden on the parent table."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Deleting a parent row automatically deletes referencing child rows."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "The child table is dropped from the schema."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Child rows become orphaned with NULL primary keys."
+          }
+        ],
+        "correctChoiceId": "b",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "CASCADE propagates deletes (and UPDATE CASCADE propagates key changes) along the FK.",
+        "wrongAnswerExplanations": {
+          "a": "That is RESTRICT/NO ACTION, not CASCADE.",
+          "c": "CASCADE removes rows, not tables.",
+          "d": "SET NULL or RESTRICT behave differently; CASCADE removes children."
+        },
+        "difficulty": "medium",
+        "source": {
+          "term": "",
+          "chapterTitle": "Schema Design"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 16,
+        "cleanedOrdinal": 16
+      },
+      {
+        "prompt": "Selectivity of a predicate measures\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "The number of columns in the SELECT list."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "The fraction of rows the predicate is expected to match."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "The width of VARCHAR columns in bytes."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "The maximum transaction isolation level."
+          }
+        ],
+        "correctChoiceId": "b",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Low selectivity (high match fraction) favors sequential scans; high selectivity favors indexes.",
+        "wrongAnswerExplanations": {
+          "a": "Projection width is unrelated to predicate selectivity.",
+          "c": "Column width affects I/O size, not match fraction.",
+          "d": "Isolation is transactional, not selectivity."
+        },
+        "difficulty": "medium",
+        "source": {
+          "term": "",
+          "chapterTitle": "Query Planning"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 17,
+        "cleanedOrdinal": 17
+      },
+      {
+        "prompt": "EXPLAIN (or EXPLAIN ANALYZE) shows\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "The optimizer's chosen plan operators and estimated costs (and actual timings with ANALYZE)."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "The complete history of every committed transaction."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "The ER diagram rendered as SVG."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "A list of all user passwords in hashed form."
+          }
+        ],
+        "correctChoiceId": "a",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Plan output reveals joins, scans, index usage, and cost estimates for tuning.",
+        "wrongAnswerExplanations": {
+          "b": "Transaction logs are separate audit/recovery artifacts.",
+          "c": "EXPLAIN is execution-plan text, not modeling diagrams.",
+          "d": "Security catalogs are not EXPLAIN output."
+        },
+        "difficulty": "medium",
+        "source": {
+          "term": "",
+          "chapterTitle": "Query Planning"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 18,
+        "cleanedOrdinal": 18
+      },
+      {
+        "prompt": "Referential integrity ensures that\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Transactions always run at SERIALIZABLE."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Foreign-key values reference existing primary-key values (or defined exceptions)."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Every column has a UNIQUE constraint."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "All queries use indexes."
+          }
+        ],
+        "correctChoiceId": "b",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "FK constraints tie child tuples to valid parents unless ON DELETE/UPDATE rules apply.",
+        "wrongAnswerExplanations": {
+          "a": "Default isolation varies by system.",
+          "c": "Uniqueness is optional per column.",
+          "d": "The optimizer chooses access paths; integrity is constraint-based."
+        },
+        "difficulty": "medium",
+        "source": {
+          "term": "",
+          "chapterTitle": "Schema Design"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 19,
+        "cleanedOrdinal": 19
+      },
+      {
+        "prompt": "A materialized view differs from an ordinary view because it\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Cannot be queried with SQL."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Stores the result set physically and must be refreshed to stay current."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Replaces the write-ahead log for durability."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Automatically enforces 5NF on base tables."
+          }
+        ],
+        "correctChoiceId": "b",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Materialized views trade freshness for read performance via stored answers.",
+        "wrongAnswerExplanations": {
+          "a": "Materialized views are queried like tables.",
+          "c": "Durability still uses logging mechanisms.",
+          "d": "Normal forms are design properties, not view features."
+        },
+        "difficulty": "medium",
+        "source": {
+          "term": "",
+          "chapterTitle": "SQL"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 20,
+        "cleanedOrdinal": 20
+      }
+    ],
+    "hard": [
+      {
+        "prompt": "Fourth normal form (4NF) addresses\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Lossless join without dependency preservation."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Multivalued dependencies: independent multi-valued facts about the same key should be split."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Transitive dependencies among non-key attributes only."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Partial dependencies on part of a composite key."
+          }
+        ],
+        "correctChoiceId": "b",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "4NF separates unrelated multi-valued sets (e.g., skills and languages for an employee).",
+        "wrongAnswerExplanations": {
+          "a": "That is decomposition theory, not the 4NF definition.",
+          "c": "Transitive dependencies are 3NF concerns.",
+          "d": "Partial dependencies are 2NF concerns."
+        },
+        "difficulty": "hard",
+        "source": {
+          "term": "",
+          "chapterTitle": "Normalization"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 1,
+        "cleanedOrdinal": 1
+      },
+      {
+        "prompt": "Fifth normal form (5NF), or PJ/NF, deals with\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Encrypting attributes at rest."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Only tables with exactly five columns."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Join dependencies that cannot be reconstructed from smaller projections without spurious tuples."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Mandatory clustered indexes on foreign keys."
+          }
+        ],
+        "correctChoiceId": "c",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "5NF splits relations when join recombination invents extra rows not present in the original.",
+        "wrongAnswerExplanations": {
+          "a": "Security is orthogonal to PJ/NF.",
+          "b": "The 'fifth' refers to normal form level, not column count.",
+          "d": "Physical design is separate from 5NF."
+        },
+        "difficulty": "hard",
+        "source": {
+          "term": "",
+          "chapterTitle": "Normalization"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 2,
+        "cleanedOrdinal": 2
+      },
+      {
+        "prompt": "A nested-loop join is often chosen when\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Both inputs are huge unsorted heaps with no indexes."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "One input is small and indexed lookups on the inner table are cheap per outer row."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "The optimizer must guarantee SERIALIZABLE isolation."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "All predicates are non-equality cross products."
+          }
+        ],
+        "correctChoiceId": "b",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Nested-loop probes the inner for each outer row; it excels with selective indexes on the inner key.",
+        "wrongAnswerExplanations": {
+          "a": "Large unsorted inputs favor hash or merge joins.",
+          "c": "Isolation is independent of join algorithm choice.",
+          "d": "Cross products are expensive; nested-loop still needs join predicates for equi-joins."
+        },
+        "difficulty": "hard",
+        "source": {
+          "term": "",
+          "chapterTitle": "Query Planning"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 3,
+        "cleanedOrdinal": 3
+      },
+      {
+        "prompt": "A hash join typically builds a hash table on\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "The smaller (build) input, probing with the larger (probe) input."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Always the alphabetically first table name."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "The transaction log to ensure durability."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Only columns with UNIQUE constraints disabled."
+          }
+        ],
+        "correctChoiceId": "a",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Hash joins partition by join key on the build side, then probe hashes for matches.",
+        "wrongAnswerExplanations": {
+          "b": "Optimizers pick build side by size/cardinality, not name.",
+          "c": "Logs are recovery structures, not join hash tables.",
+          "d": "Uniqueness affects plan cost but not the build/probe roles directly."
+        },
+        "difficulty": "hard",
+        "source": {
+          "term": "",
+          "chapterTitle": "Query Planning"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 4,
+        "cleanedOrdinal": 4
+      },
+      {
+        "prompt": "An index-only scan is possible when\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "The query performs arbitrary user-defined functions on heap-only columns."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "The table has no primary key defined."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "The isolation level is READ UNCOMMITTED only."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "All required columns appear in the index (including INCLUDE/ covering columns) so heap access is unnecessary."
+          }
+        ],
+        "correctChoiceId": "d",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Visibility map and index tuple versions must allow answering from the index leaf pages alone.",
+        "wrongAnswerExplanations": {
+          "a": "Heap columns force heap fetches unless expressions are indexed.",
+          "b": "Primary keys are unrelated to index-only feasibility.",
+          "c": "Isolation affects visibility, but covering columns are the main requirement."
+        },
+        "difficulty": "hard",
+        "source": {
+          "term": "",
+          "chapterTitle": "Indexes"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 5,
+        "cleanedOrdinal": 5
+      },
+      {
+        "prompt": "A phantom read occurs when\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Two transactions deadlock on the same row."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "The database returns an error on the first SELECT."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "A transaction reads the same row twice with different uncommitted values."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "A transaction re-issues a range query and sees new rows committed by another transaction."
+          }
+        ],
+        "correctChoiceId": "d",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Phantoms are new tuples appearing in a range; repeatable read may block some but not all engines block phantoms.",
+        "wrongAnswerExplanations": {
+          "a": "Deadlock is lock cycling, not phantom inserts.",
+          "b": "Errors are unrelated to phantom anomaly definition.",
+          "c": "Uncommitted changes imply dirty/non-repeatable reads, not phantoms."
+        },
+        "difficulty": "hard",
+        "source": {
+          "term": "",
+          "chapterTitle": "Isolation Levels"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 6,
+        "cleanedOrdinal": 6
+      },
+      {
+        "prompt": "Snapshot isolation (common in MVCC engines) provides\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Strict serial equivalence identical to two-phase locking in all cases."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Automatic normalization to BCNF on commit."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Consistent reads of committed data as of a transaction start snapshot, but may allow write skew without extra rules."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Dirty reads of uncommitted transactions."
+          }
+        ],
+        "correctChoiceId": "c",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Readers see a stable snapshot; writers may conflict; write skew needs careful handling beyond SI alone.",
+        "wrongAnswerExplanations": {
+          "a": "Snapshot isolation is not always equivalent to full serializability.",
+          "b": "Schema normal forms are design-time, not commit-time.",
+          "d": "MVCC snapshots hide uncommitted writes."
+        },
+        "difficulty": "hard",
+        "source": {
+          "term": "",
+          "chapterTitle": "Isolation Levels"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 7,
+        "cleanedOrdinal": 7
+      },
+      {
+        "prompt": "Two-phase locking (2PL) ensures conflict-serializability by\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Never acquiring shared locks on reads."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Growing locks until the transaction reaches its peak, then shrinking locks only after commit/abort begins."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Disabling all indexes during updates."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Committing immediately after the first read."
+          }
+        ],
+        "correctChoiceId": "b",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Strict 2PL holds all locks until end of transaction, preventing cascading rollbacks of schedules.",
+        "wrongAnswerExplanations": {
+          "a": "Shared locks are part of 2PL for reads.",
+          "c": "Indexes remain; locking governs interleaving.",
+          "d": "Early commit would release locks too soon."
+        },
+        "difficulty": "hard",
+        "source": {
+          "term": "",
+          "chapterTitle": "Transactions"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 8,
+        "cleanedOrdinal": 8
+      },
+      {
+        "prompt": "Write skew happens when\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "The database rejects all SERIALIZABLE transactions."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Two transactions read overlapping data, make disjoint writes based on stale reads, and together violate an invariant."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "An index is rebuilt during SELECT."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "A single UPDATE touches every row in the table."
+          }
+        ],
+        "correctChoiceId": "b",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Classic example: two doctors on-call checks each read count\u22651, both go off-call, leaving zero\u2014needs serializable or constraints.",
+        "wrongAnswerExplanations": {
+          "a": "Serializable prevents write skew; it does not define it.",
+          "c": "Maintenance operations are unrelated.",
+          "d": "Bulk update is not write skew."
+        },
+        "difficulty": "hard",
+        "source": {
+          "term": "",
+          "chapterTitle": "Isolation Levels"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 9,
+        "cleanedOrdinal": 9
+      },
+      {
+        "prompt": "Optimistic concurrency control (OCC) typically\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Validates at commit that no conflicting writes occurred since the transaction's snapshot/read set."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Locks every row on first SELECT FOR UPDATE automatically."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Disallows any read operations."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Requires denormalized schemas only."
+          }
+        ],
+        "correctChoiceId": "a",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "OCC assumes low conflict: read freely, check versions/validation on commit, abort if conflict detected.",
+        "wrongAnswerExplanations": {
+          "b": "That is pessimistic locking, not OCC.",
+          "c": "OCC relies on reads with validation.",
+          "d": "Schema style is independent of OCC."
+        },
+        "difficulty": "hard",
+        "source": {
+          "term": "",
+          "chapterTitle": "Transactions"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 10,
+        "cleanedOrdinal": 10
+      },
+      {
+        "prompt": "A partial index (filtered index) indexes\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Only rows that violate foreign keys."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Only temporary tables in the information schema."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Only rows satisfying a predicate (e.g., WHERE active = true), reducing size and maintenance cost."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Every column in the table including LOB blobs always."
+          }
+        ],
+        "correctChoiceId": "c",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Partial indexes target hot subsets (active users, open orders) for selective queries.",
+        "wrongAnswerExplanations": {
+          "a": "Invalid rows should not exist if constraints enforce integrity.",
+          "b": "Partial indexes apply to user tables with predicates.",
+          "d": "Partial means row filter, not all columns by default."
+        },
+        "difficulty": "hard",
+        "source": {
+          "term": "",
+          "chapterTitle": "Indexes"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 11,
+        "cleanedOrdinal": 11
+      },
+      {
+        "prompt": "A decomposition is lossless when\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "All functional dependencies are eliminated entirely."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Every attribute appears in only one relation regardless of dependencies."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "The database removes all foreign keys."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Joining the projected relations recovers exactly the original tuples without spurious rows."
+          }
+        ],
+        "correctChoiceId": "d",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Lossless join tests (e.g., chase) ensure natural join of fragments equals the source relation.",
+        "wrongAnswerExplanations": {
+          "a": "Dependencies should be preserved when possible.",
+          "b": "Dependency preservation is a separate goal.",
+          "c": "Foreign keys express relationships; lossless join is relational algebra property."
+        },
+        "difficulty": "hard",
+        "source": {
+          "term": "",
+          "chapterTitle": "Normalization"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 12,
+        "cleanedOrdinal": 12
+      },
+      {
+        "prompt": "BCNF can be stricter than 3NF when\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "A relation has overlapping candidate keys so a non-superkey determinant remains."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "All attributes are prime (part of some candidate key)."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "The table has no functional dependencies at all."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Every determinant is a single-attribute primary key."
+          }
+        ],
+        "correctChoiceId": "a",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Classic example: R(Student, Course, Instructor) with Instructor \u2192 Course is in 3NF but not BCNF if (Student, Course) is key.",
+        "wrongAnswerExplanations": {
+          "b": "That is 3NF-by-definition case where BCNF may still differ with overlapping keys.",
+          "c": "Without FDs, normal forms trivially hold.",
+          "d": "Then BCNF and 3NF often coincide."
+        },
+        "difficulty": "hard",
+        "source": {
+          "term": "",
+          "chapterTitle": "Normalization"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 13,
+        "cleanedOrdinal": 13
+      },
+      {
+        "prompt": "Histogram statistics in the catalog help the optimizer\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Guarantee zero deadlocks globally."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Estimate predicate selectivity and data distribution per column."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Store undo logs for every SELECT query."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Encrypt data at rest with AES-256 automatically."
+          }
+        ],
+        "correctChoiceId": "b",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Histograms capture non-uniform distributions better than single average row width alone.",
+        "wrongAnswerExplanations": {
+          "a": "Deadlocks can still occur with accurate stats.",
+          "c": "SELECT does not generate undo; DML does.",
+          "d": "Encryption is security configuration."
+        },
+        "difficulty": "hard",
+        "source": {
+          "term": "",
+          "chapterTitle": "Query Planning"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 14,
+        "cleanedOrdinal": 14
+      },
+      {
+        "prompt": "A cost-based optimizer chooses plans by\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Ignoring table statistics entirely."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Estimating resource costs (I/O, CPU, memory) for alternative physical operators and picking a low-cost plan."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Executing every possible plan fully before choosing."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Always picking nested-loop joins regardless of size."
+          }
+        ],
+        "correctChoiceId": "b",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "CBO uses stats (row counts, NDV, histograms) and cost models to compare join orders and access paths.",
+        "wrongAnswerExplanations": {
+          "a": "Stats are central to cost estimation.",
+          "c": "That would be prohibitively expensive; estimates suffice.",
+          "d": "CBO weighs hash/merge/nested-loop based on estimates."
+        },
+        "difficulty": "hard",
+        "source": {
+          "term": "",
+          "chapterTitle": "Query Planning"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 15,
+        "cleanedOrdinal": 15
+      },
+      {
+        "prompt": "Slowly Changing Dimension (SCD) Type 2 tracking typically\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Stores a new row with new surrogate key and effective dates when an attribute changes, preserving history."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Deletes the dimension table on each change."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Stores only the current value in a flat file outside the database."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Overwrites the old row in place without history."
+          }
+        ],
+        "correctChoiceId": "a",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Type 2 adds version rows (valid_from/valid_to, is_current) for warehouse history.",
+        "wrongAnswerExplanations": {
+          "b": "Dimensions persist; versions accumulate.",
+          "c": "SCD Type 2 is a relational warehousing pattern.",
+          "d": "That is Type 1 overwrite."
+        },
+        "difficulty": "hard",
+        "source": {
+          "term": "",
+          "chapterTitle": "Schema Design"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 16,
+        "cleanedOrdinal": 16
+      },
+      {
+        "prompt": "OLTP schemas differ from OLAP star schemas mainly because OLTP\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Normalizes data to support many small concurrent writes with integrity constraints."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Disallows transactions and indexes."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Requires every query to scan all partitions fully."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Stores only denormalized fact tables without dimensions."
+          }
+        ],
+        "correctChoiceId": "a",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "OLTP favors normalized operational tables; OLAP favors denormalized stars for analytic scans.",
+        "wrongAnswerExplanations": {
+          "b": "OLTP relies heavily on transactions and indexes.",
+          "c": "Analytic scans are OLAP; OLTP targets point lookups/short updates.",
+          "d": "Star schemas with facts and dimensions are OLAP."
+        },
+        "difficulty": "hard",
+        "source": {
+          "term": "",
+          "chapterTitle": "Schema Design"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 17,
+        "cleanedOrdinal": 17
+      },
+      {
+        "prompt": "Choosing a natural key over a surrogate key is preferable when\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Surrogate keys are prohibited by SQL standards."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "The business identifier is stable, unique, and small enough for efficient joins."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "The identifier frequently changes format or merges across legacy systems."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Composite keys always slow every join and must be avoided even if stable."
+          }
+        ],
+        "correctChoiceId": "b",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Natural keys (ISBN, country code) expose meaning; surrogates help when natural keys change or are wide.",
+        "wrongAnswerExplanations": {
+          "a": "SQL allows both; choice is engineering tradeoff.",
+          "c": "Instability favors surrogates.",
+          "d": "Stable composite natural keys are valid when modeled carefully."
+        },
+        "difficulty": "hard",
+        "source": {
+          "term": "",
+          "chapterTitle": "Schema Design"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 18,
+        "cleanedOrdinal": 18
+      },
+      {
+        "prompt": "For composite index (a, b, c), a query filtering on b and c alone without a predicate on a\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Always performs an index-only scan on all three leading columns."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Forces the database to drop the primary key."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Often cannot use the index for a pure index range scan on b,c due to left-prefix rules (unless index skip scan exists)."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Requires SERIALIZABLE isolation to read any rows."
+          }
+        ],
+        "correctChoiceId": "c",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "B-tree composite indexes are ordered by leading columns; skipping 'a' breaks contiguous range access.",
+        "wrongAnswerExplanations": {
+          "a": "Missing leading column usually blocks efficient range use.",
+          "b": "Primary keys are independent of secondary index prefix rules.",
+          "d": "Isolation does not govern index prefix usability."
+        },
+        "difficulty": "hard",
+        "source": {
+          "term": "",
+          "chapterTitle": "Indexes"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 19,
+        "cleanedOrdinal": 19
+      },
+      {
+        "prompt": "Index merge (intersection/union) plans combine\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "User passwords with hash join build sides."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Multiple single-column (or narrow) indexes to satisfy AND/OR predicates when one composite index is unavailable."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Only full-table scans because indexes cannot be combined."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Two unrelated databases on different hosts without federation."
+          }
+        ],
+        "correctChoiceId": "b",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Optimizers may bitmap-or/and rowid sets from several indexes to filter rows before heap access.",
+        "wrongAnswerExplanations": {
+          "a": "Security data is unrelated to index intersection plans.",
+          "c": "Index merge exists precisely to combine indexes.",
+          "d": "Index merge is intra-database plan choice."
+        },
+        "difficulty": "hard",
+        "source": {
+          "term": "",
+          "chapterTitle": "Query Planning"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 20,
+        "cleanedOrdinal": 20
+      }
+    ]
+  }
+}

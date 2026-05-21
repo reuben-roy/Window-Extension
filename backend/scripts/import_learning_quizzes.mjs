@@ -41,13 +41,30 @@ function parseArgs(argv) {
   const args = {
     replace: true,
     activateUserEmail: null,
+    only: null,
   };
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
     if (arg === '--no-replace') args.replace = false;
     if (arg === '--activate-user-email') args.activateUserEmail = argv[index + 1] ?? null;
+    if (arg === '--only') {
+      const value = argv[index + 1] ?? '';
+      args.only = new Set(
+        value
+          .split(',')
+          .map((entry) => entry.trim())
+          .filter(Boolean),
+      );
+    }
   }
   return args;
+}
+
+function matchesOnlyFilter(filename, payload, only) {
+  if (!only || only.size === 0) return true;
+  const slug = payload.book?.slug ?? filename.replace(/\.json$/, '');
+  const topicKey = slugify(payload.book?.subtopic ?? '');
+  return only.has(slug) || only.has(topicKey) || only.has(filename);
 }
 
 async function ensureTopicForBook(book) {
@@ -240,9 +257,18 @@ async function main() {
   const results = [];
   try {
     for (const file of files) {
+      const fullPath = path.join(inputDir, file);
+      const payload = JSON.parse(await fs.readFile(fullPath, 'utf8'));
+      if (!matchesOnlyFilter(file, payload, options.only)) {
+        continue;
+      }
       const result = await importFile(file, options);
       results.push(result);
       console.log(JSON.stringify(result));
+    }
+    if (results.length === 0) {
+      console.error('No quiz files matched the import filter.');
+      process.exit(1);
     }
   } finally {
     await prisma.$disconnect();

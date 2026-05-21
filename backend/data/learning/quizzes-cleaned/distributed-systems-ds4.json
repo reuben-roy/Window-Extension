@@ -1,0 +1,2545 @@
+{
+  "book": {
+    "title": "Distributed Systems",
+    "parentTopic": "Computer Science",
+    "subtopic": "Distributed Systems",
+    "slug": "distributed-systems-ds4",
+    "sourceUrl": "https://www.distributed-systems.net/index.php/books/ds4/",
+    "pdfSha256": ""
+  },
+  "chapterCount": 9,
+  "conceptCount": 60,
+  "chapters": [
+    {
+      "ordinal": 1,
+      "title": "Replication",
+      "startPage": 1,
+      "endPage": 1,
+      "path": ""
+    },
+    {
+      "ordinal": 2,
+      "title": "Consistency",
+      "startPage": 1,
+      "endPage": 1,
+      "path": ""
+    },
+    {
+      "ordinal": 3,
+      "title": "CAP",
+      "startPage": 1,
+      "endPage": 1,
+      "path": ""
+    },
+    {
+      "ordinal": 4,
+      "title": "Consensus",
+      "startPage": 1,
+      "endPage": 1,
+      "path": ""
+    },
+    {
+      "ordinal": 5,
+      "title": "Fault Tolerance",
+      "startPage": 1,
+      "endPage": 1,
+      "path": ""
+    },
+    {
+      "ordinal": 6,
+      "title": "Clocks",
+      "startPage": 1,
+      "endPage": 1,
+      "path": ""
+    },
+    {
+      "ordinal": 7,
+      "title": "Partitioning",
+      "startPage": 1,
+      "endPage": 1,
+      "path": ""
+    },
+    {
+      "ordinal": 8,
+      "title": "RPC",
+      "startPage": 1,
+      "endPage": 1,
+      "path": ""
+    },
+    {
+      "ordinal": 9,
+      "title": "Distributed Transactions",
+      "startPage": 1,
+      "endPage": 1,
+      "path": ""
+    }
+  ],
+  "quizzes": {
+    "easy": [
+      {
+        "prompt": "What is the main purpose of data replication in a distributed system?",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "To improve availability and reduce latency by keeping copies on multiple nodes."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "To encrypt data at rest on every disk."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "To eliminate the need for network communication."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "To guarantee that all nodes run identical application code."
+          }
+        ],
+        "correctChoiceId": "a",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Replicas let clients read or fail over locally when a node is down or distant.",
+        "wrongAnswerExplanations": {
+          "b": "Encryption protects confidentiality; replication addresses availability and performance.",
+          "c": "Replicas still synchronize over the network.",
+          "d": "That's deployment uniformity, not data replication."
+        },
+        "difficulty": "easy",
+        "source": {
+          "term": "",
+          "chapterTitle": "Replication"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 1,
+        "cleanedOrdinal": 1
+      },
+      {
+        "prompt": "In primary-backup replication, who typically accepts writes?",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "All replicas simultaneously without coordination."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Any replica chosen at random by the client."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "The primary (leader) replica."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Only the backup with the lowest load."
+          }
+        ],
+        "correctChoiceId": "c",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Clients send updates to the primary; backups receive propagated changes.",
+        "wrongAnswerExplanations": {
+          "a": "That would be multi-primary and needs conflict handling.",
+          "b": "Uncontrolled writes would conflict without a single writer.",
+          "d": "Backups are followers; they do not own write authority in this model."
+        },
+        "difficulty": "easy",
+        "source": {
+          "term": "",
+          "chapterTitle": "Replication"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 2,
+        "cleanedOrdinal": 2
+      },
+      {
+        "prompt": "What does linearizability (strong consistency) guarantee for concurrent operations?",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Writes are visible only after a manual administrator approval."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Operations appear to execute atomically in some total order consistent with real-time precedence."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Clients never need to retry failed requests."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Reads always return data from five seconds ago."
+          }
+        ],
+        "correctChoiceId": "b",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Linearizability ties observable behavior to a single sequential history respecting timing.",
+        "wrongAnswerExplanations": {
+          "a": "Strong consistency is automatic, not operator-gated.",
+          "c": "Retries are still needed for timeouts and failures.",
+          "d": "That would be a fixed staleness bound, not linearizability."
+        },
+        "difficulty": "easy",
+        "source": {
+          "term": "",
+          "chapterTitle": "Consistency"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 3,
+        "cleanedOrdinal": 3
+      },
+      {
+        "prompt": "Eventual consistency means that if updates stop, what happens eventually?",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "The system immediately rolls back every write."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Reads return random values forever."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "All replicas converge to the same value."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "The primary is permanently frozen."
+          }
+        ],
+        "correctChoiceId": "c",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Without new writes, replication and repair eventually align replicas.",
+        "wrongAnswerExplanations": {
+          "a": "Eventual consistency does not imply rollback.",
+          "b": "Convergence is the defining guarantee once writes halt.",
+          "d": "Leaders can change; convergence is about data, not leadership freeze."
+        },
+        "difficulty": "easy",
+        "source": {
+          "term": "",
+          "chapterTitle": "Consistency"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 4,
+        "cleanedOrdinal": 4
+      },
+      {
+        "prompt": "In the CAP theorem, what do C, A, and P stand for?",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Caching, Allocation, and Persistence."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Compression, Archiving, and Parallelism."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Consistency, Availability, and Partition tolerance."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Concurrency, Authentication, and Privacy."
+          }
+        ],
+        "correctChoiceId": "c",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "CAP names the three properties often traded off under network partitions.",
+        "wrongAnswerExplanations": {
+          "a": "CAP is about consistency, availability, and partitions.",
+          "b": "CAP does not refer to storage compression or archiving.",
+          "d": "Those are security and programming concerns, not CAP."
+        },
+        "difficulty": "easy",
+        "source": {
+          "term": "",
+          "chapterTitle": "CAP"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 5,
+        "cleanedOrdinal": 5
+      },
+      {
+        "prompt": "During a network partition, why can a distributed system not always offer both strong consistency and full availability?",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Disk quotas are exceeded on all replicas."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "TLS handshakes fail on every link."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Answering every request while partitions isolate nodes can force inconsistent views unless some requests are refused."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "CPUs become too slow to process packets."
+          }
+        ],
+        "correctChoiceId": "c",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "If replicas cannot talk, serving all nodes without coordination risks divergent state.",
+        "wrongAnswerExplanations": {
+          "a": "Storage limits do not define CAP.",
+          "b": "Security handshakes are unrelated to the CAP tradeoff.",
+          "d": "CAP is a logical tradeoff, not a CPU speed limit."
+        },
+        "difficulty": "easy",
+        "source": {
+          "term": "",
+          "chapterTitle": "CAP"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 6,
+        "cleanedOrdinal": 6
+      },
+      {
+        "prompt": "What problem does a distributed consensus algorithm solve?",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Compressing log files on one machine."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Scheduling threads on a single CPU core."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Translating SQL queries into HTML."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Getting all non-faulty nodes to agree on a single value or log entry."
+          }
+        ],
+        "correctChoiceId": "d",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Consensus ensures a uniform decision despite failures and asynchronous networks.",
+        "wrongAnswerExplanations": {
+          "a": "That is local storage maintenance, not distributed agreement.",
+          "b": "That is single-machine OS scheduling.",
+          "c": "That is unrelated application-layer formatting."
+        },
+        "difficulty": "easy",
+        "source": {
+          "term": "",
+          "chapterTitle": "Consensus"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 7,
+        "cleanedOrdinal": 7
+      },
+      {
+        "prompt": "In Paxos, what role proposes a value to be chosen?",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "The backup DNS server."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "The metrics collector."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "The proposer."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "The load balancer."
+          }
+        ],
+        "correctChoiceId": "c",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Proposers initiate prepare and accept phases toward a chosen value.",
+        "wrongAnswerExplanations": {
+          "a": "DNS is naming infrastructure, not Paxos.",
+          "b": "Monitoring components do not propose values in Paxos.",
+          "d": "Load balancers route traffic; they are not Paxos roles."
+        },
+        "difficulty": "easy",
+        "source": {
+          "term": "",
+          "chapterTitle": "Consensus"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 8,
+        "cleanedOrdinal": 8
+      },
+      {
+        "prompt": "A crash-stop failure model assumes faulty processes do what?",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Never fail under any circumstance."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Send arbitrary malicious messages forever."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Always corrupt disk silently while continuing to run."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Stop executing and responding, without sending incorrect messages."
+          }
+        ],
+        "correctChoiceId": "d",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Crash-stop faults halt progress but do not equivocate.",
+        "wrongAnswerExplanations": {
+          "a": "The model explicitly allows failures.",
+          "b": "That describes Byzantine behavior, not crash-stop.",
+          "c": "Crash-stop halts; it does not imply ongoing silent corruption."
+        },
+        "difficulty": "easy",
+        "source": {
+          "term": "",
+          "chapterTitle": "Fault Tolerance"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 9,
+        "cleanedOrdinal": 9
+      },
+      {
+        "prompt": "What is the purpose of a heartbeat between cluster members?",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "To encrypt all RPC payloads automatically."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "To detect suspected node failures when messages are not received in time."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "To assign primary keys in a SQL schema."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "To compile source code on each node."
+          }
+        ],
+        "correctChoiceId": "b",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Missed heartbeats trigger suspicion and failover procedures.",
+        "wrongAnswerExplanations": {
+          "a": "Heartbeats are liveness signals, not encryption.",
+          "c": "Primary keys are a data-model concern.",
+          "d": "Build systems are unrelated to failure detection."
+        },
+        "difficulty": "easy",
+        "source": {
+          "term": "",
+          "chapterTitle": "Fault Tolerance"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 10,
+        "cleanedOrdinal": 10
+      },
+      {
+        "prompt": "Why do distributed systems often use logical clocks instead of only wall-clock time?",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Wall clocks skew and drift, so causal order needs a clock independent of absolute time."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Logical clocks store passwords securely."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Logical clocks run faster than light."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Wall clocks are illegal on public clouds."
+          }
+        ],
+        "correctChoiceId": "a",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Lamport and vector clocks capture happened-before without tight clock sync.",
+        "wrongAnswerExplanations": {
+          "b": "Clocks order events; they are not secret stores.",
+          "c": "They order events; they do not violate physics.",
+          "d": "NTP and hardware clocks are widely used."
+        },
+        "difficulty": "easy",
+        "source": {
+          "term": "",
+          "chapterTitle": "Clocks"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 11,
+        "cleanedOrdinal": 11
+      },
+      {
+        "prompt": "What does a Lamport timestamp provide?",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "A guarantee that all nodes share one physical clock chip."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Proof that no messages were lost on the network."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "A partial ordering of events consistent with happened-before."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "A globally synchronized UTC time with microsecond accuracy everywhere."
+          }
+        ],
+        "correctChoiceId": "c",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Lamport clocks increment on send/receive to preserve causal order when possible.",
+        "wrongAnswerExplanations": {
+          "a": "Distributed nodes have separate hardware clocks.",
+          "b": "Timestamps do not detect packet loss.",
+          "d": "That requires physical clock sync, not Lamport clocks alone."
+        },
+        "difficulty": "easy",
+        "source": {
+          "term": "",
+          "chapterTitle": "Clocks"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 12,
+        "cleanedOrdinal": 12
+      },
+      {
+        "prompt": "What is hash partitioning of a key space?",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Encrypting keys with a public certificate."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Sorting keys alphabetically on a single machine only."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Storing every key on every node for every query."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Assigning each key to a shard via a hash function modulo the number of partitions."
+          }
+        ],
+        "correctChoiceId": "d",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Hashing spreads keys evenly across shards for scalable storage.",
+        "wrongAnswerExplanations": {
+          "a": "Partitioning is about placement, not PKIX encryption.",
+          "b": "That does not distribute across nodes.",
+          "c": "That is full replication, not partitioning."
+        },
+        "difficulty": "easy",
+        "source": {
+          "term": "",
+          "chapterTitle": "Partitioning"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 13,
+        "cleanedOrdinal": 13
+      },
+      {
+        "prompt": "A hot partition (hot spot) occurs when what happens?",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "The network has zero latency between all nodes."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Every key hashes to a unique physical datacenter."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "All shards are idle because traffic is zero."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "One shard receives disproportionately many accesses for its key range."
+          }
+        ],
+        "correctChoiceId": "d",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Skewed access patterns overload a single partition despite hashing.",
+        "wrongAnswerExplanations": {
+          "a": "Latency does not define partition skew.",
+          "b": "That would be extreme over-sharding, not a hot spot definition.",
+          "c": "Hot spots imply high load, not idleness."
+        },
+        "difficulty": "easy",
+        "source": {
+          "term": "",
+          "chapterTitle": "Partitioning"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 14,
+        "cleanedOrdinal": 14
+      },
+      {
+        "prompt": "What is a remote procedure call (RPC)?",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Copying a database file with FTP."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Running a procedure only inside the kernel on one host."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Sending email between two users."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Invoking a procedure on a remote machine as if it were local, via stubs and messaging."
+          }
+        ],
+        "correctChoiceId": "d",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "RPC marshals arguments, sends a request, and unmarshals results across the network.",
+        "wrongAnswerExplanations": {
+          "a": "File transfer is not procedure call semantics.",
+          "b": "That is local kernel code, not remote invocation.",
+          "c": "Email is messaging for people, not structured RPC."
+        },
+        "difficulty": "easy",
+        "source": {
+          "term": "",
+          "chapterTitle": "RPC"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 15,
+        "cleanedOrdinal": 15
+      },
+      {
+        "prompt": "In RPC, what does the client stub typically do?",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Marshal arguments and send the request to the server stub."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Format the server's hard disk without permission."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Replace the server's operating system kernel."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Store only cached DNS records for the client."
+          }
+        ],
+        "correctChoiceId": "a",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Stubs hide wire format and network details from application code.",
+        "wrongAnswerExplanations": {
+          "b": "Stubs serialize calls; they do not disk-format remotes.",
+          "c": "RPC does not swap remote kernels.",
+          "d": "DNS caching is unrelated to RPC marshaling."
+        },
+        "difficulty": "easy",
+        "source": {
+          "term": "",
+          "chapterTitle": "RPC"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 16,
+        "cleanedOrdinal": 16
+      },
+      {
+        "prompt": "What does the 'A' in ACID stand for?",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Anonymity \u2014 user identities are hidden from the database."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Archiving \u2014 old rows are moved to cold storage automatically."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Atomicity \u2014 all operations in a transaction succeed or none are applied."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Availability \u2014 every read returns the newest value instantly."
+          }
+        ],
+        "correctChoiceId": "c",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Atomicity treats the transaction as an indivisible unit of work.",
+        "wrongAnswerExplanations": {
+          "a": "ACID does not mean anonymity.",
+          "b": "Archiving is lifecycle management, not atomicity.",
+          "d": "Availability is a separate systems property, not the A in ACID."
+        },
+        "difficulty": "easy",
+        "source": {
+          "term": "",
+          "chapterTitle": "Distributed Transactions"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 17,
+        "cleanedOrdinal": 17
+      },
+      {
+        "prompt": "Two-phase commit (2PC) has which two phases?",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Prepare (vote) and commit (decision)."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Encrypt and decrypt."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Boot and shutdown."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Compile and link."
+          }
+        ],
+        "correctChoiceId": "a",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Participants vote in phase one; the coordinator decides commit or abort in phase two.",
+        "wrongAnswerExplanations": {
+          "b": "2PC is about agreement, not cryptography phases.",
+          "c": "Machine power states are unrelated to 2PC.",
+          "d": "Those are build steps, not transaction phases."
+        },
+        "difficulty": "easy",
+        "source": {
+          "term": "",
+          "chapterTitle": "Distributed Transactions"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 18,
+        "cleanedOrdinal": 18
+      },
+      {
+        "prompt": "Synchronous replication waits for what before acknowledging a write to the client?",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Completion of a unrelated batch job queue."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Deletion of all older snapshots worldwide."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "A full cluster reboot of all nodes."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Confirmation that backups have applied (or persisted) the update."
+          }
+        ],
+        "correctChoiceId": "d",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "The client learns the write is safe on replicas only after replicas acknowledge.",
+        "wrongAnswerExplanations": {
+          "a": "Unrelated jobs are not part of the replication contract.",
+          "b": "Snapshot policy is separate from sync replication acks.",
+          "c": "Replication acks do not require rebooting everyone."
+        },
+        "difficulty": "easy",
+        "source": {
+          "term": "",
+          "chapterTitle": "Replication"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 19,
+        "cleanedOrdinal": 19
+      },
+      {
+        "prompt": "Read-your-writes consistency ensures that a client sees what?",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Its own prior writes on subsequent reads."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Every other client's writes before they happen."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Only data from nodes in a different continent."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Nothing \u2014 reads always fail."
+          }
+        ],
+        "correctChoiceId": "a",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "A session observes its updates without waiting for global convergence of all clients.",
+        "wrongAnswerExplanations": {
+          "b": "That would be stronger than read-your-writes.",
+          "c": "Geography is not the defining constraint.",
+          "d": "The guarantee is about visibility of own writes, not total failure."
+        },
+        "difficulty": "easy",
+        "source": {
+          "term": "",
+          "chapterTitle": "Consistency"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 20,
+        "cleanedOrdinal": 20
+      }
+    ],
+    "medium": [
+      {
+        "prompt": "Quorum reads and writes with N replicas, write quorum W, and read quorum R ensure strong consistency when what holds?",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "R + W = 0"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "N = 1 always"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "R = W = 1 regardless of N"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "R + W > N (and typically W > N/2)."
+          }
+        ],
+        "correctChoiceId": "d",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Overlapping quorums force reads and writes to intersect on at least one up-to-date replica.",
+        "wrongAnswerExplanations": {
+          "a": "Zero quorums would contact no replicas.",
+          "b": "A single replica removes quorum overlap benefits for fault tolerance.",
+          "c": "Singleton quorums do not guarantee overlap when N > 1."
+        },
+        "difficulty": "medium",
+        "source": {
+          "term": "",
+          "chapterTitle": "Replication"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 1,
+        "cleanedOrdinal": 1
+      },
+      {
+        "prompt": "Multi-primary (active-active) replication most directly increases risk of what?",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Write-write conflicts requiring detection or resolution."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Impossible read operations on any replica."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Guaranteed zero storage use."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Automatic elimination of network partitions."
+          }
+        ],
+        "correctChoiceId": "a",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Concurrent writes to the same data from different primaries can diverge without coordination.",
+        "wrongAnswerExplanations": {
+          "b": "Reads still work; conflicts arise on concurrent writes.",
+          "c": "More primaries usually mean more copies, not zero storage.",
+          "d": "Partitions still occur; multi-primary does not remove them."
+        },
+        "difficulty": "medium",
+        "source": {
+          "term": "",
+          "chapterTitle": "Replication"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 2,
+        "cleanedOrdinal": 2
+      },
+      {
+        "prompt": "Monotonic reads consistency prevents which client-visible anomaly?",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Observing strictly increasing wall-clock on every packet."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Writing the same key twice in one transaction."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Seeing newer data then older data on later reads in the same session."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Receiving duplicate TCP segments only."
+          }
+        ],
+        "correctChoiceId": "c",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Once a client reads a value, later reads in that view should not go backward in time.",
+        "wrongAnswerExplanations": {
+          "a": "Packet timestamps differ from monotonic read guarantees.",
+          "b": "That is allowed; monotonic reads concern read ordering.",
+          "d": "Transport duplicates are not the consistency model target."
+        },
+        "difficulty": "medium",
+        "source": {
+          "term": "",
+          "chapterTitle": "Consistency"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 3,
+        "cleanedOrdinal": 3
+      },
+      {
+        "prompt": "Causal consistency requires that if operation A happened-before B, then what?",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "A and B may be seen in either order by every node."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "B must always execute on the same CPU core as A."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Every node observes A before B."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Only wall-clock time determines visibility, ignoring message chains."
+          }
+        ],
+        "correctChoiceId": "c",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Causal chains from communication and dependencies must be preserved in visible order.",
+        "wrongAnswerExplanations": {
+          "a": "That would violate causal ordering.",
+          "b": "Physical core affinity is not required.",
+          "d": "Causality follows dependencies, not clocks alone."
+        },
+        "difficulty": "medium",
+        "source": {
+          "term": "",
+          "chapterTitle": "Consistency"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 4,
+        "cleanedOrdinal": 4
+      },
+      {
+        "prompt": "Dynamo-style systems under partition often favor availability and partition tolerance by offering what consistency style?",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Single-node strict two-phase locking only."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Strict serializability on every read without exception."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Eventual consistency with conflict resolution (e.g., version vectors, last-writer-wins)."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "No writes allowed ever during normal operation."
+          }
+        ],
+        "correctChoiceId": "c",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "AP designs accept temporary divergence and reconcile later.",
+        "wrongAnswerExplanations": {
+          "a": "That ignores partition-first distributed design.",
+          "b": "That is a CP-style choice under partition stress.",
+          "d": "These systems allow writes with reconciliation."
+        },
+        "difficulty": "medium",
+        "source": {
+          "term": "",
+          "chapterTitle": "CAP"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 5,
+        "cleanedOrdinal": 5
+      },
+      {
+        "prompt": "A CP system under network partition typically does what to preserve consistency?",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Disables authentication on all nodes."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Rejects or blocks some operations on minority or unreachable sides until the partition heals."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Deletes all data on the majority partition."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Always serves every request on all partitions with latest data."
+          }
+        ],
+        "correctChoiceId": "b",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Sacrificing availability on isolated nodes avoids inconsistent reads and writes.",
+        "wrongAnswerExplanations": {
+          "a": "Security policy is unrelated to CP behavior.",
+          "c": "CP systems block or redirect; they do not wipe majority data by default.",
+          "d": "That risks split-brain inconsistent state."
+        },
+        "difficulty": "medium",
+        "source": {
+          "term": "",
+          "chapterTitle": "CAP"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 6,
+        "cleanedOrdinal": 6
+      },
+      {
+        "prompt": "In Raft, when does a follower become a candidate?",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Immediately when any client read arrives."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Whenever the leader sends a heartbeat."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "After election timeout without hearing from the current leader."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Only when the cluster has zero nodes."
+          }
+        ],
+        "correctChoiceId": "c",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Expired heartbeats suggest a dead leader, triggering a new election.",
+        "wrongAnswerExplanations": {
+          "a": "Client reads do not start elections.",
+          "b": "Heartbeats suppress elections, they do not trigger candidacy.",
+          "d": "Elections need live nodes to vote."
+        },
+        "difficulty": "medium",
+        "source": {
+          "term": "",
+          "chapterTitle": "Consensus"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 7,
+        "cleanedOrdinal": 7
+      },
+      {
+        "prompt": "What safety property does Paxos guarantee about chosen values?",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Clients never need unique request identifiers."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Only a value that was proposed by some proposer can be chosen, and at most one value is chosen per instance."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Every proposer always wins on the first message."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Acceptors never persist any state to disk."
+          }
+        ],
+        "correctChoiceId": "b",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Agreement and validity prevent conflicting decisions for the same consensus instance.",
+        "wrongAnswerExplanations": {
+          "a": "Idempotency at clients is a separate concern.",
+          "c": "Contention and failures can require multiple rounds.",
+          "d": "Persistence is often required to survive restarts."
+        },
+        "difficulty": "medium",
+        "source": {
+          "term": "",
+          "chapterTitle": "Consensus"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 8,
+        "cleanedOrdinal": 8
+      },
+      {
+        "prompt": "To tolerate f crash-stop failures in a synchronous replication setting with in-sync replicas, you need at least how many replicas?",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "f + 1 working copies (often discussed as 2f + 1 nodes for voting quorums)."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Exactly one replica total."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "f \u2212 1 replicas when f > 0"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Zero replicas if heartbeats are enabled."
+          }
+        ],
+        "correctChoiceId": "a",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "You must have enough non-faulty nodes to form a quorum or elect a leader.",
+        "wrongAnswerExplanations": {
+          "b": "One replica cannot survive any failure.",
+          "c": "Fewer than f+1 cannot survive f failures.",
+          "d": "Heartbeats do not replace redundant copies."
+        },
+        "difficulty": "medium",
+        "source": {
+          "term": "",
+          "chapterTitle": "Fault Tolerance"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 9,
+        "cleanedOrdinal": 9
+      },
+      {
+        "prompt": "Byzantine fault tolerance differs from crash-stop tolerance because Byzantine nodes may do what?",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Send conflicting or malicious messages while appearing partially correct."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Only fail during scheduled maintenance windows."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Only lose power once and never restart."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Only halt and never respond."
+          }
+        ],
+        "correctChoiceId": "a",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Byzantine faults include equivocation and arbitrary behavior, not just silence.",
+        "wrongAnswerExplanations": {
+          "b": "Byzantine faults are not limited to maintenance.",
+          "c": "Power loss is a physical failure mode, not the Byzantine definition.",
+          "d": "That is crash-stop behavior."
+        },
+        "difficulty": "medium",
+        "source": {
+          "term": "",
+          "chapterTitle": "Fault Tolerance"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 10,
+        "cleanedOrdinal": 10
+      },
+      {
+        "prompt": "A vector clock entry for process P contains what information?",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "The GPS latitude of process P only."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "A count of events known to P, per process, used to compare causality."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "The TCP port number clients should use forever."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "The SHA-256 hash of P's disk serial number only."
+          }
+        ],
+        "correctChoiceId": "b",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Vector clocks track per-process logical times to detect concurrency and causality.",
+        "wrongAnswerExplanations": {
+          "a": "Location is unrelated to vector clock semantics.",
+          "c": "Ports are networking details, not causal clocks.",
+          "d": "Hardware IDs do not implement happened-before."
+        },
+        "difficulty": "medium",
+        "source": {
+          "term": "",
+          "chapterTitle": "Clocks"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 11,
+        "cleanedOrdinal": 11
+      },
+      {
+        "prompt": "TrueTime-style bounded clock uncertainty (small \u03b5) helps distributed databases do what?",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Eliminate all network partitions automatically."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Order commits with wait intervals so external consistency bounds hold."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Remove the need for replication entirely."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Guarantee zero CPU usage on all nodes."
+          }
+        ],
+        "correctChoiceId": "b",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Tight uncertainty windows let transactions commit with global time-based ordering guarantees.",
+        "wrongAnswerExplanations": {
+          "a": "Clock bounds do not prevent partitions.",
+          "c": "Spanner still replicates; clocks aid ordering.",
+          "d": "Waiting for clock intervals consumes time, not zero CPU."
+        },
+        "difficulty": "medium",
+        "source": {
+          "term": "",
+          "chapterTitle": "Clocks"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 12,
+        "cleanedOrdinal": 12
+      },
+      {
+        "prompt": "Range partitioning can cause hot spots when keys are what?",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Uniformly random and spread across the key space."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Sequential or highly correlated (e.g., time-ordered IDs hitting one range)."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Never written by any client."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Hashed with a good hash function into many shards."
+          }
+        ],
+        "correctChoiceId": "b",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Adjacent keys land on the same shard, concentrating load.",
+        "wrongAnswerExplanations": {
+          "a": "That reduces hot spots, not causes them.",
+          "c": "No writes imply no access hot spot.",
+          "d": "Hashing mitigates sequential clustering."
+        },
+        "difficulty": "medium",
+        "source": {
+          "term": "",
+          "chapterTitle": "Partitioning"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 13,
+        "cleanedOrdinal": 13
+      },
+      {
+        "prompt": "Consistent hashing reduces data movement when what changes?",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "The client switches from HTTP to gRPC."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "The number of shards (nodes) in the cluster."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "The TLS cipher suite is upgraded."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "A user changes their password."
+          }
+        ],
+        "correctChoiceId": "b",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Only keys near changed ring segments remap, not the entire key space.",
+        "wrongAnswerExplanations": {
+          "a": "Protocol choice does not define remapping on shard add/remove.",
+          "c": "Cipher upgrades do not re-home partition keys by themselves.",
+          "d": "Credential rotation is unrelated to shard membership."
+        },
+        "difficulty": "medium",
+        "source": {
+          "term": "",
+          "chapterTitle": "Partitioning"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 14,
+        "cleanedOrdinal": 14
+      },
+      {
+        "prompt": "Why is idempotency important for at-least-once RPC retry?",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Retries are forbidden in all distributed systems."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Servers must never log RPC requests."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "A retried call must not apply side effects twice (e.g., duplicate charges)."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "UDP cannot carry bytes larger than one bit."
+          }
+        ],
+        "correctChoiceId": "c",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "At-least-once delivery implies duplicates possible without idempotent handlers.",
+        "wrongAnswerExplanations": {
+          "a": "Retries are common; idempotency makes them safe.",
+          "b": "Logging is operational; idempotency is correctness.",
+          "d": "UDP payload limits are unrelated to idempotency."
+        },
+        "difficulty": "medium",
+        "source": {
+          "term": "",
+          "chapterTitle": "RPC"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 15,
+        "cleanedOrdinal": 15
+      },
+      {
+        "prompt": "gRPC over HTTP/2 primarily benefits RPC by providing what?",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Automatic Byzantine agreement on every call."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Multiplexed streams, header compression, and efficient binary framing (Protobuf)."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Replacement of all databases with local files."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Guaranteed absence of network partitions."
+          }
+        ],
+        "correctChoiceId": "b",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "HTTP/2 features reduce connection overhead; Protobuf shrinks payloads.",
+        "wrongAnswerExplanations": {
+          "a": "Consensus is not built into ordinary RPC.",
+          "c": "RPC does not replace databases.",
+          "d": "Transport choice does not remove partitions."
+        },
+        "difficulty": "medium",
+        "source": {
+          "term": "",
+          "chapterTitle": "RPC"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 16,
+        "cleanedOrdinal": 16
+      },
+      {
+        "prompt": "In two-phase commit, if the coordinator crashes after all participants voted YES but before sending COMMIT, what problem arises?",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Participants may block holding locks until the coordinator recovers (blocking problem)."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Participants automatically commit without any recovery."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Network partitions are permanently impossible afterward."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "All data is instantly deleted on every node."
+          }
+        ],
+        "correctChoiceId": "a",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Uncertain transaction outcome requires coordinator recovery or heuristic decisions.",
+        "wrongAnswerExplanations": {
+          "b": "In-doubt participants wait for coordinator decision.",
+          "c": "Partitions remain possible; 2PC is fragile under failures.",
+          "d": "2PC blocking does not imply mass deletion."
+        },
+        "difficulty": "medium",
+        "source": {
+          "term": "",
+          "chapterTitle": "Distributed Transactions"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 17,
+        "cleanedOrdinal": 17
+      },
+      {
+        "prompt": "Saga pattern compensates for lack of global locks by doing what?",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Storing all state only in client browser cookies."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Forbidding any rollback or undo in the system."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Using one giant two-phase commit across 500 microservices always."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Chaining local transactions with defined compensating actions on failure."
+          }
+        ],
+        "correctChoiceId": "d",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Each step commits locally; compensations undo prior effects semantically.",
+        "wrongAnswerExplanations": {
+          "a": "Durable saga state lives in services/databases.",
+          "b": "Compensating transactions are explicit rollbacks.",
+          "c": "Sagas avoid long-lived global 2PC."
+        },
+        "difficulty": "medium",
+        "source": {
+          "term": "",
+          "chapterTitle": "Distributed Transactions"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 18,
+        "cleanedOrdinal": 18
+      },
+      {
+        "prompt": "Read repair in quorum systems fixes what after a sloppy quorum read?",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "TLS certificates on load balancers."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "OS kernel versions on clients."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "DNS TTL for unrelated domains."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Stale values on contacted replicas by writing back the latest version read."
+          }
+        ],
+        "correctChoiceId": "d",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Anti-entropy on read path updates lagging replicas when divergence is detected.",
+        "wrongAnswerExplanations": {
+          "a": "Certificate rotation is unrelated to replica repair.",
+          "b": "Client kernels do not define read repair.",
+          "c": "DNS caching is not read repair."
+        },
+        "difficulty": "medium",
+        "source": {
+          "term": "",
+          "chapterTitle": "Replication"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 19,
+        "cleanedOrdinal": 19
+      },
+      {
+        "prompt": "Sequential consistency differs from linearizability in that sequential consistency requires what?",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Real-time ordering of non-overlapping operations across processes is mandatory."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Only UDP datagrams may carry writes."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "A total order of all operations consistent with each process's program order, but not necessarily real-time order across processes."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "No total order exists across operations."
+          }
+        ],
+        "correctChoiceId": "c",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Sequential consistency is weaker: concurrent operations from different processes may be reordered in the global order.",
+        "wrongAnswerExplanations": {
+          "a": "That extra real-time constraint is linearizability.",
+          "b": "Transport protocol is unrelated.",
+          "d": "Sequential consistency still provides a global sequence."
+        },
+        "difficulty": "medium",
+        "source": {
+          "term": "",
+          "chapterTitle": "Consistency"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 20,
+        "cleanedOrdinal": 20
+      }
+    ],
+    "hard": [
+      {
+        "prompt": "In Raft, which invariant prevents two different leaders from being elected for the same term?",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Leaders are chosen by uniform random without votes."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Followers never reject AppendEntries RPCs."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "A candidate must receive votes from a majority, and at most one majority can exist in a given term."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Terms decrease after every successful election."
+          }
+        ],
+        "correctChoiceId": "c",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Majority intersection ensures at most one leader per term.",
+        "wrongAnswerExplanations": {
+          "a": "Raft requires quorum votes, not random selection.",
+          "b": "Followers reject stale leaders via term checks.",
+          "d": "Terms are monotonically non-decreasing."
+        },
+        "difficulty": "hard",
+        "source": {
+          "term": "",
+          "chapterTitle": "Consensus"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 1,
+        "cleanedOrdinal": 1
+      },
+      {
+        "prompt": "The Paxos accept phase requires acceptors to promise what after receiving a prepare with number n?",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "To ignore all messages from proposers entirely."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "To delete all log entries immediately."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Not to accept any proposal numbered less than n, and to report the highest-numbered proposal already accepted (if any)."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "To accept only proposals numbered zero forever."
+          }
+        ],
+        "correctChoiceId": "c",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Promises and reporting prior accepts let proposers reuse learned values and avoid dueling proposers breaking safety.",
+        "wrongAnswerExplanations": {
+          "a": "Acceptors must respond to prepares and accepts.",
+          "b": "Acceptors retain state needed for safety.",
+          "d": "Higher ballot/proposal numbers supersede lower ones."
+        },
+        "difficulty": "hard",
+        "source": {
+          "term": "",
+          "chapterTitle": "Consensus"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 2,
+        "cleanedOrdinal": 2
+      },
+      {
+        "prompt": "Chain replication (head \u2192 \u2026 \u2192 tail) achieves strong consistency with what tradeoff?",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Lower write latency variance on the tail for reads, but failure of a chain node requires careful reconfiguration."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Automatic multi-datacenter Byzantine agreement for free."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Clients may write to any random node without rules."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "No need for any ordered log on any node."
+          }
+        ],
+        "correctChoiceId": "a",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Ordered chain append gives a clear commit point at the tail while keeping replication bandwidth bounded per hop.",
+        "wrongAnswerExplanations": {
+          "b": "Chain replication targets crash faults, not free BFT.",
+          "c": "Writes go to the head; ordering follows the chain.",
+          "d": "Chain replication still orders updates along the chain."
+        },
+        "difficulty": "hard",
+        "source": {
+          "term": "",
+          "chapterTitle": "Replication"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 3,
+        "cleanedOrdinal": 3
+      },
+      {
+        "prompt": "Leaderless quorum systems (e.g., Dynamo-style) during a partition with W + R \u2264 N may return what?",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Guaranteed linearizable reads always."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Impossible writes because disks are read-only."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Automatic Paxos leader election on every read."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Stale reads that do not include the latest write if quorums do not overlap."
+          }
+        ],
+        "correctChoiceId": "d",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Without quorum overlap, read and write sets may miss the newest replica.",
+        "wrongAnswerExplanations": {
+          "a": "Insufficient overlap breaks strong read guarantees.",
+          "b": "Writes can succeed on a side; reads may be stale.",
+          "c": "Quorum stores do not run Paxos per read by default."
+        },
+        "difficulty": "hard",
+        "source": {
+          "term": "",
+          "chapterTitle": "Replication"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 4,
+        "cleanedOrdinal": 4
+      },
+      {
+        "prompt": "Serializable isolation in a distributed database is closest to which guarantee?",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Every transaction sees only uncommitted data from others."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "All transactions must execute on a single thread globally with no network."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Reads never block writes and writes never block reads in any implementation."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Transactions appear to execute in some serial order equivalent to their committed effects."
+          }
+        ],
+        "correctChoiceId": "d",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Serializability is about equivalence to a serial schedule, not necessarily linearizability timing.",
+        "wrongAnswerExplanations": {
+          "a": "That would be reading dirty data, violating isolation.",
+          "b": "Distributed serializable systems still use networks.",
+          "c": "SSI and locking implementations may block."
+        },
+        "difficulty": "hard",
+        "source": {
+          "term": "",
+          "chapterTitle": "Consistency"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 5,
+        "cleanedOrdinal": 5
+      },
+      {
+        "prompt": "Session consistency bundles which practical guarantees for a single client session?",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Monotonic reads, monotonic writes, read-your-writes, and writes-follow-reads (related variants)."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Strict serializability across all clients globally with real-time order."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Only eventual consistency with no per-session rules."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "No ordering guarantees of any kind."
+          }
+        ],
+        "correctChoiceId": "a",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Session guarantees align a client's view without requiring global strong consistency for everyone.",
+        "wrongAnswerExplanations": {
+          "b": "That is much stronger than session guarantees.",
+          "c": "Session consistency adds per-client ordering constraints.",
+          "d": "Session models explicitly define several ordering properties."
+        },
+        "difficulty": "hard",
+        "source": {
+          "term": "",
+          "chapterTitle": "Consistency"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 6,
+        "cleanedOrdinal": 6
+      },
+      {
+        "prompt": "PACELC extends CAP by stating that else (E), even without partition, one often trades between what?",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "CPU brand and keyboard layout."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Password length and certificate color."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "File extension and MIME type only."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Latency (L) and consistency (C)."
+          }
+        ],
+        "correctChoiceId": "d",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "When the network is normal, replication and coordination choices still affect latency vs consistency.",
+        "wrongAnswerExplanations": {
+          "a": "Hardware peripherals are unrelated.",
+          "b": "PACELC concerns latency and consistency, not credentials aesthetics.",
+          "c": "Web typing is unrelated to database tradeoffs."
+        },
+        "difficulty": "hard",
+        "source": {
+          "term": "",
+          "chapterTitle": "CAP"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 7,
+        "cleanedOrdinal": 7
+      },
+      {
+        "prompt": "During a split-brain with two writable primaries, the most dangerous outcome for data is what?",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Divergent writes that cannot be merged automatically without application rules."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Slightly higher RPC latency only."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Automatic agreement on every conflicting value via magic."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Uniform read-only mode on both sides forever."
+          }
+        ],
+        "correctChoiceId": "a",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Concurrent incompatible updates on both sides require conflict resolution or operator merge.",
+        "wrongAnswerExplanations": {
+          "b": "Split-brain risks correctness, not just latency.",
+          "c": "Conflicts need protocols; they do not self-resolve.",
+          "d": "Split-brain often means both sides still accept writes."
+        },
+        "difficulty": "hard",
+        "source": {
+          "term": "",
+          "chapterTitle": "CAP"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 8,
+        "cleanedOrdinal": 8
+      },
+      {
+        "prompt": "The FLP impossibility result implies that in an asynchronous system with crash failures, deterministic consensus is impossible if what may happen?",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Processes share a perfectly synchronized atomic clock for free."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "The network delivers all messages in one millisecond always."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "No process may ever fail."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Messages can be delayed arbitrarily and processes may appear slow or crashed (no bounded timeouts)."
+          }
+        ],
+        "correctChoiceId": "d",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Without synchrony assumptions, a bivalent configuration cannot be forced to decide within finite steps.",
+        "wrongAnswerExplanations": {
+          "a": "Strong synchrony would change the model.",
+          "b": "Bounded delivery is a synchrony assumption FLP avoids.",
+          "c": "FLP allows crash failures; the core issue is asynchrony."
+        },
+        "difficulty": "hard",
+        "source": {
+          "term": "",
+          "chapterTitle": "Fault Tolerance"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 9,
+        "cleanedOrdinal": 9
+      },
+      {
+        "prompt": "PBFT (Practical Byzantine Fault Tolerance) can tolerate how many Byzantine replicas out of 3f + 1 total?",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Up to f Byzantine replicas."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Up to 2f + 1 Byzantine replicas."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Zero \u2014 PBFT only handles crash-stop faults."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "All replicas except one, regardless of f."
+          }
+        ],
+        "correctChoiceId": "a",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "3f + 1 replicas allow quorum sizes that intersect despite f equivocating nodes.",
+        "wrongAnswerExplanations": {
+          "b": "That would exceed the designed fault threshold.",
+          "c": "PBFT explicitly targets Byzantine faults.",
+          "d": "Tolerance is bounded by f, not arbitrary majorities faulty."
+        },
+        "difficulty": "hard",
+        "source": {
+          "term": "",
+          "chapterTitle": "Fault Tolerance"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 10,
+        "cleanedOrdinal": 10
+      },
+      {
+        "prompt": "Hybrid logical clocks (HLC) combine physical and logical time primarily to achieve what?",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Elimination of all NTP traffic worldwide."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Proof that wall clocks never drift."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Replacement of vector clocks with one bit only."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Causality tracking with timestamps close to physical time for TTL and debugging."
+          }
+        ],
+        "correctChoiceId": "d",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "HLC preserves happened-before while staying near UTC when clocks are reasonably synchronized.",
+        "wrongAnswerExplanations": {
+          "a": "HLC still benefits from coarse physical sync.",
+          "b": "Drift still exists; HLC bounds misuse when sync is loose.",
+          "c": "HLC is a hybrid timestamp, not a single bit."
+        },
+        "difficulty": "hard",
+        "source": {
+          "term": "",
+          "chapterTitle": "Clocks"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 11,
+        "cleanedOrdinal": 11
+      },
+      {
+        "prompt": "If two events are concurrent under vector clock comparison (neither less than the other), what can you conclude?",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Both events occurred on the same physical CPU core."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "The network guaranteed exactly-once delivery for both."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Neither event causally depends on the other; they may need merge or conflict handling."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "One event definitely happened-before the other in real time."
+          }
+        ],
+        "correctChoiceId": "c",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Incomparable vectors indicate concurrency, not a causal path between them.",
+        "wrongAnswerExplanations": {
+          "a": "Concurrency is logical, not core affinity.",
+          "b": "Delivery semantics are separate from clock comparison.",
+          "d": "Incomparability means not causally ordered by the clock."
+        },
+        "difficulty": "hard",
+        "source": {
+          "term": "",
+          "chapterTitle": "Clocks"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 12,
+        "cleanedOrdinal": 12
+      },
+      {
+        "prompt": "Rebalancing shards with consistent hashing while serving traffic risks what if not coordinated?",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Automatic doubling of network bandwidth with no work."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Permanent impossibility of adding nodes to the cluster."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Clients or backends routing to wrong shards, causing temporary unavailability or consistency anomalies."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Elimination of the need for replication."
+          }
+        ],
+        "correctChoiceId": "c",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Membership changes require staged handoff or dual-read rules to avoid lost or double-served keys.",
+        "wrongAnswerExplanations": {
+          "a": "Rebalancing adds work and migration traffic.",
+          "b": "Clusters add nodes with migration protocols.",
+          "d": "Partitioning complements replication, not replaces it."
+        },
+        "difficulty": "hard",
+        "source": {
+          "term": "",
+          "chapterTitle": "Partitioning"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 13,
+        "cleanedOrdinal": 13
+      },
+      {
+        "prompt": "Secondary indexes in a partitioned database are hard because an index lookup may require what?",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Only local disk access on one machine with no network."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Disabling all writes globally forever."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Scatter-gather queries across many shards or maintaining separate index partitions."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Storing the entire database in L1 CPU cache."
+          }
+        ],
+        "correctChoiceId": "c",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Index entries for a key may live on different shards than the primary record.",
+        "wrongAnswerExplanations": {
+          "a": "Distributed indexes cross shard boundaries.",
+          "b": "Indexes are maintained during normal writes with extra cost.",
+          "d": "Scale-out systems do not fit in L1 cache."
+        },
+        "difficulty": "hard",
+        "source": {
+          "term": "",
+          "chapterTitle": "Partitioning"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 14,
+        "cleanedOrdinal": 14
+      },
+      {
+        "prompt": "Exactly-once RPC semantics in practice usually combines at-least-once delivery with what on the server?",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Ignoring all duplicate packets without tracking anything."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Disabling retries and assuming TCP never retransmits."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Idempotent operations or deduplication using client request IDs stored until completion."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Returning random errors for every second call."
+          }
+        ],
+        "correctChoiceId": "c",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Duplicates are inevitable; dedup tables or idempotent design make effects appear exactly once.",
+        "wrongAnswerExplanations": {
+          "a": "Blind ignore can drop legitimate first attempts too.",
+          "b": "TCP retransmits; application retries add more duplicates.",
+          "d": "That does not provide exactly-once semantics."
+        },
+        "difficulty": "hard",
+        "source": {
+          "term": "",
+          "chapterTitle": "RPC"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 15,
+        "cleanedOrdinal": 15
+      },
+      {
+        "prompt": "The thundering herd problem after cache expiry is mitigated in distributed RPC layers by techniques such as what?",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Increasing herd size by notifying all clients to hit origin simultaneously."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Using only UDP broadcast storms for refresh."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Disabling caching entirely on every node without replacement."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Request coalescing (singleflight), lease-based early refresh, or jittered backoff on regenerating values."
+          }
+        ],
+        "correctChoiceId": "d",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Coalescing ensures one backend rebuild while others wait for the same result.",
+        "wrongAnswerExplanations": {
+          "a": "That worsens the herd, not mitigates it.",
+          "b": "Broadcast storms amplify load.",
+          "c": "Removes cache benefits; does not specifically fix stampedes."
+        },
+        "difficulty": "hard",
+        "source": {
+          "term": "",
+          "chapterTitle": "RPC"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 16,
+        "cleanedOrdinal": 16
+      },
+      {
+        "prompt": "Three-phase commit (3PC) attempts to reduce 2PC blocking by adding a pre-commit phase so that participants know what before commit?",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "That no participant ever persisted any vote."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "That only one phase is needed total."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "That all participants are ready and will commit if the coordinator proceeds, enabling timeout-based recovery rules."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "That the transaction must abort if any network byte is lost ever."
+          }
+        ],
+        "correctChoiceId": "c",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Pre-commit narrows uncertain states but still assumes weaker failure models than async reality.",
+        "wrongAnswerExplanations": {
+          "a": "Votes and states are still recorded.",
+          "b": "3PC still has multiple phases (can-ready-precommit-commit).",
+          "d": "3PC does not require abort on any loss."
+        },
+        "difficulty": "hard",
+        "source": {
+          "term": "",
+          "chapterTitle": "Distributed Transactions"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 17,
+        "cleanedOrdinal": 17
+      },
+      {
+        "prompt": "Percolator-style transactions on Bigtable use which mechanism to detect write-write conflicts across rows?",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Primary locks with a write column and commit timestamp after a prewrite phase."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Deleting all row keys before every read."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Ignoring timestamps and using only last-writer-wins silently."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Global two-phase commit with a single in-memory lock on one laptop."
+          }
+        ],
+        "correctChoiceId": "a",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Prewrite locks + commit timestamps provide optimistic concurrency control at scale.",
+        "wrongAnswerExplanations": {
+          "b": "Destructive deletes are not the conflict detection method.",
+          "c": "Timestamps and locks are central to Percolator.",
+          "d": "Percolator avoids single global 2PC coordinator."
+        },
+        "difficulty": "hard",
+        "source": {
+          "term": "",
+          "chapterTitle": "Distributed Transactions"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 18,
+        "cleanedOrdinal": 18
+      },
+      {
+        "prompt": "Raft's log matching property requires that if two logs contain an entry with the same index and term, then what?",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "The logs are identical in all preceding entries."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Terms must decrease after the matching entry."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "The logs may differ arbitrarily before that index."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Only the last entry must match; earlier entries are irrelevant."
+          }
+        ],
+        "correctChoiceId": "a",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Induction from the leader's AppendEntries consistency check ensures replicated prefixes match.",
+        "wrongAnswerExplanations": {
+          "b": "Terms are non-decreasing along a log.",
+          "c": "Matching index/term implies identical prefixes.",
+          "d": "Safety depends on entire prefix agreement."
+        },
+        "difficulty": "hard",
+        "source": {
+          "term": "",
+          "chapterTitle": "Consensus"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 19,
+        "cleanedOrdinal": 19
+      },
+      {
+        "prompt": "State machine replication requires replicas to process commands how for correctness?",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "In arbitrary different orders on each replica as long as throughput is high."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Without any agreement protocol if the language is Java."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "In the same deterministic order, usually via a replicated log agreed by consensus."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Only on weekends when traffic is low."
+          }
+        ],
+        "correctChoiceId": "c",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Deterministic state machines + agreed log order yield identical final states.",
+        "wrongAnswerExplanations": {
+          "a": "Different orders produce divergent state.",
+          "b": "Language choice does not replace consensus ordering.",
+          "d": "Ordering is required whenever commands mutate state."
+        },
+        "difficulty": "hard",
+        "source": {
+          "term": "",
+          "chapterTitle": "Replication"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 20,
+        "cleanedOrdinal": 20
+      }
+    ]
+  }
+}

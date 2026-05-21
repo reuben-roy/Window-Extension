@@ -27,22 +27,13 @@ describe('isLearningIdleWindow', () => {
     ).toBe(true);
   });
 
-  it('requires user idle during unscheduled time for balanced intensity', () => {
+  it('allows surfacing during unscheduled time for balanced intensity without system idle', () => {
     expect(
       isLearningIdleWindow({
         calendarState: { currentEvent: null },
         snoozeState: { active: false },
         settings: { learningSettings: { ...baseSettings.learningSettings, intensity: 'balanced' } },
         userIdle: false,
-      }),
-    ).toBe(false);
-
-    expect(
-      isLearningIdleWindow({
-        calendarState: { currentEvent: null },
-        snoozeState: { active: false },
-        settings: { learningSettings: { ...baseSettings.learningSettings, intensity: 'balanced' } },
-        userIdle: true,
       }),
     ).toBe(true);
   });

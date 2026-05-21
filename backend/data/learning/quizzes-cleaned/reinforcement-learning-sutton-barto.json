@@ -85,21 +85,21 @@
           {
             "id": "c",
             "label": "C",
-            "body": "(S, A, P, R, \u03b3)"
+            "body": "(S, A, \u03c0)"
           },
           {
             "id": "d",
             "label": "D",
-            "body": "(S, A, \u03c0)"
+            "body": "(S, A, P, R, \u03b3)"
           }
         ],
-        "correctChoiceId": "c",
+        "correctChoiceId": "d",
         "hint": "Think about the precise definition before picking.",
         "explanation": "States, actions, transition kernel, reward function, and discount factor are the canonical MDP definition.",
         "wrongAnswerExplanations": {
           "a": "These are quantities computed *from* an MDP.",
           "b": "That's a single transition, not the whole MDP.",
-          "d": "That's a controlled process \u2014 \u03c0 is a policy, not part of the environment."
+          "c": "That's a controlled process \u2014 \u03c0 is a policy, not part of the environment."
         },
         "difficulty": "easy",
         "source": {
@@ -116,12 +116,12 @@
           {
             "id": "a",
             "label": "A",
-            "body": "The current state and action, independent of earlier history."
+            "body": "The current state alone, not the action."
           },
           {
             "id": "b",
             "label": "B",
-            "body": "The reward of the previous step."
+            "body": "The current state and action, independent of earlier history."
           },
           {
             "id": "c",
@@ -131,16 +131,16 @@
           {
             "id": "d",
             "label": "D",
-            "body": "The current state alone, not the action."
+            "body": "The reward of the previous step."
           }
         ],
-        "correctChoiceId": "a",
+        "correctChoiceId": "b",
         "hint": "Think about the precise definition before picking.",
         "explanation": "P(s', r | s_t, a_t, s_{t\u22121}, \u2026) = P(s', r | s_t, a_t) \u2014 that's the Markov property.",
         "wrongAnswerExplanations": {
-          "b": "Reward history doesn't enter the Markov assumption.",
+          "a": "Action matters: the agent affects transitions.",
           "c": "That's a non-Markov process.",
-          "d": "Action matters: the agent affects transitions."
+          "d": "Reward history doesn't enter the Markov assumption."
         },
         "difficulty": "easy",
         "source": {
@@ -157,17 +157,17 @@
           {
             "id": "a",
             "label": "A",
-            "body": "It eliminates exploration."
+            "body": "It guarantees the return is finite and prioritizes nearer rewards."
           },
           {
             "id": "b",
             "label": "B",
-            "body": "It speeds up the optimizer."
+            "body": "It eliminates exploration."
           },
           {
             "id": "c",
             "label": "C",
-            "body": "It guarantees the return is finite and prioritizes nearer rewards."
+            "body": "It speeds up the optimizer."
           },
           {
             "id": "d",
@@ -175,12 +175,12 @@
             "body": "It makes all rewards equal."
           }
         ],
-        "correctChoiceId": "c",
+        "correctChoiceId": "a",
         "hint": "Think about the precise definition before picking.",
         "explanation": "G_t = \u03a3 \u03b3^k r_{t+k+1}; with \u03b3 < 1 and bounded rewards, the sum converges.",
         "wrongAnswerExplanations": {
-          "a": "Exploration is a separate concern.",
-          "b": "Discounting affects the objective, not the optimizer directly.",
+          "b": "Exploration is a separate concern.",
+          "c": "Discounting affects the objective, not the optimizer directly.",
           "d": "Opposite \u2014 it weights nearer ones more."
         },
         "difficulty": "easy",
@@ -203,7 +203,7 @@
           {
             "id": "b",
             "label": "B",
-            "body": "The number of steps remaining from s."
+            "body": "The expected return starting from s and following policy \u03c0 thereafter."
           },
           {
             "id": "c",
@@ -213,16 +213,16 @@
           {
             "id": "d",
             "label": "D",
-            "body": "The expected return starting from s and following policy \u03c0 thereafter."
+            "body": "The number of steps remaining from s."
           }
         ],
-        "correctChoiceId": "d",
+        "correctChoiceId": "b",
         "hint": "Think about the precise definition before picking.",
         "explanation": "v_\u03c0(s) = E_\u03c0[ G_t | S_t = s ].",
         "wrongAnswerExplanations": {
           "a": "That's a piece of one trajectory, not an expectation.",
-          "b": "That's horizon, not value.",
-          "c": "That's a hitting probability, not a value."
+          "c": "That's a hitting probability, not a value.",
+          "d": "That's horizon, not value."
         },
         "difficulty": "easy",
         "source": {
@@ -239,31 +239,31 @@
           {
             "id": "a",
             "label": "A",
-            "body": "The maximum action value from s."
+            "body": "An expectation of immediate reward plus \u03b3 times v_\u03c0 at the next state."
           },
           {
             "id": "b",
             "label": "B",
-            "body": "The number of episodes elapsed."
+            "body": "The visit count of s."
           },
           {
             "id": "c",
             "label": "C",
-            "body": "The visit count of s."
+            "body": "The maximum action value from s."
           },
           {
             "id": "d",
             "label": "D",
-            "body": "An expectation of immediate reward plus \u03b3 times v_\u03c0 at the next state."
+            "body": "The number of episodes elapsed."
           }
         ],
-        "correctChoiceId": "d",
+        "correctChoiceId": "a",
         "hint": "Think about the precise definition before picking.",
         "explanation": "v_\u03c0(s) = \u03a3_a \u03c0(a|s) \u03a3_{s',r} P(s', r | s, a) [r + \u03b3 v_\u03c0(s')].",
         "wrongAnswerExplanations": {
-          "a": "That's the Bellman *optimality* equation.",
-          "b": "Episodes are unrelated to the equation.",
-          "c": "Counts are about sampling, not the equation."
+          "b": "Counts are about sampling, not the equation.",
+          "c": "That's the Bellman *optimality* equation.",
+          "d": "Episodes are unrelated to the equation."
         },
         "difficulty": "easy",
         "source": {
@@ -280,31 +280,31 @@
           {
             "id": "a",
             "label": "A",
-            "body": "Pick uniformly at random with probability \u03b5 per step regardless of greedy."
+            "body": "With probability 1\u2212\u03b5 pick the greedy action; with probability \u03b5 pick a random action."
           },
           {
             "id": "b",
             "label": "B",
-            "body": "Always pick the greedy action."
+            "body": "Decay rewards by \u03b5 each step."
           },
           {
             "id": "c",
             "label": "C",
-            "body": "With probability 1\u2212\u03b5 pick the greedy action; with probability \u03b5 pick a random action."
+            "body": "Pick uniformly at random with probability \u03b5 per step regardless of greedy."
           },
           {
             "id": "d",
             "label": "D",
-            "body": "Decay rewards by \u03b5 each step."
+            "body": "Always pick the greedy action."
           }
         ],
-        "correctChoiceId": "c",
+        "correctChoiceId": "a",
         "hint": "Think about the precise definition before picking.",
         "explanation": "The exploration rate \u03b5 mixes a uniform random action with the greedy choice.",
         "wrongAnswerExplanations": {
-          "a": "Reversed sense \u2014 greedy fires with 1\u2212\u03b5.",
-          "b": "That's pure exploitation; no exploration.",
-          "d": "\u03b5 is an action-selection parameter, not a reward modifier."
+          "b": "\u03b5 is an action-selection parameter, not a reward modifier.",
+          "c": "Reversed sense \u2014 greedy fires with 1\u2212\u03b5.",
+          "d": "That's pure exploitation; no exploration."
         },
         "difficulty": "easy",
         "source": {
@@ -321,12 +321,12 @@
           {
             "id": "a",
             "label": "A",
-            "body": "Off-policy TD control: it learns the optimal action-value while behaving with any exploratory policy."
+            "body": "On-policy Monte Carlo control."
           },
           {
             "id": "b",
             "label": "B",
-            "body": "On-policy Monte Carlo control."
+            "body": "An exact dynamic programming method."
           },
           {
             "id": "c",
@@ -336,16 +336,16 @@
           {
             "id": "d",
             "label": "D",
-            "body": "An exact dynamic programming method."
+            "body": "Off-policy TD control: it learns the optimal action-value while behaving with any exploratory policy."
           }
         ],
-        "correctChoiceId": "a",
+        "correctChoiceId": "d",
         "hint": "Think about the precise definition before picking.",
         "explanation": "The Q-learning update uses max_{a'} Q(s', a'), targeting the optimal policy regardless of the behavior policy.",
         "wrongAnswerExplanations": {
-          "b": "That's MC-control or SARSA.",
-          "c": "Q-learning is model-free.",
-          "d": "Q-learning is sample-based, not exact DP."
+          "a": "That's MC-control or SARSA.",
+          "b": "Q-learning is sample-based, not exact DP.",
+          "c": "Q-learning is model-free."
         },
         "difficulty": "easy",
         "source": {
@@ -362,17 +362,17 @@
           {
             "id": "a",
             "label": "A",
-            "body": "Updates the value of the previous state, not current."
+            "body": "Uses the action actually taken in the next state for the TD target (on-policy)."
           },
           {
             "id": "b",
             "label": "B",
-            "body": "Uses the action actually taken in the next state for the TD target (on-policy)."
+            "body": "Requires a model of the environment."
           },
           {
             "id": "c",
             "label": "C",
-            "body": "Requires a model of the environment."
+            "body": "Updates the value of the previous state, not current."
           },
           {
             "id": "d",
@@ -380,12 +380,12 @@
             "body": "Uses Monte Carlo returns."
           }
         ],
-        "correctChoiceId": "b",
+        "correctChoiceId": "a",
         "hint": "Think about the precise definition before picking.",
         "explanation": "SARSA: Q(s,a) \u2190 Q(s,a) + \u03b1[r + \u03b3 Q(s', a') \u2212 Q(s, a)] where a' is the chosen next action.",
         "wrongAnswerExplanations": {
-          "a": "Both update Q(s, a) for the just-taken transition.",
-          "c": "Both are model-free.",
+          "b": "Both are model-free.",
+          "c": "Both update Q(s, a) for the just-taken transition.",
           "d": "Both SARSA and Q-learning are TD methods."
         },
         "difficulty": "easy",
@@ -403,17 +403,17 @@
           {
             "id": "a",
             "label": "A",
-            "body": "It has a well-defined terminal state, so trajectories have finite length."
+            "body": "Continuing tasks always converge faster."
           },
           {
             "id": "b",
             "label": "B",
-            "body": "Continuing tasks always converge faster."
+            "body": "Continuing tasks have only one action."
           },
           {
             "id": "c",
             "label": "C",
-            "body": "Continuing tasks have only one action."
+            "body": "It has a well-defined terminal state, so trajectories have finite length."
           },
           {
             "id": "d",
@@ -421,12 +421,12 @@
             "body": "Episodic tasks have no rewards."
           }
         ],
-        "correctChoiceId": "a",
+        "correctChoiceId": "c",
         "hint": "Think about the precise definition before picking.",
         "explanation": "Episodic problems naturally yield Monte Carlo returns; continuing tasks rely on discounting or average reward.",
         "wrongAnswerExplanations": {
-          "b": "Not a general property.",
-          "c": "Action set is unrelated.",
+          "a": "Not a general property.",
+          "b": "Action set is unrelated.",
           "d": "Rewards exist in both."
         },
         "difficulty": "easy",
@@ -449,12 +449,12 @@
           {
             "id": "b",
             "label": "B",
-            "body": "A bootstrap from the next state's current estimate."
+            "body": "The Monte Carlo return of the whole episode."
           },
           {
             "id": "c",
             "label": "C",
-            "body": "The Monte Carlo return of the whole episode."
+            "body": "A bootstrap from the next state's current estimate."
           },
           {
             "id": "d",
@@ -462,12 +462,12 @@
             "body": "The exact Bellman solution."
           }
         ],
-        "correctChoiceId": "b",
+        "correctChoiceId": "c",
         "hint": "Think about the precise definition before picking.",
         "explanation": "TD(0) uses target r + \u03b3 V(s'); it bootstraps from V rather than waiting for full returns.",
         "wrongAnswerExplanations": {
           "a": "TD uses observed transitions, not random samples.",
-          "c": "That's MC, which doesn't bootstrap.",
+          "b": "That's MC, which doesn't bootstrap.",
           "d": "TD samples; it doesn't solve Bellman in closed form."
         },
         "difficulty": "easy",
@@ -490,26 +490,26 @@
           {
             "id": "b",
             "label": "B",
-            "body": "Each state to a distribution over actions."
+            "body": "Each action to a reward."
           },
           {
             "id": "c",
             "label": "C",
-            "body": "Each state to a single action."
+            "body": "Each state to a distribution over actions."
           },
           {
             "id": "d",
             "label": "D",
-            "body": "Each action to a reward."
+            "body": "Each state to a single action."
           }
         ],
-        "correctChoiceId": "c",
+        "correctChoiceId": "d",
         "hint": "Think about the precise definition before picking.",
         "explanation": "\u03c0(s) = a; contrast with stochastic \u03c0(a | s).",
         "wrongAnswerExplanations": {
           "a": "Not a policy at all.",
-          "b": "That's a stochastic policy.",
-          "d": "That's a piece of the reward function."
+          "b": "That's a piece of the reward function.",
+          "c": "That's a stochastic policy."
         },
         "difficulty": "easy",
         "source": {
@@ -536,21 +536,21 @@
           {
             "id": "c",
             "label": "C",
-            "body": "Making the problem non-Markov."
+            "body": "Changing the optimal policy if the shaping isn't potential-based."
           },
           {
             "id": "d",
             "label": "D",
-            "body": "Changing the optimal policy if the shaping isn't potential-based."
+            "body": "Making the problem non-Markov."
           }
         ],
-        "correctChoiceId": "d",
+        "correctChoiceId": "c",
         "hint": "Think about the precise definition before picking.",
         "explanation": "Potential-based shaping (Ng et al., 1999) preserves optimal policies; arbitrary shaping can shift them.",
         "wrongAnswerExplanations": {
           "a": "Shaping affects targets, not exploration policy.",
           "b": "\u03b3 is set separately.",
-          "c": "Shaping based on s and s' stays Markov."
+          "d": "Shaping based on s and s' stays Markov."
         },
         "difficulty": "easy",
         "source": {
@@ -567,7 +567,7 @@
           {
             "id": "a",
             "label": "A",
-            "body": "Greater than or equal expected return than every other policy, in every state."
+            "body": "Exploration probability of zero."
           },
           {
             "id": "b",
@@ -577,7 +577,7 @@
           {
             "id": "c",
             "label": "C",
-            "body": "Exploration probability of zero."
+            "body": "Greater than or equal expected return than every other policy, in every state."
           },
           {
             "id": "d",
@@ -585,12 +585,12 @@
             "body": "The shortest path between every pair of states."
           }
         ],
-        "correctChoiceId": "a",
+        "correctChoiceId": "c",
         "hint": "Think about the precise definition before picking.",
         "explanation": "An optimal policy maximizes v_\u03c0(s) simultaneously for all s; such a policy always exists in finite MDPs.",
         "wrongAnswerExplanations": {
+          "a": "Optimality is defined by return, not exploration.",
           "b": "Greedy on immediate reward isn't optimal in general.",
-          "c": "Optimality is defined by return, not exploration.",
           "d": "That's a special case (goal-reaching with unit-cost rewards)."
         },
         "difficulty": "easy",
@@ -608,31 +608,31 @@
           {
             "id": "a",
             "label": "A",
-            "body": "Expected return starting from s following \u03c0."
+            "body": "Reward of the action a."
           },
           {
             "id": "b",
             "label": "B",
-            "body": "Probability of taking a in s."
+            "body": "Expected return starting from s following \u03c0."
           },
           {
             "id": "c",
             "label": "C",
-            "body": "Reward of the action a."
+            "body": "Expected return starting from s, taking action a, then following \u03c0."
           },
           {
             "id": "d",
             "label": "D",
-            "body": "Expected return starting from s, taking action a, then following \u03c0."
+            "body": "Probability of taking a in s."
           }
         ],
-        "correctChoiceId": "d",
+        "correctChoiceId": "c",
         "hint": "Think about the precise definition before picking.",
         "explanation": "q_\u03c0(s, a) = E_\u03c0[ G_t | S_t = s, A_t = a ].",
         "wrongAnswerExplanations": {
-          "a": "That's v_\u03c0, not q_\u03c0.",
-          "b": "That's \u03c0(a | s).",
-          "c": "That's expected immediate reward, not the full return."
+          "a": "That's expected immediate reward, not the full return.",
+          "b": "That's v_\u03c0, not q_\u03c0.",
+          "d": "That's \u03c0(a | s)."
         },
         "difficulty": "easy",
         "source": {
@@ -649,31 +649,31 @@
           {
             "id": "a",
             "label": "A",
-            "body": "Forward pass and backward pass."
+            "body": "Exploration and exploitation phases."
           },
           {
             "id": "b",
             "label": "B",
-            "body": "Policy evaluation (compute v_\u03c0) and policy improvement (greedy with respect to v_\u03c0)."
+            "body": "Forward pass and backward pass."
           },
           {
             "id": "c",
             "label": "C",
-            "body": "Sampling and rejection."
+            "body": "Policy evaluation (compute v_\u03c0) and policy improvement (greedy with respect to v_\u03c0)."
           },
           {
             "id": "d",
             "label": "D",
-            "body": "Exploration and exploitation phases."
+            "body": "Sampling and rejection."
           }
         ],
-        "correctChoiceId": "b",
+        "correctChoiceId": "c",
         "hint": "Think about the precise definition before picking.",
         "explanation": "Each round computes v_\u03c0 and then sets \u03c0'(s) \u2190 argmax_a \u03a3_{s', r} P[r + \u03b3 v_\u03c0(s')]; the process converges to \u03c0*.",
         "wrongAnswerExplanations": {
-          "a": "That's neural network training.",
-          "c": "That's a Monte Carlo idea.",
-          "d": "That's behavior, not algorithm structure."
+          "a": "That's behavior, not algorithm structure.",
+          "b": "That's neural network training.",
+          "d": "That's a Monte Carlo idea."
         },
         "difficulty": "easy",
         "source": {
@@ -690,31 +690,31 @@
           {
             "id": "a",
             "label": "A",
-            "body": "A planning method that requires no model."
+            "body": "Gradient descent on the policy."
           },
           {
             "id": "b",
             "label": "B",
-            "body": "Repeatedly applying the Bellman optimality operator until v converges."
+            "body": "Random policy rollout."
           },
           {
             "id": "c",
             "label": "C",
-            "body": "Gradient descent on the policy."
+            "body": "A planning method that requires no model."
           },
           {
             "id": "d",
             "label": "D",
-            "body": "Random policy rollout."
+            "body": "Repeatedly applying the Bellman optimality operator until v converges."
           }
         ],
-        "correctChoiceId": "b",
+        "correctChoiceId": "d",
         "hint": "Think about the precise definition before picking.",
         "explanation": "v_{k+1}(s) \u2190 max_a \u03a3_{s', r} P[r + \u03b3 v_k(s')]; fixed point is v*.",
         "wrongAnswerExplanations": {
-          "a": "VI needs P and R; it's model-based.",
-          "c": "VI works on value, not policy gradient.",
-          "d": "That's MC, not VI."
+          "a": "VI works on value, not policy gradient.",
+          "b": "That's MC, not VI.",
+          "c": "VI needs P and R; it's model-based."
         },
         "difficulty": "easy",
         "source": {
@@ -731,31 +731,31 @@
           {
             "id": "a",
             "label": "A",
-            "body": "Adding a random exploration bonus to every reward."
+            "body": "Setting Q-values above realistic returns so every action seems promising at first."
           },
           {
             "id": "b",
             "label": "B",
-            "body": "Setting Q-values above realistic returns so every action seems promising at first."
+            "body": "Lowering the learning rate."
           },
           {
             "id": "c",
             "label": "C",
-            "body": "Decreasing \u03b3."
+            "body": "Adding a random exploration bonus to every reward."
           },
           {
             "id": "d",
             "label": "D",
-            "body": "Lowering the learning rate."
+            "body": "Decreasing \u03b3."
           }
         ],
-        "correctChoiceId": "b",
+        "correctChoiceId": "a",
         "hint": "Think about the precise definition before picking.",
         "explanation": "Until the optimistic values are corrected by experience, the greedy action keeps changing \u2014 exploration without \u03b5.",
         "wrongAnswerExplanations": {
-          "a": "That's UCB-style, not optimistic initialization.",
-          "c": "\u03b3 is unrelated to exploration.",
-          "d": "LR doesn't drive exploration."
+          "b": "LR doesn't drive exploration.",
+          "c": "That's UCB-style, not optimistic initialization.",
+          "d": "\u03b3 is unrelated to exploration."
         },
         "difficulty": "easy",
         "source": {
@@ -777,7 +777,7 @@
           {
             "id": "b",
             "label": "B",
-            "body": "Complete episode returns averaged across visits to each (s, a)."
+            "body": "One-step TD bootstrapping."
           },
           {
             "id": "c",
@@ -787,16 +787,16 @@
           {
             "id": "d",
             "label": "D",
-            "body": "One-step TD bootstrapping."
+            "body": "Complete episode returns averaged across visits to each (s, a)."
           }
         ],
-        "correctChoiceId": "b",
+        "correctChoiceId": "d",
         "hint": "Think about the precise definition before picking.",
         "explanation": "MC waits until the episode ends, then assigns each visit's G value, averaging over many episodes.",
         "wrongAnswerExplanations": {
           "a": "MC uses real returns, not noise.",
-          "c": "MC samples instead of solving.",
-          "d": "That's TD, not MC."
+          "b": "That's TD, not MC.",
+          "c": "MC samples instead of solving."
         },
         "difficulty": "easy",
         "source": {
@@ -813,31 +813,31 @@
           {
             "id": "a",
             "label": "A",
-            "body": "Discounting only the n-th reward."
+            "body": "Sampling n random actions."
           },
           {
             "id": "b",
             "label": "B",
-            "body": "Using n actual rewards before bootstrapping from the value at step n."
+            "body": "Discounting only the n-th reward."
           },
           {
             "id": "c",
             "label": "C",
-            "body": "Sampling n random actions."
+            "body": "Averaging over n episodes."
           },
           {
             "id": "d",
             "label": "D",
-            "body": "Averaging over n episodes."
+            "body": "Using n actual rewards before bootstrapping from the value at step n."
           }
         ],
-        "correctChoiceId": "b",
+        "correctChoiceId": "d",
         "hint": "Think about the precise definition before picking.",
         "explanation": "G^{(n)}_t = r_{t+1} + \u03b3 r_{t+2} + \u2026 + \u03b3^{n\u22121} r_{t+n} + \u03b3^n V(s_{t+n}); n = 1 is TD(0), n \u2192 \u221e is MC.",
         "wrongAnswerExplanations": {
-          "a": "All rewards are discounted in the usual way.",
-          "c": "n-step is about look-ahead, not sampling.",
-          "d": "That's a separate idea."
+          "a": "n-step is about look-ahead, not sampling.",
+          "b": "All rewards are discounted in the usual way.",
+          "c": "That's a separate idea."
         },
         "difficulty": "easy",
         "source": {
@@ -854,31 +854,31 @@
           {
             "id": "a",
             "label": "A",
-            "body": "Tables are infeasible for large or continuous state spaces; approximators generalize across states."
+            "body": "Function approximators are always exact."
           },
           {
             "id": "b",
             "label": "B",
-            "body": "Function approximators are always exact."
+            "body": "Approximation eliminates the need for exploration."
           },
           {
             "id": "c",
             "label": "C",
-            "body": "Tables can't store negative numbers."
+            "body": "Tables are infeasible for large or continuous state spaces; approximators generalize across states."
           },
           {
             "id": "d",
             "label": "D",
-            "body": "Approximation eliminates the need for exploration."
+            "body": "Tables can't store negative numbers."
           }
         ],
-        "correctChoiceId": "a",
+        "correctChoiceId": "c",
         "hint": "Think about the precise definition before picking.",
         "explanation": "With |S| huge, tabular methods can't visit every state; parameterizing V or Q allows sharing across states.",
         "wrongAnswerExplanations": {
-          "b": "They're approximate, hence the name.",
-          "c": "They can.",
-          "d": "Exploration is still needed."
+          "a": "They're approximate, hence the name.",
+          "b": "Exploration is still needed.",
+          "d": "They can."
         },
         "difficulty": "easy",
         "source": {
@@ -902,12 +902,12 @@
           {
             "id": "b",
             "label": "B",
-            "body": "G_t (full Monte Carlo return)"
+            "body": "r + \u03b3 max_{a'} Q(s', a')"
           },
           {
             "id": "c",
             "label": "C",
-            "body": "r + \u03b3 max_{a'} Q(s', a')"
+            "body": "G_t (full Monte Carlo return)"
           },
           {
             "id": "d",
@@ -915,12 +915,12 @@
             "body": "max_a Q(s, a)"
           }
         ],
-        "correctChoiceId": "c",
+        "correctChoiceId": "b",
         "hint": "Think about the precise definition before picking.",
         "explanation": "Q-learning's max in the target makes it off-policy: the target reflects the optimal action regardless of behavior.",
         "wrongAnswerExplanations": {
           "a": "That's SARSA's target.",
-          "b": "That's MC, not TD.",
+          "c": "That's MC, not TD.",
           "d": "That's a value, not a TD target."
         },
         "difficulty": "medium",
@@ -938,31 +938,31 @@
           {
             "id": "a",
             "label": "A",
-            "body": "Because the update's target uses max over next actions, not the behavior's choice."
+            "body": "Because rewards are always positive."
           },
           {
             "id": "b",
             "label": "B",
-            "body": "Because rewards are always positive."
+            "body": "Because the discount factor is always 1."
           },
           {
             "id": "c",
             "label": "C",
-            "body": "Because the discount factor is always 1."
+            "body": "Because exploration disappears over time automatically."
           },
           {
             "id": "d",
             "label": "D",
-            "body": "Because exploration disappears over time automatically."
+            "body": "Because the update's target uses max over next actions, not the behavior's choice."
           }
         ],
-        "correctChoiceId": "a",
+        "correctChoiceId": "d",
         "hint": "Think about the precise definition before picking.",
         "explanation": "Off-policy learning lets the target track the greedy policy while behavior explores; Robbins\u2013Monro conditions on \u03b1 plus sufficient visitation imply convergence.",
         "wrongAnswerExplanations": {
-          "b": "Sign of rewards is irrelevant to convergence.",
-          "c": "Convergence holds for \u03b3 < 1 typically.",
-          "d": "Decay isn't required for convergence in tabular Q-learning, just sufficient coverage."
+          "a": "Sign of rewards is irrelevant to convergence.",
+          "b": "Convergence holds for \u03b3 < 1 typically.",
+          "c": "Decay isn't required for convergence in tabular Q-learning, just sufficient coverage."
         },
         "difficulty": "medium",
         "source": {
@@ -979,31 +979,31 @@
           {
             "id": "a",
             "label": "A",
-            "body": "v*(s) = max_a \u03a3_{s', r} P(s', r | s, a) [r + \u03b3 v*(s')]"
+            "body": "v*(s) = max_a Q(s, a) \u2212 \u03b5"
           },
           {
             "id": "b",
             "label": "B",
-            "body": "v*(s) = max_a Q(s, a) \u2212 \u03b5"
+            "body": "v*(s) = \u03b3 v*(s')"
           },
           {
             "id": "c",
             "label": "C",
-            "body": "v*(s) = \u03b3 v*(s')"
+            "body": "v*(s) = \u03a3_a \u03c0(a|s) [r + \u03b3 v*(s')]"
           },
           {
             "id": "d",
             "label": "D",
-            "body": "v*(s) = \u03a3_a \u03c0(a|s) [r + \u03b3 v*(s')]"
+            "body": "v*(s) = max_a \u03a3_{s', r} P(s', r | s, a) [r + \u03b3 v*(s')]"
           }
         ],
-        "correctChoiceId": "a",
+        "correctChoiceId": "d",
         "hint": "Think about the precise definition before picking.",
         "explanation": "Optimality replaces the policy-weighted average with a max over actions.",
         "wrongAnswerExplanations": {
-          "b": "\u03b5 doesn't appear in the Bellman equation.",
-          "c": "Missing the reward and the max.",
-          "d": "That's the Bellman expectation equation under \u03c0, not optimality."
+          "a": "\u03b5 doesn't appear in the Bellman equation.",
+          "b": "Missing the reward and the max.",
+          "c": "That's the Bellman expectation equation under \u03c0, not optimality."
         },
         "difficulty": "medium",
         "source": {
@@ -1020,7 +1020,7 @@
           {
             "id": "a",
             "label": "A",
-            "body": "A way to discard old data."
+            "body": "A continuous interpolation between one-step TD and Monte Carlo via the trace decay parameter \u03bb."
           },
           {
             "id": "b",
@@ -1030,21 +1030,21 @@
           {
             "id": "c",
             "label": "C",
-            "body": "A continuous interpolation between one-step TD and Monte Carlo via the trace decay parameter \u03bb."
+            "body": "Faster matrix inversion for value iteration."
           },
           {
             "id": "d",
             "label": "D",
-            "body": "Faster matrix inversion for value iteration."
+            "body": "A way to discard old data."
           }
         ],
-        "correctChoiceId": "c",
+        "correctChoiceId": "a",
         "hint": "Think about the precise definition before picking.",
         "explanation": "\u03bb = 0 reduces to TD(0); \u03bb = 1 approximates MC; intermediate \u03bb smooths credit assignment.",
         "wrongAnswerExplanations": {
-          "a": "Traces decay old credit but don't 'discard' it.",
           "b": "Unrelated.",
-          "d": "Unrelated."
+          "c": "Unrelated.",
+          "d": "Traces decay old credit but don't 'discard' it."
         },
         "difficulty": "medium",
         "source": {
@@ -1061,31 +1061,31 @@
           {
             "id": "a",
             "label": "A",
-            "body": "Monte Carlo + tabular + exploration."
+            "body": "SARSA + replay + \u03b5-greedy."
           },
           {
             "id": "b",
             "label": "B",
-            "body": "Function approximation + bootstrapping + off-policy learning."
+            "body": "Function approximation + on-policy + discounting."
           },
           {
             "id": "c",
             "label": "C",
-            "body": "SARSA + replay + \u03b5-greedy."
+            "body": "Function approximation + bootstrapping + off-policy learning."
           },
           {
             "id": "d",
             "label": "D",
-            "body": "Function approximation + on-policy + discounting."
+            "body": "Monte Carlo + tabular + exploration."
           }
         ],
-        "correctChoiceId": "b",
+        "correctChoiceId": "c",
         "hint": "Think about the precise definition before picking.",
         "explanation": "Sutton and Barto show that combining these three properties can make TD diverge; each alone is safe.",
         "wrongAnswerExplanations": {
-          "a": "Tabular MC is well-behaved.",
-          "c": "These aren't the canonical triad.",
-          "d": "On-policy is generally safer."
+          "a": "These aren't the canonical triad.",
+          "b": "On-policy is generally safer.",
+          "d": "Tabular MC is well-behaved."
         },
         "difficulty": "medium",
         "source": {
@@ -1102,12 +1102,12 @@
           {
             "id": "a",
             "label": "A",
-            "body": "Ascending the gradient of expected return: \u2207\u03b8 log \u03c0_\u03b8(a|s) \u00b7 G_t."
+            "body": "Inverting the Q-function."
           },
           {
             "id": "b",
             "label": "B",
-            "body": "Inverting the Q-function."
+            "body": "Maximum-likelihood imitation of expert actions."
           },
           {
             "id": "c",
@@ -1117,16 +1117,16 @@
           {
             "id": "d",
             "label": "D",
-            "body": "Maximum-likelihood imitation of expert actions."
+            "body": "Ascending the gradient of expected return: \u2207\u03b8 log \u03c0_\u03b8(a|s) \u00b7 G_t."
           }
         ],
-        "correctChoiceId": "a",
+        "correctChoiceId": "d",
         "hint": "Think about the precise definition before picking.",
         "explanation": "REINFORCE is the canonical Monte Carlo policy-gradient method; G_t is the return from time t.",
         "wrongAnswerExplanations": {
-          "b": "No inversion involved.",
-          "c": "That's TD-style, not policy-gradient.",
-          "d": "That's behavioral cloning."
+          "a": "No inversion involved.",
+          "b": "That's behavioral cloning.",
+          "c": "That's TD-style, not policy-gradient."
         },
         "difficulty": "medium",
         "source": {
@@ -1143,31 +1143,31 @@
           {
             "id": "a",
             "label": "A",
-            "body": "Two competing policies playing against each other."
+            "body": "Q-learning and SARSA."
           },
           {
             "id": "b",
             "label": "B",
-            "body": "Q-learning and SARSA."
+            "body": "Exploration and exploitation phases."
           },
           {
             "id": "c",
             "label": "C",
-            "body": "Exploration and exploitation phases."
+            "body": "Policy gradients (actor) with a learned value baseline/critic to reduce variance."
           },
           {
             "id": "d",
             "label": "D",
-            "body": "Policy gradients (actor) with a learned value baseline/critic to reduce variance."
+            "body": "Two competing policies playing against each other."
           }
         ],
-        "correctChoiceId": "d",
+        "correctChoiceId": "c",
         "hint": "Think about the precise definition before picking.",
         "explanation": "The critic estimates V or Q to compute advantages; the actor uses those advantages in its gradient.",
         "wrongAnswerExplanations": {
-          "a": "That's self-play / GAN-style, not actor-critic.",
-          "b": "Both are value methods; neither plays the actor role.",
-          "c": "Not the actor-critic split."
+          "a": "Both are value methods; neither plays the actor role.",
+          "b": "Not the actor-critic split.",
+          "d": "That's self-play / GAN-style, not actor-critic."
         },
         "difficulty": "medium",
         "source": {
@@ -1184,31 +1184,31 @@
           {
             "id": "a",
             "label": "A",
-            "body": "Q\u0302(a) + \u03b5"
+            "body": "Q\u0302(a) + c \u221a(ln t / N(a))"
           },
           {
             "id": "b",
             "label": "B",
-            "body": "argmax over Q\u0302 only"
+            "body": "Q\u0302(a) + \u03b5"
           },
           {
             "id": "c",
             "label": "C",
-            "body": "Q\u0302(a) + c \u221a(ln t / N(a))"
+            "body": "Q\u0302(a) \u2212 N(a)"
           },
           {
             "id": "d",
             "label": "D",
-            "body": "Q\u0302(a) \u2212 N(a)"
+            "body": "argmax over Q\u0302 only"
           }
         ],
-        "correctChoiceId": "c",
+        "correctChoiceId": "a",
         "hint": "Think about the precise definition before picking.",
         "explanation": "UCB adds an exploration bonus inversely related to visit count, giving optimism-under-uncertainty.",
         "wrongAnswerExplanations": {
-          "a": "That's \u03b5-perturbation, not UCB.",
-          "b": "Pure greedy \u2014 no exploration.",
-          "d": "That penalizes well-visited arms too harshly and ignores log t."
+          "b": "That's \u03b5-perturbation, not UCB.",
+          "c": "That penalizes well-visited arms too harshly and ignores log t.",
+          "d": "Pure greedy \u2014 no exploration."
         },
         "difficulty": "medium",
         "source": {
@@ -1225,31 +1225,31 @@
           {
             "id": "a",
             "label": "A",
-            "body": "P(s_{k+1} | s_k, a_k)"
+            "body": "\u220f_k \u03c0(a_k | s_k) / b(a_k | s_k)"
           },
           {
             "id": "b",
             "label": "B",
-            "body": "1 \u2212 \u03b3"
+            "body": "P(s_{k+1} | s_k, a_k)"
           },
           {
             "id": "c",
             "label": "C",
-            "body": "\u220f_k \u03c0(a_k | s_k) / b(a_k | s_k)"
+            "body": "\u03c0(a_k | s_k) \u2212 b(a_k | s_k)"
           },
           {
             "id": "d",
             "label": "D",
-            "body": "\u03c0(a_k | s_k) \u2212 b(a_k | s_k)"
+            "body": "1 \u2212 \u03b3"
           }
         ],
-        "correctChoiceId": "c",
+        "correctChoiceId": "a",
         "hint": "Think about the precise definition before picking.",
         "explanation": "Ordinary importance sampling reweights every step of a trajectory by the ratio of target to behavior probabilities.",
         "wrongAnswerExplanations": {
-          "a": "Dynamics ratios cancel out \u2014 only action probabilities matter.",
-          "b": "\u03b3 is unrelated to IS.",
-          "d": "Subtraction doesn't give a likelihood ratio."
+          "b": "Dynamics ratios cancel out \u2014 only action probabilities matter.",
+          "c": "Subtraction doesn't give a likelihood ratio.",
+          "d": "\u03b3 is unrelated to IS."
         },
         "difficulty": "medium",
         "source": {
@@ -1271,26 +1271,26 @@
           {
             "id": "b",
             "label": "B",
-            "body": "Break correlations between consecutive samples by drawing batches from a replay buffer."
+            "body": "Eliminate the need for a target network."
           },
           {
             "id": "c",
             "label": "C",
-            "body": "Eliminate the need for a target network."
+            "body": "Replace TD targets with Monte Carlo returns."
           },
           {
             "id": "d",
             "label": "D",
-            "body": "Replace TD targets with Monte Carlo returns."
+            "body": "Break correlations between consecutive samples by drawing batches from a replay buffer."
           }
         ],
-        "correctChoiceId": "b",
+        "correctChoiceId": "d",
         "hint": "Think about the precise definition before picking.",
         "explanation": "Sampling uniformly from a buffer decorrelates updates and amortizes data collection.",
         "wrongAnswerExplanations": {
           "a": "The buffer stores transitions, not policies.",
-          "c": "Target networks address a different stability issue.",
-          "d": "DQN uses 1-step TD targets."
+          "b": "Target networks address a different stability issue.",
+          "c": "DQN uses 1-step TD targets."
         },
         "difficulty": "medium",
         "source": {
@@ -1307,31 +1307,31 @@
           {
             "id": "a",
             "label": "A",
-            "body": "Doubling the learning rate."
+            "body": "Averaging Q across all past episodes."
           },
           {
             "id": "b",
             "label": "B",
-            "body": "Averaging Q across all past episodes."
+            "body": "Holding the parameters used to compute TD targets fixed for many steps, reducing target oscillation."
           },
           {
             "id": "c",
             "label": "C",
-            "body": "Holding the parameters used to compute TD targets fixed for many steps, reducing target oscillation."
+            "body": "Training a second Q-network on negative samples."
           },
           {
             "id": "d",
             "label": "D",
-            "body": "Training a second Q-network on negative samples."
+            "body": "Doubling the learning rate."
           }
         ],
-        "correctChoiceId": "c",
+        "correctChoiceId": "b",
         "hint": "Think about the precise definition before picking.",
         "explanation": "Periodically copying weights from the online network to the target network prevents the target from chasing the prediction.",
         "wrongAnswerExplanations": {
-          "a": "Unrelated.",
-          "b": "Polyak averaging is a variant; the canonical target net does periodic copies.",
-          "d": "Not the role of the target net."
+          "a": "Polyak averaging is a variant; the canonical target net does periodic copies.",
+          "c": "Not the role of the target net.",
+          "d": "Unrelated."
         },
         "difficulty": "medium",
         "source": {
@@ -1348,31 +1348,31 @@
           {
             "id": "a",
             "label": "A",
-            "body": "Maximization bias from using the same estimator for action selection and evaluation."
+            "body": "Vanishing gradients in deep nets."
           },
           {
             "id": "b",
             "label": "B",
-            "body": "Forgetting in replay buffers."
+            "body": "Reward hacking."
           },
           {
             "id": "c",
             "label": "C",
-            "body": "Vanishing gradients in deep nets."
+            "body": "Maximization bias from using the same estimator for action selection and evaluation."
           },
           {
             "id": "d",
             "label": "D",
-            "body": "Reward hacking."
+            "body": "Forgetting in replay buffers."
           }
         ],
-        "correctChoiceId": "a",
+        "correctChoiceId": "c",
         "hint": "Think about the precise definition before picking.",
         "explanation": "max E[Q\u0302] is biased upward; using two estimators, one for argmax and one for evaluation, removes the bias.",
         "wrongAnswerExplanations": {
-          "b": "Catastrophic forgetting is a different issue.",
-          "c": "Unrelated.",
-          "d": "Reward design issue, not estimator bias."
+          "a": "Unrelated.",
+          "b": "Reward design issue, not estimator bias.",
+          "d": "Catastrophic forgetting is a different issue."
         },
         "difficulty": "medium",
         "source": {
@@ -1389,31 +1389,31 @@
           {
             "id": "a",
             "label": "A",
-            "body": "Neural networks always overflow."
+            "body": "Discounting is invalid with neural nets."
           },
           {
             "id": "b",
             "label": "B",
-            "body": "Networks can't represent linear functions."
+            "body": "Bootstrapping with function approximation and off-policy updates loses the contraction guarantee."
           },
           {
             "id": "c",
             "label": "C",
-            "body": "Bootstrapping with function approximation and off-policy updates loses the contraction guarantee."
+            "body": "Networks can't represent linear functions."
           },
           {
             "id": "d",
             "label": "D",
-            "body": "Discounting is invalid with neural nets."
+            "body": "Neural networks always overflow."
           }
         ],
-        "correctChoiceId": "c",
+        "correctChoiceId": "b",
         "hint": "Think about the precise definition before picking.",
         "explanation": "The Bellman operator is a contraction in the tabular max-norm but not in the L2 norm typically used by FA \u2014 divergence is possible.",
         "wrongAnswerExplanations": {
-          "a": "Numerics aren't the fundamental issue.",
-          "b": "They can.",
-          "d": "\u03b3 < 1 still helps; not the cause."
+          "a": "\u03b3 < 1 still helps; not the cause.",
+          "c": "They can.",
+          "d": "Numerics aren't the fundamental issue."
         },
         "difficulty": "medium",
         "source": {
@@ -1430,31 +1430,31 @@
           {
             "id": "a",
             "label": "A",
-            "body": "b(s) is always zero."
+            "body": "Baselines cancel by symmetry only with linear policies."
           },
           {
             "id": "b",
             "label": "B",
-            "body": "Baselines cancel by symmetry only with linear policies."
+            "body": "b(s) is always zero."
           },
           {
             "id": "c",
             "label": "C",
-            "body": "The advantage function is non-negative."
+            "body": "E_a[(b(s)) \u2207\u03b8 log \u03c0_\u03b8(a|s)] = 0 for any b that doesn't depend on a."
           },
           {
             "id": "d",
             "label": "D",
-            "body": "E_a[(b(s)) \u2207\u03b8 log \u03c0_\u03b8(a|s)] = 0 for any b that doesn't depend on a."
+            "body": "The advantage function is non-negative."
           }
         ],
-        "correctChoiceId": "d",
+        "correctChoiceId": "c",
         "hint": "Think about the precise definition before picking.",
         "explanation": "The expectation of the score function is zero, so subtracting b(s) reduces variance without bias.",
         "wrongAnswerExplanations": {
-          "a": "Baselines are usually non-zero.",
-          "b": "It holds for any differentiable policy.",
-          "c": "Advantages are signed."
+          "a": "It holds for any differentiable policy.",
+          "b": "Baselines are usually non-zero.",
+          "d": "Advantages are signed."
         },
         "difficulty": "medium",
         "source": {
@@ -1512,12 +1512,12 @@
           {
             "id": "a",
             "label": "A",
-            "body": "To eliminate the need for a critic."
+            "body": "To enforce a hard KL constraint exactly."
           },
           {
             "id": "b",
             "label": "B",
-            "body": "To enforce a hard KL constraint exactly."
+            "body": "To prevent updates that move the policy too far in one step, improving stability."
           },
           {
             "id": "c",
@@ -1527,16 +1527,16 @@
           {
             "id": "d",
             "label": "D",
-            "body": "To prevent updates that move the policy too far in one step, improving stability."
+            "body": "To eliminate the need for a critic."
           }
         ],
-        "correctChoiceId": "d",
+        "correctChoiceId": "b",
         "hint": "Think about the precise definition before picking.",
         "explanation": "Clipping ratio r = \u03c0_new/\u03c0_old to [1\u2212\u03b5, 1+\u03b5] approximates a trust region without an explicit KL constraint.",
         "wrongAnswerExplanations": {
-          "a": "PPO uses a critic.",
-          "b": "That's TRPO with the constraint; PPO is the looser surrogate.",
-          "c": "PPO policies remain stochastic."
+          "a": "That's TRPO with the constraint; PPO is the looser surrogate.",
+          "c": "PPO policies remain stochastic.",
+          "d": "PPO uses a critic."
         },
         "difficulty": "medium",
         "source": {
@@ -1553,12 +1553,12 @@
           {
             "id": "a",
             "label": "A",
-            "body": "Tasks are continuing and don't fit discounting well."
+            "body": "Reward is binary."
           },
           {
             "id": "b",
             "label": "B",
-            "body": "Reward is binary."
+            "body": "Tasks are continuing and don't fit discounting well."
           },
           {
             "id": "c",
@@ -1571,11 +1571,11 @@
             "body": "Actions are continuous."
           }
         ],
-        "correctChoiceId": "a",
+        "correctChoiceId": "b",
         "hint": "Think about the precise definition before picking.",
         "explanation": "Maximizing the long-run average reward r\u0304 avoids \u03b3-specific artifacts in non-episodic tasks.",
         "wrongAnswerExplanations": {
-          "b": "Reward type isn't decisive.",
+          "a": "Reward type isn't decisive.",
           "c": "Discounted return works fine then.",
           "d": "Action space is orthogonal to the return formulation."
         },
@@ -1594,31 +1594,31 @@
           {
             "id": "a",
             "label": "A",
-            "body": "Sampling a parameter from the posterior over rewards and picking the arm that's best under the sample."
+            "body": "Always picking the empirically best arm."
           },
           {
             "id": "b",
             "label": "B",
-            "body": "Selecting uniformly at random."
+            "body": "Sampling a parameter from the posterior over rewards and picking the arm that's best under the sample."
           },
           {
             "id": "c",
             "label": "C",
-            "body": "Adding Gaussian noise to all Q-values."
+            "body": "Selecting uniformly at random."
           },
           {
             "id": "d",
             "label": "D",
-            "body": "Always picking the empirically best arm."
+            "body": "Adding Gaussian noise to all Q-values."
           }
         ],
-        "correctChoiceId": "a",
+        "correctChoiceId": "b",
         "hint": "Think about the precise definition before picking.",
         "explanation": "Posterior sampling balances exploration and exploitation naturally \u2014 arms with high uncertainty get tried more often.",
         "wrongAnswerExplanations": {
-          "b": "Pure exploration.",
-          "c": "Closer to noisy networks, not Thompson.",
-          "d": "Greedy doesn't explore."
+          "a": "Greedy doesn't explore.",
+          "c": "Pure exploration.",
+          "d": "Closer to noisy networks, not Thompson."
         },
         "difficulty": "medium",
         "source": {
@@ -1676,12 +1676,12 @@
           {
             "id": "a",
             "label": "A",
-            "body": "Most transitions provide no learning signal, making credit assignment hard."
+            "body": "They violate the Markov property."
           },
           {
             "id": "b",
             "label": "B",
-            "body": "They violate the Markov property."
+            "body": "Most transitions provide no learning signal, making credit assignment hard."
           },
           {
             "id": "c",
@@ -1694,11 +1694,11 @@
             "body": "They require continuous action spaces."
           }
         ],
-        "correctChoiceId": "a",
+        "correctChoiceId": "b",
         "hint": "Think about the precise definition before picking.",
         "explanation": "Without intermediate signal, RL must propagate the rare reward backwards through long trajectories \u2014 exploration becomes critical.",
         "wrongAnswerExplanations": {
-          "b": "Sparsity doesn't break Markov.",
+          "a": "Sparsity doesn't break Markov.",
           "c": "Sparse rewards make learning slow but not divergent.",
           "d": "Sparsity affects rewards, not actions."
         },
@@ -1724,26 +1724,26 @@
           {
             "id": "b",
             "label": "B",
-            "body": "An average KL divergence bound: E_s[ KL(\u03c0_old(\u00b7|s) \u2016 \u03c0_new(\u00b7|s)) ] \u2264 \u03b4."
+            "body": "A hard L2 distance on action probabilities."
           },
           {
             "id": "c",
             "label": "C",
-            "body": "A hard L2 distance on action probabilities."
+            "body": "A bound on the gradient norm."
           },
           {
             "id": "d",
             "label": "D",
-            "body": "A bound on the gradient norm."
+            "body": "An average KL divergence bound: E_s[ KL(\u03c0_old(\u00b7|s) \u2016 \u03c0_new(\u00b7|s)) ] \u2264 \u03b4."
           }
         ],
-        "correctChoiceId": "b",
+        "correctChoiceId": "d",
         "hint": "Think about the precise definition before picking.",
         "explanation": "TRPO solves a constrained surrogate optimization with the KL constraint; PPO replaces this with a clipped objective.",
         "wrongAnswerExplanations": {
           "a": "That's PPO.",
-          "c": "Not the TRPO constraint.",
-          "d": "That's gradient clipping, not TRPO's idea."
+          "b": "Not the TRPO constraint.",
+          "c": "That's gradient clipping, not TRPO's idea."
         },
         "difficulty": "hard",
         "source": {
@@ -1760,12 +1760,12 @@
           {
             "id": "a",
             "label": "A",
-            "body": "L2 is not a valid norm for RL."
+            "body": "Linear models can't represent any value function."
           },
           {
             "id": "b",
             "label": "B",
-            "body": "Linear models can't represent any value function."
+            "body": "\u03b3 \u2265 1 in continuing tasks."
           },
           {
             "id": "c",
@@ -1775,16 +1775,16 @@
           {
             "id": "d",
             "label": "D",
-            "body": "\u03b3 \u2265 1 in continuing tasks."
+            "body": "L2 is not a valid norm for RL."
           }
         ],
         "correctChoiceId": "c",
         "hint": "Think about the precise definition before picking.",
         "explanation": "T_\u03c0 is a \u03b3-contraction in max-norm but not L2; projection \u03a0 under L2 followed by T_\u03c0 can fail to contract.",
         "wrongAnswerExplanations": {
-          "a": "It's just not the natural one for the Bellman operator.",
-          "b": "They can represent some; the issue is the projected operator.",
-          "d": "Discount still gives contraction in max-norm."
+          "a": "They can represent some; the issue is the projected operator.",
+          "b": "Discount still gives contraction in max-norm.",
+          "d": "It's just not the natural one for the Bellman operator."
         },
         "difficulty": "hard",
         "source": {
@@ -1801,31 +1801,31 @@
           {
             "id": "a",
             "label": "A",
-            "body": "Neither has variance \u2014 both are deterministic."
+            "body": "Both have identical variance."
           },
           {
             "id": "b",
             "label": "B",
-            "body": "TD has higher variance because it bootstraps."
+            "body": "MC has higher variance because it sums many random rewards; TD's variance is dampened by bootstrapping."
           },
           {
             "id": "c",
             "label": "C",
-            "body": "Both have identical variance."
+            "body": "TD has higher variance because it bootstraps."
           },
           {
             "id": "d",
             "label": "D",
-            "body": "MC has higher variance because it sums many random rewards; TD's variance is dampened by bootstrapping."
+            "body": "Neither has variance \u2014 both are deterministic."
           }
         ],
-        "correctChoiceId": "d",
+        "correctChoiceId": "b",
         "hint": "Think about the precise definition before picking.",
         "explanation": "MC accumulates noise across the whole episode; TD's variance comes from one step plus the value estimate.",
         "wrongAnswerExplanations": {
-          "a": "Stochastic transitions and rewards make both random.",
-          "b": "Bootstrapping reduces variance (at the cost of bias).",
-          "c": "They differ in general."
+          "a": "They differ in general.",
+          "c": "Bootstrapping reduces variance (at the cost of bias).",
+          "d": "Stochastic transitions and rewards make both random."
         },
         "difficulty": "hard",
         "source": {
@@ -1847,26 +1847,26 @@
           {
             "id": "b",
             "label": "B",
-            "body": "It eliminates the need for a target policy."
+            "body": "It assumes deterministic policies."
           },
           {
             "id": "c",
             "label": "C",
-            "body": "It works only in tabular settings."
+            "body": "It eliminates the need for a target policy."
           },
           {
             "id": "d",
             "label": "D",
-            "body": "It assumes deterministic policies."
+            "body": "It works only in tabular settings."
           }
         ],
         "correctChoiceId": "a",
         "hint": "Think about the precise definition before picking.",
         "explanation": "Retrace truncates importance ratios at 1, giving safe off-policy learning with bounded variance.",
         "wrongAnswerExplanations": {
-          "b": "Off-policy still requires a target.",
-          "c": "It applies broadly.",
-          "d": "It works with stochastic policies."
+          "b": "It works with stochastic policies.",
+          "c": "Off-policy still requires a target.",
+          "d": "It applies broadly."
         },
         "difficulty": "hard",
         "source": {
@@ -1883,31 +1883,31 @@
           {
             "id": "a",
             "label": "A",
-            "body": "Negative log-likelihood of expert demonstrations."
+            "body": "Expected return plus \u03b1 \u00b7 entropy(\u03c0(\u00b7|s)), encouraging exploration via stochasticity."
           },
           {
             "id": "b",
             "label": "B",
-            "body": "KL(\u03c0_new \u2016 \u03c0_old) alone."
+            "body": "Expected return minus \u03b1 \u00b7 \u2016\u03b8\u2016\u00b2."
           },
           {
             "id": "c",
             "label": "C",
-            "body": "Expected return plus \u03b1 \u00b7 entropy(\u03c0(\u00b7|s)), encouraging exploration via stochasticity."
+            "body": "KL(\u03c0_new \u2016 \u03c0_old) alone."
           },
           {
             "id": "d",
             "label": "D",
-            "body": "Expected return minus \u03b1 \u00b7 \u2016\u03b8\u2016\u00b2."
+            "body": "Negative log-likelihood of expert demonstrations."
           }
         ],
-        "correctChoiceId": "c",
+        "correctChoiceId": "a",
         "hint": "Think about the precise definition before picking.",
         "explanation": "SAC's reward becomes r + \u03b1 \u00b7 H[\u03c0], so the policy stays stochastic where rewards are similar.",
         "wrongAnswerExplanations": {
-          "a": "That's behavioral cloning.",
-          "b": "That's TRPO-style trust regions.",
-          "d": "That's parameter regularization, not entropy."
+          "b": "That's parameter regularization, not entropy.",
+          "c": "That's TRPO-style trust regions.",
+          "d": "That's behavioral cloning."
         },
         "difficulty": "hard",
         "source": {
@@ -1965,31 +1965,31 @@
           {
             "id": "a",
             "label": "A",
-            "body": "Learning the model (dynamics, reward, value) end-to-end without given rules."
+            "body": "Training without any value targets."
           },
           {
             "id": "b",
             "label": "B",
-            "body": "Avoiding tree search."
+            "body": "Using only model-free updates."
           },
           {
             "id": "c",
             "label": "C",
-            "body": "Training without any value targets."
+            "body": "Learning the model (dynamics, reward, value) end-to-end without given rules."
           },
           {
             "id": "d",
             "label": "D",
-            "body": "Using only model-free updates."
+            "body": "Avoiding tree search."
           }
         ],
-        "correctChoiceId": "a",
+        "correctChoiceId": "c",
         "hint": "Think about the precise definition before picking.",
         "explanation": "MuZero plans in a latent space using a learned model, removing AlphaZero's reliance on a perfect simulator.",
         "wrongAnswerExplanations": {
-          "b": "MuZero still uses MCTS in latent space.",
-          "c": "Value targets are central.",
-          "d": "MuZero plans with a learned model \u2014 it's model-based."
+          "a": "Value targets are central.",
+          "b": "MuZero plans with a learned model \u2014 it's model-based.",
+          "d": "MuZero still uses MCTS in latent space."
         },
         "difficulty": "hard",
         "source": {
@@ -2011,26 +2011,26 @@
           {
             "id": "b",
             "label": "B",
-            "body": "It removes the need for replay buffers."
+            "body": "It always improves sample efficiency."
           },
           {
             "id": "c",
             "label": "C",
-            "body": "It always improves sample efficiency."
+            "body": "It decouples the moving prediction from a slower target, mitigating feedback-loop divergence."
           },
           {
             "id": "d",
             "label": "D",
-            "body": "It decouples the moving prediction from a slower target, mitigating feedback-loop divergence."
+            "body": "It removes the need for replay buffers."
           }
         ],
-        "correctChoiceId": "d",
+        "correctChoiceId": "c",
         "hint": "Think about the precise definition before picking.",
         "explanation": "Without a target network, the network's prediction and its own target chase each other; freezing the target stabilizes the regression.",
         "wrongAnswerExplanations": {
           "a": "Greediness is set by the action-selection rule.",
-          "b": "Replay is a separate stability tool.",
-          "c": "Sample efficiency depends on many factors."
+          "b": "Sample efficiency depends on many factors.",
+          "d": "Replay is a separate stability tool."
         },
         "difficulty": "hard",
         "source": {
@@ -2047,31 +2047,31 @@
           {
             "id": "a",
             "label": "A",
-            "body": "The TD fixed point, which is generally different from the L2 projection of v_\u03c0 onto the linear subspace."
+            "body": "The minimum-norm v."
           },
           {
             "id": "b",
             "label": "B",
-            "body": "The Monte Carlo solution."
+            "body": "The exact v_\u03c0 regardless of features."
           },
           {
             "id": "c",
             "label": "C",
-            "body": "The exact v_\u03c0 regardless of features."
+            "body": "The Monte Carlo solution."
           },
           {
             "id": "d",
             "label": "D",
-            "body": "The minimum-norm v."
+            "body": "The TD fixed point, which is generally different from the L2 projection of v_\u03c0 onto the linear subspace."
           }
         ],
-        "correctChoiceId": "a",
+        "correctChoiceId": "d",
         "hint": "Think about the precise definition before picking.",
         "explanation": "TD finds w* solving \u03a0 T_\u03c0 \u03a0 w* = \u03a0 w*, not the projection onto v_\u03c0; bounds compare it to the best linear approximator (e.g., Tsitsiklis & Van Roy).",
         "wrongAnswerExplanations": {
-          "b": "MC converges to the projection (least-squares), not the TD fixed point.",
-          "c": "Only if v_\u03c0 is in the span.",
-          "d": "Not characterized this way."
+          "a": "Not characterized this way.",
+          "b": "Only if v_\u03c0 is in the span.",
+          "c": "MC converges to the projection (least-squares), not the TD fixed point."
         },
         "difficulty": "hard",
         "source": {
@@ -2134,12 +2134,12 @@
           {
             "id": "b",
             "label": "B",
-            "body": "Negative environment rewards only."
+            "body": "Distance to the goal in pixels."
           },
           {
             "id": "c",
             "label": "C",
-            "body": "Distance to the goal in pixels."
+            "body": "Negative environment rewards only."
           },
           {
             "id": "d",
@@ -2151,8 +2151,8 @@
         "hint": "Think about the precise definition before picking.",
         "explanation": "Predicting random features (RND) gives high error on novel states; curiosity-driven exploration rewards visiting them.",
         "wrongAnswerExplanations": {
-          "b": "Inverting rewards isn't intrinsic motivation.",
-          "c": "That's a shaped reward, not curiosity.",
+          "b": "That's a shaped reward, not curiosity.",
+          "c": "Inverting rewards isn't intrinsic motivation.",
           "d": "Noise doesn't drive directed exploration."
         },
         "difficulty": "hard",
@@ -2170,12 +2170,12 @@
           {
             "id": "a",
             "label": "A",
-            "body": "Receives observations rather than the full state, so it must maintain a belief over states."
+            "body": "Has no reward function."
           },
           {
             "id": "b",
             "label": "B",
-            "body": "Has deterministic transitions."
+            "body": "Receives observations rather than the full state, so it must maintain a belief over states."
           },
           {
             "id": "c",
@@ -2185,16 +2185,16 @@
           {
             "id": "d",
             "label": "D",
-            "body": "Has no reward function."
+            "body": "Has deterministic transitions."
           }
         ],
-        "correctChoiceId": "a",
+        "correctChoiceId": "b",
         "hint": "Think about the precise definition before picking.",
         "explanation": "Partial observability necessitates belief-state planning or recurrent policies.",
         "wrongAnswerExplanations": {
-          "b": "Determinism is unrelated.",
+          "a": "POMDPs still have rewards.",
           "c": "Action space can be anything.",
-          "d": "POMDPs still have rewards."
+          "d": "Determinism is unrelated."
         },
         "difficulty": "hard",
         "source": {
@@ -2216,7 +2216,7 @@
           {
             "id": "b",
             "label": "B",
-            "body": "Because v* is unique."
+            "body": "||T*v \u2212 T*w||_\u221e \u2264 \u03b3 ||v \u2212 w||_\u221e follows from \u03b3-discounted backups and the max being a non-expansion."
           },
           {
             "id": "c",
@@ -2226,16 +2226,16 @@
           {
             "id": "d",
             "label": "D",
-            "body": "||T*v \u2212 T*w||_\u221e \u2264 \u03b3 ||v \u2212 w||_\u221e follows from \u03b3-discounted backups and the max being a non-expansion."
+            "body": "Because v* is unique."
           }
         ],
-        "correctChoiceId": "d",
+        "correctChoiceId": "b",
         "hint": "Think about the precise definition before picking.",
         "explanation": "Contraction yields uniqueness of v* and convergence of value iteration via Banach's fixed-point theorem.",
         "wrongAnswerExplanations": {
           "a": "Policy form is irrelevant to T*.",
-          "b": "Uniqueness follows from contraction, not the other way.",
-          "c": "Bounded rewards aren't required for the contraction; \u03b3 < 1 is."
+          "c": "Bounded rewards aren't required for the contraction; \u03b3 < 1 is.",
+          "d": "Uniqueness follows from contraction, not the other way."
         },
         "difficulty": "hard",
         "source": {
@@ -2252,7 +2252,7 @@
           {
             "id": "a",
             "label": "A",
-            "body": "Negative discount factors."
+            "body": "Inability to bootstrap."
           },
           {
             "id": "b",
@@ -2262,21 +2262,21 @@
           {
             "id": "c",
             "label": "C",
-            "body": "Inability to bootstrap."
+            "body": "Variance growing with n due to products of importance-sampling ratios."
           },
           {
             "id": "d",
             "label": "D",
-            "body": "Variance growing with n due to products of importance-sampling ratios."
+            "body": "Negative discount factors."
           }
         ],
-        "correctChoiceId": "d",
+        "correctChoiceId": "c",
         "hint": "Think about the precise definition before picking.",
         "explanation": "Each step contributes a ratio; long sequences multiply many of them, blowing up variance.",
         "wrongAnswerExplanations": {
-          "a": "\u03b3 stays in [0, 1).",
+          "a": "n-step still bootstraps.",
           "b": "Markov is preserved.",
-          "c": "n-step still bootstraps."
+          "d": "\u03b3 stays in [0, 1)."
         },
         "difficulty": "hard",
         "source": {
@@ -2293,31 +2293,31 @@
           {
             "id": "a",
             "label": "A",
-            "body": "Updating Q from real transitions and simulated transitions drawn from a learned model."
+            "body": "Replacing rewards with bootstrap estimates."
           },
           {
             "id": "b",
             "label": "B",
-            "body": "Pre-training a policy with imitation learning."
+            "body": "Updating Q from real transitions and simulated transitions drawn from a learned model."
           },
           {
             "id": "c",
             "label": "C",
-            "body": "Replacing rewards with bootstrap estimates."
+            "body": "Running tabular Q-learning twice as fast."
           },
           {
             "id": "d",
             "label": "D",
-            "body": "Running tabular Q-learning twice as fast."
+            "body": "Pre-training a policy with imitation learning."
           }
         ],
-        "correctChoiceId": "a",
+        "correctChoiceId": "b",
         "hint": "Think about the precise definition before picking.",
         "explanation": "After each real step, Dyna performs k 'planning' updates using simulated experience from the learned model.",
         "wrongAnswerExplanations": {
-          "b": "Dyna doesn't require demonstrations.",
-          "c": "Rewards are still real.",
-          "d": "Speedup comes from extra updates, not parallelism."
+          "a": "Rewards are still real.",
+          "c": "Speedup comes from extra updates, not parallelism.",
+          "d": "Dyna doesn't require demonstrations."
         },
         "difficulty": "hard",
         "source": {
@@ -2334,7 +2334,7 @@
           {
             "id": "a",
             "label": "A",
-            "body": "The full distribution Z(s, a) of returns, not just its mean Q(s, a)."
+            "body": "The gradient of the reward."
           },
           {
             "id": "b",
@@ -2344,21 +2344,21 @@
           {
             "id": "c",
             "label": "C",
-            "body": "The gradient of the reward."
+            "body": "The Hessian of the loss."
           },
           {
             "id": "d",
             "label": "D",
-            "body": "The Hessian of the loss."
+            "body": "The full distribution Z(s, a) of returns, not just its mean Q(s, a)."
           }
         ],
-        "correctChoiceId": "a",
+        "correctChoiceId": "d",
         "hint": "Think about the precise definition before picking.",
         "explanation": "Modeling Z gives richer training signal and often better-performing agents; expectations are recovered as a special case.",
         "wrongAnswerExplanations": {
+          "a": "Not modeled.",
           "b": "Entropy is separate.",
-          "c": "Not modeled.",
-          "d": "Second-order info isn't what distributional RL targets."
+          "c": "Second-order info isn't what distributional RL targets."
         },
         "difficulty": "hard",
         "source": {
@@ -2375,12 +2375,12 @@
           {
             "id": "a",
             "label": "A",
-            "body": "Discrete action spaces."
+            "body": "Differentiable Q and continuous action spaces."
           },
           {
             "id": "b",
             "label": "B",
-            "body": "Differentiable Q and continuous action spaces."
+            "body": "A discrete reward function."
           },
           {
             "id": "c",
@@ -2390,16 +2390,16 @@
           {
             "id": "d",
             "label": "D",
-            "body": "A discrete reward function."
+            "body": "Discrete action spaces."
           }
         ],
-        "correctChoiceId": "b",
+        "correctChoiceId": "a",
         "hint": "Think about the precise definition before picking.",
         "explanation": "Without continuous a, you can't take \u2207_a Q; without differentiable Q (e.g., a critic network), you can't propagate.",
         "wrongAnswerExplanations": {
-          "a": "DPG specifically targets continuous control.",
+          "b": "Rewards can be continuous.",
           "c": "DPG is model-free.",
-          "d": "Rewards can be continuous."
+          "d": "DPG specifically targets continuous control."
         },
         "difficulty": "hard",
         "source": {
@@ -2421,26 +2421,26 @@
           {
             "id": "b",
             "label": "B",
-            "body": "To eliminate duplicates."
+            "body": "To balance positive and negative rewards."
           },
           {
             "id": "c",
             "label": "C",
-            "body": "To focus learning on transitions where the model is currently wrong."
+            "body": "To eliminate duplicates."
           },
           {
             "id": "d",
             "label": "D",
-            "body": "To balance positive and negative rewards."
+            "body": "To focus learning on transitions where the model is currently wrong."
           }
         ],
-        "correctChoiceId": "c",
+        "correctChoiceId": "d",
         "hint": "Think about the precise definition before picking.",
         "explanation": "High-error transitions carry more learning signal; importance-sampling weights correct the resulting bias.",
         "wrongAnswerExplanations": {
           "a": "Buffer is a ring; prioritization affects sampling probability.",
-          "b": "Duplicates may still appear.",
-          "d": "Reward sign isn't the criterion."
+          "b": "Reward sign isn't the criterion.",
+          "c": "Duplicates may still appear."
         },
         "difficulty": "hard",
         "source": {
@@ -2457,7 +2457,7 @@
           {
             "id": "a",
             "label": "A",
-            "body": "0"
+            "body": "\u03b3"
           },
           {
             "id": "b",
@@ -2472,16 +2472,16 @@
           {
             "id": "d",
             "label": "D",
-            "body": "\u03b3"
+            "body": "0"
           }
         ],
-        "correctChoiceId": "a",
+        "correctChoiceId": "d",
         "hint": "Think about the precise definition before picking.",
         "explanation": "No future reward and \u03b3 \u00d7 0 = 0 means v(absorbing) = 0 exactly.",
         "wrongAnswerExplanations": {
+          "a": "Discount alone doesn't define value.",
           "b": "Would require future reward of 1/(1\u2212\u03b3).",
-          "c": "Only with infinite negative reward, which isn't given.",
-          "d": "Discount alone doesn't define value."
+          "c": "Only with infinite negative reward, which isn't given."
         },
         "difficulty": "hard",
         "source": {
@@ -2498,17 +2498,17 @@
           {
             "id": "a",
             "label": "A",
-            "body": "SARSA cannot diverge."
+            "body": "SARSA uses larger learning rates."
           },
           {
             "id": "b",
             "label": "B",
-            "body": "SARSA ignores rewards."
+            "body": "SARSA cannot diverge."
           },
           {
             "id": "c",
             "label": "C",
-            "body": "SARSA uses larger learning rates."
+            "body": "SARSA ignores rewards."
           },
           {
             "id": "d",
@@ -2520,9 +2520,9 @@
         "hint": "Think about the precise definition before picking.",
         "explanation": "Q-learning targets the optimal policy and pushes toward the cliff edge during \u03b5-greedy exploration; SARSA's on-policy target encourages a safer detour.",
         "wrongAnswerExplanations": {
-          "a": "Tabular Q-learning is also stable.",
-          "b": "Both methods use rewards.",
-          "c": "LR is independent."
+          "a": "LR is independent.",
+          "b": "Tabular Q-learning is also stable.",
+          "c": "Both methods use rewards."
         },
         "difficulty": "hard",
         "source": {

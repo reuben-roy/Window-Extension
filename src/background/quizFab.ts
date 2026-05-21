@@ -43,6 +43,53 @@ export function shouldDebounceQuizFabSurface(
   return elapsed < QUIZ_FAB_SURFACE_COOLDOWN_MS;
 }
 
+function getQuizFabContentScriptFiles(): string[] {
+  const entries = chrome.runtime.getManifest().content_scripts ?? [];
+  const quizFabEntry = entries.find((entry) =>
+    entry.js?.some((file) => file.includes('quizFab')),
+  );
+  return quizFabEntry?.js ?? [];
+}
+
+/** Inject quiz FAB content script into tabs that were open before install/update. */
+export async function ensureQuizFabContentScript(tabId: number): Promise<void> {
+  const files = getQuizFabContentScriptFiles();
+  if (files.length === 0 || !chrome.scripting?.executeScript) {
+    return;
+  }
+
+  try {
+    await chrome.scripting.executeScript({
+      target: { tabId },
+      files,
+    });
+  } catch {
+    // Tab may not allow injection (chrome://, PDF viewer, etc.).
+  }
+}
+
+async function pushQuizFabSessionToTab(tabId: number, session: QuizFabSession): Promise<void> {
+  try {
+    await chrome.tabs.sendMessage(tabId, {
+      type: 'QUIZ_FAB_SYNC',
+      payload: session,
+    });
+    return;
+  } catch {
+    // Manifest content scripts are not present on tabs that were already open.
+  }
+
+  await ensureQuizFabContentScript(tabId);
+  try {
+    await chrome.tabs.sendMessage(tabId, {
+      type: 'QUIZ_FAB_SYNC',
+      payload: session,
+    });
+  } catch {
+    // storage.onChanged in the content script applies once it starts.
+  }
+}
+
 export async function syncQuizFabToTabs(input: {
   visible: boolean;
   topicLabel: string | null;
@@ -67,14 +114,7 @@ export async function syncQuizFabToTabs(input: {
     if (typeof tab.id !== 'number' || !isInjectableTabUrl(tab.url)) {
       continue;
     }
-    try {
-      await chrome.tabs.sendMessage(tab.id, {
-        type: 'QUIZ_FAB_SYNC',
-        payload: session,
-      });
-    } catch {
-      // Content script may not be loaded yet; storage listener will apply on inject.
-    }
+    await pushQuizFabSessionToTab(tab.id, session);
   }
 }
 
@@ -113,14 +153,7 @@ async function reapplyQuizFabToTab(tabId: number, url: string | undefined): Prom
   if (!session?.visible || !isInjectableTabUrl(url)) {
     return;
   }
-  try {
-    await chrome.tabs.sendMessage(tabId, {
-      type: 'QUIZ_FAB_SYNC',
-      payload: session,
-    });
-  } catch {
-    // Content script not ready.
-  }
+  await pushQuizFabSessionToTab(tabId, session);
 }
 
 function openQuizSurfaceForTab(tabId: number, persistentPanelEnabled: boolean): void {

@@ -13,7 +13,9 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
-    "import:learning-quizzes": "node scripts/import_learning_quizzes.mjs"
+    "import:learning-quizzes": "node scripts/import_learning_quizzes.mjs",
+    "validate:quiz-banks": "node scripts/validate_quiz_banks.mjs",
+    "author:learning-quizzes": "python3 scripts/author_learning_quizzes.py"
   },
   "dependencies": {
     "@prisma/client": "^6.7.0",

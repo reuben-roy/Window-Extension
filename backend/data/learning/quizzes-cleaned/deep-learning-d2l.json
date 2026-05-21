@@ -1,0 +1,2615 @@
+{
+  "book": {
+    "title": "Dive into Deep Learning",
+    "parentTopic": "AI & Machine Learning",
+    "subtopic": "Deep Learning",
+    "slug": "deep-learning-d2l",
+    "sourceUrl": "https://d2l.ai/",
+    "pdfSha256": ""
+  },
+  "chapterCount": 19,
+  "conceptCount": 60,
+  "chapters": [
+    {
+      "ordinal": 1,
+      "title": "Neural Networks",
+      "startPage": 1,
+      "endPage": 1,
+      "path": ""
+    },
+    {
+      "ordinal": 2,
+      "title": "Forward Pass",
+      "startPage": 1,
+      "endPage": 1,
+      "path": ""
+    },
+    {
+      "ordinal": 3,
+      "title": "Backpropagation",
+      "startPage": 1,
+      "endPage": 1,
+      "path": ""
+    },
+    {
+      "ordinal": 4,
+      "title": "Convolutions",
+      "startPage": 1,
+      "endPage": 1,
+      "path": ""
+    },
+    {
+      "ordinal": 5,
+      "title": "RNNs",
+      "startPage": 1,
+      "endPage": 1,
+      "path": ""
+    },
+    {
+      "ordinal": 6,
+      "title": "Optimization",
+      "startPage": 1,
+      "endPage": 1,
+      "path": ""
+    },
+    {
+      "ordinal": 7,
+      "title": "Regularization",
+      "startPage": 1,
+      "endPage": 1,
+      "path": ""
+    },
+    {
+      "ordinal": 8,
+      "title": "Training",
+      "startPage": 1,
+      "endPage": 1,
+      "path": ""
+    },
+    {
+      "ordinal": 9,
+      "title": "Normalization",
+      "startPage": 1,
+      "endPage": 1,
+      "path": ""
+    },
+    {
+      "ordinal": 10,
+      "title": "Embeddings",
+      "startPage": 1,
+      "endPage": 1,
+      "path": ""
+    },
+    {
+      "ordinal": 11,
+      "title": "Initialization",
+      "startPage": 1,
+      "endPage": 1,
+      "path": ""
+    },
+    {
+      "ordinal": 12,
+      "title": "Architectures",
+      "startPage": 1,
+      "endPage": 1,
+      "path": ""
+    },
+    {
+      "ordinal": 13,
+      "title": "Attention",
+      "startPage": 1,
+      "endPage": 1,
+      "path": ""
+    },
+    {
+      "ordinal": 14,
+      "title": "Generative Models",
+      "startPage": 1,
+      "endPage": 1,
+      "path": ""
+    },
+    {
+      "ordinal": 15,
+      "title": "Representation Learning",
+      "startPage": 1,
+      "endPage": 1,
+      "path": ""
+    },
+    {
+      "ordinal": 16,
+      "title": "Transformers",
+      "startPage": 1,
+      "endPage": 1,
+      "path": ""
+    },
+    {
+      "ordinal": 17,
+      "title": "Generalization",
+      "startPage": 1,
+      "endPage": 1,
+      "path": ""
+    },
+    {
+      "ordinal": 18,
+      "title": "Sequence Models",
+      "startPage": 1,
+      "endPage": 1,
+      "path": ""
+    },
+    {
+      "ordinal": 19,
+      "title": "Hardware",
+      "startPage": 1,
+      "endPage": 1,
+      "path": ""
+    }
+  ],
+  "quizzes": {
+    "easy": [
+      {
+        "prompt": "A single artificial neuron (perceptron) computes its output by\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Forming a weighted sum of inputs plus bias, then applying an activation function."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Sorting inputs and returning the median value."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Multiplying all inputs together without any bias term."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Counting how many inputs are nonzero, with no weights."
+          }
+        ],
+        "correctChoiceId": "a",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "y = \u03c3(w\u1d40x + b) is the basic unit; depth stacks many such units with nonlinear \u03c3.",
+        "wrongAnswerExplanations": {
+          "b": "Neurons use learned weights, not order statistics.",
+          "c": "Affine transforms use sums and bias, not products alone.",
+          "d": "That ignores continuous features and learned parameters."
+        },
+        "difficulty": "easy",
+        "source": {
+          "term": "",
+          "chapterTitle": "Neural Networks"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 1,
+        "cleanedOrdinal": 1
+      },
+      {
+        "prompt": "Stacking multiple hidden layers in a feedforward network primarily enables\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Guaranteed convex optimization of the loss."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Hierarchical feature composition through repeated nonlinear transforms."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Eliminating the need for any labeled data."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Fixed-size outputs regardless of input dimension."
+          }
+        ],
+        "correctChoiceId": "b",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Each layer builds increasingly abstract representations; depth adds expressive power beyond a single layer.",
+        "wrongAnswerExplanations": {
+          "a": "Deep nets are generally non-convex in their parameters.",
+          "c": "Supervised deep learning still needs labels for training.",
+          "d": "Architecture must match input/output shapes."
+        },
+        "difficulty": "easy",
+        "source": {
+          "term": "",
+          "chapterTitle": "Neural Networks"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 2,
+        "cleanedOrdinal": 2
+      },
+      {
+        "prompt": "During forward propagation in a feedforward network, each layer\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Updates weights using gradients from the next batch."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Transforms the previous layer's activations into new activations until the output layer."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Randomly permutes training labels."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Computes validation accuracy without using inputs."
+          }
+        ],
+        "correctChoiceId": "b",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Forward pass is inference through the computation graph: inputs flow toward predictions.",
+        "wrongAnswerExplanations": {
+          "a": "Weight updates happen after backward pass, not during forward.",
+          "c": "Labels are fixed targets; forward pass uses features.",
+          "d": "Predictions require passing inputs through the network."
+        },
+        "difficulty": "easy",
+        "source": {
+          "term": "",
+          "chapterTitle": "Forward Pass"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 3,
+        "cleanedOrdinal": 3
+      },
+      {
+        "prompt": "Backpropagation through a deep network applies the chain rule to\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Propagate loss gradients backward through each layer's local Jacobians."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Cluster unlabeled examples into k groups."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Normalize pixel values to unit variance only at test time."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Select hyperparameters without computing any derivatives."
+          }
+        ],
+        "correctChoiceId": "a",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Reverse-mode autodiff multiplies \u2202L/\u2202(layer output) by \u2202(layer output)/\u2202(parameters) at each step.",
+        "wrongAnswerExplanations": {
+          "b": "Clustering is unsupervised; backprop computes supervised gradients.",
+          "c": "Normalization is preprocessing, not gradient propagation.",
+          "d": "Backprop explicitly computes derivatives for learning."
+        },
+        "difficulty": "easy",
+        "source": {
+          "term": "",
+          "chapterTitle": "Backpropagation"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 4,
+        "cleanedOrdinal": 4
+      },
+      {
+        "prompt": "Compared with a fully connected layer on images, convolution uses\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Fixed random filters that are never learned from data."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Local receptive fields and shared filters slid across spatial positions."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "A separate unique weight for every input\u2013output pair globally."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Only 1\u00d71 kernels that never mix neighboring pixels."
+          }
+        ],
+        "correctChoiceId": "b",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Local connectivity and weight sharing exploit spatial structure and reduce parameters.",
+        "wrongAnswerExplanations": {
+          "a": "Conv filters are learned parameters.",
+          "c": "That describes a dense layer on flattened pixels.",
+          "d": "Typical conv kernels (3\u00d73, 5\u00d75) mix local neighborhoods."
+        },
+        "difficulty": "easy",
+        "source": {
+          "term": "",
+          "chapterTitle": "Convolutions"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 5,
+        "cleanedOrdinal": 5
+      },
+      {
+        "prompt": "Stride greater than 1 in a convolutional layer\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Downsamples the spatial resolution of the feature map."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Increases channel depth without changing height or width."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Applies the same filter only once at the image center."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Removes the need for any activation function."
+          }
+        ],
+        "correctChoiceId": "a",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Stride s moves the kernel s pixels per step, producing smaller H\u00d7W outputs.",
+        "wrongAnswerExplanations": {
+          "b": "Channel depth is set by number of filters, not stride alone.",
+          "c": "Conv slides across the input grid (subject to padding).",
+          "d": "Activations remain important for nonlinearity."
+        },
+        "difficulty": "easy",
+        "source": {
+          "term": "",
+          "chapterTitle": "Convolutions"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 6,
+        "cleanedOrdinal": 6
+      },
+      {
+        "prompt": "Zero-padding around an image before convolution is commonly used to\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Control output spatial size (e.g., preserve dimensions with 'same' padding)."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Guarantee that training loss is exactly zero."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Convert RGB images to grayscale automatically."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Replace backpropagation with a closed-form solution."
+          }
+        ],
+        "correctChoiceId": "a",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Padding adds border pixels so kernels can be applied at edges without shrinking excessively.",
+        "wrongAnswerExplanations": {
+          "b": "Padding affects geometry, not optimality of loss.",
+          "c": "Channel reduction is a separate preprocessing choice.",
+          "d": "Training still uses gradient-based learning."
+        },
+        "difficulty": "easy",
+        "source": {
+          "term": "",
+          "chapterTitle": "Convolutions"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 7,
+        "cleanedOrdinal": 7
+      },
+      {
+        "prompt": "Max pooling over a 2\u00d72 window with stride 2 typically\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Computes a weighted sum of all pixels in the image."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Halves height and width while keeping the strongest local response per region."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Applies a learnable 3\u00d73 kernel at every position."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Doubles the number of input channels."
+          }
+        ],
+        "correctChoiceId": "b",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Max pool selects the maximum activation in each window, downsampling spatially.",
+        "wrongAnswerExplanations": {
+          "a": "That is closer to global average pooling over the whole map.",
+          "c": "Pooling has no learnable weights (unlike conv).",
+          "d": "Pooling reduces spatial size; channel count is unchanged unless followed by conv."
+        },
+        "difficulty": "easy",
+        "source": {
+          "term": "",
+          "chapterTitle": "Convolutions"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 8,
+        "cleanedOrdinal": 8
+      },
+      {
+        "prompt": "At each time step t, a vanilla RNN combines\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Independent parallel predictions with no shared parameters across time."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "The current input x_t with the previous hidden state h_{t\u22121} to produce h_t."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "The entire future sequence x_{t+1}, \u2026 before seeing x_t."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Only x_t, with no memory of earlier steps."
+          }
+        ],
+        "correctChoiceId": "b",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "h_t = f(W_h h_{t\u22121} + W_x x_t + b) recurs over time, carrying summarized history.",
+        "wrongAnswerExplanations": {
+          "a": "RNNs share weights across time steps.",
+          "c": "Causal RNNs do not use future inputs at step t.",
+          "d": "That would be a feedforward model per step, not an RNN."
+        },
+        "difficulty": "easy",
+        "source": {
+          "term": "",
+          "chapterTitle": "RNNs"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 9,
+        "cleanedOrdinal": 9
+      },
+      {
+        "prompt": "Backpropagation through time (BPTT) on an RNN\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Propagates gradients only through the final time step."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Unrolls the recurrent computation over T steps and applies backprop on that graph."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Eliminates gradients by detaching all hidden states."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Trains each time step with a separate unrelated network."
+          }
+        ],
+        "correctChoiceId": "b",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "BPTT treats the unfolded chain as a deep feedforward net through time.",
+        "wrongAnswerExplanations": {
+          "a": "Earlier steps receive gradients via recurrent connections.",
+          "c": "Detaching stops BPTT; standard training keeps the graph connected.",
+          "d": "Shared weights tie steps together in one model."
+        },
+        "difficulty": "easy",
+        "source": {
+          "term": "",
+          "chapterTitle": "RNNs"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 10,
+        "cleanedOrdinal": 10
+      },
+      {
+        "prompt": "If the learning rate is far too large during SGD training, you often observe\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Gradients that are always exactly zero."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Instant convergence to zero loss in one iteration."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Oscillating or diverging loss instead of stable descent."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Automatic doubling of dataset size each epoch."
+          }
+        ],
+        "correctChoiceId": "c",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Oversized steps overshoot minima and can explode activations and weights.",
+        "wrongAnswerExplanations": {
+          "a": "That suggests vanishing gradients or a bug, not high LR alone.",
+          "b": "Oversized steps rarely find a good minimum immediately.",
+          "d": "Learning rate does not change the dataset."
+        },
+        "difficulty": "easy",
+        "source": {
+          "term": "",
+          "chapterTitle": "Optimization"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 11,
+        "cleanedOrdinal": 11
+      },
+      {
+        "prompt": "A mini-batch gradient update uses\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "The exact full-dataset gradient every single step."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "The average gradient over a subset of examples (batch size B)."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "One randomly chosen weight dimension per step only."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "No stochasticity \u2014 only deterministic closed-form solves."
+          }
+        ],
+        "correctChoiceId": "b",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Mini-batches balance noise and throughput: \u2207 \u2248 (1/B) \u03a3\u1d62 \u2207\u2113\u1d62.",
+        "wrongAnswerExplanations": {
+          "a": "That is full-batch gradient descent.",
+          "c": "SGD updates use gradients for all parameters.",
+          "d": "Mini-batch SGD is inherently stochastic."
+        },
+        "difficulty": "easy",
+        "source": {
+          "term": "",
+          "chapterTitle": "Optimization"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 12,
+        "cleanedOrdinal": 12
+      },
+      {
+        "prompt": "At inference time, dropout is typically handled by\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Randomly zeroing half the neurons on every test example."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Doubling the learning rate for each layer."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Disabling dropout (or equivalently using the expected scaling used during training)."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Removing all nonlinear activation functions."
+          }
+        ],
+        "correctChoiceId": "c",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Dropout is a training-time stochastic regularizer; the full network is used at test time.",
+        "wrongAnswerExplanations": {
+          "a": "That would inject noise into predictions at deployment.",
+          "b": "Learning rate is not applied during inference.",
+          "d": "Activations remain; only dropout masks stop."
+        },
+        "difficulty": "easy",
+        "source": {
+          "term": "",
+          "chapterTitle": "Regularization"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 13,
+        "cleanedOrdinal": 13
+      },
+      {
+        "prompt": "Data augmentation for images (random crops, flips) helps generalization by\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Replacing the loss function with unsupervised clustering."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Guaranteeing that test images are identical to training images."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Exposing the model to plausible label-preserving variations during training."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Reducing the number of unique parameters to zero."
+          }
+        ],
+        "correctChoiceId": "c",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Augmentation simulates more diverse inputs without collecting new labels.",
+        "wrongAnswerExplanations": {
+          "a": "Augmentation keeps supervised labels on transformed inputs.",
+          "b": "Test data should remain unseen; augmentation diversifies train only.",
+          "d": "Augmentation does not remove parameters."
+        },
+        "difficulty": "easy",
+        "source": {
+          "term": "",
+          "chapterTitle": "Regularization"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 14,
+        "cleanedOrdinal": 14
+      },
+      {
+        "prompt": "Transfer learning in vision often starts by\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Removing all convolutional layers and using only pooling."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Freezing the loss function so it never changes."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Using weights pretrained on a large dataset, then fine-tuning on the target task."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Training from random initialization only on three images."
+          }
+        ],
+        "correctChoiceId": "c",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Pretrained features (e.g., on ImageNet) provide strong low-level filters for new tasks.",
+        "wrongAnswerExplanations": {
+          "a": "Conv layers carry most transferable features.",
+          "b": "The loss is fixed by task; weights are what adapt.",
+          "d": "Too little data; pretraining supplies useful representations."
+        },
+        "difficulty": "easy",
+        "source": {
+          "term": "",
+          "chapterTitle": "Training"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 15,
+        "cleanedOrdinal": 15
+      },
+      {
+        "prompt": "A flatten (reshape) layer before a classifier head\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Performs max pooling across the entire dataset."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Converts a convolutional feature map tensor into a 1D vector for dense layers."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Encodes positional information with sinusoids."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Applies a 3\u00d73 convolution with stride 2."
+          }
+        ],
+        "correctChoiceId": "b",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "After conv blocks, H\u00d7W\u00d7C features are vectorized for fully connected classification.",
+        "wrongAnswerExplanations": {
+          "a": "Pooling operates on spatial maps, not batch-level flatten.",
+          "c": "That describes transformer positional encodings.",
+          "d": "Flatten does not convolve; it reshapes."
+        },
+        "difficulty": "easy",
+        "source": {
+          "term": "",
+          "chapterTitle": "Neural Networks"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 16,
+        "cleanedOrdinal": 16
+      },
+      {
+        "prompt": "Residual (skip) connections in ResNet add\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "A second softmax over all hidden units."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Random noise sampled from the training labels."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "The layer's input to its transformed output: y = F(x) + x."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "The loss value directly to every weight matrix."
+          }
+        ],
+        "correctChoiceId": "c",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Identity shortcuts let gradients flow across blocks and ease optimization of very deep nets.",
+        "wrongAnswerExplanations": {
+          "a": "Softmax is typically an output activation, not a skip connection.",
+          "b": "Skip connections add activations, not label noise.",
+          "d": "Loss affects updates via gradients, not additive skip paths."
+        },
+        "difficulty": "easy",
+        "source": {
+          "term": "",
+          "chapterTitle": "Neural Networks"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 17,
+        "cleanedOrdinal": 17
+      },
+      {
+        "prompt": "One training iteration (step) usually means\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "One random shuffle of the filesystem directory tree."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "One parameter update from one mini-batch (forward + backward + optimizer step)."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "One evaluation pass over the test set only."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "One complete pass through the entire training set."
+          }
+        ],
+        "correctChoiceId": "b",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Iteration counts optimizer steps; epoch counts full passes over the training data.",
+        "wrongAnswerExplanations": {
+          "a": "Shuffling data may happen, but an iteration is an update step.",
+          "c": "Evaluation does not perform training updates.",
+          "d": "That is one epoch, not one iteration."
+        },
+        "difficulty": "easy",
+        "source": {
+          "term": "",
+          "chapterTitle": "Training"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 18,
+        "cleanedOrdinal": 18
+      },
+      {
+        "prompt": "Weight decay in modern deep learning optimizers typically\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Replaces gradients with zero vectors."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Shrinks weights each step (often decoupled from the loss penalty in AdamW)."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Randomly deletes entire layers each epoch."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Increases weight magnitudes to fight underfitting always."
+          }
+        ],
+        "correctChoiceId": "b",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Decay adds a proportional shrinkage toward zero, improving generalization.",
+        "wrongAnswerExplanations": {
+          "a": "Gradients still drive learning; decay is an extra term.",
+          "c": "That would be structural pruning, not weight decay.",
+          "d": "Decay penalizes large weights; capacity is controlled elsewhere."
+        },
+        "difficulty": "easy",
+        "source": {
+          "term": "",
+          "chapterTitle": "Optimization"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 19,
+        "cleanedOrdinal": 19
+      },
+      {
+        "prompt": "An RGB image fed into the first conv layer is usually represented as a tensor with shape\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "A single scalar brightness value only."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Sequence length \u00d7 vocabulary size like text tokens."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "3 \u00d7 3 weight matrix shared across all datasets globally."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Height \u00d7 Width \u00d7 3 channels (batch dimension added for mini-batches)."
+          }
+        ],
+        "correctChoiceId": "d",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Color images have three channel maps (R, G, B) aligned spatially.",
+        "wrongAnswerExplanations": {
+          "a": "Images are spatial grids, not one number.",
+          "b": "That is typical NLP input layout, not raw images.",
+          "c": "3\u00d73 may be kernel size; channels are separate feature maps."
+        },
+        "difficulty": "easy",
+        "source": {
+          "term": "",
+          "chapterTitle": "Convolutions"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 20,
+        "cleanedOrdinal": 20
+      }
+    ],
+    "medium": [
+      {
+        "prompt": "Stacking two 3\u00d73 convolution layers (stride 1, same padding) yields an effective receptive field of\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "5\u00d75 on the input (each 3\u00d73 stack expands reach by 2 pixels per side)."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "1\u00d71 because kernels are small."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "3\u00d73 only \u2014 depth does not increase receptive field."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "7\u00d77 after one layer."
+          }
+        ],
+        "correctChoiceId": "a",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Receptive field grows with depth: two 3\u00d73 layers see a 5\u00d75 patch of the original grid.",
+        "wrongAnswerExplanations": {
+          "b": "Small kernels still aggregate context when stacked.",
+          "c": "Each conv layer expands the region of input influencing an output.",
+          "d": "Two 3\u00d73 layers reach 5\u00d75, not 7\u00d77."
+        },
+        "difficulty": "medium",
+        "source": {
+          "term": "",
+          "chapterTitle": "Convolutions"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 1,
+        "cleanedOrdinal": 1
+      },
+      {
+        "prompt": "A 1\u00d71 convolution primarily\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Mixes channels at each spatial location without enlarging the receptive field."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Embeds word tokens into continuous vectors."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Convolves a large 7\u00d77 neighborhood at every pixel."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Pools spatial dimensions by taking the maximum."
+          }
+        ],
+        "correctChoiceId": "a",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "1\u00d71 conv is channel-wise linear combination \u2014 useful for bottlenecks (e.g., Inception, ResNet).",
+        "wrongAnswerExplanations": {
+          "b": "That is an embedding layer in NLP.",
+          "c": "1\u00d71 kernels do not look at spatial neighbors.",
+          "d": "Pooling downsamples; 1\u00d71 conv does not."
+        },
+        "difficulty": "medium",
+        "source": {
+          "term": "",
+          "chapterTitle": "Convolutions"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 2,
+        "cleanedOrdinal": 2
+      },
+      {
+        "prompt": "Dilated (atrous) convolution increases receptive field by\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Spacing kernel taps with gaps (dilation rate) without adding more parameters."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Using only 1\u00d71 kernels exclusively."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Duplicating every filter across all datasets."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Removing nonlinear activations between layers."
+          }
+        ],
+        "correctChoiceId": "a",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Dilation r inserts r\u22121 zeros between kernel elements, expanding context per layer.",
+        "wrongAnswerExplanations": {
+          "b": "Dilation applies to larger kernels (e.g., 3\u00d73 dilated).",
+          "c": "Dilation is an architectural spacing trick, not data copying.",
+          "d": "Activations are independent of dilation."
+        },
+        "difficulty": "medium",
+        "source": {
+          "term": "",
+          "chapterTitle": "Convolutions"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 3,
+        "cleanedOrdinal": 3
+      },
+      {
+        "prompt": "Batch normalization during training normalizes activations using\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Fixed constants set once before any training."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Gradients of the loss with respect to labels."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Statistics from the entire test set only."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Mean and variance computed over the current mini-batch (per channel)."
+          }
+        ],
+        "correctChoiceId": "d",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "BN uses batch statistics \u03bc_B, \u03c3_B then learns affine scale/shift \u03b3, \u03b2.",
+        "wrongAnswerExplanations": {
+          "a": "Batch stats change each step.",
+          "b": "BN normalizes activations, not label gradients.",
+          "c": "Test stats are not used for train-time normalization."
+        },
+        "difficulty": "medium",
+        "source": {
+          "term": "",
+          "chapterTitle": "Normalization"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 4,
+        "cleanedOrdinal": 4
+      },
+      {
+        "prompt": "Gradient clipping (by global norm) is used mainly to\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Increase learning rate automatically every iteration."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Replace Adam with full-batch Newton steps."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Force all gradients to be exactly zero."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Cap the magnitude of the update when recurrent or deep nets risk exploding gradients."
+          }
+        ],
+        "correctChoiceId": "d",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "If \u2016g\u2016 > \u03c4, scale g \u2190 \u03c4\u00b7g/\u2016g\u2016 to prevent destabilizing parameter jumps.",
+        "wrongAnswerExplanations": {
+          "a": "Clipping bounds steps; LR schedules are separate.",
+          "b": "Clipping is orthogonal to optimizer choice.",
+          "c": "Clipping limits large gradients, it does not zero all learning."
+        },
+        "difficulty": "medium",
+        "source": {
+          "term": "",
+          "chapterTitle": "Optimization"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 5,
+        "cleanedOrdinal": 5
+      },
+      {
+        "prompt": "Cosine annealing of the learning rate\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Keeps \u03b7 constant forever after the first step."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Doubles \u03b7 whenever validation loss increases."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Sets every weight to zero at epoch 10."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Smoothly decreases \u03b7 following a cosine curve over training epochs."
+          }
+        ],
+        "correctChoiceId": "d",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Cosine schedules decay LR toward a minimum, often helping late-stage fine convergence.",
+        "wrongAnswerExplanations": {
+          "a": "Annealing means \u03b7 changes over time.",
+          "b": "That is not the cosine schedule pattern.",
+          "c": "LR schedules adjust step size, not zero all weights."
+        },
+        "difficulty": "medium",
+        "source": {
+          "term": "",
+          "chapterTitle": "Optimization"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 6,
+        "cleanedOrdinal": 6
+      },
+      {
+        "prompt": "In an LSTM, the forget gate controls\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "How much of the previous cell state c_{t\u22121} is retained versus erased."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Which optimizer (Adam vs SGD) is selected."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "The RGB channel order of input images."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "The number of layers in a ResNet backbone."
+          }
+        ],
+        "correctChoiceId": "a",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "f_t = \u03c3(W_f\u00b7[h_{t\u22121}, x_t]) scales c_{t\u22121} before adding new content.",
+        "wrongAnswerExplanations": {
+          "b": "Gates are part of the RNN dynamics, not optimizer choice.",
+          "c": "LSTMs operate on sequences, not image channel layout.",
+          "d": "That is CNN architecture design."
+        },
+        "difficulty": "medium",
+        "source": {
+          "term": "",
+          "chapterTitle": "RNNs"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 7,
+        "cleanedOrdinal": 7
+      },
+      {
+        "prompt": "A GRU compared with an LSTM\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Cannot model sequences longer than three steps."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Merges forget and input gating into update and reset gates with fewer parameters."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Uses only convolutional kernels over time."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Requires a separate cell state c_t distinct from h_t always."
+          }
+        ],
+        "correctChoiceId": "b",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "GRUs are a streamlined gated RNN often competitive with LSTMs on many tasks.",
+        "wrongAnswerExplanations": {
+          "a": "GRUs handle long sequences (subject to training stability).",
+          "c": "GRUs are recurrent, not purely convolutional over time.",
+          "d": "GRU combines state into hidden update without separate cell."
+        },
+        "difficulty": "medium",
+        "source": {
+          "term": "",
+          "chapterTitle": "RNNs"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 8,
+        "cleanedOrdinal": 8
+      },
+      {
+        "prompt": "Teacher forcing during RNN training means\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Disabling backpropagation through time entirely."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Feeding ground-truth previous tokens as inputs instead of the model's own predictions."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Using only unlabeled data for the loss."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Forcing the learning rate to zero after each epoch."
+          }
+        ],
+        "correctChoiceId": "b",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Teacher forcing speeds convergence but can cause exposure bias at inference.",
+        "wrongAnswerExplanations": {
+          "a": "BPTT still runs; inputs are gold prefixes.",
+          "c": "Seq2seq with teacher forcing is supervised on targets.",
+          "d": "Teacher forcing concerns input feeding, not LR."
+        },
+        "difficulty": "medium",
+        "source": {
+          "term": "",
+          "chapterTitle": "RNNs"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 9,
+        "cleanedOrdinal": 9
+      },
+      {
+        "prompt": "A word embedding layer maps each token index to\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "A fixed 7\u00d77 convolutional filter bank."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "The probability of the next TCP packet."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "A learned dense vector in \u211d^d used as input to downstream layers."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "A one-hot vector of length equal to vocabulary with no learning."
+          }
+        ],
+        "correctChoiceId": "c",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Embeddings are lookup tables W[idx] trained end-to-end with the task loss.",
+        "wrongAnswerExplanations": {
+          "a": "Embeddings are for discrete tokens, not image filters.",
+          "b": "That is networking, not NLP representations.",
+          "d": "One-hot is sparse baseline; embeddings are dense and learned."
+        },
+        "difficulty": "medium",
+        "source": {
+          "term": "",
+          "chapterTitle": "Embeddings"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 10,
+        "cleanedOrdinal": 10
+      },
+      {
+        "prompt": "Label smoothing for classification replaces hard 0/1 targets with\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Soft targets (e.g., (1\u2212\u03b5) on the true class and \u03b5 spread over others)."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "All-zero targets for every class."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Random permutation of input pixels only."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Exact duplicate copies of the test set labels."
+          }
+        ],
+        "correctChoiceId": "a",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Smoothing discourages overconfident logits and can improve calibration.",
+        "wrongAnswerExplanations": {
+          "b": "Targets must remain a valid distribution.",
+          "c": "That is image augmentation, not label smoothing.",
+          "d": "Test labels must never leak into training targets."
+        },
+        "difficulty": "medium",
+        "source": {
+          "term": "",
+          "chapterTitle": "Regularization"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 11,
+        "cleanedOrdinal": 11
+      },
+      {
+        "prompt": "He (Kaiming) initialization is tailored for ReLU networks because it scales variance by\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Using the global dataset mean as each weight."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "fan-in (or fan-out for forward/backward balance) assuming half the activations are zeroed."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Initializing all biases to large positive values only."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Always setting every weight to exactly 1.0."
+          }
+        ],
+        "correctChoiceId": "b",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Var(w) \u2248 2/fan_in compensates for ReLU killing half the activations on average.",
+        "wrongAnswerExplanations": {
+          "a": "Init uses architectural fan-in, not data means.",
+          "c": "Bias init is usually small/zero; variance scaling targets weights.",
+          "d": "He init samples from a distribution, not a constant."
+        },
+        "difficulty": "medium",
+        "source": {
+          "term": "",
+          "chapterTitle": "Initialization"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 12,
+        "cleanedOrdinal": 12
+      },
+      {
+        "prompt": "Depthwise separable convolution factorizes a standard conv into\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "A fully connected layer on flattened pixels only."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Random Fourier features of the loss landscape."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Only average pooling with no learnable parameters."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Depthwise spatial conv per channel, then 1\u00d71 pointwise mixing across channels."
+          }
+        ],
+        "correctChoiceId": "d",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Separable conv cuts compute (MobileNet) by decoupling spatial and channel mixing.",
+        "wrongAnswerExplanations": {
+          "a": "Separable conv keeps spatial structure.",
+          "b": "That is unrelated to separable conv factorization.",
+          "c": "Separable conv still has learnable depthwise and pointwise ops."
+        },
+        "difficulty": "medium",
+        "source": {
+          "term": "",
+          "chapterTitle": "Convolutions"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 13,
+        "cleanedOrdinal": 13
+      },
+      {
+        "prompt": "Transposed convolution (often called 'deconv') is used to\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Remove all parameters from the network."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Compute exact matrix inverse of the weight matrix."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Apply max pooling with stride 2."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Upsample feature maps (learned upsampling), e.g., in decoders and segmentation heads."
+          }
+        ],
+        "correctChoiceId": "d",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Transposed conv inserts stride gaps then convolves, increasing spatial resolution.",
+        "wrongAnswerExplanations": {
+          "a": "Transposed conv layers have learnable kernels.",
+          "b": "It is not a literal matrix inverse operation.",
+          "c": "Pooling downsamples; transposed conv upsamples."
+        },
+        "difficulty": "medium",
+        "source": {
+          "term": "",
+          "chapterTitle": "Convolutions"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 14,
+        "cleanedOrdinal": 14
+      },
+      {
+        "prompt": "An Inception module's parallel branches primarily allow\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Eliminating all parameters via weight sharing with labels."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Multiple filter sizes and pooling paths to be computed and concatenated in one block."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Training without any nonlinear activation."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Only a single 11\u00d711 kernel with no alternatives."
+          }
+        ],
+        "correctChoiceId": "b",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Inception captures multi-scale patterns by fusing 1\u00d71, 3\u00d73, 5\u00d75, and pool outputs.",
+        "wrongAnswerExplanations": {
+          "a": "Inception still has learnable filters per branch.",
+          "c": "Activations remain inside branches.",
+          "d": "Inception is defined by parallel multi-branch paths."
+        },
+        "difficulty": "medium",
+        "source": {
+          "term": "",
+          "chapterTitle": "Architectures"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 15,
+        "cleanedOrdinal": 15
+      },
+      {
+        "prompt": "VGG-style networks deepen using\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "No pooling or striding anywhere."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Hand-crafted Sobel edge filters frozen forever."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Only 1\u00d71 kernels with no spatial mixing."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Repeated stacks of small 3\u00d73 convolutions instead of very large kernels."
+          }
+        ],
+        "correctChoiceId": "d",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Many 3\u00d73 layers build large receptive fields with fewer parameters per layer than one huge kernel.",
+        "wrongAnswerExplanations": {
+          "a": "VGG uses pooling between blocks.",
+          "b": "VGG learns filters end-to-end.",
+          "c": "VGG famously stacks 3\u00d73 convs."
+        },
+        "difficulty": "medium",
+        "source": {
+          "term": "",
+          "chapterTitle": "Architectures"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 16,
+        "cleanedOrdinal": 16
+      },
+      {
+        "prompt": "Scaled dot-product attention computes weights as\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "softmax(QK\u1d40 / \u221ad_k) applied to V."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "sigmoid(Wx + b) on raw pixels only."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "k-means cluster assignments of batch norms."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "The determinant of the Hessian matrix."
+          }
+        ],
+        "correctChoiceId": "a",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Attention distributes a convex combination of values based on query\u2013key similarity.",
+        "wrongAnswerExplanations": {
+          "b": "That describes a perceptron, not attention.",
+          "c": "Clustering is unrelated to QKV attention.",
+          "d": "Second-order determinants are not attention scores."
+        },
+        "difficulty": "medium",
+        "source": {
+          "term": "",
+          "chapterTitle": "Attention"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 17,
+        "cleanedOrdinal": 17
+      },
+      {
+        "prompt": "A bidirectional RNN for sequence labeling\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Runs a forward and backward RNN and concatenates (or merges) their hidden states per step."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Cannot be applied to variable-length sequences."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Requires replacing all gates with 1\u00d71 convolutions only."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Uses future labels at train time by leaking test answers."
+          }
+        ],
+        "correctChoiceId": "a",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Bidirection gives each position context from both past and future inputs.",
+        "wrongAnswerExplanations": {
+          "b": "BiRNNs handle variable length with padding/masking.",
+          "c": "BiRNNs are recurrent, not purely 1\u00d71 conv.",
+          "d": "It uses future inputs, not future labels, at position t."
+        },
+        "difficulty": "medium",
+        "source": {
+          "term": "",
+          "chapterTitle": "RNNs"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 18,
+        "cleanedOrdinal": 18
+      },
+      {
+        "prompt": "Adam's bias correction for the first moments exists because\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Gradients are always zero in deep nets."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "m_t and v_t are initialized at zero, so early estimates are biased toward zero."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "The learning rate must be infinite at step 1."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Batch normalization removes all stochasticity."
+          }
+        ],
+        "correctChoiceId": "b",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Corrected m\u0302_t = m_t/(1\u2212\u03b2\u2081^t) (and similarly for v) fixes cold-start underestimation.",
+        "wrongAnswerExplanations": {
+          "a": "Adam assumes nonzero gradients on real tasks.",
+          "c": "Bias correction stabilizes early steps, not infinite \u03b7.",
+          "d": "BN and Adam address different issues."
+        },
+        "difficulty": "medium",
+        "source": {
+          "term": "",
+          "chapterTitle": "Optimization"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 19,
+        "cleanedOrdinal": 19
+      },
+      {
+        "prompt": "Mixup training regularizes by\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Linearly interpolating pairs of inputs and labels: x\u0303 = \u03bbx_i + (1\u2212\u03bb)x_j, \u1ef9 = \u03bby_i + (1\u2212\u03bb)y_j."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Setting all weights to the same constant each step."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Removing nonlinearities from every layer."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Duplicating the test set into the training folder."
+          }
+        ],
+        "correctChoiceId": "a",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Mixup encourages linear behavior between examples and smoother decision boundaries.",
+        "wrongAnswerExplanations": {
+          "b": "Mixup blends examples, it does not collapse weights.",
+          "c": "Mixup keeps standard architectures.",
+          "d": "That would leak evaluation data."
+        },
+        "difficulty": "medium",
+        "source": {
+          "term": "",
+          "chapterTitle": "Regularization"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 20,
+        "cleanedOrdinal": 20
+      }
+    ],
+    "hard": [
+      {
+        "prompt": "Reverse-mode autodiff (backprop) is especially efficient for neural nets when\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "The loss is constant for all parameters."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "No chain rule applies because activations are linear only."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Many inputs (parameters) influence few scalar outputs (loss), because one backward pass yields all \u2202L/\u2202w."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "There is only one scalar parameter and millions of outputs."
+          }
+        ],
+        "correctChoiceId": "c",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Reverse mode costs O(1) backward pass relative to forward for scalar loss \u2014 ideal for weight gradients.",
+        "wrongAnswerExplanations": {
+          "a": "Constant loss gives zero gradients \u2014 nothing to propagate.",
+          "b": "Linear stacks still use chain rule; depth without nonlinearity collapses layers.",
+          "d": "That favors forward mode, not reverse mode."
+        },
+        "difficulty": "hard",
+        "source": {
+          "term": "",
+          "chapterTitle": "Backpropagation"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 1,
+        "cleanedOrdinal": 1
+      },
+      {
+        "prompt": "Truncated BPTT (TBPTT) trades off\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Exact full-history gradients with zero memory."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Elimination of all recurrent connections."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Faithful long-range gradient flow for lower memory by backpropagating only through K unrolled steps."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Guaranteed convexity of the RNN loss in all parameters."
+          }
+        ],
+        "correctChoiceId": "c",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "TBPTT cuts the unfolded graph every K steps, approximating long-term credit assignment.",
+        "wrongAnswerExplanations": {
+          "a": "Full BPTT over T steps costs O(T) memory; TBPTT approximates.",
+          "b": "Recurrence remains; only backward horizon is shortened.",
+          "d": "RNN training remains non-convex."
+        },
+        "difficulty": "hard",
+        "source": {
+          "term": "",
+          "chapterTitle": "RNNs"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 2,
+        "cleanedOrdinal": 2
+      },
+      {
+        "prompt": "At inference, batch normalization uses running mean/variance because\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Dropout masks must be recomputed from test labels."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Mini-batch statistics would be noisy or undefined for batch size 1 and must match training scale."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Convolutions cannot run without batch size 32."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Gradients are not defined during inference."
+          }
+        ],
+        "correctChoiceId": "b",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Exponential moving averages of \u03bc, \u03c3 collected during training stabilize normalization at test time.",
+        "wrongAnswerExplanations": {
+          "a": "Dropout is off at inference; unrelated to BN stats.",
+          "c": "Conv works with any batch size; BN needs consistent stats.",
+          "d": "Inference disables grad; BN still needs stable \u03bc, \u03c3."
+        },
+        "difficulty": "hard",
+        "source": {
+          "term": "",
+          "chapterTitle": "Normalization"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 3,
+        "cleanedOrdinal": 3
+      },
+      {
+        "prompt": "Layer normalization differs from batch normalization in that layer norm\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Can only be applied to the output softmax."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Requires batch size greater than 1000 always."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Uses test-set labels to compute variance."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Normalizes across features within each example (and time step), not across the batch dimension."
+          }
+        ],
+        "correctChoiceId": "d",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Layer norm is batch-independent \u2014 preferred in transformers and variable batch RNNs.",
+        "wrongAnswerExplanations": {
+          "a": "Layer norm is used inside blocks, not only at softmax.",
+          "b": "Layer norm works with batch size 1.",
+          "c": "Norm uses activations, never labels."
+        },
+        "difficulty": "hard",
+        "source": {
+          "term": "",
+          "chapterTitle": "Normalization"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 4,
+        "cleanedOrdinal": 4
+      },
+      {
+        "prompt": "Sharpness-aware minimization (SAM) seeks parameters that\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Maximize training loss on purpose."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Have zero gradient norm everywhere exactly."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Lie in flat regions of the loss landscape (robust to small perturbations), not just low loss points."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Eliminate the need for any validation data."
+          }
+        ],
+        "correctChoiceId": "c",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "SAM approximates worst-case loss in a neighborhood, favoring wider minima linked to generalization.",
+        "wrongAnswerExplanations": {
+          "a": "SAM still minimizes loss, but penalizes sharp minima.",
+          "b": "SAM perturbs weights; gradients are generally nonzero.",
+          "d": "SAM is a training objective tweak; validation remains useful."
+        },
+        "difficulty": "hard",
+        "source": {
+          "term": "",
+          "chapterTitle": "Optimization"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 5,
+        "cleanedOrdinal": 5
+      },
+      {
+        "prompt": "Mode collapse in GAN training refers to\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Using only L2 loss on RGB pixels with no adversary."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Both networks sharing identical weights permanently."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "The discriminator always outputting exactly 0.5."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "The generator producing a small variety of outputs that fool the discriminator but lack diversity."
+          }
+        ],
+        "correctChoiceId": "d",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Collapsed generators map many z to few modes, failing to cover the data distribution.",
+        "wrongAnswerExplanations": {
+          "a": "That describes pixel regression, not GAN collapse.",
+          "b": "GANs have separate G and D parameters.",
+          "c": "Collapse is about limited support in generated samples."
+        },
+        "difficulty": "hard",
+        "source": {
+          "term": "",
+          "chapterTitle": "Generative Models"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 6,
+        "cleanedOrdinal": 6
+      },
+      {
+        "prompt": "InfoNCE / contrastive learning objectives encourage\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "All embeddings to become identical vectors."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Labels to be removed from self-supervised pipelines entirely without pairs."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Only k-means cluster centroids with no neural network."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Representations where augmented views of the same instance align and other instances repel."
+          }
+        ],
+        "correctChoiceId": "d",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Contrastive losses maximize agreement between positives and separate negatives in embedding space.",
+        "wrongAnswerExplanations": {
+          "a": "Collapse to a point is failure; contrastive losses prevent trivial solutions.",
+          "b": "Self-supervised still defines positive pairs (augmentations).",
+          "c": "Contrastive SSL trains encoders with neural nets."
+        },
+        "difficulty": "hard",
+        "source": {
+          "term": "",
+          "chapterTitle": "Representation Learning"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 7,
+        "cleanedOrdinal": 7
+      },
+      {
+        "prompt": "For ReLU activations, the subgradient used in backprop is\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "1 where the pre-activation was positive and 0 where it was non-positive (convention at 0)."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Always the second derivative of sigmoid."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Equal to the input x squared for all regions."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Undefined everywhere so gradients cannot flow."
+          }
+        ],
+        "correctChoiceId": "a",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "ReLU's gate multiplies upstream gradients by an indicator of active units.",
+        "wrongAnswerExplanations": {
+          "b": "ReLU backprop uses piecewise constant subgradient, not sigmoid derivatives.",
+          "c": "That is not the ReLU derivative.",
+          "d": "Subgradients at 0 are conventionally chosen; learning proceeds."
+        },
+        "difficulty": "hard",
+        "source": {
+          "term": "",
+          "chapterTitle": "Backpropagation"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 8,
+        "cleanedOrdinal": 8
+      },
+      {
+        "prompt": "When input and output dimensions differ in a ResNet block, the skip connection often uses\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Max pooling on the residual path only."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "No skip at all \u2014 the block cannot be residual."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "A learned 1\u00d71 convolution (projection) to match channel/spatial size before the addition."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Softmax over all pixels in the skip branch."
+          }
+        ],
+        "correctChoiceId": "c",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Projection shortcuts align F(x) and x so y = F(x) + W_s x is well-defined.",
+        "wrongAnswerExplanations": {
+          "a": "Pooling changes resolution; 1\u00d71 conv is the standard channel matcher.",
+          "b": "ResNet uses projections instead of dropping skips.",
+          "d": "Softmax is not used to align residual tensor shapes."
+        },
+        "difficulty": "hard",
+        "source": {
+          "term": "",
+          "chapterTitle": "Architectures"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 9,
+        "cleanedOrdinal": 9
+      },
+      {
+        "prompt": "The LSTM cell state's additive update c_t = f\u2299c_{t\u22121} + i\u2299g helps gradients because\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "It forces every gate to be exactly zero always."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Gradients can flow across many time steps via near-identity paths without repeated Jacobian products shrinking to zero."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "It removes all nonlinear gates from the network."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "It replaces recurrence with a single feedforward layer."
+          }
+        ],
+        "correctChoiceId": "b",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Additive memory provides a 'highway' mitigating vanishing gradients in long sequences.",
+        "wrongAnswerExplanations": {
+          "a": "Zero gates would erase memory; trained gates are selective.",
+          "c": "Gates remain; the cell update is additive.",
+          "d": "LSTMs are still recurrent over time."
+        },
+        "difficulty": "hard",
+        "source": {
+          "term": "",
+          "chapterTitle": "RNNs"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 10,
+        "cleanedOrdinal": 10
+      },
+      {
+        "prompt": "Multi-head self-attention splits Q, K, V into h heads primarily to\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Reduce sequence length to 1 token always."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Compute exact eigenvalues of the dataset covariance offline only."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Eliminate the need for any feedforward sublayers."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Let the model attend to information from different representation subspaces in parallel."
+          }
+        ],
+        "correctChoiceId": "d",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Each head learns different attention patterns; outputs are concatenated and projected.",
+        "wrongAnswerExplanations": {
+          "a": "Attention maps over tokens; length is unchanged.",
+          "b": "That is unrelated to multi-head attention.",
+          "c": "Transformers still use position-wise FFN blocks."
+        },
+        "difficulty": "hard",
+        "source": {
+          "term": "",
+          "chapterTitle": "Attention"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 11,
+        "cleanedOrdinal": 11
+      },
+      {
+        "prompt": "Sinusoidal positional encodings in the original Transformer\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Compute the adversarial discriminator loss."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Inject order information by adding fixed sin/cos functions of position to input embeddings."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Replace token embeddings with one-hot bag-of-words."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Train a CNN on 224\u00d7224 images only."
+          }
+        ],
+        "correctChoiceId": "b",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Attention is permutation-invariant without positions; encodings break symmetry across sequence index.",
+        "wrongAnswerExplanations": {
+          "a": "PE is not part of GAN discriminators.",
+          "c": "Embeddings remain; positions are added.",
+          "d": "Sinusoidal PE is for sequences in transformers."
+        },
+        "difficulty": "hard",
+        "source": {
+          "term": "",
+          "chapterTitle": "Transformers"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 12,
+        "cleanedOrdinal": 12
+      },
+      {
+        "prompt": "AdamW decouples weight decay from the adaptive gradient step by\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Setting all adaptive learning rates to zero."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Using full-batch Hessian inverses every iteration."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Applying weight decay directly on weights each step, not as an L2 term mixed into the Adam gradient."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Removing momentum estimates entirely."
+          }
+        ],
+        "correctChoiceId": "c",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Decoupled decay fixes the interaction between Adam's preconditioning and L2-style shrinkage.",
+        "wrongAnswerExplanations": {
+          "a": "Adaptive per-parameter scaling remains.",
+          "b": "AdamW is still first-order adaptive.",
+          "d": "AdamW retains Adam's moment estimates."
+        },
+        "difficulty": "hard",
+        "source": {
+          "term": "",
+          "chapterTitle": "Optimization"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 13,
+        "cleanedOrdinal": 13
+      },
+      {
+        "prompt": "The lottery ticket hypothesis suggests that\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Random initialization never matters for any architecture."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Gradients are unnecessary if batch size is 1."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Dense networks contain sparse subnetworks that, if trained in isolation from matching init, can reach similar accuracy."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Wider networks always generalize worse than linear models."
+          }
+        ],
+        "correctChoiceId": "c",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Winning tickets are sparse masks + initial weights that train effectively \u2014 implying redundant parameters.",
+        "wrongAnswerExplanations": {
+          "a": "The hypothesis stresses matching initial signs/magnitudes.",
+          "b": "Training still requires gradient-based learning.",
+          "d": "Overparameterization can still generalize well."
+        },
+        "difficulty": "hard",
+        "source": {
+          "term": "",
+          "chapterTitle": "Generalization"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 14,
+        "cleanedOrdinal": 14
+      },
+      {
+        "prompt": "Effective receptive field analysis often shows that\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Receptive field shrinks as you add more conv layers."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Pooling never affects which input pixels matter."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Every pixel in the RF has identical influence by definition."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Not all pixels in the theoretical RF contribute equally \u2014 central pixels dominate the gradient magnitude."
+          }
+        ],
+        "correctChoiceId": "d",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Gradients concentrate near the center; theoretical RF overestimates uniform contribution.",
+        "wrongAnswerExplanations": {
+          "a": "Depth generally increases RF size.",
+          "b": "Pooling expands the region influencing downstream units.",
+          "c": "Empirical ERF is non-uniform."
+        },
+        "difficulty": "hard",
+        "source": {
+          "term": "",
+          "chapterTitle": "Convolutions"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 15,
+        "cleanedOrdinal": 15
+      },
+      {
+        "prompt": "Knowledge distillation trains a student network using\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Removing the loss function and stopping after one forward pass."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Only unlabeled random noise with no teacher."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Soft targets from a larger teacher (high-temperature softmax) plus often the hard labels."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Exact copy-paste of teacher weights into every layer shape blindly."
+          }
+        ],
+        "correctChoiceId": "c",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Student learns dark knowledge from teacher probabilities, not just argmax labels.",
+        "wrongAnswerExplanations": {
+          "a": "Distillation optimizes a KL/cross-entropy style objective.",
+          "b": "Distillation requires teacher outputs on data.",
+          "d": "Student may differ in architecture; soft targets guide training."
+        },
+        "difficulty": "hard",
+        "source": {
+          "term": "",
+          "chapterTitle": "Training"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 16,
+        "cleanedOrdinal": 16
+      },
+      {
+        "prompt": "Spectral normalization in GAN discriminators constrains\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "All activations to be strictly positive via ReLU only."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Batch size to match vocabulary size."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "The spectral norm (largest singular value) of weight matrices to stabilize Lipschitz behavior."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "The learning rate to be exactly zero."
+          }
+        ],
+        "correctChoiceId": "c",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Bounding Lipschitz constants of D helps control gradient magnitudes in adversarial training.",
+        "wrongAnswerExplanations": {
+          "a": "SN is a weight reparameterization, not an activation choice.",
+          "b": "Unrelated hyperparameter link.",
+          "d": "Spectral norm bounds weights, not \u03b7."
+        },
+        "difficulty": "hard",
+        "source": {
+          "term": "",
+          "chapterTitle": "Regularization"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 17,
+        "cleanedOrdinal": 17
+      },
+      {
+        "prompt": "Second-order methods (e.g., exact Newton) are rarely used at full deep-net scale because\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Mini-batches are impossible on GPUs."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "SGD cannot minimize non-convex losses."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Forming and inverting the Hessian is O(n\u00b2) or worse in parameter count n."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Gradients do not exist for ReLU networks."
+          }
+        ],
+        "correctChoiceId": "c",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Quasi-Newton and diagonal approximations exist, but full Hessians are prohibitive for millions of weights.",
+        "wrongAnswerExplanations": {
+          "a": "GPUs excel at mini-batch parallel training.",
+          "b": "SGD works well empirically despite non-convexity.",
+          "d": "Subgradients enable first-order training at scale."
+        },
+        "difficulty": "hard",
+        "source": {
+          "term": "",
+          "chapterTitle": "Optimization"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 18,
+        "cleanedOrdinal": 18
+      },
+      {
+        "prompt": "Attention as used in seq2seq decoders replaces fixed context vectors by\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Weighted sums over all encoder hidden states, with weights from compatibility scores."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Applying 2\u00d72 max pooling on the source sentence tokens."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Always selecting only the final encoder hidden state."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Sorting the vocabulary alphabetically at decode time."
+          }
+        ],
+        "correctChoiceId": "a",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Bahdanau/Luong attention lets each decode step focus on different source positions.",
+        "wrongAnswerExplanations": {
+          "b": "Pooling is a vision downsampling op, not seq2seq attention.",
+          "c": "That is the bottleneck of basic enc\u2013dec without attention.",
+          "d": "Decoding uses learned attention, not alphabetical sorts."
+        },
+        "difficulty": "hard",
+        "source": {
+          "term": "",
+          "chapterTitle": "Sequence Models"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 19,
+        "cleanedOrdinal": 19
+      },
+      {
+        "prompt": "Data parallelism during distributed training synchronizes\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Gradients (or gradient shards) across workers after each backward pass before the optimizer step."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Individual pixel values inside each image only."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "DNS records for model checkpoint hostnames only."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Random seeds for dropout at inference on clients."
+          }
+        ],
+        "correctChoiceId": "a",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Each GPU has a model replica; all-reduces average gradients so updates stay consistent.",
+        "wrongAnswerExplanations": {
+          "b": "Data parallel syncs parameters/gradients, not raw pixels across GPUs.",
+          "c": "Networking metadata is unrelated to gradient all-reduce.",
+          "d": "Inference dropout is off; training sync is about gradients."
+        },
+        "difficulty": "hard",
+        "source": {
+          "term": "",
+          "chapterTitle": "Hardware"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 20,
+        "cleanedOrdinal": 20
+      }
+    ]
+  }
+}

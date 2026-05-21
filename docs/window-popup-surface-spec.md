@@ -672,6 +672,24 @@ Allowed differences in docked mode:
 - use more textarea rows
 - preserve scroll more naturally because the panel stays open
 
+### 15.5 Idle quiz affordance (docked and popup)
+
+When learning is enabled and the user is in an eligible idle window (calendar gap, break, or aggressive review intensity while AFK), Window may surface a spaced-repetition quiz.
+
+Because Chrome only allows `sidePanel.open()` after a user gesture, docked mode does not force the panel open from background ticks alone. Instead:
+
+1. Window sets `activeQuizVisible` and shows a small right-edge **Quiz** affordance on the active page (content script), similar to Copilot’s page-edge trigger.
+2. The user clicks the affordance once.
+3. Window opens the docked side panel (or popup surface in popup mode) with the existing quiz takeover card.
+
+Popup mode may still fall back to a notification; clicking the notification also opens the quiz surface.
+
+Dismissing the quiz takeover hides the affordance until the next eligible prompt.
+
+Review intensity (`quiet`, `balanced`, `aggressive`) controls how often idle windows qualify: `quiet` and `balanced` surface during calendar gaps and breaks; `aggressive` also allows AFK surfacing during an active focus block when the system reports idle/locked.
+
+After install or reload, Window injects the affordance into the active tab (including tabs that were already open).
+
 Disallowed differences:
 
 - changing the meaning of controls

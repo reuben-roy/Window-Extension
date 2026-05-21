@@ -1,0 +1,2524 @@
+{
+  "book": {
+    "title": "OpenIntro Statistics",
+    "parentTopic": "Mathematics",
+    "subtopic": "Statistics",
+    "slug": "statistics-openintro",
+    "sourceUrl": "https://www.openintro.org/book/os/",
+    "pdfSha256": ""
+  },
+  "chapterCount": 6,
+  "conceptCount": 60,
+  "chapters": [
+    {
+      "ordinal": 1,
+      "title": "Descriptive Statistics",
+      "startPage": 1,
+      "endPage": 1,
+      "path": ""
+    },
+    {
+      "ordinal": 2,
+      "title": "Probability Basics",
+      "startPage": 1,
+      "endPage": 1,
+      "path": ""
+    },
+    {
+      "ordinal": 3,
+      "title": "Distributions",
+      "startPage": 1,
+      "endPage": 1,
+      "path": ""
+    },
+    {
+      "ordinal": 4,
+      "title": "Confidence Intervals",
+      "startPage": 1,
+      "endPage": 1,
+      "path": ""
+    },
+    {
+      "ordinal": 5,
+      "title": "Hypothesis Testing",
+      "startPage": 1,
+      "endPage": 1,
+      "path": ""
+    },
+    {
+      "ordinal": 6,
+      "title": "Regression",
+      "startPage": 1,
+      "endPage": 1,
+      "path": ""
+    }
+  ],
+  "quizzes": {
+    "easy": [
+      {
+        "prompt": "What is the mean of the values 4, 6, 8, 10, and 12?",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "8"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "6"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "10"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "7"
+          }
+        ],
+        "correctChoiceId": "a",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Mean = (4+6+8+10+12)/5 = 40/5 = 8.",
+        "wrongAnswerExplanations": {
+          "b": "That's the median of an evenly spaced symmetric set, not the mean here.",
+          "c": "That's the largest value, not the average.",
+          "d": "Off by one from the correct average."
+        },
+        "difficulty": "easy",
+        "source": {
+          "term": "",
+          "chapterTitle": "Descriptive Statistics"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 1,
+        "cleanedOrdinal": 1
+      },
+      {
+        "prompt": "For the sorted data 2, 5, 7, 9, 11, what is the median?",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "6.8"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "5"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "7"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "9"
+          }
+        ],
+        "correctChoiceId": "c",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "With five ordered values, the median is the middle observation: 7.",
+        "wrongAnswerExplanations": {
+          "a": "That's the mean (34/5), not the median.",
+          "b": "That's the second value (Q1 region), not the middle.",
+          "d": "That's the fourth value, not the median."
+        },
+        "difficulty": "easy",
+        "source": {
+          "term": "",
+          "chapterTitle": "Descriptive Statistics"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 2,
+        "cleanedOrdinal": 2
+      },
+      {
+        "prompt": "Which measure of center is most appropriate for heavily right-skewed income data?",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Range"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Median"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Mean"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Mode only"
+          }
+        ],
+        "correctChoiceId": "b",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "The mean is pulled toward extreme high earners; the median reflects a typical household better.",
+        "wrongAnswerExplanations": {
+          "a": "Range measures spread, not center.",
+          "c": "Extreme high values inflate the mean for skewed income.",
+          "d": "Mode alone ignores most of the distribution."
+        },
+        "difficulty": "easy",
+        "source": {
+          "term": "",
+          "chapterTitle": "Descriptive Statistics"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 3,
+        "cleanedOrdinal": 3
+      },
+      {
+        "prompt": "The interquartile range (IQR) equals\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Standard deviation"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Q3 + Q1"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Q3 \u2212 Q1"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Maximum \u2212 minimum"
+          }
+        ],
+        "correctChoiceId": "c",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "IQR is the spread of the middle 50%: third quartile minus first quartile.",
+        "wrongAnswerExplanations": {
+          "a": "SD uses all deviations from the mean, not quartiles.",
+          "b": "Adding quartiles is not a spread measure.",
+          "d": "That's the full range, not the middle half."
+        },
+        "difficulty": "easy",
+        "source": {
+          "term": "",
+          "chapterTitle": "Descriptive Statistics"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 4,
+        "cleanedOrdinal": 4
+      },
+      {
+        "prompt": "A histogram displays\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "The theoretical PDF of a fitted model without data."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Counts or proportions of observations in contiguous bins along a numeric axis."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Exact pairwise correlations between every variable."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Only categorical bar heights with gaps between unrelated bars."
+          }
+        ],
+        "correctChoiceId": "b",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Histograms group numeric data into bins; bar area/height shows frequency in each bin.",
+        "wrongAnswerExplanations": {
+          "a": "A histogram summarizes observed data, not a formula alone.",
+          "c": "Correlations need scatterplots or matrices, not a single-variable histogram.",
+          "d": "Bar charts for categories differ; histogram bins are contiguous on a scale."
+        },
+        "difficulty": "easy",
+        "source": {
+          "term": "",
+          "chapterTitle": "Descriptive Statistics"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 5,
+        "cleanedOrdinal": 5
+      },
+      {
+        "prompt": "If P(A) = 0.35, what is P(not A) for a simple event A?",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "0.65"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "1.35"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "0.175"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "0.35"
+          }
+        ],
+        "correctChoiceId": "a",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Complement rule: P(A^c) = 1 \u2212 P(A) = 0.65.",
+        "wrongAnswerExplanations": {
+          "b": "Probabilities cannot exceed 1.",
+          "c": "Not derived from the complement rule.",
+          "d": "That's P(A), not the complement."
+        },
+        "difficulty": "easy",
+        "source": {
+          "term": "",
+          "chapterTitle": "Probability Basics"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 6,
+        "cleanedOrdinal": 6
+      },
+      {
+        "prompt": "Events A and B are independent. Which identity holds?",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "P(A \u222a B) = P(A) + P(B) always."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "P(A) = P(B) always."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "P(A \u2229 B) = P(A) \u00b7 P(B)"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "P(A | B) = 0 whenever B occurs."
+          }
+        ],
+        "correctChoiceId": "c",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Independence means the joint factorizes into marginals.",
+        "wrongAnswerExplanations": {
+          "a": "That omits the overlap term unless events are mutually exclusive.",
+          "b": "Equal probabilities are not required for independence.",
+          "d": "Zero conditional probability means incompatibility, not independence."
+        },
+        "difficulty": "easy",
+        "source": {
+          "term": "",
+          "chapterTitle": "Probability Basics"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 7,
+        "cleanedOrdinal": 7
+      },
+      {
+        "prompt": "A standard deck has 52 cards. What is P(drawing a heart on one random draw)?",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "1/2"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "13/52 = 1/4"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "13/26"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "1/13"
+          }
+        ],
+        "correctChoiceId": "b",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "There are 13 hearts out of 52 equally likely cards.",
+        "wrongAnswerExplanations": {
+          "a": "Half the deck is not hearts.",
+          "c": "26 is not the deck size.",
+          "d": "That's one specific rank (e.g., ace), not a suit."
+        },
+        "difficulty": "easy",
+        "source": {
+          "term": "",
+          "chapterTitle": "Probability Basics"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 8,
+        "cleanedOrdinal": 8
+      },
+      {
+        "prompt": "The law of large numbers says that as sample size increases, the sample mean\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Must exactly equal the population mean after 30 observations."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Tends to get closer to the population mean (under regular conditions)."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Becomes more variable without bound."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Is always equal to the sample median."
+          }
+        ],
+        "correctChoiceId": "b",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Averaging stabilizes around the true mean for independent, identically distributed data.",
+        "wrongAnswerExplanations": {
+          "a": "Convergence is probabilistic, not a fixed n=30 identity.",
+          "c": "Variability of the mean typically decreases with n.",
+          "d": "Mean and median need not match, especially when skewed."
+        },
+        "difficulty": "easy",
+        "source": {
+          "term": "",
+          "chapterTitle": "Probability Basics"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 9,
+        "cleanedOrdinal": 9
+      },
+      {
+        "prompt": "The standard normal distribution has mean 0 and standard deviation\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "\u221a2"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "0"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "1"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "\u03c0"
+          }
+        ],
+        "correctChoiceId": "c",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Z-scores standardize to \u03bc=0, \u03c3=1.",
+        "wrongAnswerExplanations": {
+          "a": "Not the standard normal scale.",
+          "b": "Zero standard deviation would be a constant, not a normal curve.",
+          "d": "\u03c0 is not the standard deviation of Z."
+        },
+        "difficulty": "easy",
+        "source": {
+          "term": "",
+          "chapterTitle": "Distributions"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 10,
+        "cleanedOrdinal": 10
+      },
+      {
+        "prompt": "For a Binomial(n, p) model, which assumption is essential?",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Success probability p must equal 0.5."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "The number of trials changes after each success."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Outcomes are continuous and unbounded above."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "n independent trials with fixed success probability p and binary outcomes."
+          }
+        ],
+        "correctChoiceId": "d",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Binomial counts successes in n fixed, independent Bernoulli trials.",
+        "wrongAnswerExplanations": {
+          "a": "p can be any value in [0,1].",
+          "b": "n is fixed in the standard Binomial.",
+          "c": "Binomial outcomes are counts of successes, built from 0/1 trials."
+        },
+        "difficulty": "easy",
+        "source": {
+          "term": "",
+          "chapterTitle": "Distributions"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 11,
+        "cleanedOrdinal": 11
+      },
+      {
+        "prompt": "The empirical rule for an approximately normal distribution states that about 95% of data lie within\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Mean \u00b1 1 standard deviation"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Mean \u00b1 2 standard deviations"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "The IQR only"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Mean \u00b1 3 standard deviations"
+          }
+        ],
+        "correctChoiceId": "b",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "68\u201395\u201399.7: roughly 95% within two SDs.",
+        "wrongAnswerExplanations": {
+          "a": "About 68% lie within one SD.",
+          "c": "The empirical rule is SD-based, not quartile-based.",
+          "d": "About 99.7% lie within three SDs."
+        },
+        "difficulty": "easy",
+        "source": {
+          "term": "",
+          "chapterTitle": "Distributions"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 12,
+        "cleanedOrdinal": 12
+      },
+      {
+        "prompt": "A right-skewed distribution has a longer tail toward\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Both tails equally"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Larger values on the right"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "The median only"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Smaller values on the left"
+          }
+        ],
+        "correctChoiceId": "b",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Right skew: mean typically exceeds median; extreme high values pull the tail right.",
+        "wrongAnswerExplanations": {
+          "a": "Symmetric distributions have balanced tails.",
+          "c": "Skew describes tail shape, not a single point.",
+          "d": "That describes left skew."
+        },
+        "difficulty": "easy",
+        "source": {
+          "term": "",
+          "chapterTitle": "Distributions"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 13,
+        "cleanedOrdinal": 13
+      },
+      {
+        "prompt": "A 95% confidence interval for a population mean is interpreted as: if we repeated sampling many times and built intervals the same way, about 95% of those intervals would\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Contain the true population mean."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Guarantee the next sample mean is correct."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Prove the null hypothesis is false."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Contain 95% of all future individual observations."
+          }
+        ],
+        "correctChoiceId": "a",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "CI coverage is a long-run property of the procedure, not a 95% chance for one fixed interval after data are seen.",
+        "wrongAnswerExplanations": {
+          "b": "Intervals estimate \u03bc, not a deterministic guarantee for one draw.",
+          "c": "Estimation intervals are separate from hypothesis tests.",
+          "d": "A CI targets a parameter (mean), not the middle 95% of individuals."
+        },
+        "difficulty": "easy",
+        "source": {
+          "term": "",
+          "chapterTitle": "Confidence Intervals"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 14,
+        "cleanedOrdinal": 14
+      },
+      {
+        "prompt": "All else equal, increasing sample size n makes a confidence interval for \u03bc\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Wider"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Unchanged always"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Invalid"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Narrower"
+          }
+        ],
+        "correctChoiceId": "d",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Standard error \u03c3/\u221an shrinks as n grows, reducing margin of error.",
+        "wrongAnswerExplanations": {
+          "a": "Larger n adds information and typically tightens the interval.",
+          "b": "Margin of error depends on n through the standard error.",
+          "c": "Larger samples are preferred for precision."
+        },
+        "difficulty": "easy",
+        "source": {
+          "term": "",
+          "chapterTitle": "Confidence Intervals"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 15,
+        "cleanedOrdinal": 15
+      },
+      {
+        "prompt": "In a significance test, the null hypothesis H\u2080 is\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "The probability that the alternative is true."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Always the researcher's preferred outcome."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "The default claim tested for possible rejection using sample evidence."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "The p-value itself."
+          }
+        ],
+        "correctChoiceId": "c",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "We assume H\u2080 unless data provide strong enough evidence against it.",
+        "wrongAnswerExplanations": {
+          "a": "Hypotheses are statements, not probabilities.",
+          "b": "H\u2080 is often a status-quo or no-effect statement.",
+          "d": "The p-value measures evidence against H\u2080, it is not H\u2080."
+        },
+        "difficulty": "easy",
+        "source": {
+          "term": "",
+          "chapterTitle": "Hypothesis Testing"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 16,
+        "cleanedOrdinal": 16
+      },
+      {
+        "prompt": "A p-value is\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "The probability that H\u2090 is false."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "The probability that H\u2080 is true after seeing the data."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "The probability, assuming H\u2080 is true, of observing data at least as extreme as what was observed."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "The same as the significance level \u03b1 always."
+          }
+        ],
+        "correctChoiceId": "c",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "p-values are computed under the null; they are not posterior probabilities of H\u2080.",
+        "wrongAnswerExplanations": {
+          "a": "p-values do not directly give P(H\u2090 false).",
+          "b": "That would be a Bayesian posterior, not a frequentist p-value.",
+          "d": "\u03b1 is a chosen threshold; p is computed from data."
+        },
+        "difficulty": "easy",
+        "source": {
+          "term": "",
+          "chapterTitle": "Hypothesis Testing"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 17,
+        "cleanedOrdinal": 17
+      },
+      {
+        "prompt": "Rejecting a true null hypothesis is called\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "A Type I error"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "A Type II error"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "A confidence level"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "A power increase"
+          }
+        ],
+        "correctChoiceId": "a",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Type I = false positive (reject true H\u2080); controlled by \u03b1.",
+        "wrongAnswerExplanations": {
+          "b": "Type II is failing to reject a false H\u2080.",
+          "c": "Confidence applies to intervals, not this error label.",
+          "d": "Power is 1 \u2212 P(Type II), not Type I."
+        },
+        "difficulty": "easy",
+        "source": {
+          "term": "",
+          "chapterTitle": "Hypothesis Testing"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 18,
+        "cleanedOrdinal": 18
+      },
+      {
+        "prompt": "The correlation coefficient r always lies between\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "0 and 100"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "0 and 1"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "\u22121 and 1"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "\u2212\u221e and \u221e"
+          }
+        ],
+        "correctChoiceId": "c",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "r measures linear association strength and direction on a bounded scale.",
+        "wrongAnswerExplanations": {
+          "a": "Percent scales are not used for r.",
+          "b": "Negative associations produce negative r.",
+          "d": "r is standardized and bounded."
+        },
+        "difficulty": "easy",
+        "source": {
+          "term": "",
+          "chapterTitle": "Regression"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 19,
+        "cleanedOrdinal": 19
+      },
+      {
+        "prompt": "In a scatterplot of study hours (x) and exam score (y), a positive correlation means\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "x causes y with certainty."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "There is no linear pattern."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Higher x tends to occur with lower y."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Higher x tends to occur with higher y."
+          }
+        ],
+        "correctChoiceId": "d",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Positive r: upward trend; causation requires further design, not correlation alone.",
+        "wrongAnswerExplanations": {
+          "a": "Correlation does not establish causation.",
+          "b": "Positive correlation implies an upward association.",
+          "c": "That describes negative correlation."
+        },
+        "difficulty": "easy",
+        "source": {
+          "term": "",
+          "chapterTitle": "Regression"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 20,
+        "cleanedOrdinal": 20
+      }
+    ],
+    "medium": [
+      {
+        "prompt": "A sample has x\u0304 = 50 and s = 10 with n = 25. What is the standard error of the mean?",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "2"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "5"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "10"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "0.4"
+          }
+        ],
+        "correctChoiceId": "a",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "SE = s/\u221an = 10/5 = 2.",
+        "wrongAnswerExplanations": {
+          "b": "That's \u221an, not the SE.",
+          "c": "That's s, not the SE.",
+          "d": "That's s/n, not s/\u221an."
+        },
+        "difficulty": "medium",
+        "source": {
+          "term": "",
+          "chapterTitle": "Descriptive Statistics"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 1,
+        "cleanedOrdinal": 1
+      },
+      {
+        "prompt": "Data: 3, 3, 5, 7, 7, 7, 9. What are the first quartile Q1 and third quartile Q3 (using the usual inclusive median method)?",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Q1 = 4, Q3 = 8"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Q1 = 3, Q3 = 9"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Q1 = 5, Q3 = 9"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Q1 = 3, Q3 = 7"
+          }
+        ],
+        "correctChoiceId": "d",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Lower half {3,3,5} has median 3; upper half {7,7,7,9} has median 7.",
+        "wrongAnswerExplanations": {
+          "a": "Averaging across halves is not the standard quartile rule here.",
+          "b": "Q3 is 7, not 9 (the maximum).",
+          "c": "Those are not the medians of the lower/upper halves for this dataset."
+        },
+        "difficulty": "medium",
+        "source": {
+          "term": "",
+          "chapterTitle": "Descriptive Statistics"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 2,
+        "cleanedOrdinal": 2
+      },
+      {
+        "prompt": "Which statement about variance and standard deviation is correct?",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Standard deviation is always larger than the range."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Variance is in squared units; standard deviation restores the original units."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Standard deviation equals mean deviation in every distribution."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Variance can be negative for skewed data."
+          }
+        ],
+        "correctChoiceId": "b",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "s\u00b2 averages squared deviations; s = \u221as\u00b2 returns to the data scale.",
+        "wrongAnswerExplanations": {
+          "a": "SD can be much smaller than the range.",
+          "c": "SD uses squared deviations; mean absolute deviation differs.",
+          "d": "Variance is a sum of squares; it is nonnegative."
+        },
+        "difficulty": "medium",
+        "source": {
+          "term": "",
+          "chapterTitle": "Descriptive Statistics"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 3,
+        "cleanedOrdinal": 3
+      },
+      {
+        "prompt": "A z-score of \u22121.5 for an observation means\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "The value is 1.5 standard deviations below the mean."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "The value is 1.5 units below zero."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "The value is 1.5 standard deviations above the mean."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "The probability of the value is 0.15."
+          }
+        ],
+        "correctChoiceId": "a",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "z = (x \u2212 \u03bc)/\u03c3; negative z is below the mean.",
+        "wrongAnswerExplanations": {
+          "b": "z is relative to the mean in SD units, not zero on the raw scale.",
+          "c": "Positive z would be above the mean.",
+          "d": "z is a standardized position, not a probability."
+        },
+        "difficulty": "medium",
+        "source": {
+          "term": "",
+          "chapterTitle": "Descriptive Statistics"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 4,
+        "cleanedOrdinal": 4
+      },
+      {
+        "prompt": "P(A) = 0.4, P(B) = 0.5, and A, B are independent. What is P(A \u222a B)?",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "0.1"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "0.7"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "0.9"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "0.2"
+          }
+        ],
+        "correctChoiceId": "b",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "P(A\u222aB) = 0.4 + 0.5 \u2212 0.4\u00b70.5 = 0.9 \u2212 0.2 = 0.7.",
+        "wrongAnswerExplanations": {
+          "a": "Not from the inclusion-exclusion formula.",
+          "c": "That's P(A)+P(B) without subtracting overlap.",
+          "d": "That's P(A\u2229B), not the union."
+        },
+        "difficulty": "medium",
+        "source": {
+          "term": "",
+          "chapterTitle": "Probability Basics"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 5,
+        "cleanedOrdinal": 5
+      },
+      {
+        "prompt": "In a class, 60% are undergraduates and 40% of all students are undergraduates who commute. What is P(commute | undergraduate)?",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "0.24"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "0.60"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "0.40"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "2/3"
+          }
+        ],
+        "correctChoiceId": "d",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "P(C|U) = P(C\u2229U)/P(U) = 0.40/0.60 = 2/3.",
+        "wrongAnswerExplanations": {
+          "a": "That's P(C\u2229U), not the conditional.",
+          "b": "That's P(U), not P(C|U).",
+          "c": "That's the joint proportion of all students, not conditional on U."
+        },
+        "difficulty": "medium",
+        "source": {
+          "term": "",
+          "chapterTitle": "Probability Basics"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 6,
+        "cleanedOrdinal": 6
+      },
+      {
+        "prompt": "A fair coin is flipped 4 times. What is P(exactly 2 heads)?",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "4/16"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "8/16"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "6/16 = 3/8"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "2/16"
+          }
+        ],
+        "correctChoiceId": "c",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Binomial: C(4,2)(1/2)^4 = 6/16.",
+        "wrongAnswerExplanations": {
+          "a": "That's exactly one head (4 ways).",
+          "b": "That's an even number of heads, not exactly two.",
+          "d": "Too few favorable sequences."
+        },
+        "difficulty": "medium",
+        "source": {
+          "term": "",
+          "chapterTitle": "Probability Basics"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 7,
+        "cleanedOrdinal": 7
+      },
+      {
+        "prompt": "If X ~ Binomial(10, 0.3), what is E[X]?",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "10"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "2.1"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "3"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "0.3"
+          }
+        ],
+        "correctChoiceId": "c",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "E[X] = np = 10\u00b70.3 = 3.",
+        "wrongAnswerExplanations": {
+          "a": "That's n, not the mean.",
+          "b": "That's Var(X) = np(1\u2212p), not the mean.",
+          "d": "That's p, not the expected count."
+        },
+        "difficulty": "medium",
+        "source": {
+          "term": "",
+          "chapterTitle": "Probability Basics"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 8,
+        "cleanedOrdinal": 8
+      },
+      {
+        "prompt": "Heights in a population are Normal(\u03bc=170 cm, \u03c3=6 cm). Approximately what fraction is between 164 and 176 cm?",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "About 68%"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "About 99.7%"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "About 50%"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "About 95%"
+          }
+        ],
+        "correctChoiceId": "a",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "164 to 176 is \u03bc\u00b1\u03c3, so about 68% by the empirical rule.",
+        "wrongAnswerExplanations": {
+          "b": "That needs about \u03bc\u00b13\u03c3.",
+          "c": "\u03bc\u00b1\u03c3 captures much more than half under a bell curve.",
+          "d": "95% corresponds to about \u03bc\u00b12\u03c3 (158\u2013182 here)."
+        },
+        "difficulty": "medium",
+        "source": {
+          "term": "",
+          "chapterTitle": "Distributions"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 9,
+        "cleanedOrdinal": 9
+      },
+      {
+        "prompt": "Which change increases the spread of a Binomial(n, p) distribution (holding n fixed)?",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Setting p exactly to 0.5 when n > 1."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Replacing binary outcomes with a constant outcome."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Moving p away from 0.5 toward 0 or 1 (while staying between them)."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Decreasing n while keeping p."
+          }
+        ],
+        "correctChoiceId": "c",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Variance np(1\u2212p) is maximized at p=0.5; extreme p yields lower variance but more concentration at ends.",
+        "wrongAnswerExplanations": {
+          "a": "p=0.5 maximizes variance for fixed n.",
+          "b": "Constants have zero variance.",
+          "d": "That changes n, not p alone as asked."
+        },
+        "difficulty": "medium",
+        "source": {
+          "term": "",
+          "chapterTitle": "Distributions"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 10,
+        "cleanedOrdinal": 10
+      },
+      {
+        "prompt": "Sample means from n=100 independent observations with finite variance are approximately normal because of\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Using the sample median only"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Always having skewed parent distributions"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "The Law of Large Numbers alone"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "The Central Limit Theorem"
+          }
+        ],
+        "correctChoiceId": "d",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "CLT: distribution of x\u0304 approaches Normal as n grows, regardless of population shape (mild conditions).",
+        "wrongAnswerExplanations": {
+          "a": "CLT statement is about the mean (or sums), not the median.",
+          "b": "Skew can persist in small samples; CLT helps means when n is large.",
+          "c": "LLN concerns convergence of x\u0304 to \u03bc, not the shape of x\u0304's sampling distribution."
+        },
+        "difficulty": "medium",
+        "source": {
+          "term": "",
+          "chapterTitle": "Distributions"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 11,
+        "cleanedOrdinal": 11
+      },
+      {
+        "prompt": "A Poisson model with rate \u03bb = 4 per hour is appropriate when\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Variance always equals zero."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "There are exactly two outcomes per trial with fixed n."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Events occur independently at a constant average rate over time with rare multiplicities in tiny intervals."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "The sample size n is at most 30."
+          }
+        ],
+        "correctChoiceId": "c",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Poisson counts rare events in fixed intervals; mean equals variance \u03bb.",
+        "wrongAnswerExplanations": {
+          "a": "Poisson variance is \u03bb.",
+          "b": "That describes Binomial, not Poisson.",
+          "d": "n=30 is a rule of thumb for t, not Poisson modeling."
+        },
+        "difficulty": "medium",
+        "source": {
+          "term": "",
+          "chapterTitle": "Distributions"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 12,
+        "cleanedOrdinal": 12
+      },
+      {
+        "prompt": "You have x\u0304=120, s=15, n=36. A 95% t-interval for \u03bc uses margin of error t*\u00b7(s/\u221an). What is s/\u221an?",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "15"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "0.4167"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "6"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "2.5"
+          }
+        ],
+        "correctChoiceId": "d",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Standard error = 15/\u221a36 = 15/6 = 2.5.",
+        "wrongAnswerExplanations": {
+          "a": "That's s, not SE.",
+          "b": "That's s/n, not s/\u221an.",
+          "c": "That's \u221an, not SE."
+        },
+        "difficulty": "medium",
+        "source": {
+          "term": "",
+          "chapterTitle": "Confidence Intervals"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 13,
+        "cleanedOrdinal": 13
+      },
+      {
+        "prompt": "Holding data fixed, widening a CI from 90% to 99% confidence will\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Increase the critical multiplier and make the interval wider."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Leave the interval unchanged if n is large."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Remove the need for a standard error."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Always narrow the interval because we are more confident."
+          }
+        ],
+        "correctChoiceId": "a",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Higher confidence demands a larger z or t* and a wider interval.",
+        "wrongAnswerExplanations": {
+          "b": "The critical value still changes with confidence level.",
+          "c": "SE is still required to build the interval.",
+          "d": "More confidence requires a wider interval, not narrower."
+        },
+        "difficulty": "medium",
+        "source": {
+          "term": "",
+          "chapterTitle": "Confidence Intervals"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 14,
+        "cleanedOrdinal": 14
+      },
+      {
+        "prompt": "A 95% CI for a proportion based on x=40 successes in n=200 uses a normal approximation. What is p\u0302?",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "0.40"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "0.16"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "0.02"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "0.20"
+          }
+        ],
+        "correctChoiceId": "d",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "p\u0302 = x/n = 40/200 = 0.20.",
+        "wrongAnswerExplanations": {
+          "a": "That's x/100, not x/n.",
+          "b": "That's the standard error \u221a(0.2\u00b70.8/200), not p\u0302.",
+          "c": "That's 1/n, not the sample proportion."
+        },
+        "difficulty": "medium",
+        "source": {
+          "term": "",
+          "chapterTitle": "Confidence Intervals"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 15,
+        "cleanedOrdinal": 15
+      },
+      {
+        "prompt": "A two-sided z-test of H\u2080: \u03bc=100 versus H\u2090: \u03bc\u2260100 at \u03b1=0.05 rejects when |z| exceeds\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "2.58"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "0.05"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "1.645"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "1.96"
+          }
+        ],
+        "correctChoiceId": "d",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Two-sided 95% critical values for z are \u00b11.96.",
+        "wrongAnswerExplanations": {
+          "a": "That's closer to 99% two-sided.",
+          "b": "That's \u03b1, not a critical z value.",
+          "c": "That's the one-sided 5% cutoff."
+        },
+        "difficulty": "medium",
+        "source": {
+          "term": "",
+          "chapterTitle": "Hypothesis Testing"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 16,
+        "cleanedOrdinal": 16
+      },
+      {
+        "prompt": "A test has power 0.80 against a specific alternative. If H\u2080 is false in that way, the probability we correctly reject H\u2080 is\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "0.80"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "0.20"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "0.05"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "1.00"
+          }
+        ],
+        "correctChoiceId": "a",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Power = 1 \u2212 \u03b2 = P(reject H\u2080 | H\u2090 true in the stated way).",
+        "wrongAnswerExplanations": {
+          "b": "That's \u03b2 (Type II error rate) if power is 0.80.",
+          "c": "That's a common \u03b1, not power.",
+          "d": "Power below 1 means some chance of missing the effect."
+        },
+        "difficulty": "medium",
+        "source": {
+          "term": "",
+          "chapterTitle": "Hypothesis Testing"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 17,
+        "cleanedOrdinal": 17
+      },
+      {
+        "prompt": "A p-value of 0.03 at \u03b1=0.05 means\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "H\u2080 is true with probability 0.03."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Reject H\u2080 at the 5% level (assuming a two-sided test setup matches the p-value)."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Fail to reject H\u2080 at the 5% level."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Accept H\u2080 with 97% probability."
+          }
+        ],
+        "correctChoiceId": "b",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "p < \u03b1 \u21d2 reject H\u2080 in the standard fixed-\u03b1 framework.",
+        "wrongAnswerExplanations": {
+          "a": "p is not P(H\u2080 true).",
+          "c": "0.03 < 0.05 leads to rejection.",
+          "d": "We do not accept H\u2080; we fail to reject or reject based on \u03b1."
+        },
+        "difficulty": "medium",
+        "source": {
+          "term": "",
+          "chapterTitle": "Hypothesis Testing"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 18,
+        "cleanedOrdinal": 18
+      },
+      {
+        "prompt": "For least-squares simple regression, the slope b\u2081 equals r\u00b7(s_y/s_x). If r=0.8, s_x=5, s_y=10, what is b\u2081?",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "4"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "8"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "0.4"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "1.6"
+          }
+        ],
+        "correctChoiceId": "d",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "b\u2081 = 0.8\u00b7(10/5) = 1.6.",
+        "wrongAnswerExplanations": {
+          "a": "Used r\u00b7(s_x/s_y) or doubled incorrectly.",
+          "b": "That's r\u00b7s_y, not the slope formula.",
+          "c": "Inverted the ratio s_y/s_x."
+        },
+        "difficulty": "medium",
+        "source": {
+          "term": "",
+          "chapterTitle": "Regression"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 19,
+        "cleanedOrdinal": 19
+      },
+      {
+        "prompt": "R\u00b2 = 0.64 in a simple linear regression means\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "64% of the variation in y is explained by the linear model in the sample."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "The correlation is 0.64."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "64% of residuals are zero."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "The slope is 0.64."
+          }
+        ],
+        "correctChoiceId": "a",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "R\u00b2 is the squared correlation in simple regression: fraction of variance explained.",
+        "wrongAnswerExplanations": {
+          "b": "r could be +0.8 or \u22120.8 since r\u00b2=0.64.",
+          "c": "Residuals are not mostly zero; R\u00b2 measures explained variation.",
+          "d": "R\u00b2 is not the slope."
+        },
+        "difficulty": "medium",
+        "source": {
+          "term": "",
+          "chapterTitle": "Regression"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 20,
+        "cleanedOrdinal": 20
+      }
+    ],
+    "hard": [
+      {
+        "prompt": "A dataset has mean 100 and median 80. Which statement is most plausible?",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "The distribution is right-skewed with a few large outliers pulling the mean up."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "The distribution is left-skewed with outliers on the low side."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "The distribution is perfectly symmetric."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Mean and median must be equal for any numeric data."
+          }
+        ],
+        "correctChoiceId": "a",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Mean > median is typical when a right tail contains extreme high values.",
+        "wrongAnswerExplanations": {
+          "b": "Left skew usually gives mean < median.",
+          "c": "Symmetric data would have mean \u2248 median.",
+          "d": "Skew breaks equality between mean and median."
+        },
+        "difficulty": "hard",
+        "source": {
+          "term": "",
+          "chapterTitle": "Descriptive Statistics"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 1,
+        "cleanedOrdinal": 1
+      },
+      {
+        "prompt": "Using the 1.5\u00d7IQR outlier rule on Q1=20, Q3=40 (IQR=20), values above what threshold are flagged as high outliers?",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "50"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "80"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "60"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "70"
+          }
+        ],
+        "correctChoiceId": "d",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Upper fence = Q3 + 1.5\u00b7IQR = 40 + 30 = 70.",
+        "wrongAnswerExplanations": {
+          "a": "That's Q3 + 0.5\u00b7IQR, not 1.5\u00b7IQR.",
+          "b": "That's Q3 + 2\u00b7IQR.",
+          "c": "That's Q3 + IQR, not 1.5\u00b7IQR."
+        },
+        "difficulty": "hard",
+        "source": {
+          "term": "",
+          "chapterTitle": "Descriptive Statistics"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 2,
+        "cleanedOrdinal": 2
+      },
+      {
+        "prompt": "A teacher standardizes two exams: Exam A scores have x\u0304=70, s=5; Exam B have x\u0304=80, s=10. A student scored 75 on A and 85 on B. Which z-score is higher?",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "They are equal because both are 5 points above their means."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Exam B because the raw score is higher."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Exam B because its standard deviation is larger."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Exam A (z=1.0) is higher than Exam B (z=0.5)."
+          }
+        ],
+        "correctChoiceId": "d",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "z_A=(75\u221270)/5=1.0; z_B=(85\u221280)/10=0.5.",
+        "wrongAnswerExplanations": {
+          "a": "Equal raw gaps do not imply equal z when SDs differ.",
+          "b": "Standardization compares relative standing, not raw points alone.",
+          "c": "Larger SD shrinks z for the same raw gap above the mean."
+        },
+        "difficulty": "hard",
+        "source": {
+          "term": "",
+          "chapterTitle": "Descriptive Statistics"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 3,
+        "cleanedOrdinal": 3
+      },
+      {
+        "prompt": "Disease prevalence 1%. Test sensitivity 99%, specificity 95%. For a randomly selected person who tests positive, P(disease | +) is closest to\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "About 17%"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "About 95%"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "About 1%"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "About 99%"
+          }
+        ],
+        "correctChoiceId": "a",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Bayes: (0.99\u00b70.01)/(0.99\u00b70.01 + 0.05\u00b70.99) \u2248 0.0099/0.0594 \u2248 0.167.",
+        "wrongAnswerExplanations": {
+          "b": "That's specificity among healthy people, not P(disease|+).",
+          "c": "That's the prior before the test.",
+          "d": "That's sensitivity P(+|disease), not the posterior."
+        },
+        "difficulty": "hard",
+        "source": {
+          "term": "",
+          "chapterTitle": "Probability Basics"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 4,
+        "cleanedOrdinal": 4
+      },
+      {
+        "prompt": "Cards are drawn without replacement from a deck. P(two aces in two draws) equals\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "(4/52)\u00b7(3/51)"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "(1/13)\u00b7(1/13)"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "(4/52)\u00b7(4/52)"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "4/52"
+          }
+        ],
+        "correctChoiceId": "a",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "First ace 4/52; second ace 3/51 given one ace removed.",
+        "wrongAnswerExplanations": {
+          "b": "Independence assumption is wrong without replacement.",
+          "c": "That treats draws as independent with replacement.",
+          "d": "That's only the first draw succeeding."
+        },
+        "difficulty": "hard",
+        "source": {
+          "term": "",
+          "chapterTitle": "Probability Basics"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 5,
+        "cleanedOrdinal": 5
+      },
+      {
+        "prompt": "Suppose P(A)=0.6, P(B)=0.5, and P(A\u2229B)=0.4. Are A and B independent?",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Yes, because P(A)+P(B)>1."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "No, because P(A\u2229B)=0.4 \u2260 0.6\u00b70.5=0.3."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Yes, because both probabilities exceed 0.3."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Cannot determine without knowing P(A\u222aB)."
+          }
+        ],
+        "correctChoiceId": "b",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Independence requires the joint to factorize; here 0.4 \u2260 0.3.",
+        "wrongAnswerExplanations": {
+          "a": "Sum exceeding 1 shows overlap, not independence.",
+          "c": "Marginals alone do not prove independence.",
+          "d": "The joint is enough to check the product rule."
+        },
+        "difficulty": "hard",
+        "source": {
+          "term": "",
+          "chapterTitle": "Probability Basics"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 6,
+        "cleanedOrdinal": 6
+      },
+      {
+        "prompt": "If X ~ Normal(\u03bc=50, \u03c3=10), what is P(X > 60) approximately?",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "0.34"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "0.16"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "0.84"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "0.50"
+          }
+        ],
+        "correctChoiceId": "b",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "60 is one SD above mean; upper tail above z=1 is about 16%.",
+        "wrongAnswerExplanations": {
+          "a": "That's about one SD below to the mean region.",
+          "c": "That's the area below z=1, not above.",
+          "d": "That's P(X>\u03bc), not P(X>\u03bc+\u03c3)."
+        },
+        "difficulty": "hard",
+        "source": {
+          "term": "",
+          "chapterTitle": "Distributions"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 7,
+        "cleanedOrdinal": 7
+      },
+      {
+        "prompt": "For X ~ Binomial(400, 0.5), a normal approximation to P(X \u2264 210) should use a continuity correction of\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "P(Z \u2264 (210 \u2212 200)/10) without adjustment"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "P(Z \u2264 (210.5 \u2212 200)/\u221a(400\u00b70.5\u00b70.5))"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "P(Z \u2264 (209.5 \u2212 200)/10) using 209.5"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Exact binomial cannot be approximated for n=400"
+          }
+        ],
+        "correctChoiceId": "b",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "When approximating P(X\u2264k), use k+0.5 in the z numerator for the upper-inclusive count.",
+        "wrongAnswerExplanations": {
+          "a": "Skipping +0.5 mis-handles the discrete-to-continuous bridge.",
+          "c": "209.5 corresponds to P(X\u2264209), not P(X\u2264210).",
+          "d": "n=400 is large enough for a normal approximation."
+        },
+        "difficulty": "hard",
+        "source": {
+          "term": "",
+          "chapterTitle": "Distributions"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 8,
+        "cleanedOrdinal": 8
+      },
+      {
+        "prompt": "Waiting times T ~ Exponential(\u03bb=0.2 per minute) have E[T] and SD[T] equal to\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "2.5 minutes each"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "25 minutes each"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "5 minutes each (1/\u03bb)"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "0.2 minutes each"
+          }
+        ],
+        "correctChoiceId": "c",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Exponential mean and SD are both 1/\u03bb = 5 when \u03bb=0.2.",
+        "wrongAnswerExplanations": {
+          "a": "Half of 1/\u03bb is not the Exponential SD.",
+          "b": "That's 1/\u03bb\u00b2 related scale, not the mean.",
+          "d": "0.2 is \u03bb, not the mean."
+        },
+        "difficulty": "hard",
+        "source": {
+          "term": "",
+          "chapterTitle": "Distributions"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 9,
+        "cleanedOrdinal": 9
+      },
+      {
+        "prompt": "A sampling distribution of x\u0304 has SD 2 when n=16 from a population with \u03c3=8. If n increases to 64 (same population), the new SD of x\u0304 is\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "2"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "1"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "0.5"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "4"
+          }
+        ],
+        "correctChoiceId": "b",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "SD(x\u0304)=\u03c3/\u221an: was 8/4=2; now 8/8=1.",
+        "wrongAnswerExplanations": {
+          "a": "That's the old SE; larger n shrinks it.",
+          "c": "Would need n=256 with \u03c3=8.",
+          "d": "Doubling SD would require smaller n, not larger."
+        },
+        "difficulty": "hard",
+        "source": {
+          "term": "",
+          "chapterTitle": "Distributions"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 10,
+        "cleanedOrdinal": 10
+      },
+      {
+        "prompt": "A 99% CI for \u03bc is (48, 52) using a normal critical value. If everything else stays fixed except confidence drops to 95%, the new interval will be\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Invalid without resampling"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Wider than (48, 52)"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Narrower than (48, 52)"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Exactly (48, 52)"
+          }
+        ],
+        "correctChoiceId": "c",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Lower confidence uses a smaller z* (about 1.96 vs 2.58), shrinking margin of error.",
+        "wrongAnswerExplanations": {
+          "a": "You can recompute the interval from the same x\u0304 and SE.",
+          "b": "99% is wider than 95% for the same data and method.",
+          "d": "Changing confidence changes the critical multiplier."
+        },
+        "difficulty": "hard",
+        "source": {
+          "term": "",
+          "chapterTitle": "Confidence Intervals"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 11,
+        "cleanedOrdinal": 11
+      },
+      {
+        "prompt": "Bootstrap percentile intervals for the median are preferred over a naive x\u0304\u00b1z\u00b7s/\u221an interval when\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "The data are strongly skewed with small n and the parameter of interest is the median."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "You need a CI for the population mean with known \u03c3."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Every dataset has zero skew by definition."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "The sample is huge and perfectly normal."
+          }
+        ],
+        "correctChoiceId": "a",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Bootstrap resamples the data to approximate the sampling distribution without normality for the median.",
+        "wrongAnswerExplanations": {
+          "b": "Known-\u03c3 z intervals are a different scenario.",
+          "c": "Real data are often skewed.",
+          "d": "Classic t intervals often suffice for means with large normal samples."
+        },
+        "difficulty": "hard",
+        "source": {
+          "term": "",
+          "chapterTitle": "Confidence Intervals"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 12,
+        "cleanedOrdinal": 12
+      },
+      {
+        "prompt": "A two-sample t-interval for \u03bc\u2081\u2212\u03bc\u2082 assumes (for the standard pooled-variance version taught early) that\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Both groups are independent random samples with approximately normal populations and equal unknown variances."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Population variances are known constants."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Paired measurements within subjects are required."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Sample sizes must be exactly 30 each."
+          }
+        ],
+        "correctChoiceId": "a",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Pooled two-sample t uses sp\u00b2 combining groups under equal-variance assumption.",
+        "wrongAnswerExplanations": {
+          "b": "That's a z scenario, not the usual pooled t.",
+          "c": "Paired designs use differences and a one-sample t on pairs.",
+          "d": "n=30 is a guideline, not a strict requirement."
+        },
+        "difficulty": "hard",
+        "source": {
+          "term": "",
+          "chapterTitle": "Confidence Intervals"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 13,
+        "cleanedOrdinal": 13
+      },
+      {
+        "prompt": "You perform 20 independent tests at \u03b1=0.05 with all nulls true. The expected number of false rejections is\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "10"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "0.05"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "1"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "20"
+          }
+        ],
+        "correctChoiceId": "c",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Expected Type I errors \u2248 m\u00b7\u03b1 = 20\u00b70.05 = 1.",
+        "wrongAnswerExplanations": {
+          "a": "Not m\u00b7\u03b1 for m=20.",
+          "b": "That's \u03b1 per test, not the total expected count.",
+          "d": "Would mean every test rejects, not the expectation under true nulls."
+        },
+        "difficulty": "hard",
+        "source": {
+          "term": "",
+          "chapterTitle": "Hypothesis Testing"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 14,
+        "cleanedOrdinal": 14
+      },
+      {
+        "prompt": "A one-sample t-test for \u03bc with n=15, s=12, x\u0304=118, H\u2080: \u03bc=100, two-sided, gives t = (118\u2212100)/(12/\u221a15). What is |t|?",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "About 0.45"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "About 5.81"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "About 18"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "About 1.5"
+          }
+        ],
+        "correctChoiceId": "b",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "|t| = 18/(12/3.873) \u2248 18/3.098 \u2248 5.81.",
+        "wrongAnswerExplanations": {
+          "a": "Uses s instead of SE in the denominator.",
+          "c": "That's the numerator only, not divided by SE.",
+          "d": "That's the raw difference 18 divided by s incorrectly."
+        },
+        "difficulty": "hard",
+        "source": {
+          "term": "",
+          "chapterTitle": "Hypothesis Testing"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 15,
+        "cleanedOrdinal": 15
+      },
+      {
+        "prompt": "Switching from a two-sided to a one-sided test (same data, same \u03b1) will\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Make Type I error exceed \u03b1 automatically."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Always increase the p-value because less area is tested."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Change only the sample size n."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Decrease the reported p-value (for a directionally consistent effect) and can increase power."
+          }
+        ],
+        "correctChoiceId": "d",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "One-sided puts all \u03b1 in one tail when the effect direction matches H\u2090.",
+        "wrongAnswerExplanations": {
+          "a": "\u03b1 is still controlled at the chosen level.",
+          "b": "Halving tails can halve the p-value for the same z in the correct direction.",
+          "c": "The data and n are unchanged; only the alternative tail changes."
+        },
+        "difficulty": "hard",
+        "source": {
+          "term": "",
+          "chapterTitle": "Hypothesis Testing"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 16,
+        "cleanedOrdinal": 16
+      },
+      {
+        "prompt": "A 95% CI for \u03bc is entirely above 0. For a two-sided test of H\u2080: \u03bc=0 versus H\u2090: \u03bc\u22600 at \u03b1=0.05, you should\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Fail to reject H\u2080"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Conclude \u03bc equals the upper endpoint exactly"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Accept H\u2080 with probability 0.95"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Reject H\u2080"
+          }
+        ],
+        "correctChoiceId": "d",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Equivalence: interval excludes 0 \u21d4 two-sided test rejects \u03bc=0 at matching 95% level (normal/t setup).",
+        "wrongAnswerExplanations": {
+          "a": "0 is not inside the CI, so H\u2080: \u03bc=0 is inconsistent.",
+          "b": "The CI bounds an range, not a point estimate only.",
+          "c": "Tests do not yield P(H\u2080 true)."
+        },
+        "difficulty": "hard",
+        "source": {
+          "term": "",
+          "chapterTitle": "Hypothesis Testing"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 17,
+        "cleanedOrdinal": 17
+      },
+      {
+        "prompt": "A residual plot shows a clear curved pattern (smile shape) while r=0.9. What is the best conclusion?",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "The linear model is perfect because r is large."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "A linear model is inadequate despite high r; consider transformation or nonlinear terms."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Outliers are impossible when r>0.8."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Correlation proves the relationship is linear."
+          }
+        ],
+        "correctChoiceId": "b",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "r measures linear association; systematic curvature in residuals violates linearity assumptions.",
+        "wrongAnswerExplanations": {
+          "a": "High r can still miss systematic curvature.",
+          "c": "Outliers and curvature can coexist.",
+          "d": "r can be high for monotone nonlinear patterns too."
+        },
+        "difficulty": "hard",
+        "source": {
+          "term": "",
+          "chapterTitle": "Regression"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 18,
+        "cleanedOrdinal": 18
+      },
+      {
+        "prompt": "In regression, the least-squares line always passes through which point?",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "(min x, min y)"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "(max x, max y)"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "(x\u0304, \u0233)"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "(0, 0)"
+          }
+        ],
+        "correctChoiceId": "c",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "The fitted line satisfies \u0233 = b\u2080 + b\u2081x\u0304, so it goes through the sample means.",
+        "wrongAnswerExplanations": {
+          "a": "The line need not touch corner points of the data cloud.",
+          "b": "Extreme points need not lie on the LS line.",
+          "d": "Only if the means are zero."
+        },
+        "difficulty": "hard",
+        "source": {
+          "term": "",
+          "chapterTitle": "Regression"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 19,
+        "cleanedOrdinal": 19
+      },
+      {
+        "prompt": "Adding a spurious variable that is pure random noise to a multiple regression will, on average across many samples, tend to\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Make residuals exactly zero for all rows."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Always decrease R\u00b2 in-sample."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Guarantee statistically significant coefficients."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Not improve true out-of-sample prediction and can inflate R\u00b2 in-sample."
+          }
+        ],
+        "correctChoiceId": "d",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Extra noise predictors may fit sample idiosyncrasies (higher R\u00b2) without real predictive gain.",
+        "wrongAnswerExplanations": {
+          "a": "Perfect fit needs as many orthogonal predictors as points, not random noise alone.",
+          "b": "In-sample R\u00b2 never decreases when adding predictors.",
+          "c": "Noise variables are usually insignificant."
+        },
+        "difficulty": "hard",
+        "source": {
+          "term": "",
+          "chapterTitle": "Regression"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 20,
+        "cleanedOrdinal": 20
+      }
+    ]
+  }
+}

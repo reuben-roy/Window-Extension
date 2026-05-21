@@ -169,7 +169,12 @@ chrome.runtime.onInstalled.addListener(() => {
   void ensureDemoStatsSeeded();
   void hydrateOpenTabsDocumentUrls();
   void syncActionSurfaceBehavior();
+  void handleTick().catch(console.error);
   console.log('[Window] Installed — tick alarm scheduled.');
+});
+
+chrome.runtime.onStartup.addListener(() => {
+  void handleTick().catch(console.error);
 });
 
 chrome.alarms.get(ALARM_TICK, (alarm) => {
@@ -194,8 +199,18 @@ void ensureDemoStatsSeeded();
 void hydrateOpenTabsDocumentUrls();
 void syncActionSurfaceBehavior();
 void restoreAccountSession();
-void refreshLearningState();
+void refreshLearningState()
+  .then(() => maybeSurfaceLearningQuiz())
+  .catch(console.error);
 void getCalendarState().then((calendarState) => maybeAutoLaunchActiveOccurrence(calendarState)).catch(console.error);
+
+if (chrome.idle?.onStateChanged) {
+  chrome.idle.onStateChanged.addListener((state) => {
+    if (state === 'idle' || state === 'locked') {
+      void maybeSurfaceLearningQuiz().catch(console.error);
+    }
+  });
+}
 
 chrome.storage.onChanged.addListener((changes, areaName) => {
   if (
@@ -385,8 +400,11 @@ async function handleMessage(
     case 'REFRESH_ASSISTANT_STATE':
       return refreshAssistantState();
 
-    case 'REFRESH_LEARNING_STATE':
-      return refreshLearningState();
+    case 'REFRESH_LEARNING_STATE': {
+      const learningState = await refreshLearningState();
+      await maybeSurfaceLearningQuiz();
+      return learningState;
+    }
 
     case 'SIGN_IN_WITH_PROVIDER':
       return signInWithProvider(

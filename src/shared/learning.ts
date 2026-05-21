@@ -320,9 +320,6 @@ export function isLearningIdleWindow(input: {
   const calendarGap = !input.calendarState.currentEvent || input.snoozeState.active;
 
   if (calendarGap) {
-    if (intensity === 'balanced' && !input.calendarState.currentEvent && !input.snoozeState.active) {
-      return input.userIdle;
-    }
     return true;
   }
 

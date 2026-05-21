@@ -1,0 +1,2531 @@
+{
+  "book": {
+    "title": "Dive into Deep Learning",
+    "parentTopic": "AI & Machine Learning",
+    "subtopic": "Transformers",
+    "slug": "transformers-d2l",
+    "sourceUrl": "https://d2l.ai/",
+    "pdfSha256": ""
+  },
+  "chapterCount": 7,
+  "conceptCount": 60,
+  "chapters": [
+    {
+      "ordinal": 1,
+      "title": "Attention",
+      "startPage": 1,
+      "endPage": 1,
+      "path": ""
+    },
+    {
+      "ordinal": 2,
+      "title": "Self-Attention",
+      "startPage": 1,
+      "endPage": 1,
+      "path": ""
+    },
+    {
+      "ordinal": 3,
+      "title": "Positional Encoding",
+      "startPage": 1,
+      "endPage": 1,
+      "path": ""
+    },
+    {
+      "ordinal": 4,
+      "title": "Encoder-Decoder",
+      "startPage": 1,
+      "endPage": 1,
+      "path": ""
+    },
+    {
+      "ordinal": 5,
+      "title": "Multi-Head Attention",
+      "startPage": 1,
+      "endPage": 1,
+      "path": ""
+    },
+    {
+      "ordinal": 6,
+      "title": "LLM Basics",
+      "startPage": 1,
+      "endPage": 1,
+      "path": ""
+    },
+    {
+      "ordinal": 7,
+      "title": "KV Cache",
+      "startPage": 1,
+      "endPage": 1,
+      "path": ""
+    }
+  ],
+  "quizzes": {
+    "easy": [
+      {
+        "prompt": "In the attention mechanism, what does the softmax over keys produce?",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "The raw dot products without normalization"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "A probability distribution over positions to weight values."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "A fixed one-hot vector over the sequence"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "The gradient of the loss with respect to queries"
+          }
+        ],
+        "correctChoiceId": "b",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Attention weights \u03b1\u1d62 = softmax(score(q, k\u1d62)); they sum to 1 and select how much of each value to blend.",
+        "wrongAnswerExplanations": {
+          "a": "Dot products are scores; softmax turns them into weights.",
+          "c": "Softmax yields a full distribution, not a single hard index (unless degenerate).",
+          "d": "Softmax is part of the forward pass, not backprop by definition here."
+        },
+        "difficulty": "easy",
+        "source": {
+          "term": "",
+          "chapterTitle": "Attention"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 1,
+        "cleanedOrdinal": 1
+      },
+      {
+        "prompt": "Scaled dot-product attention divides dot products by \u221ad_k primarily to\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Keep softmax inputs in a moderate range so gradients do not vanish."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Make attention weights exactly uniform"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Eliminate the need for positional encoding"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Convert dot products into probabilities directly"
+          }
+        ],
+        "correctChoiceId": "a",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Large d_k makes dot-product magnitudes large; scaling prevents extremely peaked softmax and tiny gradients.",
+        "wrongAnswerExplanations": {
+          "b": "Scaling stabilizes variance; it does not force uniform weights.",
+          "c": "Positional encoding addresses order; scaling addresses magnitude.",
+          "d": "Softmax, not scaling alone, produces probabilities."
+        },
+        "difficulty": "easy",
+        "source": {
+          "term": "",
+          "chapterTitle": "Attention"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 2,
+        "cleanedOrdinal": 2
+      },
+      {
+        "prompt": "The output of a single attention head is best described as\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "A weighted sum of value vectors using attention weights on keys."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "The maximum value vector in the sequence"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "The average of all keys without weighting"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "The element-wise product of query and key only"
+          }
+        ],
+        "correctChoiceId": "a",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "output = \u03a3\u1d62 \u03b1\u1d62 v\u1d62 where \u03b1\u1d62 come from comparing the query to each key.",
+        "wrongAnswerExplanations": {
+          "b": "Attention blends values; argmax would be hard selection.",
+          "c": "Keys set weights; values are what get summed.",
+          "d": "Dot products score compatibility; values are aggregated, not just multiplied."
+        },
+        "difficulty": "easy",
+        "source": {
+          "term": "",
+          "chapterTitle": "Attention"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 3,
+        "cleanedOrdinal": 3
+      },
+      {
+        "prompt": "In self-attention, queries, keys, and values are derived from\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "A separate encoder-only memory bank"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Random noise vectors sampled each step"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Only the final token embedding"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "The same input sequence (via learned linear projections)."
+          }
+        ],
+        "correctChoiceId": "d",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Self-attention relates every position to every other position in one sequence: Q, K, V all come from X.",
+        "wrongAnswerExplanations": {
+          "a": "That describes cross-attention to another sequence.",
+          "b": "Q, K, V are deterministic functions of embeddings.",
+          "c": "All positions participate, not just the last token."
+        },
+        "difficulty": "easy",
+        "source": {
+          "term": "",
+          "chapterTitle": "Self-Attention"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 4,
+        "cleanedOrdinal": 4
+      },
+      {
+        "prompt": "Self-attention lets each token directly attend to\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Any other token in the same sequence."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Only tokens in a different batch element"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Only padding tokens exclusively"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Only its immediate left neighbor"
+          }
+        ],
+        "correctChoiceId": "a",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "All-pairs interactions build long-range dependencies in one layer (subject to masking in decoders).",
+        "wrongAnswerExplanations": {
+          "b": "Attention is within one sequence instance.",
+          "c": "Models mask padding out, not attend only to it.",
+          "d": "That is local recurrence; self-attention is all-to-all."
+        },
+        "difficulty": "easy",
+        "source": {
+          "term": "",
+          "chapterTitle": "Self-Attention"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 5,
+        "cleanedOrdinal": 5
+      },
+      {
+        "prompt": "Compared with a single RNN layer over length n, vanilla self-attention's time complexity is often cited as\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "O(1) regardless of sequence length"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "O(n) because it runs in one parallel pass"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "O(n\u00b3) due to three matmuls"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "O(n\u00b2) in sequence length for the attention matrix."
+          }
+        ],
+        "correctChoiceId": "d",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Computing all pairwise scores costs O(n\u00b2); parallel depth is O(1) per layer vs O(n) for RNNs.",
+        "wrongAnswerExplanations": {
+          "a": "Longer sequences still increase attention cost.",
+          "b": "Parallelism is good, but pairwise scores still scale quadratically.",
+          "c": "QKV projections are O(n); the bottleneck is n\u00d7n attention."
+        },
+        "difficulty": "easy",
+        "source": {
+          "term": "",
+          "chapterTitle": "Self-Attention"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 6,
+        "cleanedOrdinal": 6
+      },
+      {
+        "prompt": "Transformers have no built-in notion of token order, so positional encodings are added to\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Reduce the vocabulary size"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Inject information about each token's position in the sequence."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Normalize gradients across layers"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Replace the embedding layer entirely"
+          }
+        ],
+        "correctChoiceId": "b",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Attention is permutation-invariant on embeddings alone; position tags break symmetry.",
+        "wrongAnswerExplanations": {
+          "a": "Vocabulary is unrelated to sequence order.",
+          "c": "That is layer norm's role, not positional encoding.",
+          "d": "Positions augment token embeddings, not replace them."
+        },
+        "difficulty": "easy",
+        "source": {
+          "term": "",
+          "chapterTitle": "Positional Encoding"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 7,
+        "cleanedOrdinal": 7
+      },
+      {
+        "prompt": "Sinusoidal positional encodings in the original Transformer use\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "One-hot vectors of length equal to vocabulary"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Random Gaussian noise added once per epoch"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Fixed sine and cosine waves at different frequencies per dimension."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Learned integer indices only at training time"
+          }
+        ],
+        "correctChoiceId": "c",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "PE(pos, 2i) = sin(pos / 10000^{2i/d}); cos on even/odd pairs gives smooth relative structure.",
+        "wrongAnswerExplanations": {
+          "a": "Position is not the same as token identity.",
+          "b": "Sinusoidal PE is fixed, not resampled noise.",
+          "d": "Sinusoidal encodings are deterministic functions of position."
+        },
+        "difficulty": "easy",
+        "source": {
+          "term": "",
+          "chapterTitle": "Positional Encoding"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 8,
+        "cleanedOrdinal": 8
+      },
+      {
+        "prompt": "In a Transformer for machine translation, the encoder typically\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Generates target tokens one at a time autoregressively"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Stores only the final hidden state as a single vector"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Applies causal masking to every position"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Maps the source sentence to a stack of contextual representations."
+          }
+        ],
+        "correctChoiceId": "d",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "The encoder processes the full source with bidirectional (unmasked) self-attention.",
+        "wrongAnswerExplanations": {
+          "a": "Autoregressive generation is the decoder's job.",
+          "b": "All source positions remain available via representations.",
+          "c": "Causal masking is used in the decoder, not the encoder stack."
+        },
+        "difficulty": "easy",
+        "source": {
+          "term": "",
+          "chapterTitle": "Encoder-Decoder"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 9,
+        "cleanedOrdinal": 9
+      },
+      {
+        "prompt": "Decoder cross-attention lets each target position attend to\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Only its own embedding without context"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Encoder outputs (memory) while also using masked self-attention on prior targets."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Future target tokens not yet generated"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Random keys from an unrelated batch"
+          }
+        ],
+        "correctChoiceId": "b",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Cross-attention queries come from the decoder state; keys and values come from encoder outputs.",
+        "wrongAnswerExplanations": {
+          "a": "Cross-attention explicitly pulls source information.",
+          "c": "Causal self-attention blocks future targets; cross-attn reads source.",
+          "d": "Memory is aligned to the paired source sentence."
+        },
+        "difficulty": "easy",
+        "source": {
+          "term": "",
+          "chapterTitle": "Encoder-Decoder"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 10,
+        "cleanedOrdinal": 10
+      },
+      {
+        "prompt": "Teacher forcing during Transformer training means\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Attention weights are frozen after epoch one"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "The teacher model has fewer layers than the student"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "The decoder input uses ground-truth previous tokens, not model predictions."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Gradients are disabled in the encoder"
+          }
+        ],
+        "correctChoiceId": "c",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Feeding correct prefixes speeds stable training; at inference the model feeds its own outputs.",
+        "wrongAnswerExplanations": {
+          "a": "Weights continue to update throughout training.",
+          "b": "Teacher forcing refers to inputs, not model distillation here.",
+          "d": "Both stacks are typically trained jointly."
+        },
+        "difficulty": "easy",
+        "source": {
+          "term": "",
+          "chapterTitle": "Encoder-Decoder"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 11,
+        "cleanedOrdinal": 11
+      },
+      {
+        "prompt": "Multi-head attention runs several attention operations in parallel and then\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Concatenates head outputs and projects them with a linear layer."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Applies softmax across heads instead of positions"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Discards all but the first head at inference"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Averages all heads into a single scalar"
+          }
+        ],
+        "correctChoiceId": "a",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Each head has its own Q, K, V projections; concat + W_O mixes subspaces.",
+        "wrongAnswerExplanations": {
+          "b": "Softmax is over sequence positions within each head.",
+          "c": "All heads contribute at train and test time.",
+          "d": "Head outputs are vectors concatenated, not reduced to one scalar."
+        },
+        "difficulty": "easy",
+        "source": {
+          "term": "",
+          "chapterTitle": "Multi-Head Attention"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 12,
+        "cleanedOrdinal": 12
+      },
+      {
+        "prompt": "Using multiple heads allows the model to\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Capture different relationship types (syntax, coreference, etc.) in parallel."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Reduce sequence length by a factor of h"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Eliminate the feed-forward sublayer"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Remove the need for layer normalization"
+          }
+        ],
+        "correctChoiceId": "a",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Different heads can specialize in distinct attention patterns over the same tokens.",
+        "wrongAnswerExplanations": {
+          "b": "Head count does not shorten the sequence.",
+          "c": "FFN remains part of each Transformer block.",
+          "d": "Layer norm is still used around sublayers."
+        },
+        "difficulty": "easy",
+        "source": {
+          "term": "",
+          "chapterTitle": "Multi-Head Attention"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 13,
+        "cleanedOrdinal": 13
+      },
+      {
+        "prompt": "If model dimension is d_model and there are h heads, each head typically uses dimension\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "d_k = d_v = d_model / h"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "1 regardless of h"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "d_model \u00d7 h"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "twice the vocabulary size"
+          }
+        ],
+        "correctChoiceId": "a",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Splitting d_model across h heads keeps total parameter footprint manageable.",
+        "wrongAnswerExplanations": {
+          "b": "Heads use substantial subspaces, not scalars only.",
+          "c": "Per-head dimension shrinks as h grows, not multiplies d_model.",
+          "d": "Head size is architectural, not tied to |V|."
+        },
+        "difficulty": "easy",
+        "source": {
+          "term": "",
+          "chapterTitle": "Multi-Head Attention"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 14,
+        "cleanedOrdinal": 14
+      },
+      {
+        "prompt": "Large language models are typically trained with a\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Pairwise ranking loss on image patches"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Causal (autoregressive) next-token prediction objective."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Purely masked bidirectional objective on full sentences only"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Clustering loss over document embeddings"
+          }
+        ],
+        "correctChoiceId": "b",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Given prefix tokens, the model predicts the distribution of the next token (MLE / cross-entropy).",
+        "wrongAnswerExplanations": {
+          "a": "LLMs are text models; that describes vision ranking.",
+          "c": "BERT-style MLM is different from standard GPT-style LLM training.",
+          "d": "LLM pretraining is generative token modeling, not k-means."
+        },
+        "difficulty": "easy",
+        "source": {
+          "term": "",
+          "chapterTitle": "LLM Basics"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 15,
+        "cleanedOrdinal": 15
+      },
+      {
+        "prompt": "At inference, autoregressive LLMs generate text by repeatedly\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Re-training all weights after each character"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Sampling or selecting one token, appending it, and conditioning on the longer prefix."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Sorting the vocabulary alphabetically each step"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Encoding the entire future paragraph in one forward pass"
+          }
+        ],
+        "correctChoiceId": "b",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Each step extends the context; total cost grows with output length unless cached.",
+        "wrongAnswerExplanations": {
+          "a": "Weights are fixed at inference; only activations update.",
+          "c": "Decoding uses model logits, not lexical sorting.",
+          "d": "Future tokens are not known; generation is sequential."
+        },
+        "difficulty": "easy",
+        "source": {
+          "term": "",
+          "chapterTitle": "LLM Basics"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 16,
+        "cleanedOrdinal": 16
+      },
+      {
+        "prompt": "Temperature in LLM sampling scales logits before softmax to\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Cache key-value pairs from prior layers"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Control randomness \u2014 higher temperature yields flatter, more diverse distributions."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Enforce grammatical POS tags"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Increase model depth dynamically"
+          }
+        ],
+        "correctChoiceId": "b",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "T > 1 spreads probability mass; T \u2192 0 approaches greedy argmax.",
+        "wrongAnswerExplanations": {
+          "a": "That is KV-cache optimization, not temperature.",
+          "c": "Sampling temperature does not hard-constrain syntax.",
+          "d": "Temperature affects sampling, not architecture depth."
+        },
+        "difficulty": "easy",
+        "source": {
+          "term": "",
+          "chapterTitle": "LLM Basics"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 17,
+        "cleanedOrdinal": 17
+      },
+      {
+        "prompt": "During autoregressive decoding, a KV cache stores\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "The entire training dataset in RAM"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Gradients from the backward pass of prior tokens"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Only the softmax attention weights from step zero"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Previously computed key and value projections for past tokens."
+          }
+        ],
+        "correctChoiceId": "d",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Keys and values for prefix tokens are reused instead of recomputed each new step.",
+        "wrongAnswerExplanations": {
+          "a": "Caches hold activations for the current sequence, not the corpus.",
+          "b": "Inference often runs without storing training gradients.",
+          "c": "Caches store K and V tensors per layer, not just weights."
+        },
+        "difficulty": "easy",
+        "source": {
+          "term": "",
+          "chapterTitle": "KV Cache"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 18,
+        "cleanedOrdinal": 18
+      },
+      {
+        "prompt": "KV caching speeds up decoding because each new token\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Reduces model parameters by half"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Only needs a forward pass for its query attending to cached K/V of the prefix."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Eliminates the vocabulary softmax"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Skips the attention mechanism entirely"
+          }
+        ],
+        "correctChoiceId": "b",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Work per step becomes roughly O(n) per layer on context length instead of recomputing O(n\u00b2) over the full prefix.",
+        "wrongAnswerExplanations": {
+          "a": "Parameter count is unchanged; compute is saved.",
+          "c": "The output projection and softmax still run each step.",
+          "d": "Attention remains; prior K/V are reused."
+        },
+        "difficulty": "easy",
+        "source": {
+          "term": "",
+          "chapterTitle": "KV Cache"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 19,
+        "cleanedOrdinal": 19
+      },
+      {
+        "prompt": "Memory used by a KV cache grows with\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Only the learning rate schedule"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Context length, number of layers, batch size, and hidden dimension."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "The number of training epochs completed"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Whether layer norm uses bias terms"
+          }
+        ],
+        "correctChoiceId": "b",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Each layer stores K and V for all past positions \u2014 longer contexts mean larger caches.",
+        "wrongAnswerExplanations": {
+          "a": "Optimizer hyperparameters do not define cache size.",
+          "c": "Cache size is a runtime inference concern, not epoch count.",
+          "d": "Norm bias is tiny compared to per-token K/V storage."
+        },
+        "difficulty": "easy",
+        "source": {
+          "term": "",
+          "chapterTitle": "KV Cache"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 20,
+        "cleanedOrdinal": 20
+      }
+    ],
+    "medium": [
+      {
+        "prompt": "Bahdanau (additive) attention scores compatibility with\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "A feed-forward network on concatenated or combined query and key features."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Only the L2 distance between value vectors"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "A fixed lookup table indexed by token ID"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "The determinant of the query-key outer product"
+          }
+        ],
+        "correctChoiceId": "a",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "score(q, k) = v\u1d40 tanh(W_q q + W_k k) generalizes dot-product when dimensions differ.",
+        "wrongAnswerExplanations": {
+          "b": "Values are aggregated after scoring; scoring uses q and k.",
+          "c": "Scores are computed from representations, not static tables.",
+          "d": "Attention scores are per-position scalars, not matrix determinants."
+        },
+        "difficulty": "medium",
+        "source": {
+          "term": "",
+          "chapterTitle": "Attention"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 1,
+        "cleanedOrdinal": 1
+      },
+      {
+        "prompt": "When attention scores are very large before softmax, the distribution becomes\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Uniform with maximal gradient everywhere"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Independent of the query vector"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Always zero for every position"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Nearly one-hot, with small gradients to non-argmax keys."
+          }
+        ],
+        "correctChoiceId": "d",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Peaked softmax saturates; scaling dot products mitigates this in Transformers.",
+        "wrongAnswerExplanations": {
+          "a": "Large logits yield peaked, not uniform, distributions.",
+          "b": "Scores depend on q \u00b7 k (or general score functions).",
+          "c": "Softmax always assigns positive mass summing to 1."
+        },
+        "difficulty": "medium",
+        "source": {
+          "term": "",
+          "chapterTitle": "Attention"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 2,
+        "cleanedOrdinal": 2
+      },
+      {
+        "prompt": "In a Transformer encoder block, self-attention is followed by\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "A recurrent state passed to the next sentence only"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "A position-wise feed-forward network and residual connections with layer norm."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Deleting half the hidden dimensions permanently"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "A convolution with kernel size equal to vocabulary"
+          }
+        ],
+        "correctChoiceId": "b",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Pre-norm or post-norm variants wrap attention and FFN: Attn \u2192 FFN with residuals.",
+        "wrongAnswerExplanations": {
+          "a": "Blocks are depth-stacked; RNN hidden state is not the core pattern.",
+          "c": "Dimension is preserved across the block (aside from internal FFN expansion).",
+          "d": "FFN is two linear layers with activation on each position."
+        },
+        "difficulty": "medium",
+        "source": {
+          "term": "",
+          "chapterTitle": "Self-Attention"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 3,
+        "cleanedOrdinal": 3
+      },
+      {
+        "prompt": "Causal (masked) self-attention in GPT-style models sets attention logits to \u2212\u221e for\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "All padding tokens in both directions"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Every pair of tokens in the encoder"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Positions j > i so token i cannot attend to future tokens."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Only the first token in the sequence"
+          }
+        ],
+        "correctChoiceId": "c",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "An upper-triangular mask preserves autoregressive conditioning: predict next token from past.",
+        "wrongAnswerExplanations": {
+          "a": "Padding uses separate masks; causal mask is about temporal order.",
+          "b": "Encoder self-attention is typically unmasked bidirectional.",
+          "d": "Each position has its own allowed prefix set."
+        },
+        "difficulty": "medium",
+        "source": {
+          "term": "",
+          "chapterTitle": "Self-Attention"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 4,
+        "cleanedOrdinal": 4
+      },
+      {
+        "prompt": "Multi-layer self-attention stacks increase expressive power because\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Only the first layer may attend to all positions"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Depth replaces the need for any parameters"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Each layer removes positional information entirely"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Later layers can build on increasingly mixed contextual representations."
+          }
+        ],
+        "correctChoiceId": "d",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Composition of attention + FFN lets higher layers model more abstract dependencies.",
+        "wrongAnswerExplanations": {
+          "a": "Every layer performs full (masked) attention over allowed positions.",
+          "b": "More layers add parameters and computation.",
+          "c": "Positional signals propagate; depth refines context."
+        },
+        "difficulty": "medium",
+        "source": {
+          "term": "",
+          "chapterTitle": "Self-Attention"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 5,
+        "cleanedOrdinal": 5
+      },
+      {
+        "prompt": "Learned absolute positional embeddings differ from sinusoidal encodings in that they\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Are trainable vectors indexed by position, capped by a maximum length."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Encode only relative distance without any position index"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Require no parameters and generalize beyond max length by formula"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Replace token embeddings in the output softmax"
+          }
+        ],
+        "correctChoiceId": "a",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Learned PE is flexible but may not extrapolate well past trained max sequence length.",
+        "wrongAnswerExplanations": {
+          "b": "Absolute learned embeddings tie to index i.",
+          "c": "That describes fixed sinusoidal encodings, not learned tables.",
+          "d": "Positions are added to inputs, not the final logits layer."
+        },
+        "difficulty": "medium",
+        "source": {
+          "term": "",
+          "chapterTitle": "Positional Encoding"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 6,
+        "cleanedOrdinal": 6
+      },
+      {
+        "prompt": "Relative positional bias (e.g., in T5 or some long-context models) modifies attention by\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Removing keys from distant tokens entirely"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Forcing all attention weights to be equal"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Using only sinusoidal functions in the output layer"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Adding a score based on distance i \u2212 j rather than only absolute position vectors."
+          }
+        ],
+        "correctChoiceId": "d",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Relative biases let the model generalize patterns like 'nearby vs far' across sequence lengths.",
+        "wrongAnswerExplanations": {
+          "a": "Bias shifts scores; it does not drop keys.",
+          "b": "Bias changes relative preferences, not uniformity.",
+          "c": "Biases are often learned buckets or functions of distance."
+        },
+        "difficulty": "medium",
+        "source": {
+          "term": "",
+          "chapterTitle": "Positional Encoding"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 7,
+        "cleanedOrdinal": 7
+      },
+      {
+        "prompt": "The original Transformer ties encoder and decoder with\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "No attention between source and target"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Shared embedding space and stacked layers where decoder cross-attends to encoder memory."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Identical weights for every encoder and decoder layer"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "A single RNN hidden state between both sides"
+          }
+        ],
+        "correctChoiceId": "b",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Embeddings may be shared; decoder layers consume encoder outputs via cross-attention.",
+        "wrongAnswerExplanations": {
+          "a": "Cross-attention is the bridge from source to target.",
+          "c": "Layers are separate modules with different roles.",
+          "d": "Transformers replace RNN state with attention memory."
+        },
+        "difficulty": "medium",
+        "source": {
+          "term": "",
+          "chapterTitle": "Encoder-Decoder"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 8,
+        "cleanedOrdinal": 8
+      },
+      {
+        "prompt": "Beam search in Transformer decoding maintains\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "The full attention matrix from training only"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "A single greedy path with no alternatives"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "All vocabulary words as equally likely each step"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Multiple partial hypotheses ranked by cumulative log-probability."
+          }
+        ],
+        "correctChoiceId": "d",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Beam width b keeps top-b prefixes; expansion trades compute for better translations.",
+        "wrongAnswerExplanations": {
+          "a": "Beam search operates on decoding scores, not stored train matrices.",
+          "b": "Beam search explicitly explores multiple prefixes.",
+          "c": "Log-probs from the model rank continuations."
+        },
+        "difficulty": "medium",
+        "source": {
+          "term": "",
+          "chapterTitle": "Encoder-Decoder"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 9,
+        "cleanedOrdinal": 9
+      },
+      {
+        "prompt": "Encoder-decoder models like T5 frame many NLP tasks as\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Purely contrastive image-caption ranking"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Text-to-text generation with a unified span-corruption or instruction format."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Unsupervised k-means over byte n-grams only"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Static template filling without neural parameters"
+          }
+        ],
+        "correctChoiceId": "b",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "T5 casts classification, translation, and QA as generating target text strings.",
+        "wrongAnswerExplanations": {
+          "a": "T5 is text-to-text, not CLIP-style vision contrastive learning.",
+          "c": "Training uses neural denoising / supervised text objectives.",
+          "d": "The model learns parameters end-to-end."
+        },
+        "difficulty": "medium",
+        "source": {
+          "term": "",
+          "chapterTitle": "Encoder-Decoder"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 10,
+        "cleanedOrdinal": 10
+      },
+      {
+        "prompt": "With h heads and model dimension d_model, the concat of head outputs has dimension\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "2 \u00d7 vocabulary size"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "h \u00d7 (d_model / h) = d_model before the output projection."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "h\u00b2 \u00d7 d_model"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "d_model / h\u00b2"
+          }
+        ],
+        "correctChoiceId": "b",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Each head outputs d_v = d_model/h; concatenating h heads restores width d_model.",
+        "wrongAnswerExplanations": {
+          "a": "Internal width is architectural, not 2|V|.",
+          "c": "Concatenation is linear in h, not h squared times d_model.",
+          "d": "Dimensions add across heads linearly, not divided twice."
+        },
+        "difficulty": "medium",
+        "source": {
+          "term": "",
+          "chapterTitle": "Multi-Head Attention"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 11,
+        "cleanedOrdinal": 11
+      },
+      {
+        "prompt": "Grouped-query attention (GQA) reduces KV-cache memory by\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Sharing one key-value head group among several query heads."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Removing queries entirely from inference"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Using a vocabulary of size one"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Storing only the softmax normalization constant"
+          }
+        ],
+        "correctChoiceId": "a",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Fewer distinct K/V projections are cached while queries remain numerous.",
+        "wrongAnswerExplanations": {
+          "b": "Queries are still computed each step; K/V are shared.",
+          "c": "GQA is a head grouping trick, not trivial vocab.",
+          "d": "Caches hold K/V tensors, not just scalar norms."
+        },
+        "difficulty": "medium",
+        "source": {
+          "term": "",
+          "chapterTitle": "Multi-Head Attention"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 12,
+        "cleanedOrdinal": 12
+      },
+      {
+        "prompt": "Attention dropout is typically applied to\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "The learning rate each optimizer step"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Attention probability weights (or their dropped counterparts) during training."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "All layer-normalization scale parameters"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "The final softmax over the vocabulary at decode time only"
+          }
+        ],
+        "correctChoiceId": "b",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Dropping attention edges regularizes which positions interact, similar to edge dropout.",
+        "wrongAnswerExplanations": {
+          "a": "Dropout is stochastic regularization, not LR scheduling.",
+          "c": "Dropout targets activations/weights patterns, not \u03b3 in norm.",
+          "d": "That is separate from attention-weight dropout inside the block."
+        },
+        "difficulty": "medium",
+        "source": {
+          "term": "",
+          "chapterTitle": "Multi-Head Attention"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 13,
+        "cleanedOrdinal": 13
+      },
+      {
+        "prompt": "Instruction-tuned LLMs are usually built by\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Training only the positional embedding table"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Fine-tuning on prompt-response pairs (often after RLHF or preference optimization)."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Freezing all layers and training solely the softmax bias"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Removing the tokenizer and using raw bytes only"
+          }
+        ],
+        "correctChoiceId": "b",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Supervised fine-tuning (and optional RLHF/DPO) aligns behavior to human instructions.",
+        "wrongAnswerExplanations": {
+          "a": "Instruction tuning updates much of the network.",
+          "c": "Far more than bias terms typically change.",
+          "d": "Tokenization remains; tuning updates broader weights."
+        },
+        "difficulty": "medium",
+        "source": {
+          "term": "",
+          "chapterTitle": "LLM Basics"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 14,
+        "cleanedOrdinal": 14
+      },
+      {
+        "prompt": "Top-p (nucleus) sampling chooses the next token from\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "A uniform random subset of size p tokens"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "The smallest set of highest-probability tokens whose cumulative mass exceeds p."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "All tokens with probability below p only"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Exactly the top 1 token always"
+          }
+        ],
+        "correctChoiceId": "b",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Nucleus sampling adapts breadth to model confidence, truncating the long tail.",
+        "wrongAnswerExplanations": {
+          "a": "p is a cumulative probability threshold, not a count.",
+          "c": "Nucleus keeps high-mass tokens, not the low tail.",
+          "d": "That is greedy decoding; top-p keeps a variable-sized set."
+        },
+        "difficulty": "medium",
+        "source": {
+          "term": "",
+          "chapterTitle": "LLM Basics"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 15,
+        "cleanedOrdinal": 15
+      },
+      {
+        "prompt": "Context window limits in LLMs arise primarily from\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "CPUs being unable to multiply matrices"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Loss functions that only accept two tokens"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "The tokenizer forbidding sequences longer than 10 tokens"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Quadratic attention cost and finite memory for activations or KV cache."
+          }
+        ],
+        "correctChoiceId": "d",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Longer contexts increase memory and compute; architectures and caches must scale accordingly.",
+        "wrongAnswerExplanations": {
+          "a": "Hardware limits exist, but the binding issue is model design and memory.",
+          "b": "Cross-entropy applies per token across the whole window.",
+          "c": "Modern tokenizers support thousands+ positions with engineering limits."
+        },
+        "difficulty": "medium",
+        "source": {
+          "term": "",
+          "chapterTitle": "LLM Basics"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 16,
+        "cleanedOrdinal": 16
+      },
+      {
+        "prompt": "For batch inference with KV cache, each sequence in the batch needs\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Separate cache slots (or paged blocks) so prefixes do not overwrite each other."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Recomputation of the full prompt every token for all rows"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "No storage because batches are stateless"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "A single shared cache with no sequence id"
+          }
+        ],
+        "correctChoiceId": "a",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Parallel decoding requires isolated K/V history per request in the batch.",
+        "wrongAnswerExplanations": {
+          "b": "Caching avoids that redundant work.",
+          "c": "Autoregressive batches are stateful across decode steps.",
+          "d": "Shared cache would mix unrelated conversations."
+        },
+        "difficulty": "medium",
+        "source": {
+          "term": "",
+          "chapterTitle": "KV Cache"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 17,
+        "cleanedOrdinal": 17
+      },
+      {
+        "prompt": "PagedAttention (as in vLLM) improves KV-cache use by\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Allocating non-contiguous fixed-size blocks analogous to virtual memory pages."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Storing weights in FP64 only"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Training the model from scratch each request"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Eliminating multi-head attention completely"
+          }
+        ],
+        "correctChoiceId": "a",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Paging reduces fragmentation when sequences of different lengths share GPU memory.",
+        "wrongAnswerExplanations": {
+          "b": "Paging concerns activation cache layout, not weight dtype.",
+          "c": "Serving reuses trained weights; cache is per-session state.",
+          "d": "Attention remains; memory management changes."
+        },
+        "difficulty": "medium",
+        "source": {
+          "term": "",
+          "chapterTitle": "KV Cache"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 18,
+        "cleanedOrdinal": 18
+      },
+      {
+        "prompt": "When using KV cache, the compute for a new token's query against length-n context is\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "O(n\u00b2) for recomputing every prior query from scratch"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "O(1) because cache removes all dependence on n"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "O(n) per layer for attending to n cached keys (per head), not recomputing all n queries."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "O(n\u00b3) because cache cubes the sequence"
+          }
+        ],
+        "correctChoiceId": "c",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "One new query attends to n stored keys; prior queries need not be re-forwarded.",
+        "wrongAnswerExplanations": {
+          "a": "That is the uncached cost pattern caching avoids for old queries.",
+          "b": "Attention still scales linearly with context per new token.",
+          "d": "Caching reduces work; it does not introduce cubic cost."
+        },
+        "difficulty": "medium",
+        "source": {
+          "term": "",
+          "chapterTitle": "KV Cache"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 19,
+        "cleanedOrdinal": 19
+      },
+      {
+        "prompt": "Luong dot attention and scaled dot-product attention differ mainly when\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Luong forbids any use of value vectors"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Scaled dot-product never uses softmax"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Luong only applies to convolutional encoders"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Luong uses dot(q, k) without the \u221ad_k scale (and may use other score variants)."
+          }
+        ],
+        "correctChoiceId": "d",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "The Transformer popularized scaled dot-product; Luong's multiplicative scores are closely related.",
+        "wrongAnswerExplanations": {
+          "a": "Both paradigms aggregate values after scoring.",
+          "b": "Softmax normalization is standard in both families.",
+          "c": "Dot scores are architecture-agnostic."
+        },
+        "difficulty": "medium",
+        "source": {
+          "term": "",
+          "chapterTitle": "Attention"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 20,
+        "cleanedOrdinal": 20
+      }
+    ],
+    "hard": [
+      {
+        "prompt": "FlashAttention reduces memory traffic primarily by\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Replacing softmax with a linear activation"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Removing value vectors from the computation"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Computing attention on CPU only"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Tiling softmax and matmuls to avoid materializing the full n\u00d7n attention matrix in HBM."
+          }
+        ],
+        "correctChoiceId": "d",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "IO-aware tiling recomputes blocks on chip, cutting reads/writes of the large attention matrix.",
+        "wrongAnswerExplanations": {
+          "a": "Softmax remains; fusion and tiling change memory movement.",
+          "b": "Values are still required for the weighted sum output.",
+          "c": "FlashAttention targets fast GPU kernels."
+        },
+        "difficulty": "hard",
+        "source": {
+          "term": "",
+          "chapterTitle": "Self-Attention"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 1,
+        "cleanedOrdinal": 1
+      },
+      {
+        "prompt": "Rotary Position Embedding (RoPE) encodes position by\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Permuting the vocabulary alphabetically"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Zeroing all dimensions past position 512"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Adding a large constant to every value vector"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Rotating query and key pairs in 2D subspaces as a function of absolute index."
+          }
+        ],
+        "correctChoiceId": "d",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "RoPE encodes relative position in q\u00b7k via rotations; popular in LLaMA-class models.",
+        "wrongAnswerExplanations": {
+          "a": "Position encoding is in embedding space, not vocab order.",
+          "b": "RoPE does not hard-truncate dimensions that way.",
+          "c": "RoPE acts on q and k, not via a single value offset trick."
+        },
+        "difficulty": "hard",
+        "source": {
+          "term": "",
+          "chapterTitle": "Self-Attention"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 2,
+        "cleanedOrdinal": 2
+      },
+      {
+        "prompt": "ALiBi (Attention with Linear Biases) extends context by\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Doubling the embedding dimension every layer"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Removing causal masking in decoder-only models"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Adding a linear penalty to attention logits based on key-query distance."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Training a separate RNN solely for position"
+          }
+        ],
+        "correctChoiceId": "c",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Slopes m_h per head bias distant keys, improving length extrapolation without explicit PE vectors.",
+        "wrongAnswerExplanations": {
+          "a": "ALiBi does not require widening d_model each layer.",
+          "b": "Causal masking remains for autoregressive models.",
+          "d": "ALiBi modifies attention scores directly."
+        },
+        "difficulty": "hard",
+        "source": {
+          "term": "",
+          "chapterTitle": "Positional Encoding"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 3,
+        "cleanedOrdinal": 3
+      },
+      {
+        "prompt": "Relative position representations (Shaw et al.) add embeddings for\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "The number of FFN parameters only"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "The optimizer's second-moment estimates"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Clipped relative distance between query index i and key index j."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "The global document ID in a corpus"
+          }
+        ],
+        "correctChoiceId": "c",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Learned or bucketed embeddings on (i \u2212 j) augment attention logits beyond content similarity.",
+        "wrongAnswerExplanations": {
+          "a": "Relative bias is about token offsets, not parameter counts.",
+          "b": "Adam moments are unrelated to attention PE.",
+          "d": "Relative PE is intra-sequence, not a corpus-level ID."
+        },
+        "difficulty": "hard",
+        "source": {
+          "term": "",
+          "chapterTitle": "Positional Encoding"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 4,
+        "cleanedOrdinal": 4
+      },
+      {
+        "prompt": "In the Transformer, why are residual connections and layer normalization critical?",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "They stabilize optimization of deep stacks and preserve signal through sublayers."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "They convert the model into a linear classifier only"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "They guarantee BLEU score of 100 on all languages"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "They remove the need for any attention computation"
+          }
+        ],
+        "correctChoiceId": "a",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Residual paths + norm prevent vanishing signal and enable training many layers.",
+        "wrongAnswerExplanations": {
+          "b": "Transformers remain highly non-linear function approximators.",
+          "c": "No architectural trick guarantees perfect translation.",
+          "d": "Attention and FFN remain essential."
+        },
+        "difficulty": "hard",
+        "source": {
+          "term": "",
+          "chapterTitle": "Encoder-Decoder"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 5,
+        "cleanedOrdinal": 5
+      },
+      {
+        "prompt": "Cross-attention memory in the decoder uses encoder keys/values while queries come from\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "The decoder's current hidden state at that layer and position."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Only the source embedding matrix untransformed"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Random Gaussian vectors independent of the target"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Future target tokens supplied by the user at train time"
+          }
+        ],
+        "correctChoiceId": "a",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Q = H_dec; K,V = H_enc aligns each generating position with relevant source states.",
+        "wrongAnswerExplanations": {
+          "b": "Encoder outputs are deep contextualized representations.",
+          "c": "Queries are deterministic functions of decoder states.",
+          "d": "Future targets are masked in self-attention, not used as queries here."
+        },
+        "difficulty": "hard",
+        "source": {
+          "term": "",
+          "chapterTitle": "Encoder-Decoder"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 6,
+        "cleanedOrdinal": 6
+      },
+      {
+        "prompt": "Multi-query attention (MQA) uses\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "No query projections at all"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Attention without any value aggregation"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "One shared key head and one shared value head across all query heads."
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Independent K/V per query with no sharing"
+          }
+        ],
+        "correctChoiceId": "c",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "MQA minimizes KV-cache size at some cost to expressiveness vs full multi-head KV.",
+        "wrongAnswerExplanations": {
+          "a": "Multiple query heads remain; K/V are shared.",
+          "b": "Output is still a weighted sum of (shared) values.",
+          "d": "MQA explicitly shares K and V across heads."
+        },
+        "difficulty": "hard",
+        "source": {
+          "term": "",
+          "chapterTitle": "Multi-Head Attention"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 7,
+        "cleanedOrdinal": 7
+      },
+      {
+        "prompt": "The output projection W_O in multi-head attention mixes\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Concatenated head subspaces back into the model dimension d_model."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Batch indices across unrelated datasets"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Only the positional encodings, not head outputs"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Softmax probabilities into a single scalar bias"
+          }
+        ],
+        "correctChoiceId": "a",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "W_O \u2208 \u211d^{d_model \u00d7 d_model} learns how to combine head-specific features.",
+        "wrongAnswerExplanations": {
+          "b": "Projection is within each sequence representation.",
+          "c": "W_O acts on concatenated attention outputs.",
+          "d": "W_O is a linear map on vectors, not a softmax reducer."
+        },
+        "difficulty": "hard",
+        "source": {
+          "term": "",
+          "chapterTitle": "Multi-Head Attention"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 8,
+        "cleanedOrdinal": 8
+      },
+      {
+        "prompt": "Mixture-of-Experts (MoE) layers in large LLMs increase capacity by\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Training without any activation function"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Removing attention in every other block"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Duplicating the entire vocabulary per layer"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Routing each token to a small subset of feed-forward experts instead of one dense FFN."
+          }
+        ],
+        "correctChoiceId": "d",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Sparse routing activates few experts per token, scaling parameters without dense FLOPs for all.",
+        "wrongAnswerExplanations": {
+          "a": "Experts still use nonlinear activations (e.g., SwiGLU).",
+          "b": "Attention stacks remain; FFN may be MoE.",
+          "c": "MoE affects FFN sublayers, not vocab duplication."
+        },
+        "difficulty": "hard",
+        "source": {
+          "term": "",
+          "chapterTitle": "LLM Basics"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 9,
+        "cleanedOrdinal": 9
+      },
+      {
+        "prompt": "RLHF for LLMs typically involves\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Eliminating the decoder and using PCA only"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Training a reward model on human preferences then optimizing the policy with PPO or similar."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Supervised clustering of tokenizer merges only"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Replacing cross-entropy with k-means loss"
+          }
+        ],
+        "correctChoiceId": "b",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Preference data \u2192 reward model \u2192 policy gradient fine-tuning aligns outputs to human judgments.",
+        "wrongAnswerExplanations": {
+          "a": "LLMs remain autoregressive transformers.",
+          "c": "RLHF targets generation quality, not BPE merge tables alone.",
+          "d": "Pretraining still uses likelihood; RLHF adds a preference stage."
+        },
+        "difficulty": "hard",
+        "source": {
+          "term": "",
+          "chapterTitle": "LLM Basics"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 10,
+        "cleanedOrdinal": 10
+      },
+      {
+        "prompt": "Speculative decoding accelerates generation when a smaller draft model\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Disables the KV cache entirely"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Proposes multiple tokens verified in parallel by the larger target model."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Trains new embeddings from scratch each token"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Increases the vocabulary size of the target model"
+          }
+        ],
+        "correctChoiceId": "b",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Accepted draft prefixes save target-model steps; rejected drafts are rolled back.",
+        "wrongAnswerExplanations": {
+          "a": "Caching is compatible with speculative schemes.",
+          "c": "Weights are fixed; draft and target run forward passes.",
+          "d": "Speculation is about parallel verification, not |V| changes."
+        },
+        "difficulty": "hard",
+        "source": {
+          "term": "",
+          "chapterTitle": "LLM Basics"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 11,
+        "cleanedOrdinal": 11
+      },
+      {
+        "prompt": "Quantized KV caches (e.g., INT8/FP8) trade\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Exact lossless equivalence to FP64 training in all cases"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Mandatory retraining for every new user message"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Removal of all attention computation"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Slightly reduced precision for lower memory bandwidth and larger batch/context capacity."
+          }
+        ],
+        "correctChoiceId": "d",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Low-precision K/V storage is an inference optimization with minor numerical error risk.",
+        "wrongAnswerExplanations": {
+          "a": "Quantization introduces approximation; serving tolerates small drift.",
+          "b": "Quantized cache is a deployment choice, not per-message training.",
+          "c": "Attention still runs; tensors are stored cheaply."
+        },
+        "difficulty": "hard",
+        "source": {
+          "term": "",
+          "chapterTitle": "KV Cache"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 12,
+        "cleanedOrdinal": 12
+      },
+      {
+        "prompt": "Multi-token prediction heads (some recent LLMs) interact with caching because\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "They eliminate the sequence dimension entirely"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "They store the entire training corpus in cache"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "They forbid any causal masking"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Each step may commit several future tokens, updating cache state for multiple positions at once."
+          }
+        ],
+        "correctChoiceId": "d",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Drafting multiple tokens per forward pass changes how cache entries advance per step.",
+        "wrongAnswerExplanations": {
+          "a": "Sequences remain; decoding parallelism changes.",
+          "b": "Cache holds session activations, not the training set.",
+          "c": "Causal structure is still required for valid conditioning."
+        },
+        "difficulty": "hard",
+        "source": {
+          "term": "",
+          "chapterTitle": "KV Cache"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 13,
+        "cleanedOrdinal": 13
+      },
+      {
+        "prompt": "Linear attention approximations (e.g., kernel feature maps) aim to\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Remove all positional information from the model"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Reduce O(n\u00b2) pairwise softmax attention toward O(n) via associative aggregation tricks."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Guarantee exact equivalence to full softmax attention always"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Replace matrices with sorting algorithms only"
+          }
+        ],
+        "correctChoiceId": "b",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Feature maps \u03c6(q)\u1d40(\u03a3 \u03c6(k)v) rewrite attention as cumulative sums under certain assumptions.",
+        "wrongAnswerExplanations": {
+          "a": "Linear attention methods still pair with positional schemes.",
+          "c": "Approximations trade exactness for speed.",
+          "d": "Core idea is algebraic reformulation, not sorting."
+        },
+        "difficulty": "hard",
+        "source": {
+          "term": "",
+          "chapterTitle": "Attention"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 14,
+        "cleanedOrdinal": 14
+      },
+      {
+        "prompt": "Sliding-window (local) attention in long-context models limits each query to\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "All tokens in unrelated documents in the batch"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Keys with index greater than the query only, unboundedly"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Only the first and last token globally"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Keys within a fixed window of neighboring positions."
+          }
+        ],
+        "correctChoiceId": "d",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Local windows cap per-layer receptive field while stacking layers grows effective range.",
+        "wrongAnswerExplanations": {
+          "a": "Attention is scoped per sequence (plus masking).",
+          "b": "Windows are bounded width; causal masks may still apply.",
+          "c": "Windows are contiguous neighborhoods, not just endpoints."
+        },
+        "difficulty": "hard",
+        "source": {
+          "term": "",
+          "chapterTitle": "Self-Attention"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 15,
+        "cleanedOrdinal": 15
+      },
+      {
+        "prompt": "Non-autoregressive (NAT) Transformer decoders attempt to\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Use only unigram bag-of-words without any context"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Remove the encoder entirely"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Guarantee identical outputs to autoregressive models without training changes"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Generate all target tokens in parallel, often requiring auxiliary alignment or latent variables."
+          }
+        ],
+        "correctChoiceId": "d",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Parallel decoding sacrifices simple likelihood factorization; iterative refinement or CTC-like losses help.",
+        "wrongAnswerExplanations": {
+          "a": "NAT Transformers are structured neural models, not bag-of-words only.",
+          "b": "NAT models still condition on source representations.",
+          "c": "Matching AR quality requires specialized training objectives."
+        },
+        "difficulty": "hard",
+        "source": {
+          "term": "",
+          "chapterTitle": "Encoder-Decoder"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 16,
+        "cleanedOrdinal": 16
+      },
+      {
+        "prompt": "Head dimension d_k smaller than d_model/h in some implementations implies\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Projections map into a bottleneck subspace before the output projection expands again."
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Attention is disabled for those layers"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "The number of layers must equal h"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Softmax is applied across heads instead of positions"
+          }
+        ],
+        "correctChoiceId": "a",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Low-rank or factored attention variants change internal width while preserving block I/O shape.",
+        "wrongAnswerExplanations": {
+          "b": "Attention still runs with adjusted projection sizes.",
+          "c": "Head count and depth are independent hyperparameters.",
+          "d": "Standard softmax is over sequence positions per head."
+        },
+        "difficulty": "hard",
+        "source": {
+          "term": "",
+          "chapterTitle": "Multi-Head Attention"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 17,
+        "cleanedOrdinal": 17
+      },
+      {
+        "prompt": "Chain-of-thought prompting improves reasoning partly because\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "It trains new logits solely on punctuation"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "It removes the need for transformer layers"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "It increases parameter count during inference"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Intermediate tokens provide additional computation steps before the final answer token."
+          }
+        ],
+        "correctChoiceId": "d",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Generating rationale tokens activates deeper use of the same frozen weights (more depth in time).",
+        "wrongAnswerExplanations": {
+          "a": "CoT is prompting/inference behavior, not a punctuation-only retrain.",
+          "b": "The same stacked layers process longer prompts.",
+          "c": "Weights are unchanged; only the prompt/decode trajectory differs."
+        },
+        "difficulty": "hard",
+        "source": {
+          "term": "",
+          "chapterTitle": "LLM Basics"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 18,
+        "cleanedOrdinal": 18
+      },
+      {
+        "prompt": "Prefix caching across user requests reuses KV blocks when\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "The model has zero layers"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Users use entirely different system instructions every time"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Attention is replaced by k-nearest neighbors in pixel space"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Multiple prompts share an identical initial token prefix (e.g., same system prompt)."
+          }
+        ],
+        "correctChoiceId": "d",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Shared prompt prefixes hit the same cached K/V blocks, amortizing prefill cost.",
+        "wrongAnswerExplanations": {
+          "a": "Caching applies per layer's K/V activations.",
+          "b": "No shared prefix means little cache reuse.",
+          "c": "Prefix caching is for text transformer serving."
+        },
+        "difficulty": "hard",
+        "source": {
+          "term": "",
+          "chapterTitle": "KV Cache"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 19,
+        "cleanedOrdinal": 19
+      },
+      {
+        "prompt": "The Lipschitz concern with unscaled dot-product attention motivates scaling because\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Softmax is undefined for any positive logits"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Dot-product variance grows with dimension, pushing softmax into saturation regions."
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Queries and keys must be orthogonal always"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Values must be unit norm by definition"
+          }
+        ],
+        "correctChoiceId": "b",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Expected magnitude of q\u00b7k scales with d_k; dividing by \u221ad_k stabilizes score distribution.",
+        "wrongAnswerExplanations": {
+          "a": "Softmax is well-defined; the issue is gradient flow when logits are huge.",
+          "c": "Orthogonality is not required; similar directions yield large scores.",
+          "d": "Values are learned vectors without strict unit-norm constraint."
+        },
+        "difficulty": "hard",
+        "source": {
+          "term": "",
+          "chapterTitle": "Attention"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 20,
+        "cleanedOrdinal": 20
+      }
+    ]
+  }
+}

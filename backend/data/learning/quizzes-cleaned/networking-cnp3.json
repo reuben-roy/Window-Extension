@@ -1,0 +1,2538 @@
+{
+  "book": {
+    "title": "Computer Networking: Principles, Protocols and Practice",
+    "parentTopic": "Computer Science",
+    "subtopic": "Networking",
+    "slug": "networking-cnp3",
+    "sourceUrl": "https://www.computer-networking.info/",
+    "pdfSha256": ""
+  },
+  "chapterCount": 8,
+  "conceptCount": 60,
+  "chapters": [
+    {
+      "ordinal": 1,
+      "title": "OSI and TCP/IP",
+      "startPage": 1,
+      "endPage": 1,
+      "path": ""
+    },
+    {
+      "ordinal": 2,
+      "title": "IP Addressing",
+      "startPage": 1,
+      "endPage": 1,
+      "path": ""
+    },
+    {
+      "ordinal": 3,
+      "title": "TCP and UDP",
+      "startPage": 1,
+      "endPage": 1,
+      "path": ""
+    },
+    {
+      "ordinal": 4,
+      "title": "Routing",
+      "startPage": 1,
+      "endPage": 1,
+      "path": ""
+    },
+    {
+      "ordinal": 5,
+      "title": "DNS",
+      "startPage": 1,
+      "endPage": 1,
+      "path": ""
+    },
+    {
+      "ordinal": 6,
+      "title": "HTTP",
+      "startPage": 1,
+      "endPage": 1,
+      "path": ""
+    },
+    {
+      "ordinal": 7,
+      "title": "Congestion Control",
+      "startPage": 1,
+      "endPage": 1,
+      "path": ""
+    },
+    {
+      "ordinal": 8,
+      "title": "Switching",
+      "startPage": 1,
+      "endPage": 1,
+      "path": ""
+    }
+  ],
+  "quizzes": {
+    "easy": [
+      {
+        "prompt": "How many layers does the OSI reference model define?",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "3"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "4"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "7"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "5"
+          }
+        ],
+        "correctChoiceId": "c",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "The OSI model has seven layers: Physical, Data Link, Network, Transport, Session, Presentation, Application.",
+        "wrongAnswerExplanations": {
+          "a": "Three is too few \u2014 OSI splits concerns more finely than a minimal stack.",
+          "b": "Four layers match the TCP/IP stack, not OSI.",
+          "d": "Five layers describe the original Internet stack sketch, not the full OSI model."
+        },
+        "difficulty": "easy",
+        "source": {
+          "term": "",
+          "chapterTitle": "OSI and TCP/IP"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 1,
+        "cleanedOrdinal": 1
+      },
+      {
+        "prompt": "In the TCP/IP model, at which layer does IP operate?",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Transport layer"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Internet (network) layer"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Application layer"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Link layer"
+          }
+        ],
+        "correctChoiceId": "b",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "IP provides host-to-host datagram delivery; it sits below TCP/UDP and above link technologies.",
+        "wrongAnswerExplanations": {
+          "a": "TCP and UDP live at transport; IP is one layer below.",
+          "c": "Applications use TCP/UDP sockets; IP is lower in the stack.",
+          "d": "Link layers (Ethernet, Wi-Fi) frame IP packets; IP itself is not the link layer."
+        },
+        "difficulty": "easy",
+        "source": {
+          "term": "",
+          "chapterTitle": "OSI and TCP/IP"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 2,
+        "cleanedOrdinal": 2
+      },
+      {
+        "prompt": "How many bits are in a standard IPv4 address?",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "64"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "128"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "16"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "32"
+          }
+        ],
+        "correctChoiceId": "d",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "IPv4 addresses are 32-bit dotted-quad values, usually written as four decimal octets.",
+        "wrongAnswerExplanations": {
+          "a": "64 bits is common for MAC addresses, not IPv4.",
+          "b": "128 bits is the size of an IPv6 address.",
+          "c": "16 bits cannot uniquely identify billions of hosts on the Internet."
+        },
+        "difficulty": "easy",
+        "source": {
+          "term": "",
+          "chapterTitle": "IP Addressing"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 3,
+        "cleanedOrdinal": 3
+      },
+      {
+        "prompt": "Which transport protocol is connection-oriented and provides reliable, in-order byte delivery?",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "ARP"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "TCP"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "ICMP"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "UDP"
+          }
+        ],
+        "correctChoiceId": "b",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "TCP sets up a connection, acknowledges data, and retransmits losses; UDP is connectionless and best-effort.",
+        "wrongAnswerExplanations": {
+          "a": "ARP resolves IP to link-layer addresses on a LAN, not end-to-end transport.",
+          "c": "ICMP carries control messages (e.g., ping), not application byte streams.",
+          "d": "UDP sends datagrams without establishing or maintaining a connection."
+        },
+        "difficulty": "easy",
+        "source": {
+          "term": "",
+          "chapterTitle": "TCP and UDP"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 4,
+        "cleanedOrdinal": 4
+      },
+      {
+        "prompt": "What is the primary job of an IP router?",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Terminate TLS for web clients"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Assign IP addresses to hosts on a single LAN"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Translate domain names to IP addresses"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Forward packets between networks using routing tables"
+          }
+        ],
+        "correctChoiceId": "d",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Routers examine destination IP prefixes and choose the next hop toward the destination network.",
+        "wrongAnswerExplanations": {
+          "a": "TLS termination is an application/proxy function, not basic IP forwarding.",
+          "b": "That is typically DHCP on a LAN, not core routing.",
+          "c": "DNS resolvers perform name translation, not routers."
+        },
+        "difficulty": "easy",
+        "source": {
+          "term": "",
+          "chapterTitle": "Routing"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 5,
+        "cleanedOrdinal": 5
+      },
+      {
+        "prompt": "What does the Domain Name System (DNS) primarily map?",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "TCP ports to process names on a host"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "IP addresses to MAC addresses"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "URLs to HTML documents"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Human-readable hostnames to IP addresses"
+          }
+        ],
+        "correctChoiceId": "d",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "DNS is a distributed naming system that resolves names like www.example.com to A/AAAA records.",
+        "wrongAnswerExplanations": {
+          "a": "That is local service naming (/etc/services), not Internet DNS.",
+          "b": "ARP (or IPv6 ND) maps IP to link-layer addresses on a subnet.",
+          "c": "HTTP fetches resources; DNS only supplies name-to-address (and related) records."
+        },
+        "difficulty": "easy",
+        "source": {
+          "term": "",
+          "chapterTitle": "DNS"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 6,
+        "cleanedOrdinal": 6
+      },
+      {
+        "prompt": "Which TCP port does unencrypted HTTP use by default?",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "443"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "80"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "53"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "22"
+          }
+        ],
+        "correctChoiceId": "b",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "HTTP historically listens on port 80; HTTPS uses 443 with TLS.",
+        "wrongAnswerExplanations": {
+          "a": "Port 443 is the default for HTTPS (HTTP over TLS).",
+          "c": "Port 53 is reserved for DNS.",
+          "d": "Port 22 is commonly used for SSH."
+        },
+        "difficulty": "easy",
+        "source": {
+          "term": "",
+          "chapterTitle": "HTTP"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 7,
+        "cleanedOrdinal": 7
+      },
+      {
+        "prompt": "Network congestion occurs when\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "A host has no default gateway configured"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "A switch learns too many MAC addresses"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Demand for bandwidth exceeds what links and buffers can carry"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "DNS caching expires"
+          }
+        ],
+        "correctChoiceId": "c",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Congestion is overload: queues grow, delay rises, and packets may be dropped.",
+        "wrongAnswerExplanations": {
+          "a": "Missing a gateway breaks reachability but is not congestion.",
+          "b": "MAC table limits affect switching, not Internet-wide bandwidth contention.",
+          "d": "TTL expiry causes fresh lookups, not link overload."
+        },
+        "difficulty": "easy",
+        "source": {
+          "term": "",
+          "chapterTitle": "Congestion Control"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 8,
+        "cleanedOrdinal": 8
+      },
+      {
+        "prompt": "Compared with a classic hub, an Ethernet switch\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Cannot learn MAC addresses"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Operates at the network layer using IP addresses"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Forwards frames only to the port leading toward the destination MAC"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Broadcasts every frame to all ports always"
+          }
+        ],
+        "correctChoiceId": "c",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Switches build a MAC address table and filter traffic, reducing collisions versus a hub.",
+        "wrongAnswerExplanations": {
+          "a": "Learning source MACs per port is how switches forward efficiently.",
+          "b": "Basic switches forward using MAC addresses at layer 2.",
+          "d": "That describes a hub (or unknown unicast flood), not normal switched unicast."
+        },
+        "difficulty": "easy",
+        "source": {
+          "term": "",
+          "chapterTitle": "Switching"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 9,
+        "cleanedOrdinal": 9
+      },
+      {
+        "prompt": "Which OSI layer is closest to where web browsers and mail clients interact with sockets?",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Network"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Data link"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Physical"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Application"
+          }
+        ],
+        "correctChoiceId": "d",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "HTTP, SMTP, and DNS are application-layer protocols accessed via transport APIs.",
+        "wrongAnswerExplanations": {
+          "a": "IP is network layer; browsers use higher-level protocols on top of TCP.",
+          "b": "Ethernet framing is below IP and far below HTTP.",
+          "c": "Physical layer deals with bits on the wire, not application protocols."
+        },
+        "difficulty": "easy",
+        "source": {
+          "term": "",
+          "chapterTitle": "OSI and TCP/IP"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 10,
+        "cleanedOrdinal": 10
+      },
+      {
+        "prompt": "Which IPv4 address range is reserved for private networks (RFC 1918)?",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "224.0.0.0/4"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "8.8.8.0/24"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "10.0.0.0/8"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "127.0.0.0/8"
+          }
+        ],
+        "correctChoiceId": "c",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "10/8, 172.16/12, and 192.168/16 are private; they are not routed on the public Internet.",
+        "wrongAnswerExplanations": {
+          "a": "224/4 is multicast space, not private unicast.",
+          "b": "8.8.8.x is a public anycast DNS service range, not a private block.",
+          "d": "127/8 is loopback on the local host, not LAN private addressing."
+        },
+        "difficulty": "easy",
+        "source": {
+          "term": "",
+          "chapterTitle": "IP Addressing"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 11,
+        "cleanedOrdinal": 11
+      },
+      {
+        "prompt": "UDP is often chosen instead of TCP when\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Low latency matters more than guaranteed delivery (e.g., live media, DNS queries)"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Every byte must arrive in order without loss"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "A three-way handshake is required before data"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Flow control must throttle a fast sender"
+          }
+        ],
+        "correctChoiceId": "a",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "UDP exposes datagrams with no retransmission or ordering \u2014 acceptable when apps handle loss or repeat queries.",
+        "wrongAnswerExplanations": {
+          "b": "That requirement favors TCP, not UDP.",
+          "c": "UDP has no connection setup; TCP uses the three-way handshake.",
+          "d": "TCP provides window-based flow control; UDP does not."
+        },
+        "difficulty": "easy",
+        "source": {
+          "term": "",
+          "chapterTitle": "TCP and UDP"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 12,
+        "cleanedOrdinal": 12
+      },
+      {
+        "prompt": "A host's default gateway is\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "The DNS server that resolves all names"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "The router on the local subnet used to reach off-subnet destinations"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "The MAC address of the destination host"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "The longest prefix in the global BGP table"
+          }
+        ],
+        "correctChoiceId": "b",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Hosts send non-local traffic to the default gateway's IP on the LAN.",
+        "wrongAnswerExplanations": {
+          "a": "DNS and default routing solve different problems.",
+          "c": "Gateways are reached on-LAN; remote MACs are not known initially.",
+          "d": "BGP tables live in routers; hosts only need a default route."
+        },
+        "difficulty": "easy",
+        "source": {
+          "term": "",
+          "chapterTitle": "Routing"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 13,
+        "cleanedOrdinal": 13
+      },
+      {
+        "prompt": "Which DNS record type maps a hostname to an IPv4 address?",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "A"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "MX"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "AAAA"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "CNAME"
+          }
+        ],
+        "correctChoiceId": "a",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "A records hold 32-bit IPv4 addresses; AAAA holds IPv6.",
+        "wrongAnswerExplanations": {
+          "b": "MX specifies mail exchangers, not host IPv4 addresses.",
+          "c": "AAAA maps to IPv6, not IPv4.",
+          "d": "CNAME is an alias to another name, not a direct IPv4 address."
+        },
+        "difficulty": "easy",
+        "source": {
+          "term": "",
+          "chapterTitle": "DNS"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 14,
+        "cleanedOrdinal": 14
+      },
+      {
+        "prompt": "An HTTP response status code of 404 means\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "The client must authenticate"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "The server is temporarily overloaded"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "The request was understood and a new resource was created"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "The requested resource was not found on the server"
+          }
+        ],
+        "correctChoiceId": "d",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "404 Not Found indicates the URI does not map to a resource the server can serve.",
+        "wrongAnswerExplanations": {
+          "a": "401/403 relate to authentication and authorization.",
+          "b": "503 Service Unavailable signals overload or maintenance.",
+          "c": "That describes 201 Created."
+        },
+        "difficulty": "easy",
+        "source": {
+          "term": "",
+          "chapterTitle": "HTTP"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 15,
+        "cleanedOrdinal": 15
+      },
+      {
+        "prompt": "The first packet of a TCP three-way handshake carries which flag(s)?",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "ACK only"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "RST"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "SYN"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "FIN"
+          }
+        ],
+        "correctChoiceId": "c",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "The client sends SYN; the server replies SYN-ACK; the client completes with ACK.",
+        "wrongAnswerExplanations": {
+          "a": "ACK alone completes the handshake; it is not the opening packet.",
+          "b": "RST aborts a connection, it does not open one politely.",
+          "d": "FIN signals connection teardown, not setup."
+        },
+        "difficulty": "easy",
+        "source": {
+          "term": "",
+          "chapterTitle": "TCP and UDP"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 16,
+        "cleanedOrdinal": 16
+      },
+      {
+        "prompt": "When a switch receives a frame on a port, it typically learns\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "The DNS name of the host"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "The destination IP address of every packet"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "The source MAC address and associates it with that ingress port"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "The TCP congestion window of the sender"
+          }
+        ],
+        "correctChoiceId": "c",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Learning tables map MAC \u2192 port so future frames to that MAC can be switched unicast.",
+        "wrongAnswerExplanations": {
+          "a": "DNS names are not present in Ethernet frame headers.",
+          "b": "Classic switches do not parse IP for learning; they use MAC headers.",
+          "d": "Congestion control is end-to-end transport behavior."
+        },
+        "difficulty": "easy",
+        "source": {
+          "term": "",
+          "chapterTitle": "Switching"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 17,
+        "cleanedOrdinal": 17
+      },
+      {
+        "prompt": "Ethernet framing and MAC addresses belong to which OSI layer?",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Physical"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Network"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Transport"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Data link"
+          }
+        ],
+        "correctChoiceId": "d",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Layer 2 handles node-to-node delivery on a single link (e.g., Ethernet switches).",
+        "wrongAnswerExplanations": {
+          "a": "Physical is signaling and media; framing with MACs is data link.",
+          "b": "IP addressing and routing are network layer.",
+          "c": "TCP/UDP ports are transport layer."
+        },
+        "difficulty": "easy",
+        "source": {
+          "term": "",
+          "chapterTitle": "OSI and TCP/IP"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 18,
+        "cleanedOrdinal": 18
+      },
+      {
+        "prompt": "A subnet mask in IPv4 is used to\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Resolve hostnames to IP addresses"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Separate the network prefix from the host portion of an address"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Encrypt packets between two hosts"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Assign TCP port numbers"
+          }
+        ],
+        "correctChoiceId": "b",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Masking (or prefix length) tells hosts and routers which bits identify the subnet.",
+        "wrongAnswerExplanations": {
+          "a": "DNS performs name resolution.",
+          "c": "Encryption is provided by protocols like IPsec/TLS, not the mask.",
+          "d": "Ports are transport-layer identifiers on a host."
+        },
+        "difficulty": "easy",
+        "source": {
+          "term": "",
+          "chapterTitle": "IP Addressing"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 19,
+        "cleanedOrdinal": 19
+      },
+      {
+        "prompt": "When a router's queue is full, it may\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Drop arriving packets, signaling senders to slow down"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Convert TCP into UDP automatically"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Disable ARP on the LAN"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Increase the TCP sequence number of all flows"
+          }
+        ],
+        "correctChoiceId": "a",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Tail drops (or active queue management) cause loss that TCP interprets as congestion signals.",
+        "wrongAnswerExplanations": {
+          "b": "Routers do not change transport protocols.",
+          "c": "ARP is unrelated to router queue overflow.",
+          "d": "Sequence numbers are chosen by endpoints, not routers on drop."
+        },
+        "difficulty": "easy",
+        "source": {
+          "term": "",
+          "chapterTitle": "Congestion Control"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 20,
+        "cleanedOrdinal": 20
+      }
+    ],
+    "medium": [
+      {
+        "prompt": "Which pairing correctly matches a protocol to its typical TCP/IP layer?",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "HTTP \u2014 transport; IP \u2014 application; UDP \u2014 link"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "UDP \u2014 transport; IP \u2014 internet; Ethernet \u2014 link"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "ICMP \u2014 application; TLS \u2014 link; BGP \u2014 transport"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "TCP \u2014 network; DNS \u2014 physical; ARP \u2014 transport"
+          }
+        ],
+        "correctChoiceId": "b",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "End systems stack applications over TCP/UDP, then IP, then link technologies.",
+        "wrongAnswerExplanations": {
+          "a": "HTTP is application-layer; IP is not application; UDP is not link.",
+          "c": "ICMP is network control; TLS sits above transport; BGP is inter-domain routing.",
+          "d": "TCP is transport; DNS is application; ARP is link-adjacent resolution."
+        },
+        "difficulty": "medium",
+        "source": {
+          "term": "",
+          "chapterTitle": "OSI and TCP/IP"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 1,
+        "cleanedOrdinal": 1
+      },
+      {
+        "prompt": "How many usable host addresses does a /24 IPv4 subnet have (excluding network and broadcast)?",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "512"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "256"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "254"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "1022"
+          }
+        ],
+        "correctChoiceId": "c",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "/24 leaves 8 host bits: 2^8 \u2212 2 = 254 usable addresses on classic IPv4 subnets.",
+        "wrongAnswerExplanations": {
+          "a": "512 would correspond to nine host bits, not eight.",
+          "b": "256 is 2^8 total addresses, but network and broadcast addresses are not assigned to hosts.",
+          "d": "1022 is usable hosts in a /22, not a /24."
+        },
+        "difficulty": "medium",
+        "source": {
+          "term": "",
+          "chapterTitle": "IP Addressing"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 2,
+        "cleanedOrdinal": 2
+      },
+      {
+        "prompt": "TCP flow control primarily uses which mechanism?",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "TTL decrements on each hop"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "CNAME chains in DNS"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Random early detection in routers"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Receive window advertised in ACKs"
+          }
+        ],
+        "correctChoiceId": "d",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "The receiver's window tells the sender how much buffer space is available, preventing overrun.",
+        "wrongAnswerExplanations": {
+          "a": "TTL limits packet lifetime, not sender rate to receiver buffers.",
+          "b": "DNS aliases do not regulate TCP sending rates.",
+          "c": "RED is an active queue management policy for congestion, not TCP flow control."
+        },
+        "difficulty": "medium",
+        "source": {
+          "term": "",
+          "chapterTitle": "TCP and UDP"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 3,
+        "cleanedOrdinal": 3
+      },
+      {
+        "prompt": "Longest-prefix matching in a routing table means\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "The first route inserted in the table wins"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "The route with the fewest hops always wins"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Only default routes may be used"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "The most specific (longest) matching route wins for a destination"
+          }
+        ],
+        "correctChoiceId": "d",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "If both 10.0.0.0/8 and 10.1.0.0/16 match, the /16 route is chosen because it is longer.",
+        "wrongAnswerExplanations": {
+          "a": "Order alone does not define IP forwarding; match length does.",
+          "b": "Hop count may matter inside a protocol, but forwarding uses prefix specificity first.",
+          "c": "Default 0.0.0.0/0 is used only when no more-specific route matches."
+        },
+        "difficulty": "medium",
+        "source": {
+          "term": "",
+          "chapterTitle": "Routing"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 4,
+        "cleanedOrdinal": 4
+      },
+      {
+        "prompt": "What is the main purpose of a DNS caching resolver?",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Answer repeated queries locally using TTL-based cached records"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Encrypt HTTP payloads end-to-end"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Authoritatively store all Internet domain registrations"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Assign MAC addresses on Wi-Fi"
+          }
+        ],
+        "correctChoiceId": "a",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Resolvers cache RRsets until TTL expires, reducing load on authoritative servers and latency.",
+        "wrongAnswerExplanations": {
+          "b": "TLS protects HTTP; DNS may use DNSSEC but that is separate from caching.",
+          "c": "Registrars and authoritative servers hold zone data; resolvers cache copies.",
+          "d": "DHCP/SLAAC and link layers handle addressing on LANs."
+        },
+        "difficulty": "medium",
+        "source": {
+          "term": "",
+          "chapterTitle": "DNS"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 5,
+        "cleanedOrdinal": 5
+      },
+      {
+        "prompt": "HTTP/1.1 persistent connections allow\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "UDP transport for all web pages"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Automatic conversion of GET to POST"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Multiple requests and responses on the same TCP connection"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Only one request per TCP connection ever"
+          }
+        ],
+        "correctChoiceId": "c",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Keep-alive reuses TCP, amortizing handshake cost; pipelining/chunking evolved further in later versions.",
+        "wrongAnswerExplanations": {
+          "a": "HTTP runs over TCP (or QUIC in HTTP/3), not classic UDP web transport.",
+          "b": "Methods are chosen by the client; servers do not silently rewrite them.",
+          "d": "That was common in HTTP/1.0 without Keep-Alive, not HTTP/1.1 default behavior."
+        },
+        "difficulty": "medium",
+        "source": {
+          "term": "",
+          "chapterTitle": "HTTP"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 6,
+        "cleanedOrdinal": 6
+      },
+      {
+        "prompt": "TCP slow start initially increases the congestion window\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Only when the receiver sends FIN"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Exponentially each RTT until a threshold or loss is detected"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Linearly by one MSS per RTT from the first packet"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Not at all until the connection closes"
+          }
+        ],
+        "correctChoiceId": "b",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "During slow start, cwnd doubles roughly every RTT (for each ACKed segment), probing available bandwidth.",
+        "wrongAnswerExplanations": {
+          "a": "FIN ends the connection; slow start applies at the beginning.",
+          "c": "Linear increase is congestion avoidance after slow start or threshold.",
+          "d": "Slow start explicitly grows the window at connection start."
+        },
+        "difficulty": "medium",
+        "source": {
+          "term": "",
+          "chapterTitle": "Congestion Control"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 7,
+        "cleanedOrdinal": 7
+      },
+      {
+        "prompt": "A broadcast domain in a switched LAN is typically\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Only hosts with public IPv4 addresses"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Exactly one TCP connection"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "The set of ports that receive a broadcast frame (e.g., destination MAC FF:FF:FF:FF:FF:FF)"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "All routers in the global Internet"
+          }
+        ],
+        "correctChoiceId": "c",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Broadcasts flood within a VLAN/broadcast domain unless constrained by routers or L3 switches.",
+        "wrongAnswerExplanations": {
+          "a": "Private addresses still participate in LAN broadcast domains.",
+          "b": "TCP connections are transport-layer sessions between two endpoints.",
+          "d": "The Internet is partitioned into many broadcast domains separated by routers."
+        },
+        "difficulty": "medium",
+        "source": {
+          "term": "",
+          "chapterTitle": "Switching"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 8,
+        "cleanedOrdinal": 8
+      },
+      {
+        "prompt": "Encapsulation as data moves down the stack means\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Each layer adds its own header (and sometimes trailer) around the payload from the layer above"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Only the application layer adds headers"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "IP addresses are replaced by MAC addresses globally"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Headers are removed at every hop without change"
+          }
+        ],
+        "correctChoiceId": "a",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "A TCP segment becomes payload inside an IP datagram, which is payload inside an Ethernet frame.",
+        "wrongAnswerExplanations": {
+          "b": "Transport, network, and link layers all add headers/trailers.",
+          "c": "IP end-to-end identifiers remain; MACs are hop-by-hop on each link.",
+          "d": "Headers are processed and often rewritten (e.g., TTL, MACs) per hop."
+        },
+        "difficulty": "medium",
+        "source": {
+          "term": "",
+          "chapterTitle": "OSI and TCP/IP"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 9,
+        "cleanedOrdinal": 9
+      },
+      {
+        "prompt": "Network Address Translation (NAT) on a home router allows\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Unlimited new public IPv4 addresses for every LAN host"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Many private hosts to share one public IPv4 address using port translation"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "DNSSEC validation for all zones"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "IPv6-only communication without any translation"
+          }
+        ],
+        "correctChoiceId": "b",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "NAT maps (private IP, port) tuples to (public IP, port) on outbound flows and reverses inbound replies.",
+        "wrongAnswerExplanations": {
+          "a": "NAT conserves addresses; it does not mint new public ones per host.",
+          "c": "DNSSEC is about DNS authenticity, not IPv4 address sharing.",
+          "d": "NAT64/DNS64 exist for IPv6\u2194IPv4, but classic NAT is an IPv4 workaround."
+        },
+        "difficulty": "medium",
+        "source": {
+          "term": "",
+          "chapterTitle": "IP Addressing"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 10,
+        "cleanedOrdinal": 10
+      },
+      {
+        "prompt": "Which field in the TCP header helps the receiver detect duplicate or out-of-order segments?",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "HTTP ETag"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Sequence number"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "UDP checksum only"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Ethernet type"
+          }
+        ],
+        "correctChoiceId": "b",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Sequence numbers label the byte stream so the receiver can acknowledge cumulatively and reorder.",
+        "wrongAnswerExplanations": {
+          "a": "ETags are application-layer cache validators, not transport sequencing.",
+          "c": "UDP checksum covers the datagram but does not provide byte-stream ordering.",
+          "d": "EtherType identifies the encapsulated protocol, not TCP byte positions."
+        },
+        "difficulty": "medium",
+        "source": {
+          "term": "",
+          "chapterTitle": "TCP and UDP"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 11,
+        "cleanedOrdinal": 11
+      },
+      {
+        "prompt": "Distance-vector routing protocols (e.g., RIP) advertise\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "HTML cache headers"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Only MAC address tables"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Periodic updates of reachability metrics to neighbors"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "The entire link-state database to every router in the world"
+          }
+        ],
+        "correctChoiceId": "c",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Routers tell neighbors their best known distances; Bellman-Ford style computation selects paths.",
+        "wrongAnswerExplanations": {
+          "a": "Cache-Control is an HTTP concept, not a routing protocol payload.",
+          "b": "MAC tables are for switches on a LAN.",
+          "d": "Link-state protocols flood topology; distance-vector shares vectors to neighbors."
+        },
+        "difficulty": "medium",
+        "source": {
+          "term": "",
+          "chapterTitle": "Routing"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 12,
+        "cleanedOrdinal": 12
+      },
+      {
+        "prompt": "A DNS iterative query from a resolver to a root server typically receives\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "An HTTP 301 redirect"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "A TCP RST"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "A referral to a TLD nameserver rather than the final answer"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "The A record for www.example.com immediately"
+          }
+        ],
+        "correctChoiceId": "c",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Iterative resolution walks the hierarchy: root \u2192 TLD \u2192 authoritative, with referrals along the way.",
+        "wrongAnswerExplanations": {
+          "a": "HTTP redirects are unrelated to DNS iterative resolution.",
+          "b": "DNS runs over UDP/TCP port 53, not as arbitrary TCP resets from roots.",
+          "d": "The root usually does not know leaf records; it delegates."
+        },
+        "difficulty": "medium",
+        "source": {
+          "term": "",
+          "chapterTitle": "DNS"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 13,
+        "cleanedOrdinal": 13
+      },
+      {
+        "prompt": "An HTTP GET request is defined as\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Always carrying a JSON body that creates resources"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Safe and idempotent retrieval of a representation (should not change server state by convention)"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "A replacement for DNS A queries"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Encrypted by TLS inside the TCP header"
+          }
+        ],
+        "correctChoiceId": "b",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "GET fetches resources; side effects belong in POST/PUT/PATCH/DELETE per method semantics.",
+        "wrongAnswerExplanations": {
+          "a": "Bodies on GET are discouraged; creation uses POST/PUT.",
+          "c": "DNS resolves names; HTTP requests resources from servers.",
+          "d": "TLS encrypts the connection above TCP; it is not inside the TCP header."
+        },
+        "difficulty": "medium",
+        "source": {
+          "term": "",
+          "chapterTitle": "HTTP"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 14,
+        "cleanedOrdinal": 14
+      },
+      {
+        "prompt": "Explicit Congestion Notification (ECN) allows routers to\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Mark IP packets instead of dropping them, signaling congestion to TCP endpoints"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Disable TCP acknowledgments"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Bypass DNS entirely"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Increase link speed automatically"
+          }
+        ],
+        "correctChoiceId": "a",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "ECN-capable routers set CE bits; TCP reacts similarly to loss without always discarding packets.",
+        "wrongAnswerExplanations": {
+          "b": "TCP still ACKs; ECN modifies how congestion is signaled.",
+          "c": "ECN is an IP/TCP feature unrelated to name resolution.",
+          "d": "ECN does not change physical link rates."
+        },
+        "difficulty": "medium",
+        "source": {
+          "term": "",
+          "chapterTitle": "Congestion Control"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 15,
+        "cleanedOrdinal": 15
+      },
+      {
+        "prompt": "Spanning Tree Protocol (STP) on switches prevents\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Bridging loops that would cause broadcast storms"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "HTTPS certificate expiration"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "IP address exhaustion on the Internet"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "TCP three-way handshakes from completing"
+          }
+        ],
+        "correctChoiceId": "a",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "STP blocks redundant paths logically so only one active tree forwards frames between segments.",
+        "wrongAnswerExplanations": {
+          "b": "Certificates are application/TLS concerns.",
+          "c": "That is an addressing/policy issue, not a layer-2 loop issue.",
+          "d": "STP affects Ethernet topology, not TCP state machines directly."
+        },
+        "difficulty": "medium",
+        "source": {
+          "term": "",
+          "chapterTitle": "Switching"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 16,
+        "cleanedOrdinal": 16
+      },
+      {
+        "prompt": "The TCP checksum covers which parts (conceptually)?",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "TCP header, payload, and a pseudo-header with IP addresses and protocol"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Only the Ethernet FCS"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Only the HTTP response body"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Only the DNS query name"
+          }
+        ],
+        "correctChoiceId": "a",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "The pseudo-header ties the segment to the IP endpoints so misdelivery corrupts the checksum.",
+        "wrongAnswerExplanations": {
+          "b": "FCS protects the frame on the wire; TCP has its own end-to-end checksum.",
+          "c": "HTTP is payload inside TCP; TCP checksum covers more than application data alone.",
+          "d": "DNS over UDP/TCP has its own checks; TCP checksum is transport-wide."
+        },
+        "difficulty": "medium",
+        "source": {
+          "term": "",
+          "chapterTitle": "TCP and UDP"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 17,
+        "cleanedOrdinal": 17
+      },
+      {
+        "prompt": "Link-state routing (e.g., OSPF) requires each router to\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Flood reliable link-state advertisements and run Dijkstra locally"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Learn routes exclusively from DHCP"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Exchange only hop counts with no topology map"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Use HTTP caching headers to pick paths"
+          }
+        ],
+        "correctChoiceId": "a",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "With a consistent LSDB, each router computes shortest paths independently using link weights.",
+        "wrongAnswerExplanations": {
+          "b": "DHCP may give hosts a default route, not intra-domain OSPF topology.",
+          "c": "That describes distance-vector style updates, not full link-state flooding.",
+          "d": "Routing protocols do not use HTTP cache directives."
+        },
+        "difficulty": "medium",
+        "source": {
+          "term": "",
+          "chapterTitle": "Routing"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 18,
+        "cleanedOrdinal": 18
+      },
+      {
+        "prompt": "DNS over UDP typically uses truncation (TC bit) when\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "A switch MAC table overflows"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "The response is too large for UDP, prompting retry over TCP"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "HTTP returns status 500"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "The client sends a SYN packet"
+          }
+        ],
+        "correctChoiceId": "b",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Large responses (many records) exceed UDP payload limits; TCP DNS carries the full message.",
+        "wrongAnswerExplanations": {
+          "a": "Switch scaling issues do not set the DNS TC bit.",
+          "c": "HTTP errors are unrelated to DNS TC.",
+          "d": "SYN is TCP connection setup, not a DNS UDP field."
+        },
+        "difficulty": "medium",
+        "source": {
+          "term": "",
+          "chapterTitle": "DNS"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 19,
+        "cleanedOrdinal": 19
+      },
+      {
+        "prompt": "The Host header in HTTP/1.1 is important because\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "It encrypts the request body"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "It specifies the authority (hostname) for virtual hosting on a shared IP"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "It stores the client's MAC address"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "It replaces TCP port numbers entirely"
+          }
+        ],
+        "correctChoiceId": "b",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Multiple sites can share one IP; Host tells the server which name the client intended.",
+        "wrongAnswerExplanations": {
+          "a": "TLS encrypts; Host is cleartext metadata in HTTP/1.1.",
+          "c": "MAC addresses are link-layer and not carried in HTTP Host.",
+          "d": "TCP still uses ports; Host names the logical site."
+        },
+        "difficulty": "medium",
+        "source": {
+          "term": "",
+          "chapterTitle": "HTTP"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 20,
+        "cleanedOrdinal": 20
+      }
+    ],
+    "hard": [
+      {
+        "prompt": "Why is strict OSI layering often blurred in real implementations (e.g., TCP checksum pseudo-header)?",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Because Ethernet switches must parse HTTP headers"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Because DNS runs below the physical layer"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Practical stacks violate pure layering for performance and end-to-end integrity"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Because IP is actually an application protocol"
+          }
+        ],
+        "correctChoiceId": "c",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Cross-layer information (pseudo-header, offload, QUIC in user space) trades purity for speed and correctness.",
+        "wrongAnswerExplanations": {
+          "a": "Switches need not parse HTTP for basic forwarding.",
+          "b": "DNS is application-layer naming, above transport.",
+          "d": "IP remains network-layer datagram delivery."
+        },
+        "difficulty": "hard",
+        "source": {
+          "term": "",
+          "chapterTitle": "OSI and TCP/IP"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 1,
+        "cleanedOrdinal": 1
+      },
+      {
+        "prompt": "IPv6 Stateless Address Autoconfiguration (SLAAC) combines\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "DHCPv4 OFFER packets with ARP replies"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Router Advertisements (prefix) with interface identifiers (often EUI-64 or privacy extensions)"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "HTTP 302 redirects with TLS session tickets"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "BGP AS_PATH prepending on every host"
+          }
+        ],
+        "correctChoiceId": "b",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Hosts learn prefixes from RA messages and form addresses without a DHCP server for basic connectivity.",
+        "wrongAnswerExplanations": {
+          "a": "Those are IPv4/Ethernet mechanisms, not IPv6 SLAAC.",
+          "c": "Web protocols do not configure IPv6 addressing.",
+          "d": "BGP is inter-domain routing between routers, not host autoconfig."
+        },
+        "difficulty": "hard",
+        "source": {
+          "term": "",
+          "chapterTitle": "IP Addressing"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 2,
+        "cleanedOrdinal": 2
+      },
+      {
+        "prompt": "TCP Reno reacts to a timeout (RTO) primarily by\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Immediately closing the connection with FIN"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Setting ssthresh to cwnd/2, resetting cwnd to 1 MSS, and retransmitting the earliest unACKed segment"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Ignoring loss because cumulative ACKs always recover"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Switching to UDP for the rest of the flow"
+          }
+        ],
+        "correctChoiceId": "b",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Timeout implies severe congestion; Reno collapses the window and begins slow start again.",
+        "wrongAnswerExplanations": {
+          "a": "Timeouts trigger retransmit and window collapse, not mandatory FIN.",
+          "c": "Timeouts exist precisely when ACK-based recovery is insufficient.",
+          "d": "Transport protocol does not change mid-connection."
+        },
+        "difficulty": "hard",
+        "source": {
+          "term": "",
+          "chapterTitle": "TCP and UDP"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 3,
+        "cleanedOrdinal": 3
+      },
+      {
+        "prompt": "BGP path selection between two valid routes to the same prefix typically considers (among other knobs)\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "The TTL of DNS caches"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Local policy attributes (LOCAL_PREF, AS_PATH length, MED) before installing a route"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "The HTTP User-Agent string of clients"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Only the color of the fiber cable"
+          }
+        ],
+        "correctChoiceId": "b",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "BGP is policy-driven inter-domain routing; attribute comparison implements operator preferences.",
+        "wrongAnswerExplanations": {
+          "a": "DNS TTL does not influence BGP best-path selection.",
+          "c": "BGP runs between routers, not from browser headers.",
+          "d": "Physical appearance is irrelevant to BGP decision processes."
+        },
+        "difficulty": "hard",
+        "source": {
+          "term": "",
+          "chapterTitle": "Routing"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 4,
+        "cleanedOrdinal": 4
+      },
+      {
+        "prompt": "DNSSEC primarily provides\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Authentication and integrity of DNS data via chained signatures, not confidentiality"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Automatic NAT traversal for TCP"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Encryption of all DNS queries so ISPs cannot see QNAMEs"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Replacement of TCP congestion control"
+          }
+        ],
+        "correctChoiceId": "a",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "DNSSEC signs RRsets; resolvers validate from trust anchors. QNAMEs may still leak without DNS-over-TLS/HTTPS.",
+        "wrongAnswerExplanations": {
+          "b": "NAT traversal uses other mechanisms (STUN/ICE), not DNSSEC.",
+          "c": "Privacy needs DoT/DoH; DNSSEC does not encrypt queries by default.",
+          "d": "DNSSEC is unrelated to transport congestion algorithms."
+        },
+        "difficulty": "hard",
+        "source": {
+          "term": "",
+          "chapterTitle": "DNS"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 5,
+        "cleanedOrdinal": 5
+      },
+      {
+        "prompt": "HTTP/2 multiplexing improves on HTTP/1.1 chiefly by\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Sending all resources over UDP port 53"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Eliminating TLS entirely"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Opening a new TCP connection per image unconditionally"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Interleaving many streams over one TCP connection with binary framing and stream IDs"
+          }
+        ],
+        "correctChoiceId": "d",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "HTTP/2 avoids head-of-line blocking at the HTTP layer (though TCP HOL remains until HTTP/3/QUIC).",
+        "wrongAnswerExplanations": {
+          "a": "HTTP/2 still runs over TCP/TLS in common deployments, not DNS UDP.",
+          "b": "HTTPS still uses TLS; HTTP/2 is often negotiated inside TLS ALPN.",
+          "c": "That was an HTTP/1.1 workaround; HTTP/2 reduces parallel connections."
+        },
+        "difficulty": "hard",
+        "source": {
+          "term": "",
+          "chapterTitle": "HTTP"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 6,
+        "cleanedOrdinal": 6
+      },
+      {
+        "prompt": "TCP Cubic (common on Linux) models its window growth with a cubic function primarily to\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Guarantee zero packet loss on the Internet"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Replace IP routing tables on every ACK"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Disable slow start permanently"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Scale aggressively on high-bandwidth-delay-product paths while probing fairly after loss"
+          }
+        ],
+        "correctChoiceId": "d",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Cubic targets W_max-dependent growth for high BDP links, improving throughput versus linear Reno on fat pipes.",
+        "wrongAnswerExplanations": {
+          "a": "Loss still occurs; Cubic adapts rates, it cannot eliminate congestion.",
+          "b": "Routing is separate; Cubic only adjusts sender congestion window.",
+          "c": "Connections still begin with slow start; Cubic governs congestion avoidance growth."
+        },
+        "difficulty": "hard",
+        "source": {
+          "term": "",
+          "chapterTitle": "Congestion Control"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 7,
+        "cleanedOrdinal": 7
+      },
+      {
+        "prompt": "VLANs (802.1Q) allow a single physical switch fabric to\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Assign TCP port 443 to every host"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Route IP packets between continents without routers"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Encrypt TCP payloads at layer 2 by default"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Isolate broadcast domains logically using tagged Ethernet frames"
+          }
+        ],
+        "correctChoiceId": "d",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "802.1Q tags carry VLAN IDs so ports can participate in multiple logical LANs securely segmented.",
+        "wrongAnswerExplanations": {
+          "a": "Port numbers are transport endpoints on hosts, not VLAN tags.",
+          "b": "Inter-VLAN routing still needs a router or L3 switch.",
+          "c": "VLANs segment traffic; encryption is not their primary function."
+        },
+        "difficulty": "hard",
+        "source": {
+          "term": "",
+          "chapterTitle": "Switching"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 8,
+        "cleanedOrdinal": 8
+      },
+      {
+        "prompt": "The primary reason QUIC (HTTP/3) moves reliability into user space over UDP is to\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Make DNS iterative queries obsolete"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Eliminate the need for IP addresses"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Avoid using any encryption on the web"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Reduce transport-layer head-of-line blocking and enable faster connection establishment with integrated TLS"
+          }
+        ],
+        "correctChoiceId": "d",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "QUIC multiplexes streams with independent loss recovery and combines crypto with setup, unlike single-byte-stream TCP.",
+        "wrongAnswerExplanations": {
+          "a": "HTTP still relies on DNS (or alternatives like DoH) for naming.",
+          "b": "QUIC still runs over IP (v4 or v6).",
+          "c": "QUIC mandates TLS 1.3 integration for security."
+        },
+        "difficulty": "hard",
+        "source": {
+          "term": "",
+          "chapterTitle": "OSI and TCP/IP"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 9,
+        "cleanedOrdinal": 9
+      },
+      {
+        "prompt": "CIDR aggregation in the global routing table helps providers\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Advertise a shorter prefix covering many customer subnets, shrinking table size"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Remove the need for default routes on hosts"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Store MAC addresses inside DNS A records"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Assign duplicate public IPv4 addresses to different continents safely"
+          }
+        ],
+        "correctChoiceId": "a",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Summarization (e.g., aggregating /24s into a /16 announcement) reduces BGP churn and memory.",
+        "wrongAnswerExplanations": {
+          "b": "Hosts still need defaults to reach non-local prefixes.",
+          "c": "A records hold IP addresses, not Ethernet MACs.",
+          "d": "Public addresses must remain globally unique."
+        },
+        "difficulty": "hard",
+        "source": {
+          "term": "",
+          "chapterTitle": "IP Addressing"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 10,
+        "cleanedOrdinal": 10
+      },
+      {
+        "prompt": "Selective Acknowledgments (SACK) in TCP allow the sender to\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Run without any receiver window"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Retransmit only missing segments when multiple disjoint ranges are outstanding"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Send data without ever numbering bytes"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Ignore all losses after the first duplicate ACK"
+          }
+        ],
+        "correctChoiceId": "b",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "SACK blocks in options describe non-contiguous received data, improving recovery on multiple losses.",
+        "wrongAnswerExplanations": {
+          "a": "Flow control still uses the receive window alongside SACK.",
+          "c": "Sequence numbers are still fundamental to TCP.",
+          "d": "Duplicate ACKs trigger fast retransmit; SACK refines which segments to resend."
+        },
+        "difficulty": "hard",
+        "source": {
+          "term": "",
+          "chapterTitle": "TCP and UDP"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 11,
+        "cleanedOrdinal": 11
+      },
+      {
+        "prompt": "Equal-cost multi-path (ECMP) forwarding sends flows along different next hops by often hashing\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Random MAC addresses per packet on WAN links"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "The DNS TTL value alone"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Only the HTTP Server header"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Five-tuple (src/dst IP, protocol, ports) so packets of a flow stay on one path"
+          }
+        ],
+        "correctChoiceId": "d",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Per-flow hashing preserves ordering within a TCP connection while utilizing parallel links.",
+        "wrongAnswerExplanations": {
+          "a": "WAN routing uses IP forwarding; MACs change per hop on L2 segments.",
+          "b": "TTL in DNS records is unrelated to router ECMP hash keys.",
+          "c": "Routers forward on IP headers before HTTP is visible (if at all)."
+        },
+        "difficulty": "hard",
+        "source": {
+          "term": "",
+          "chapterTitle": "Routing"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 12,
+        "cleanedOrdinal": 12
+      },
+      {
+        "prompt": "A DNS negative cache entry (NXDOMAIN) prevents\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "TCP slow start on new connections"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Ethernet STP reconvergence"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Repeated queries for names that do not exist until the SOA MINIMUM TTL expires"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Encryption of TLS certificates"
+          }
+        ],
+        "correctChoiceId": "c",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Resolvers cache failures as well as successes, reducing load during typos or attacks.",
+        "wrongAnswerExplanations": {
+          "a": "Negative DNS caching does not alter TCP congestion algorithms.",
+          "b": "STP is a layer-2 loop prevention protocol.",
+          "d": "Certificates are validated in TLS, not by DNS negative caching."
+        },
+        "difficulty": "hard",
+        "source": {
+          "term": "",
+          "chapterTitle": "DNS"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 13,
+        "cleanedOrdinal": 13
+      },
+      {
+        "prompt": "HTTP conditional GET with If-None-Match: <etag> can yield status 304 when\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "The client's MAC address changed"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "The representation is unchanged and the server allows reuse of the cached copy"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "The TCP connection was reset"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "DNS returns NXDOMAIN"
+          }
+        ],
+        "correctChoiceId": "b",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "304 Not Modified saves bandwidth: the body is omitted but caches revalidate metadata.",
+        "wrongAnswerExplanations": {
+          "a": "Link-layer changes do not drive HTTP entity-tag validation.",
+          "c": "Resets abort the connection; they do not produce a valid 304 response.",
+          "d": "NXDOMAIN means the name does not exist, unrelated to HTTP validators."
+        },
+        "difficulty": "hard",
+        "source": {
+          "term": "",
+          "chapterTitle": "HTTP"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 14,
+        "cleanedOrdinal": 14
+      },
+      {
+        "prompt": "Bufferbloat is problematic because large router queues\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Force all HTTP requests to use POST"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Disable DNSSEC chain of trust"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Add excessive delay (latency) even at moderate utilization, hurting interactive traffic"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Prevent switches from learning MAC addresses"
+          }
+        ],
+        "correctChoiceId": "c",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Large buffers keep packets queued, inflating RTT and confusing TCP's congestion signals (delay-based CC targets this).",
+        "wrongAnswerExplanations": {
+          "a": "HTTP methods are chosen by clients/servers, not queue length.",
+          "b": "DNSSEC validation is unrelated to queue depth.",
+          "d": "MAC learning is independent of WAN queue sizing."
+        },
+        "difficulty": "hard",
+        "source": {
+          "term": "",
+          "chapterTitle": "Congestion Control"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 15,
+        "cleanedOrdinal": 15
+      },
+      {
+        "prompt": "Cut-through switching differs from store-and-forward because it\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Only works with HTTP/3 QUIC streams"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Waits for TCP acknowledgment before sending frames"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Requires IP fragmentation on every packet"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Begins forwarding after reading the destination MAC, before the entire frame arrives"
+          }
+        ],
+        "correctChoiceId": "d",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Cut-through reduces latency but may forward corrupted frames because the FCS was not checked yet.",
+        "wrongAnswerExplanations": {
+          "a": "Switching is layer-2; application protocols are irrelevant.",
+          "b": "Switches operate on frames, not TCP ACKs.",
+          "c": "Fragmentation is an IP feature, not a switch forwarding mode requirement."
+        },
+        "difficulty": "hard",
+        "source": {
+          "term": "",
+          "chapterTitle": "Switching"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 16,
+        "cleanedOrdinal": 16
+      },
+      {
+        "prompt": "SYN cookies mitigate SYN flood attacks by\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Disabling three-way handshakes entirely"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Dropping all SYN packets unconditionally"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Encoding connection state cryptographically in the initial sequence number instead of storing half-open state"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Switching from TCP to ICMP for web traffic"
+          }
+        ],
+        "correctChoiceId": "c",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Under load, the server can still reply SYN-ACK without reserving full TCB until ACK validates the cookie.",
+        "wrongAnswerExplanations": {
+          "a": "Handshake still occurs; state is encoded, not removed.",
+          "b": "That would deny service to everyone, not mitigate selectively.",
+          "d": "Web traffic remains TCP/TLS; SYN cookies are a TCP server technique."
+        },
+        "difficulty": "hard",
+        "source": {
+          "term": "",
+          "chapterTitle": "TCP and UDP"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 17,
+        "cleanedOrdinal": 17
+      },
+      {
+        "prompt": "Policy-based routing differs from destination longest-prefix forwarding because it\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Only uses Ethernet broadcast addresses"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Eliminates the need for IP headers"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "Requires HTTP/2 server push on all packets"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "Can forward traffic based on source, DSCP, or interface policy before the usual FIB lookup"
+          }
+        ],
+        "correctChoiceId": "d",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "PBR applies route maps/ACLs to steer traffic (e.g., force VPN egress) beyond destination-only tables.",
+        "wrongAnswerExplanations": {
+          "a": "IP routing uses prefixes, not broadcast MACs on WAN paths.",
+          "b": "IP headers remain essential for any IP routing decision.",
+          "c": "Routing is layer-3; HTTP features are not consulted per packet."
+        },
+        "difficulty": "hard",
+        "source": {
+          "term": "",
+          "chapterTitle": "Routing"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 18,
+        "cleanedOrdinal": 18
+      },
+      {
+        "prompt": "An ANY query in classic DNS was deprecated largely because\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "It made BGP converge faster"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "It replaced AAAA records for IPv6"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "It encrypted all answers with TLS 1.3"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "It encouraged amplification attacks and oversized responses"
+          }
+        ],
+        "correctChoiceId": "d",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "ANY responses can be huge, aiding reflection/amplification; operators now prefer type-specific queries.",
+        "wrongAnswerExplanations": {
+          "a": "BGP convergence is unrelated to DNS query types.",
+          "b": "IPv6 uses AAAA; ANY was a meta-query type.",
+          "c": "DNS ANY was not an encryption mechanism."
+        },
+        "difficulty": "hard",
+        "source": {
+          "term": "",
+          "chapterTitle": "DNS"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 19,
+        "cleanedOrdinal": 19
+      },
+      {
+        "prompt": "Cross-Origin Resource Sharing (CORS) preflight OPTIONS requests exist because\u2026",
+        "choices": [
+          {
+            "id": "a",
+            "label": "A",
+            "body": "Switches must learn MACs via HTTP"
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "body": "Browsers must check server permission before non-simple cross-origin methods/headers"
+          },
+          {
+            "id": "c",
+            "label": "C",
+            "body": "DNS roots only answer OPTIONS queries"
+          },
+          {
+            "id": "d",
+            "label": "D",
+            "body": "TCP requires OPTIONS before SYN"
+          }
+        ],
+        "correctChoiceId": "b",
+        "hint": "Think about the precise definition before picking.",
+        "explanation": "Preflight lets servers declare allowed origins/methods/headers for XHR/fetch across origins.",
+        "wrongAnswerExplanations": {
+          "a": "MAC learning uses Ethernet frames, not CORS.",
+          "c": "DNS does not use HTTP methods.",
+          "d": "TCP handshake uses SYN, not HTTP OPTIONS."
+        },
+        "difficulty": "hard",
+        "source": {
+          "term": "",
+          "chapterTitle": "HTTP"
+        },
+        "qualityScore": 100,
+        "originalOrdinal": 20,
+        "cleanedOrdinal": 20
+      }
+    ]
+  }
+}

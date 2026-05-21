@@ -40,6 +40,34 @@ npm run import:learning-quizzes -- --activate-user-email you@example.com
 
 `import:learning-quizzes` loads the generated quiz artifacts from `backend/data/learning/quizzes-cleaned` into Postgres and can optionally activate the imported topics for a specific signed-in user.
 
+### Quiz corpus workflow
+
+Hand-authored packs live in `backend/data/learning/quizzes-cleaned/` (15 topics × 60 questions). Source modules are under `backend/scripts/quiz_banks/`.
+
+```bash
+# Regenerate JSON from Python banks
+python3 backend/scripts/author_learning_quizzes.py
+
+# Optional: emit a subset only
+python3 backend/scripts/author_learning_quizzes.py --only operating-systems-ostep,statistics-openintro
+
+# Validate structure before import
+node backend/scripts/validate_quiz_banks.mjs
+
+# Import everything (default: replaces canonical pack per topic — resets spaced-repetition for those topics)
+cd backend && npm run import:learning-quizzes
+
+# Import only new or changed packs (slug or topicKey, comma-separated)
+cd backend && npm run import:learning-quizzes -- --only operating-systems-ostep,databases-design
+
+# Smoke-test difficulty ramp in-process (requires DATABASE_URL)
+cd backend && npx tsx scripts/validate_ramp_up.ts
+```
+
+Imported topic keys (Phase 0 + Phase 1): `algorithms`, `machine-learning`, `reinforcement-learning`, `probability`, `logic`, `operating-systems`, `distributed-systems`, `databases`, `networking`, `linear-algebra`, `statistics`, `discrete-math`, `deep-learning`, `transformers`, `calculus`.
+
+Do **not** import from gitignored `backend/data/learning/quizzes/` (PDF-derived templates). Do **not** use the in-app “Regenerate pack” button to refresh corpus content — that creates stub questions via the worker.
+
 ## Services
 
 Install the unit files from [ops/oracle](/Users/reubenroy/github/hobby/window-extension/ops/oracle):

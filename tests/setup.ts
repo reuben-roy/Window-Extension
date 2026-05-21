@@ -147,6 +147,9 @@ const chromeMock = {
     setPanelBehavior: vi.fn(() => Promise.resolve()),
     open: vi.fn(() => Promise.resolve()),
   },
+  scripting: {
+    executeScript: vi.fn(() => Promise.resolve([])),
+  },
   windows: {
     update: vi.fn(() => Promise.resolve()),
     create: vi.fn(() => Promise.resolve({ id: 1 })),
