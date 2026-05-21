@@ -5,6 +5,7 @@ import type {
   LearningSubject,
   LearningSuggestion,
   Settings,
+  SnoozeState,
   TaskTag,
 } from './types';
 
@@ -306,4 +307,28 @@ export function isRepeatedExcludedQuizPrompt(
     prompt !== null &&
     prompt.questionId === excludeQuestionId,
   );
+}
+
+/** Whether the user is in a calendar gap, break, or (aggressive) AFK window suitable for quiz surfacing. */
+export function isLearningIdleWindow(input: {
+  calendarState: Pick<CalendarState, 'currentEvent'>;
+  snoozeState: Pick<SnoozeState, 'active'>;
+  settings: Pick<Settings, 'learningSettings'>;
+  userIdle: boolean;
+}): boolean {
+  const { intensity } = input.settings.learningSettings;
+  const calendarGap = !input.calendarState.currentEvent || input.snoozeState.active;
+
+  if (calendarGap) {
+    if (intensity === 'balanced' && !input.calendarState.currentEvent && !input.snoozeState.active) {
+      return input.userIdle;
+    }
+    return true;
+  }
+
+  if (intensity === 'aggressive' && input.userIdle) {
+    return true;
+  }
+
+  return false;
 }

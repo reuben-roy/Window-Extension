@@ -977,7 +977,16 @@ export type MessageType =
   | 'REGENERATE_LEARNING_PACK'
   | 'GET_NEXT_QUIZ_PROMPT'
   | 'SUBMIT_QUIZ_ANSWER'
-  | 'SET_ACTIVE_QUIZ_VISIBILITY';
+  | 'SET_ACTIVE_QUIZ_VISIBILITY'
+  | 'OPEN_QUIZ_SURFACE';
+
+export interface QuizFabSession {
+  visible: boolean;
+  topicLabel: string | null;
+  questionId: string | null;
+  intensity: LearningIntensity;
+  lastSurfacedAt: string | null;
+}
 
 export interface Message {
   type: MessageType;

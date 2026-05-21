@@ -100,6 +100,7 @@ const chromeMock = {
   },
   notifications: {
     create: vi.fn(),
+    onClicked: { addListener: vi.fn() },
   },
   downloads: {
     download: vi.fn(() => Promise.resolve(1)),
@@ -133,6 +134,7 @@ const chromeMock = {
     }),
     update: vi.fn((_tabId: number, _properties: chrome.tabs.UpdateProperties) => Promise.resolve()),
     reload: vi.fn((_tabId?: number) => Promise.resolve()),
+    sendMessage: vi.fn(() => Promise.resolve()),
     onUpdated: { addListener: vi.fn() },
     onActivated: { addListener: vi.fn() },
     onRemoved: { addListener: vi.fn() },
@@ -147,6 +149,7 @@ const chromeMock = {
   },
   windows: {
     update: vi.fn(() => Promise.resolve()),
+    create: vi.fn(() => Promise.resolve({ id: 1 })),
   },
   webNavigation: {
     onBeforeNavigate: { addListener: vi.fn() },

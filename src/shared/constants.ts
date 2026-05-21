@@ -347,6 +347,9 @@ export const LEVEL_PERKS: ReadonlyArray<readonly [number, string]> = [
 
 // ─── Alarms ───────────────────────────────────────────────────────────────────
 
+export const QUIZ_FAB_SESSION_KEY = 'quizFabSession';
+export const QUIZ_FAB_SURFACE_COOLDOWN_MS = 60_000;
+
 export const ALARM_TICK = 'tick';
 export const ALARM_SNOOZE_END = 'snooze-end';
 export const ALARM_TICK_PERIOD_MINUTES = 1;

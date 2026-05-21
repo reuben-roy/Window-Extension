@@ -142,7 +142,20 @@ import { calculatePoints } from './points';
 import { activateSnooze, clearSnoozeAlarm, deactivateSnooze, isSnoozeActive } from './snooze';
 import { finalizeTrackedBreakVisits, registerTelemetryListeners } from './telemetry';
 import { markTaskCompleted, syncTasksFromCalendarState } from './taskQueue';
-import { isBlockingFeatureEnabled, isLearningFeatureEnabled } from '../shared/learning';
+import { queryIdleState } from './analytics';
+import {
+  getQuizFabSession,
+  hideQuizFab,
+  openQuizSurfaceFromUserGesture,
+  registerQuizFabTabListeners,
+  shouldDebounceQuizFabSurface,
+  syncQuizFabToTabs,
+} from './quizFab';
+import {
+  isBlockingFeatureEnabled,
+  isLearningFeatureEnabled,
+  isLearningIdleWindow,
+} from '../shared/learning';
 
 const pendingNavigationByTab = new Map<number, string>();
 const currentDocumentUrlByTab = new Map<number, string>();
@@ -167,6 +180,14 @@ chrome.alarms.get(ALARM_TICK, (alarm) => {
 
 registerTelemetryListeners();
 registerAnalyticsListeners();
+registerQuizFabTabListeners();
+
+chrome.notifications.onClicked.addListener((notificationId) => {
+  if (notificationId !== 'learning-quiz-ready') {
+    return;
+  }
+  openQuizSurfaceFromUserGesture({});
+});
 registerBlockingListeners();
 registerDownloadListeners();
 void ensureDemoStatsSeeded();
@@ -329,6 +350,12 @@ async function handleTestOpenClawInstanceSettings(message: Message): Promise<
 }
 
 chrome.runtime.onMessage.addListener((message: Message, sender, sendResponse) => {
+  if (message.type === 'OPEN_QUIZ_SURFACE') {
+    openQuizSurfaceFromUserGesture(sender);
+    sendResponse({ ok: true });
+    return false;
+  }
+
   handleMessage(message, sender)
     .then(sendResponse)
     .catch((err: unknown) => {
@@ -688,7 +715,11 @@ async function handleSetActiveQuizVisibility(message: Message): Promise<{
   learningState: StateResponse['learningState'];
 }> {
   const payload = (message.payload as { visible?: boolean } | undefined) ?? {};
-  const learningState = await setActiveQuizVisibility(Boolean(payload.visible));
+  const visible = Boolean(payload.visible);
+  const learningState = await setActiveQuizVisibility(visible);
+  if (!visible) {
+    await hideQuizFab();
+  }
   return {
     ok: true,
     learningState,
@@ -889,36 +920,62 @@ async function maybeSurfaceLearningQuiz(): Promise<void> {
     getCalendarState(),
     getSnoozeState(),
   ]);
-  if (!isLearningFeatureEnabled(settings)) return;
-  if (learningState.activeQuizVisible || learningState.activeQuizPrompt === null) return;
-
-  const idleWindow = !calendarState.currentEvent || snoozeState.active;
-  if (!idleWindow) return;
-
-  await setActiveQuizVisibility(true);
-
-  if (settings.persistentPanelEnabled) {
+  if (!isLearningFeatureEnabled(settings)) {
+    await hideQuizFab();
     return;
   }
 
-  try {
-    const actionWithPopup = chrome.action as typeof chrome.action & {
-      openPopup?: () => Promise<void>;
-    };
-    if (typeof actionWithPopup.openPopup === 'function') {
-      await actionWithPopup.openPopup();
-      return;
-    }
-  } catch {
-    // Fall through to notification.
+  const userIdle = await queryIdleState();
+  const idleWindow = isLearningIdleWindow({
+    calendarState,
+    snoozeState,
+    settings,
+    userIdle,
+  });
+  if (!idleWindow) {
+    await hideQuizFab();
+    return;
   }
 
-  chrome.notifications.create('learning-quiz-ready', {
-    type: 'basic',
-    iconUrl: 'src/assets/icons/icon48.png',
-    title: 'Window quiz ready',
-    message: `Quick review: ${learningState.activeQuizPrompt.topicLabel}`,
+  if (learningState.activeQuizPrompt === null) {
+    await hideQuizFab();
+    return;
+  }
+
+  const fabSession = await getQuizFabSession();
+  const questionId = learningState.activeQuizPrompt.questionId;
+  if (shouldDebounceQuizFabSurface(fabSession, questionId)) {
+    return;
+  }
+
+  await setActiveQuizVisibility(true);
+  await syncQuizFabToTabs({
+    visible: true,
+    topicLabel: learningState.activeQuizPrompt.topicLabel,
+    questionId,
+    intensity: settings.learningSettings.intensity,
   });
+
+  if (!settings.persistentPanelEnabled) {
+    try {
+      const actionWithPopup = chrome.action as typeof chrome.action & {
+        openPopup?: () => Promise<void>;
+      };
+      if (typeof actionWithPopup.openPopup === 'function') {
+        await actionWithPopup.openPopup();
+        return;
+      }
+    } catch {
+      // Fall through to notification.
+    }
+
+    chrome.notifications.create('learning-quiz-ready', {
+      type: 'basic',
+      iconUrl: 'src/assets/icons/icon48.png',
+      title: 'Window quiz ready',
+      message: `Quick review: ${learningState.activeQuizPrompt.topicLabel}`,
+    });
+  }
 }
 
 export async function openActiveLaunchTarget(): Promise<{

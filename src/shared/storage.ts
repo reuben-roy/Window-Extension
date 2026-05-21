@@ -691,7 +691,7 @@ function normalizeLearningSettingsStored(
   };
 }
 
-function normalizeSettingsStored(settings: Partial<Settings> | null | undefined): Settings {
+export function normalizeSettingsStored(settings: Partial<Settings> | null | undefined): Settings {
   return {
     ...DEFAULT_SETTINGS,
     ...settings,

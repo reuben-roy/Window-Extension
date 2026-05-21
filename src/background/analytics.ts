@@ -521,7 +521,7 @@ function trimDailyConsumptionRollupStore(store: DailyConsumptionRollupStore): Da
   return next;
 }
 
-function queryIdleState(): Promise<boolean> {
+export function queryIdleState(): Promise<boolean> {
   if (!chrome.idle?.queryState) {
     return Promise.resolve(false);
   }

@@ -1114,7 +1114,9 @@ export async function refreshLearningState(): Promise<LearningState> {
           ? latestWithFreshTopics.activeQuizPrompt
           : review?.prompt ?? null,
       activeQuizResult: preserveActiveQuizResult ? latestWithFreshTopics.activeQuizResult : null,
-      activeQuizVisible: preserveActiveQuiz || lockVisibleQuiz || review?.prompt !== null,
+      activeQuizVisible:
+        lockVisibleQuiz ||
+        (preserveActiveQuiz && latestWithFreshTopics.activeQuizVisible),
       syncing: false,
       lastSyncedAt: new Date().toISOString(),
       lastError: null,
@@ -1208,7 +1210,11 @@ export async function getNextQuizPrompt(
     reviewQueue: review.reviewQueue,
     activeQuizPrompt,
     activeQuizResult,
-    activeQuizVisible: activeQuizPrompt !== null,
+    activeQuizVisible: preserveCurrentPrompt
+      ? current.activeQuizVisible
+      : origin === 'scheduled'
+        ? false
+        : activeQuizPrompt !== null,
     lastSyncedAt: new Date().toISOString(),
     lastError: repeatedPrompt
       ? 'Window requested a different quiz card, but the backend returned the same question again. If another card should exist for these topics, rebuild and restart the learning API on Oracle.'

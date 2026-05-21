@@ -32,6 +32,13 @@
   "side_panel": {
     "default_path": "src/sidepanel/index.html"
   },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["src/content/quizFab.ts"],
+      "run_at": "document_idle"
+    }
+  ],
   "options_page": "src/options/index.html",
   "oauth2": {
     "client_id": "729824152278-crfk8lk39irm415add4dc87dd2hiumb5.apps.googleusercontent.com",
