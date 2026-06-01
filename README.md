@@ -88,6 +88,32 @@ The assistant layer is designed so that intelligence runs outside the extension 
 
 Window is made up of several parts that work together.
 
+```mermaid
+flowchart TB
+  subgraph Client["Browser extension"]
+    UI[Popup / Options / Blocked / Side panel]
+    SW[Service worker]
+    UI <--> SW
+  end
+
+  subgraph Cloud["Self-hosted backend"]
+    API[Fastify API]
+    W[Worker]
+    DB[(PostgreSQL)]
+    API --> DB
+    W --> DB
+  end
+
+  subgraph External["External services"]
+    GCal[Google Calendar]
+    OC[OpenClaw]
+  end
+
+  SW --> GCal
+  SW --> API
+  W --> OC
+```
+
 ### Browser extension
 
 This is the user-facing product.
@@ -163,22 +189,58 @@ The database stores long-lived product data such as:
 
 ### Focus flow
 
-1. The user connects Google Calendar
-2. Window syncs current calendar events
-3. Window resolves the active Event Rule or keyword fallback
-4. Window applies browser blocking rules locally
-5. The user either stays focused or starts a timed break
+```mermaid
+flowchart TD
+  A[User connects Google Calendar] --> B[Service worker syncs events]
+  B --> C{Active event matches<br/>EventRule or keyword?}
+  C -->|no| D[Browsing unrestricted]
+  C -->|yes| E[Compute allowed domains<br/>+ global allowlist]
+  E --> F{Blocking enabled<br/>and not paused?}
+  F -->|no| D
+  F -->|yes| G[Install DNR rules:<br/>block all → allow list]
+  G --> H{User visits<br/>blocked site?}
+  H -->|yes| I[Redirect to blocked page]
+  H -->|no| J[Stay on allowed sites]
+  I --> K{Start break?}
+  K -->|yes| L[Clear rules for 5/10/15 min]
+  L --> M[Alarm fires → re-apply rules]
+  K -->|no| N[Return to allowed work]
+  M --> G
+```
+
+### Break (snooze) flow
+
+```mermaid
+flowchart TD
+  Start([User on blocked page]) --> Choose[Pick break duration]
+  Choose --> Clear[clearAllRules — all sites reachable]
+  Clear --> Alarm[Schedule ALARM_SNOOZE_END]
+  Alarm --> Wait{Timer elapsed?}
+  Wait -->|no| Browse[User browses freely]
+  Browse --> Wait
+  Wait -->|yes| Deactivate[deactivateSnooze]
+  Deactivate --> Tick[Next calendar tick]
+  Tick --> Still{Focus event<br/>still active?}
+  Still -->|yes| Reblock[updateBlockingRules]
+  Still -->|no| Open[Remain unrestricted]
+```
 
 ### Idea capture flow
 
-1. The user writes an idea in the popup
-2. The extension stores it locally first
-3. The extension sends it to the backend
-4. The backend stores the idea and creates a queued job
-5. The worker picks up the job
-6. The worker sends it to OpenClaw
-7. The result is saved as a report
-8. The extension shows the finished result later
+```mermaid
+flowchart TD
+  U[User submits idea in popup] --> Local[Save to chrome.storage<br/>idea outbox]
+  Local --> Sync{Backend session<br/>available?}
+  Sync -->|no| Queue[Retry on next sync]
+  Sync -->|yes| POST[POST /v1/ideas]
+  POST --> DB[(IdeaCapture + ResearchJob queued)]
+  DB --> Worker[Worker claims job]
+  Worker --> OC[OpenClaw evaluateIdea]
+  OC --> Report[(IdeaReport saved)]
+  Report --> Poll[Extension refreshes /v1/ideas]
+  Poll --> UI[Popup shows summary + decision UI]
+  Queue --> Sync
+```
 
 ## Technology Stack
 
@@ -244,7 +306,291 @@ Window is a browser extension that helps users stay focused during calendar-base
 
 ---
 
+## Architecture Overview
+
+Window is a **monorepo** with two runnable surfaces:
+
+| Surface | Role | Default port / output |
+|---------|------|------------------------|
+| Chrome extension (`src/`) | UI, calendar sync, blocking, local state | Built to `dist/` |
+| Backend API (`backend/src/server.ts`) | Auth, persistence, OpenClaw orchestration | `8787` |
+| Backend worker (`backend/src/worker.ts`) | Async jobs (ideas, assistant tasks, learning packs) | N/A (poll loop) |
+
+The extension talks to the backend over HTTP (`VITE_WINDOW_BACKEND_URL`, default `http://localhost:8787`). Focus blocking itself is **entirely local** via Chrome `declarativeNetRequest`; the backend is required for account sync, analytics upload, assistant features, and the learning quiz system.
+
+### System context
+
+```mermaid
+flowchart TB
+  subgraph Browser["Chrome browser"]
+    Popup["Popup / Side panel"]
+    Options["Options / Calendar workspace"]
+    Blocked["Blocked page"]
+    SW["Service worker<br/>(background)"]
+    DNR["declarativeNetRequest"]
+    Popup --> SW
+    Options --> SW
+    Blocked --> SW
+    SW --> DNR
+    SW --> GCal["Google Calendar API"]
+  end
+
+  subgraph Server["Window backend"]
+    API["Fastify API<br/>:8787"]
+    Worker["Job worker"]
+    DB[(PostgreSQL)]
+    API --> DB
+    Worker --> DB
+    Worker --> OC
+  end
+
+  SW -->|"REST /v1/*<br/>Bearer session"| API
+  OC["OpenClaw instance<br/>(mock / http / ssh)"]
+```
+
+### Extension runtime
+
+```mermaid
+flowchart LR
+  subgraph UI["React surfaces (Vite + CRX)"]
+    P[popup/]
+    O[options/]
+    B[blocked/]
+    S[sidepanel/]
+    C[content/quizFab.ts]
+  end
+
+  subgraph BG["Service worker modules"]
+    IDX[index.ts<br/>message hub + alarms]
+    CAL[calendar.ts<br/>rule resolution]
+    BLK[blocker.ts<br/>DNR rules]
+    SNZ[snooze.ts<br/>breaks]
+    PTS[points.ts + levels.ts]
+    TQ[taskQueue.ts]
+    ANA[analytics.ts]
+    BE[backend.ts<br/>API client]
+  end
+
+  subgraph Shared["shared/"]
+    ST[storage.ts]
+    TYP[types.ts]
+    ER[eventRules.ts]
+  end
+
+  P & O & B & S -->|chrome.runtime.sendMessage| IDX
+  C -->|messages| IDX
+  IDX --> CAL & BLK & SNZ & BE & ANA & TQ
+  CAL & BLK & SNZ --> ST
+  BE --> ST
+```
+
+### Focus blocking pipeline
+
+Blocking runs on a periodic tick (`ALARM_TICK`, default every few minutes) and whenever calendar state changes. The service worker resolves **what is allowed right now**, then atomically replaces DNR dynamic rules.
+
+```mermaid
+flowchart TD
+  Tick([ALARM_TICK or state change]) --> Snooze{Snooze active?}
+  Snooze -->|yes| Clear[clearAllRules]
+  Snooze -->|no| Fetch[Fetch calendar via OAuth]
+  Fetch --> Resolve[calendar.resolveActiveState]
+  Resolve --> Restricted{isRestricted?}
+  Restricted -->|no| Clear
+  Restricted -->|yes| Update[blocker.updateBlockingRules]
+  Update --> BlockRule[BLOCK_ALL → blocked page]
+  Update --> AllowRules[ALLOW per whitelisted domain]
+  BlockRule --> DNR[(declarativeNetRequest)]
+  AllowRules --> DNR
+  DNR --> Visit{Navigation to host}
+  Visit -->|not in allowlist| Redirect[Redirect to blocked UI]
+  Visit -->|allowed| Pass[Request proceeds]
+```
+
+**DNR strategy** (see `src/background/blocker.ts`):
+
+1. One catch-all **redirect** rule → extension blocked page (`BLOCK_ALL_RULE_ID`)
+2. One **allow** rule per whitelisted hostname (higher priority wins)
+3. **Session rules** for temporary domain unlocks and download allowances (separate ID range)
+
+```mermaid
+flowchart TD
+  Request[Outgoing request] --> Session{Session rule:<br/>temp unlock or download?}
+  Session -->|allow| OK[Allow]
+  Session -->|no match| Dynamic{Dynamic rule}
+  Dynamic --> Allow{Hostname in<br/>ALLOW rules?}
+  Allow -->|yes| OK
+  Allow -->|no| Block[BLOCK_ALL redirect]
+  Block --> Page[blocked/index.html]
+```
+
+### Rule resolution
+
+For each **currently active** calendar event, Window picks domains in this order:
+
+```mermaid
+flowchart TD
+  Start([Active calendar event]) --> Exact{Exact EventRule<br/>title match?}
+  Exact -->|yes, empty domains| Unrestricted[mode: unrestricted<br/>no blocking]
+  Exact -->|yes, has domains| AllowExact[mode: allow<br/>event domains]
+  Exact -->|no| KW{keywordAutoMatchEnabled<br/>AND keyword hit?}
+  KW -->|yes| AllowKW[mode: allow<br/>keyword domains]
+  KW -->|no| NoRule[No rule for event]
+  NoRule --> Unrestricted2[Browsing unrestricted<br/>for that event]
+
+  AllowExact --> Multi{Multiple active<br/>events with rules?}
+  AllowKW --> Multi
+  Multi -->|yes| Intersect[Intersect domain lists<br/>across events]
+  Multi -->|no| Single[Use that event's domains]
+  Intersect --> Global[+ global allowlist<br/>e.g. accounts.google.com]
+  Single --> Global
+  Global --> Flags{enableBlocking +<br/>feature flag +<br/>not daily pause?}
+  Flags -->|yes| Restrict[isRestricted = true]
+  Flags -->|no| Open[isRestricted = false]
+```
+
+Important behaviors:
+
+- **Exact rules win** over keyword rules unless the exact rule is a redundant copy of a keyword rule (same domains, no tag metadata) — then the keyword source is preferred.
+- An exact rule with **zero domains** means “track this event but do not block” (`mode: unrestricted`).
+- Overlapping focused events use **domain intersection** (strictest common allowlist).
+- **Extended task assignments** and **launch targets** can add extra allowed hosts for linked workflows.
+
+### Assistant & idea evaluation
+
+Long-running AI work never blocks the API request path. The worker claims jobs and calls OpenClaw.
+
+```mermaid
+flowchart TD
+  subgraph Extension
+    Submit[User submits idea or assistant task]
+    Outbox[Local outbox in chrome.storage]
+    Refresh[refreshAssistantState / syncIdeaOutbox]
+  end
+
+  subgraph API["Fastify API"]
+    Create[POST /v1/ideas or /v1/assistant-tasks]
+    Return[Return ids + queued status]
+  end
+
+  subgraph Worker["backend worker loop"]
+    Poll[Sleep WORKER_POLL_INTERVAL_MS]
+    Claim[Claim next ResearchJob,<br/>AssistantTaskJob, or LearningJob]
+    Run[Call OpenClaw connector]
+    Save[Persist report or mark failed]
+    Poll --> Claim --> Run --> Save --> Poll
+  end
+
+  Submit --> Outbox --> Create --> Return
+  Create --> DB[(PostgreSQL)]
+  DB --> Claim
+  Run --> OC[OpenClaw mock/http/ssh]
+  Save --> DB
+  DB --> Refresh
+```
+
+### Worker job dispatch
+
+Each poll cycle runs three batch processors in order (see `backend/src/worker.ts`):
+
+```mermaid
+flowchart LR
+  Loop([Worker loop]) --> R[processResearchJobsBatch]
+  R --> A[processAssistantTasksBatch]
+  A --> L[processLearningJobsBatch]
+  L --> Delay{Any job processed?}
+  Delay -->|yes| Fast[Sleep 500ms]
+  Delay -->|no| Slow[Sleep WORKER_POLL_INTERVAL_MS]
+  Fast --> Loop
+  Slow --> Loop
+```
+
+### Authentication & account sync
+
+```mermaid
+flowchart TD
+  SignIn[User signs in via popup] --> GToken[chrome.identity.getAuthToken]
+  GToken --> Exchange[POST /v1/auth/google/exchange]
+  Exchange --> Session[BackendSession token stored locally]
+  Session --> Me[GET /v1/auth/me]
+  Me --> Snapshot[Optional PUT/GET /v1/account/snapshot<br/>for cross-device settings]
+  Snapshot --> Use[Authenticated API calls<br/>Authorization: Bearer]
+  Logout[Sign out] --> Revoke[POST /v1/auth/logout + clear storage]
+```
+
+Job types processed by `backend/src/lib/jobs.ts`:
+
+| Processor | Queue entity | Output |
+|-----------|--------------|--------|
+| `processResearchJobsBatch` | `ResearchJob` → `IdeaCapture` | `IdeaReport` (viability, risks, next steps, …) |
+| `processAssistantTasksBatch` | `AssistantTaskJob` | `AssistantTaskResult` |
+| `processLearningJobsBatch` | `LearningJob` | Quiz packs, ingestion, regeneration |
+
+### Learning / quiz subsystem
+
+When the learning feature flag is on, users pick topics from a catalog (or create custom topics). Canonical quiz JSON lives under `backend/data/learning/quizzes-cleaned/`. The backend serves spaced-repetition prompts; a content script (`src/content/quizFab.ts`) can surface quizzes on allowed pages during focus.
+
+```mermaid
+flowchart TD
+  Onboard[User selects topics<br/>POST /v1/learning/user-topics] --> Ready{Quiz pack ready?}
+  Ready -->|imported corpus| Next[GET /v1/learning/review/next]
+  Ready -->|regenerate| Job[LearningJob queued → worker]
+  Job --> Ready
+  Next --> Fab[quizFab on allowed tab]
+  Fab --> Answer[POST /v1/learning/answers]
+  Answer --> Schedule[Update UserQuizProgress<br/>dueAt / ease / streak]
+  Schedule --> Points[Award points in extension]
+  Points --> Next
+```
+
+### Core data model (simplified)
+
+```mermaid
+erDiagram
+  User ||--o{ BackendSession : has
+  User ||--o{ IdeaCapture : captures
+  User ||--o{ AssistantTask : creates
+  User ||--o{ OpenClawConnection : owns
+  User ||--o{ FocusSession : tracks
+  User ||--o{ UserLearningTopic : studies
+
+  IdeaCapture ||--o| ResearchJob : queues
+  IdeaCapture ||--o| IdeaReport : produces
+  IdeaCapture }o--|| OpenClawSession : uses
+
+  AssistantTask ||--o| AssistantTaskJob : queues
+  AssistantTask ||--o| AssistantTaskResult : produces
+
+  OpenClawConnection ||--o{ OpenClawSession : hosts
+
+  LearningTopic ||--o{ QuizPack : contains
+  QuizPack ||--o{ QuizPackVersion : versions
+  QuizPackVersion ||--o{ QuizQuestion : has
+  User ||--o{ UserQuizProgress : reviews
+```
+
+Full schema: `backend/prisma/schema.prisma`.
+
+---
+
 ## Quick Start
+
+### Local development flow
+
+```mermaid
+flowchart TD
+  Clone[Clone repo] --> ExtDeps[npm install at root]
+  ExtDeps --> Build[npm run build]
+  Build --> Load[Load dist/ in chrome://extensions]
+  Clone --> BeDeps[cd backend && npm install]
+  BeDeps --> Env[Create backend/.env<br/>DATABASE_URL + OPENCLAW_*]
+  Env --> Migrate[npx prisma migrate dev]
+  Migrate --> API[npm run dev]
+  Migrate --> Worker[npm run worker]
+  API --> Full[Extension + API + worker running]
+  Worker --> Full
+  Load --> Full
+  Full --> Test[npm test]
+```
 
 ### Install the Extension (Development)
 
@@ -270,7 +616,7 @@ npm install
 
 # Set environment variables (see Configuration section)
 export DATABASE_URL="postgresql://..."
-export OPENCLAW_API_TOKEN="..."
+export OPENCLAW_TRANSPORT=mock
 
 # Start the API server
 npm run dev
@@ -302,49 +648,52 @@ Window supports Chrome's Side Panel API. Right-click the extension icon and sele
 ## Project Structure
 
 ```
-Window-Extension/
-  manifest.json              # Chrome extension manifest (v3)
-  src/
-    background/              # Service worker (blocking, calendar, points, tasks)
-      index.ts               # Main entry + event listeners
-      blocker.ts             # declarativeNetRequest rule management
-      calendar.ts            # Google Calendar API integration
-      analytics.ts           # Event tracking & telemetry
-      points.ts              # Gamification engine
-      taskQueue.ts           # Idea queue processor
-      snooze.ts              # Break timer logic
-    popup/                   # Extension popup (React + Tailwind)
-      Popup.tsx
-      components/
-    options/                 # Settings & calendar workspace (React)
-      Options.tsx
-    blocked/                 # Blocked page UI
-      Blocked.tsx
-    sidepanel/               # Side panel view
-    shared/                  # Common utilities, types, components
-      constants.ts
-      storage.ts             # Chrome storage wrapper
-      eventRules.ts          # Rule resolution logic
-      profiles.ts            # User profile configs
-  backend/
-    src/
-      app.ts                 # Fastify API server
-      worker.ts              # Background job processor
-      lib/
-        auth.ts              # Google OAuth + backend session handling
-        prisma.ts            # Database client
-        openclaw/            # OpenClaw SDK wrappers
-          client.ts          # Session management, task creation
-          connectorList.ts   # Available connectors
-          urlPolicy.ts       # Allowed host validation
-        jobs.ts              # Job queue logic
-        serializers.ts       # Payload transformers
-      prisma/
-        schema.prisma        # Database schema
-        migrations/          # Schema migrations
-    tests/                   # Vitest test suite
-  docs/
-    window-investor-deck.md  # Product pitch deck
+window-extension/
+├── manifest.json                 # MV3 manifest (permissions, OAuth, entrypoints)
+├── vite.config.ts                # Extension build (@crxjs/vite-plugin)
+├── vitest.config.ts              # Extension unit tests
+├── src/
+│   ├── background/               # Service worker
+│   │   ├── index.ts              # Alarms, tabs, messages, orchestration
+│   │   ├── calendar.ts           # GCal sync + resolveActiveState
+│   │   ├── blocker.ts            # declarativeNetRequest dynamic/session rules
+│   │   ├── snooze.ts             # Timed breaks (clears rules while active)
+│   │   ├── backend.ts            # REST client, auth, sync outboxes
+│   │   ├── analytics.ts          # Focus/activity session tracking
+│   │   ├── points.ts / levels.ts # Gamification
+│   │   ├── taskQueue.ts          # Window task queue + carryover
+│   │   ├── telemetry.ts          # Break visit batching
+│   │   └── demoSeed.ts           # Demo data helper
+│   ├── popup/                    # Toolbar popup (React)
+│   ├── options/                  # Full calendar workspace (FullCalendar)
+│   ├── blocked/                  # Redirect target when a site is blocked
+│   ├── sidepanel/                # Persistent side panel surface
+│   ├── content/quizFab.ts        # In-page quiz FAB during learning mode
+│   └── shared/                   # Types, storage, rules, UI components
+│       ├── storage.ts            # chrome.storage.local wrapper + defaults
+│       ├── types.ts              # Shared TypeScript contracts
+│       ├── eventRules.ts         # CRUD for event/keyword rules
+│       ├── learning.ts           # Feature gates + taxonomy helpers
+│       └── components/
+├── tests/                        # Vitest (extension logic)
+├── backend/
+│   ├── src/
+│   │   ├── server.ts             # HTTP listen
+│   │   ├── app.ts                # Route definitions (/v1/*)
+│   │   ├── worker.ts             # Job poll loop
+│   │   ├── env.ts                # Zod-validated environment
+│   │   └── lib/
+│   │       ├── auth.ts
+│   │       ├── jobs.ts
+│   │       ├── learning.ts
+│   │       ├── serializers.ts
+│   │       └── openclaw/         # Connector transports (mock/http/ssh)
+│   ├── prisma/schema.prisma
+│   ├── data/learning/quizzes-cleaned/   # Canonical quiz JSON banks
+│   └── scripts/                  # Quiz authoring, import, validation
+├── docs/                         # Specs, investor deck, textbook manifest
+├── ops/oracle/                   # systemd units for production deploy
+└── promo-assets/                 # Marketing screenshots
 ```
 
 ---
@@ -356,21 +705,35 @@ Window-Extension/
 Create a `.env` file in `backend/`:
 
 ```env
-# Database
+# Database (required)
 DATABASE_URL="postgresql://user:pass@localhost:5432/window?schema=public"
 
-# OpenClaw
-OPENCLAW_BASE_URL="http://localhost:8080"
-OPENCLAW_API_TOKEN="your-api-token"
-OPENCLAW_ALLOWED_HOSTS="localhost,127.0.0.1"
-
-# Google OAuth
-GOOGLE_CLIENT_ID="your-client-id"
-GOOGLE_CLIENT_SECRET="your-client-secret"
-
 # Server
-PORT=3000
-NODE_ENV=development
+PORT=8787
+
+# OpenClaw connector (backend/src/env.ts)
+OPENCLAW_TRANSPORT=mock          # mock | http | ssh
+OPENCLAW_API_TOKEN=""
+OPENCLAW_HTTP_BASE_URL=""
+OPENCLAW_REMOTE_BASE_URL="http://127.0.0.1:3000"
+OPENCLAW_SSH_HOST=""
+OPENCLAW_SSH_USER=""
+OPENCLAW_SSH_KEY_PATH=""
+OPENCLAW_FETCH_MODE=permissive   # permissive | strict
+OPENCLAW_ALLOWED_HOST_SUFFIXES="" # comma-separated when strict
+OPENCLAW_MOCK_LATENCY_MS=2500
+
+# Worker
+WORKER_POLL_INTERVAL_MS=5000
+
+# Google token verification (optional override)
+GOOGLE_TOKENINFO_URL="https://www.googleapis.com/oauth2/v3/tokeninfo"
+```
+
+Extension build-time override for API URL:
+
+```bash
+VITE_WINDOW_BACKEND_URL=http://localhost:8787 npm run build
 ```
 
 ### Chrome OAuth
@@ -401,43 +764,133 @@ npx prisma generate
 
 ## API Reference
 
-### Authentication
+All routes are under `/v1` unless noted. Authenticated routes expect `Authorization: Bearer <backend-session-token>`.
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
-| `/auth/google` | POST | Exchange Google access token for backend session |
-| `/auth/logout` | POST | Revoke backend session |
-
-### OpenClaw Integration
-
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/openclaw/connect` | POST | Link OpenClaw instance (URL + API token) |
-| `/openclaw/disconnect` | POST | Remove OpenClaw connection |
-| `/openclaw/test` | POST | Validate connection settings |
-| `/openclaw/settings` | GET/PUT | Fetch/update connector settings |
-| `/openclaw/instances` | GET | List connected instances |
-| `/openclaw/connectors` | GET | List available connectors |
-
-### Ideas & Tasks
-
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/ideas` | POST | Submit idea for async evaluation |
-| `/ideas/:id` | GET | Fetch idea status + result |
-| `/tasks` | POST | Create assistant task |
-| `/tasks/queue` | GET | List queued tasks |
-
-### Focus Sessions
-
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/sessions` | POST | Start focus session |
-| `/sessions/active` | GET | Get current active session |
-| `/sessions/:id/end` | POST | End session |
+| `/healthz` | GET | Liveness check |
+| `/v1/auth/google/exchange` | POST | Exchange Google access token for backend session |
+| `/v1/auth/logout` | POST | Revoke backend session |
+| `/v1/auth/me` | GET | Current user profile |
+| `/v1/account/snapshot` | GET/PUT | Cross-device settings blob + revision |
+| `/v1/connectors` | GET | List OpenClaw connectors for user |
+| `/v1/connectors/select` | POST | Set active connector |
+| `/v1/openclaw/settings` | GET/PUT | Personal connector URL + token |
+| `/v1/openclaw/settings/test` | POST | Validate connector credentials |
+| `/v1/openclaw/status` | GET | Health / connectivity |
+| `/v1/openclaw/sessions` | GET/POST | List or create assistant sessions |
+| `/v1/openclaw/jobs/:id/cancel` | POST | Cancel remote job |
+| `/v1/ideas` | GET/POST | List or submit ideas |
+| `/v1/ideas/:id` | GET | Idea detail + report |
+| `/v1/ideas/:id/decision` | POST | keep / discard |
+| `/v1/ideas/:id/retry` | POST | Re-queue failed idea |
+| `/v1/assistant-tasks` | GET/POST | List or create tasks |
+| `/v1/assistant-tasks/:id/cancel` | POST | Cancel task |
+| `/v1/break-visits/batch` | POST | Upload break telemetry |
+| `/v1/activity-sessions/batch` | POST | Upload focus + activity sessions |
+| `/v1/analytics/*` | GET/POST | Interests, summary, tags, overrides |
+| `/v1/learning/*` | GET/POST | Taxonomy, topics, review, answers |
 
 ---
 
 ## Core Concepts
 
-Focus sessions, connectors, ideas, and tasks. Brief definitions.
+### EventRule vs KeywordRule
+
+| Concept | Match key | Storage | Typical use |
+|---------|-----------|---------|-------------|
+| **EventRule** | Exact calendar event title | `eventRules` in `chrome.storage.local` | Per-meeting allowlists |
+| **KeywordRule** | Substring in title (when `keywordAutoMatchEnabled`) | `keywordRules` | Reusable templates (“standup”, “deep work”) |
+
+```mermaid
+flowchart LR
+  Title[Calendar event title] --> Exact[EventRule table]
+  Title --> Key[Keyword rules scan]
+  Exact --> Winner[Resolved allowlist]
+  Key --> Winner
+```
+
+### Window task queue
+
+Calendar events can spawn **Tasks** in the local queue (`taskQueue.ts`): active work items with scheduled start/end, carryover across days, points on completion, and optional snooze limits. This is separate from **AssistantTask** records on the backend.
+
+```mermaid
+flowchart TD
+  Event[Calendar event ends incomplete] --> Carry[status: carryover]
+  Carry --> Later[User completes on a later day]
+  Later --> Points[points.ts awards score<br/>with carryover multiplier]
+```
+
+### Connectors & OpenClaw sessions
+
+- **OpenClawConnection** — stored credentials + transport (`mock`, `http`, `ssh`) per user.
+- **OpenClawSession** — conversation context on the remote assistant; ideas and assistant tasks attach to a session when evaluated.
+- The extension UI exposes instance settings; the worker resolves the user’s selected connector before calling `openClawConnector`.
+
+### Analytics model
+
+While a focus event is active, `analytics.ts` classifies tab activity into `aligned`, `supportive`, `distracted`, `away`, or `break`, rolls up minutes per **TaskTag**, and batches **FocusSession** + **ActivitySession** records to `/v1/activity-sessions/batch`.
+
+```mermaid
+flowchart TD
+  Tab[Tab URL changes] --> Classify[Classify vs tag domains]
+  Classify --> Heartbeat[Periodic heartbeat]
+  Heartbeat --> Batch[Queue local records]
+  Batch --> Upload[POST activity-sessions/batch]
+  Upload --> Agg[(DailyAnalyticsAggregate)]
+```
+
+### Feature flags
+
+Defined in `Settings.featureFlags` (`src/shared/constants.ts` defaults):
+
+| Flag | Controls |
+|------|----------|
+| `blocking` | Calendar-based DNR blocking |
+| `routines` | Task queue / carryover routines |
+| `learning` | Quiz FAB + backend learning APIs |
+
+### Local vs server state
+
+```mermaid
+flowchart TB
+  subgraph Local["chrome.storage.local"]
+    Rules[event + keyword rules]
+    Cal[calendar cache]
+    Ideas[idea outbox]
+    Stats[points + analytics queues]
+  end
+
+  subgraph Server["PostgreSQL via API"]
+    User[User + BackendSession]
+    Remote[Ideas, tasks, reports]
+    Learn[Quiz progress]
+  end
+
+  Local <-->|snapshot + sync outboxes| Server
+```
+
+---
+
+## Development
+
+| Command | Description |
+|---------|-------------|
+| `npm run dev` | Vite dev server for extension HMR |
+| `npm run dev:popup` / `dev:ui` | Preview popup/options without full CRX load |
+| `npm run build` | Production extension → `dist/` |
+| `npm test` | Extension Vitest suite |
+| `npm run typecheck` | Extension TypeScript |
+| `cd backend && npm run dev` | API with `tsx watch` |
+| `cd backend && npm run worker` | Job worker |
+| `cd backend && npm run import:learning-quizzes` | Import JSON banks into DB |
+
+Production deploy units live in `ops/oracle/` (`window-api.service`, `window-db-backup.service`).
+
+---
+
+## Further reading
+
+- `docs/window-popup-surface-spec.md` — popup UX specification
+- `window-popup-surface-spec.md` — blocking page / surface notes (repo root)
+- `docs/window-investor-deck.md` — product narrative
