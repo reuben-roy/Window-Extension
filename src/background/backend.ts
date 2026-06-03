@@ -1257,6 +1257,20 @@ export async function submitQuizAnswer(input: {
   return response.result;
 }
 
+export async function rateQuizDifficulty(input: {
+  questionId: string;
+  rating: 'too_easy' | 'just_right' | 'too_hard';
+}): Promise<void> {
+  try {
+    await learningBackendRequest<{ ok: boolean }>('/v1/learning/ratings', {
+      method: 'POST',
+      body: input,
+    });
+  } catch {
+    // Fire-and-forget — rating failures are silent
+  }
+}
+
 export async function setActiveQuizVisibility(visible: boolean): Promise<LearningState> {
   const current = await getLearningState();
   const next: LearningState = {

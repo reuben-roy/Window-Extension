@@ -42,6 +42,7 @@ export type LearningJobKind =
   | 'pack_regeneration';
 export type LearningJobStatus = 'queued' | 'running' | 'completed' | 'failed' | 'cancelled';
 export type QuizDifficulty = 'easy' | 'medium' | 'hard';
+export type QuizDifficultySelfRating = 'too_easy' | 'just_right' | 'too_hard';
 export type QuizArtifactType = 'image' | 'graph';
 export type QuizPromptOrigin = 'scheduled' | 'manual' | 'retry';
 
@@ -55,6 +56,8 @@ export interface LearningSettings {
   suggestTopicsFromActivity: boolean;
   intensity: LearningIntensity;
   licenseMode: LearningLicenseMode;
+  autoOpen: boolean;
+  panelReopenCooldownMinutes: number;
 }
 
 export interface LearningTopicOption {
@@ -142,6 +145,8 @@ export interface QuizPrompt {
   topicLabel: string;
   packTitle: string;
   chapterTitle: string;
+  chapterOrdinal: number;
+  totalChapters: number;
   difficulty: QuizDifficulty;
   origin: QuizPromptOrigin;
   pointsReward: number;
@@ -977,15 +982,19 @@ export type MessageType =
   | 'REGENERATE_LEARNING_PACK'
   | 'GET_NEXT_QUIZ_PROMPT'
   | 'SUBMIT_QUIZ_ANSWER'
+  | 'RATE_QUIZ_DIFFICULTY'
   | 'SET_ACTIVE_QUIZ_VISIBILITY'
   | 'OPEN_QUIZ_SURFACE';
 
 export interface QuizFabSession {
   visible: boolean;
+  panelVisible: boolean;
   topicLabel: string | null;
   questionId: string | null;
   intensity: LearningIntensity;
   lastSurfacedAt: string | null;
+  /** Set when the user closes the in-page panel; cleared when the panel opens again. */
+  panelClosedAt: string | null;
 }
 
 export interface Message {

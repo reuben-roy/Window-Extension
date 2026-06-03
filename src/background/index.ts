@@ -96,6 +96,7 @@ import {
   startOpenClawSession,
   submitAssistantTask,
   submitQuizAnswer,
+  rateQuizDifficulty,
   submitIdea,
   syncAnalyticsQueues,
   syncBreakTelemetryQueue,
@@ -145,10 +146,13 @@ import { markTaskCompleted, syncTasksFromCalendarState } from './taskQueue';
 import { queryIdleState } from './analytics';
 import {
   getQuizFabSession,
+  autoOpenQuizSurface,
   hideQuizFab,
+  handleOpenQuizSurface,
   openQuizSurfaceFromUserGesture,
   registerQuizFabTabListeners,
   shouldDebounceQuizFabSurface,
+  shouldReopenAutoQuizPanel,
   syncQuizFabToTabs,
 } from './quizFab';
 import {
@@ -366,7 +370,7 @@ async function handleTestOpenClawInstanceSettings(message: Message): Promise<
 
 chrome.runtime.onMessage.addListener((message: Message, sender, sendResponse) => {
   if (message.type === 'OPEN_QUIZ_SURFACE') {
-    openQuizSurfaceFromUserGesture(sender);
+    handleOpenQuizSurface(sender);
     sendResponse({ ok: true });
     return false;
   }
@@ -503,6 +507,9 @@ async function handleMessage(
 
     case 'SUBMIT_QUIZ_ANSWER':
       return handleSubmitQuizAnswer(message);
+
+    case 'RATE_QUIZ_DIFFICULTY':
+      return handleRateQuizDifficulty(message);
 
     case 'SET_ACTIVE_QUIZ_VISIBILITY':
       return handleSetActiveQuizVisibility(message);
@@ -726,6 +733,20 @@ async function handleSubmitQuizAnswer(message: Message): Promise<{
     ok: true,
     result,
   };
+}
+
+async function handleRateQuizDifficulty(message: Message): Promise<{ ok: boolean }> {
+  const payload = (message.payload as {
+    questionId?: string;
+    rating?: string;
+  } | undefined) ?? {};
+  if (payload.questionId && payload.rating) {
+    void rateQuizDifficulty({
+      questionId: payload.questionId,
+      rating: payload.rating as 'too_easy' | 'just_right' | 'too_hard',
+    });
+  }
+  return { ok: true };
 }
 
 async function handleSetActiveQuizVisibility(message: Message): Promise<{
@@ -962,16 +983,54 @@ async function maybeSurfaceLearningQuiz(): Promise<void> {
 
   const fabSession = await getQuizFabSession();
   const questionId = learningState.activeQuizPrompt.questionId;
+  const isNewQuestion = fabSession?.questionId !== questionId;
+
+  if (settings.learningSettings.autoOpen && isNewQuestion) {
+    await autoOpenQuizSurface({
+      topicLabel: learningState.activeQuizPrompt.topicLabel,
+      questionId,
+      intensity: settings.learningSettings.intensity,
+    });
+    return;
+  }
+
+  if (shouldReopenAutoQuizPanel(settings, fabSession, questionId)) {
+    await autoOpenQuizSurface({
+      topicLabel: learningState.activeQuizPrompt.topicLabel,
+      questionId,
+      intensity: settings.learningSettings.intensity,
+    });
+    return;
+  }
+
   if (shouldDebounceQuizFabSurface(fabSession, questionId)) {
+    return;
+  }
+
+  if (
+    fabSession?.questionId === questionId &&
+    (fabSession.panelVisible || fabSession.visible)
+  ) {
+    await setActiveQuizVisibility(true);
+    await syncQuizFabToTabs({
+      visible: true,
+      panelVisible: fabSession.panelVisible,
+      topicLabel: learningState.activeQuizPrompt.topicLabel,
+      questionId,
+      intensity: settings.learningSettings.intensity,
+      panelClosedAt: fabSession.panelClosedAt,
+    });
     return;
   }
 
   await setActiveQuizVisibility(true);
   await syncQuizFabToTabs({
     visible: true,
+    panelVisible: false,
     topicLabel: learningState.activeQuizPrompt.topicLabel,
     questionId,
     intensity: settings.learningSettings.intensity,
+    panelClosedAt: null,
   });
 
   if (!settings.persistentPanelEnabled) {

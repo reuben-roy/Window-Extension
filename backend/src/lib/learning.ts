@@ -1,5 +1,7 @@
 import type { PrismaClient, QuizDifficulty } from '@prisma/client';
 
+export type QuizDifficultySelfRating = 'too_easy' | 'just_right' | 'too_hard';
+
 export interface LearningTaxonomySeed {
   key: string;
   label: string;
@@ -256,6 +258,84 @@ export function computeNextReviewSchedule(input: {
     dueAt,
     correctStreak: nextStreak,
   };
+}
+
+export async function getOrCreateChapterProgress(
+  prisma: PrismaClient,
+  userId: string,
+  topicId: string,
+): Promise<{ currentChapterOrdinal: number; consecutiveTooHardCount: number; correctInCurrentChapter: number }> {
+  const existing = await prisma.userTopicChapterProgress.findUnique({
+    where: { userId_topicId: { userId, topicId } },
+  });
+  return existing ?? { currentChapterOrdinal: 1, consecutiveTooHardCount: 0, correctInCurrentChapter: 0 };
+}
+
+export function applyDifficultySelfRating(
+  ease: number,
+  rating: QuizDifficultySelfRating | null,
+): number {
+  if (rating === 'too_easy') return Math.min(3.0, ease + 0.15);
+  if (rating === 'too_hard') return Math.max(1.3, ease - 0.15);
+  return ease;
+}
+
+export async function evaluateChapterProgression(
+  prisma: PrismaClient,
+  userId: string,
+  topicId: string,
+  answeredChapterOrdinal: number,
+  correct: boolean,
+  rating: QuizDifficultySelfRating | null,
+  totalChapters: number,
+): Promise<void> {
+  const progress = await getOrCreateChapterProgress(prisma, userId, topicId);
+  const isCurrentChapter = answeredChapterOrdinal === progress.currentChapterOrdinal;
+
+  const newCorrectCount =
+    isCurrentChapter && correct
+      ? progress.correctInCurrentChapter + 1
+      : progress.correctInCurrentChapter;
+
+  const newConsecutiveTooHard =
+    rating === 'too_hard' && isCurrentChapter
+      ? progress.consecutiveTooHardCount + 1
+      : rating !== null && rating !== 'too_hard'
+        ? 0
+        : progress.consecutiveTooHardCount;
+
+  const ADVANCE_THRESHOLD = 5;
+  const REGRESS_THRESHOLD = 3;
+
+  let nextOrdinal = progress.currentChapterOrdinal;
+  let nextCorrectCount = newCorrectCount;
+  let nextTooHardCount = newConsecutiveTooHard;
+
+  if (newConsecutiveTooHard >= REGRESS_THRESHOLD && progress.currentChapterOrdinal > 1) {
+    nextOrdinal = progress.currentChapterOrdinal - 1;
+    nextCorrectCount = 0;
+    nextTooHardCount = 0;
+  } else if (newCorrectCount >= ADVANCE_THRESHOLD && progress.currentChapterOrdinal < totalChapters) {
+    nextOrdinal = progress.currentChapterOrdinal + 1;
+    nextCorrectCount = 0;
+    nextTooHardCount = 0;
+  }
+
+  await prisma.userTopicChapterProgress.upsert({
+    where: { userId_topicId: { userId, topicId } },
+    update: {
+      currentChapterOrdinal: nextOrdinal,
+      correctInCurrentChapter: nextCorrectCount,
+      consecutiveTooHardCount: nextTooHardCount,
+    },
+    create: {
+      userId,
+      topicId,
+      currentChapterOrdinal: nextOrdinal,
+      correctInCurrentChapter: nextCorrectCount,
+      consecutiveTooHardCount: nextTooHardCount,
+    },
+  });
 }
 
 export function buildSampleQuestions(

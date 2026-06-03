@@ -13,6 +13,15 @@ import type {
   TaskTag,
 } from './types';
 
+// ─── Quiz panel re-open (used by DEFAULT_SETTINGS.learningSettings) ─────────
+
+/** Default minutes before auto-open surfaces the in-page panel again after the user closed it. */
+export const DEFAULT_QUIZ_PANEL_REOPEN_COOLDOWN_MINUTES = 20;
+export const DEFAULT_QUIZ_PANEL_REOPEN_COOLDOWN_MS =
+  DEFAULT_QUIZ_PANEL_REOPEN_COOLDOWN_MINUTES * 60_000;
+export const MIN_QUIZ_PANEL_REOPEN_COOLDOWN_MINUTES = 1;
+export const MAX_QUIZ_PANEL_REOPEN_COOLDOWN_MINUTES = 180;
+
 // ─── Defaults ────────────────────────────────────────────────────────────────
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -27,6 +36,8 @@ export const DEFAULT_SETTINGS: Settings = {
     suggestTopicsFromActivity: true,
     intensity: 'balanced',
     licenseMode: 'commercial_safe',
+    autoOpen: false,
+    panelReopenCooldownMinutes: DEFAULT_QUIZ_PANEL_REOPEN_COOLDOWN_MINUTES,
   },
   carryoverMode: 'union',
   taskTTLDays: 7,
@@ -349,6 +360,7 @@ export const LEVEL_PERKS: ReadonlyArray<readonly [number, string]> = [
 
 export const QUIZ_FAB_SESSION_KEY = 'quizFabSession';
 export const QUIZ_FAB_SURFACE_COOLDOWN_MS = 60_000;
+export const QUIZ_PANEL_WIDTH_PX = 480;
 
 export const ALARM_TICK = 'tick';
 export const ALARM_SNOOZE_END = 'snooze-end';

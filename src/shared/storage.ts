@@ -73,9 +73,12 @@ import {
   DEFAULT_GLOBAL_ALLOWLIST,
   DEFAULT_LEARNING_STATE,
   DEFAULT_OPENCLAW_STATE,
+  DEFAULT_QUIZ_PANEL_REOPEN_COOLDOWN_MINUTES,
   DEFAULT_SETTINGS,
   DEFAULT_SNOOZE_STATE,
   DEFAULT_TASK_TAGS,
+  MAX_QUIZ_PANEL_REOPEN_COOLDOWN_MINUTES,
+  MIN_QUIZ_PANEL_REOPEN_COOLDOWN_MINUTES,
 } from './constants';
 import { ensureDefaultTaskTags, normalizeDifficultyRank } from './tags';
 
@@ -688,7 +691,22 @@ function normalizeLearningSettingsStored(
       settings?.licenseMode === 'expanded_oer'
         ? settings.licenseMode
         : DEFAULT_SETTINGS.learningSettings.licenseMode,
+    autoOpen: normalizeBoolean(settings?.autoOpen, DEFAULT_SETTINGS.learningSettings.autoOpen),
+    panelReopenCooldownMinutes: normalizePanelReopenCooldownMinutes(
+      settings?.panelReopenCooldownMinutes,
+    ),
   };
+}
+
+function normalizePanelReopenCooldownMinutes(value: unknown): number {
+  const minutes =
+    typeof value === 'number' && Number.isFinite(value)
+      ? Math.round(value)
+      : DEFAULT_QUIZ_PANEL_REOPEN_COOLDOWN_MINUTES;
+  return Math.min(
+    MAX_QUIZ_PANEL_REOPEN_COOLDOWN_MINUTES,
+    Math.max(MIN_QUIZ_PANEL_REOPEN_COOLDOWN_MINUTES, minutes),
+  );
 }
 
 export function normalizeSettingsStored(settings: Partial<Settings> | null | undefined): Settings {

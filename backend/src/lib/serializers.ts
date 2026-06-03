@@ -380,6 +380,8 @@ export function toQuizPromptPayload(question: {
   artifactData: unknown;
   chapter: {
     title: string;
+    ordinal: number;
+    documentId: string;
   } | null;
   packVersion: {
     id: string;
@@ -399,6 +401,8 @@ export function toQuizPromptPayload(question: {
   origin: 'scheduled' | 'manual' | 'retry';
   pointsReward: number;
   streak: number;
+  chapterOrdinal: number;
+  totalChapters: number;
 }): QuizPromptPayload {
   return {
     sessionId: input.sessionId,
@@ -411,6 +415,8 @@ export function toQuizPromptPayload(question: {
     topicLabel: question.packVersion.pack.topic.label,
     packTitle: question.packVersion.pack.title,
     chapterTitle: question.chapter?.title ?? 'General review',
+    chapterOrdinal: input.chapterOrdinal,
+    totalChapters: input.totalChapters,
     difficulty: question.difficulty,
     origin: input.origin,
     pointsReward: input.pointsReward,

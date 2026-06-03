@@ -5232,6 +5232,48 @@ function LearningWorkspace({
               />
 
               <CompactSettingRow
+                label="Auto-open quiz"
+                meta="Automatically open the quiz window when a new question is ready, instead of waiting for you to click the FAB."
+                control={
+                  <Toggle
+                    checked={settings.learningSettings.autoOpen}
+                    disabled={!learningEnabled}
+                    onChange={(checked) => {
+                      void onUpdateLearningSettings({ autoOpen: checked });
+                    }}
+                  />
+                }
+                className="rounded-lg border border-[var(--fg-border)] bg-[var(--fg-panel-soft)]/65 px-3"
+              />
+
+              <CompactSettingRow
+                label="Panel re-open delay"
+                meta="After you close the in-page quiz panel, auto-open will not show it again until this many minutes have passed. Only applies when Auto-open quiz is enabled."
+                control={
+                  <select
+                    value={settings.learningSettings.panelReopenCooldownMinutes}
+                    onChange={(event) => {
+                      void onUpdateLearningSettings({
+                        panelReopenCooldownMinutes: Number(event.target.value),
+                      });
+                    }}
+                    disabled={!learningEnabled || !settings.learningSettings.autoOpen}
+                    className="fg-select w-[136px] text-xs disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <option value={1}>1 min</option>
+                    <option value={5}>5 min</option>
+                    <option value={10}>10 min</option>
+                    <option value={15}>15 min</option>
+                    <option value={20}>20 min</option>
+                    <option value={30}>30 min</option>
+                    <option value={45}>45 min</option>
+                    <option value={60}>60 min</option>
+                  </select>
+                }
+                className="rounded-lg border border-[var(--fg-border)] bg-[var(--fg-panel-soft)]/65 px-3"
+              />
+
+              <CompactSettingRow
                 label="Review intensity"
                 meta="Quiet surfaces fewer prompts, aggressive uses more of your breaks and idle time."
                 control={

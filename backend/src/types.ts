@@ -411,6 +411,8 @@ export interface QuizPromptPayload {
   topicLabel: string;
   packTitle: string;
   chapterTitle: string;
+  chapterOrdinal: number;
+  totalChapters: number;
   difficulty: QuizDifficultyPayload;
   origin: QuizPromptOriginPayload;
   pointsReward: number;

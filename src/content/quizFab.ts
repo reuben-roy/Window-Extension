@@ -1,4 +1,4 @@
-import { QUIZ_FAB_SESSION_KEY } from '../shared/constants';
+import { QUIZ_FAB_SESSION_KEY, QUIZ_PANEL_WIDTH_PX } from '../shared/constants';
 import type { QuizFabSession } from '../shared/types';
 
 const FAB_HOST_ID = 'window-quiz-fab-host';
@@ -21,6 +21,9 @@ function renderFab(session: QuizFabSession): void {
     return;
   }
 
+  const panelOpen = session.panelVisible === true;
+  const fabRight = panelOpen ? QUIZ_PANEL_WIDTH_PX : 0;
+
   const host = document.createElement('div');
   host.id = FAB_HOST_ID;
   const shadow = host.attachShadow({ mode: 'closed' });
@@ -32,31 +35,31 @@ function renderFab(session: QuizFabSession): void {
     }
     .fab {
       position: fixed;
-      right: 0;
-      bottom: 88px;
+      right: ${fabRight}px;
+      top: 15%;
       z-index: 2147483646;
       display: flex;
       align-items: center;
       gap: 6px;
       margin: 0;
-      padding: 10px 12px 10px 14px;
-      border: 1px solid rgba(37, 99, 235, 0.35);
+      padding: 13px 18px 13px 20px;
+      border: 1px solid rgba(255, 255, 255, 0.25);
       border-right: none;
       border-radius: 999px 0 0 999px;
-      background: linear-gradient(135deg, #eff6ff 0%, #ffffff 72%);
-      box-shadow: -4px 8px 24px rgba(15, 23, 42, 0.14);
-      color: #1e3a8a;
-      font: 600 12px/1.2 system-ui, -apple-system, sans-serif;
+      background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+      box-shadow: -6px 10px 32px rgba(29, 78, 216, 0.45);
+      color: #ffffff;
+      font: 700 14px/1.2 system-ui, -apple-system, sans-serif;
       cursor: pointer;
       letter-spacing: 0.01em;
-      transition: transform 120ms ease, box-shadow 120ms ease;
+      transition: right 220ms cubic-bezier(0.22, 1, 0.36, 1), transform 120ms ease, box-shadow 120ms ease;
     }
     .fab:hover {
-      transform: translateX(-2px);
-      box-shadow: -6px 10px 28px rgba(15, 23, 42, 0.18);
+      transform: translateX(-3px);
+      box-shadow: -8px 12px 36px rgba(29, 78, 216, 0.55);
     }
     .fab:focus-visible {
-      outline: 2px solid #2563eb;
+      outline: 2px solid #ffffff;
       outline-offset: 2px;
     }
     .fab.quiet {
@@ -66,12 +69,12 @@ function renderFab(session: QuizFabSession): void {
       border-color: rgba(148, 163, 184, 0.45);
     }
     .dot {
-      width: 8px;
-      height: 8px;
+      width: 9px;
+      height: 9px;
       border-radius: 50%;
-      background: #2563eb;
+      background: #facc15;
       flex-shrink: 0;
-      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
+      box-shadow: 0 0 0 3px rgba(250, 204, 21, 0.35);
     }
     .fab.quiet .dot {
       background: #64748b;
@@ -82,8 +85,13 @@ function renderFab(session: QuizFabSession): void {
   const button = document.createElement('button');
   button.type = 'button';
   button.className = `fab${session.intensity === 'quiet' ? ' quiet' : ''}`;
-  button.setAttribute('aria-label', `Open Window quiz: ${session.topicLabel ?? 'review'}`);
-  button.title = session.topicLabel ? `Quick review: ${session.topicLabel}` : 'Open Window quiz';
+  const actionLabel = panelOpen ? 'Close quiz panel' : 'Open quiz panel';
+  button.setAttribute('aria-label', actionLabel);
+  button.title = panelOpen
+    ? 'Close quiz panel'
+    : session.topicLabel
+      ? `Open quiz: ${session.topicLabel}`
+      : 'Open quiz panel';
 
   const dot = document.createElement('span');
   dot.className = 'dot';

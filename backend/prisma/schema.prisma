@@ -146,6 +146,7 @@ model User {
   quizProgress     UserQuizProgress[]
   quizSessions     QuizSession[]
   learningJobs     LearningJob[]
+  chapterProgress  UserTopicChapterProgress[]
   selectedConnector OpenClawConnection? @relation("SelectedConnector", fields: [selectedConnectorId], references: [id], onDelete: SetNull)
 }
 
@@ -505,11 +506,12 @@ model LearningTopic {
   description String
   createdAt   DateTime           @default(now())
   updatedAt   DateTime           @updatedAt
-  subject     LearningSubject?   @relation(fields: [subjectId], references: [id], onDelete: SetNull)
-  userTopics  UserLearningTopic[]
-  sources     LearningSource[]
-  packs       QuizPack[]
-  jobs        LearningJob[]
+  subject         LearningSubject?   @relation(fields: [subjectId], references: [id], onDelete: SetNull)
+  userTopics      UserLearningTopic[]
+  sources         LearningSource[]
+  packs           QuizPack[]
+  jobs            LearningJob[]
+  chapterProgress UserTopicChapterProgress[]
 
   @@index([subjectId, label])
 }
@@ -651,18 +653,35 @@ model UserQuizProgress {
 }
 
 model QuizSession {
-  id               String       @id @default(cuid())
-  userId           String
-  questionId       String
-  selectedChoiceId String?
-  correct          Boolean
-  pointsAwarded    Int          @default(0)
-  dueAt            DateTime?
-  createdAt        DateTime     @default(now())
-  user             User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  question         QuizQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  id                   String       @id @default(cuid())
+  userId               String
+  questionId           String
+  selectedChoiceId     String?
+  correct              Boolean
+  pointsAwarded        Int          @default(0)
+  dueAt                DateTime?
+  difficultySelfRating String?
+  createdAt            DateTime     @default(now())
+  user                 User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  question             QuizQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
 
   @@index([userId, createdAt])
+}
+
+model UserTopicChapterProgress {
+  id                      String        @id @default(cuid())
+  userId                  String
+  topicId                 String
+  currentChapterOrdinal   Int           @default(1)
+  consecutiveTooHardCount Int           @default(0)
+  correctInCurrentChapter Int           @default(0)
+  updatedAt               DateTime      @updatedAt
+  createdAt               DateTime      @default(now())
+  user                    User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  topic                   LearningTopic @relation(fields: [topicId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, topicId])
+  @@index([userId])
 }
 
 model LearningJob {

@@ -59,8 +59,10 @@ const POPUP_MIN_HEIGHT_PX = 420;
 
 export default function Popup({
   mode = 'popup',
+  isEmbedded = false,
 }: {
   mode?: 'popup' | 'panel';
+  isEmbedded?: boolean;
 } = {}): React.JSX.Element {
   const [state, setState] = useState<StateResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -88,6 +90,7 @@ export default function Popup({
   const [quizAutoAdvanceSecsLeft, setQuizAutoAdvanceSecsLeft] = useState<number | null>(null);
   const [quizAutoAdvanceStartedAt, setQuizAutoAdvanceStartedAt] = useState<number | null>(null);
   const [quizActionError, setQuizActionError] = useState<string | null>(null);
+  const [quizDifficultySelfRating, setQuizDifficultySelfRating] = useState<import('../shared/types').QuizDifficultySelfRating | null>(null);
   const [, setBreakCountdownTick] = useState(0);
 
   const loadState = useCallback(() => {
@@ -160,6 +163,7 @@ export default function Popup({
     setQuizAutoAdvanceSecsLeft(null);
     setQuizAutoAdvanceStartedAt(null);
     setQuizActionError(null);
+    setQuizDifficultySelfRating(null);
   }, [activeQuizPrompt?.questionId]);
 
   useEffect(() => {
@@ -376,6 +380,15 @@ export default function Popup({
       }
     },
     [activeQuizPrompt, loadState, quizSubmitting],
+  );
+
+  const handleRateQuizDifficulty = useCallback(
+    (rating: import('../shared/types').QuizDifficultySelfRating) => {
+      setQuizDifficultySelfRating(rating);
+      if (!activeQuizPrompt) return;
+      void sendMessageAsync({ type: 'RATE_QUIZ_DIFFICULTY', payload: { questionId: activeQuizPrompt.questionId, rating } }).catch(() => undefined);
+    },
+    [activeQuizPrompt],
   );
 
   const handleToggle = () => {
@@ -600,6 +613,7 @@ export default function Popup({
           : undefined
       }
       className={`${mode === 'panel' ? 'min-h-screen w-full' : 'max-h-[760px]'} overflow-x-hidden overflow-y-auto bg-[var(--fg-bg)] font-sans select-none`}
+      data-embedded={isEmbedded || undefined}
     >
       <header className="sticky top-0 z-20 border-b border-[var(--fg-border)] bg-[var(--fg-bg)]/95 px-3 py-2.5 backdrop-blur-md">
         {/* Stack title above toolbar so the text column never shares a row with wide controls (avoids squeeze/overlap). */}
@@ -611,7 +625,7 @@ export default function Popup({
               title={allTimeStats.title}
               compact
             />
-            {mode === 'panel' && settings.persistentPanelEnabled && (
+            {mode === 'panel' && settings.persistentPanelEnabled && !isEmbedded && (
               <button
                 type="button"
                 onClick={() => togglePersistentPanel(false)}
@@ -620,7 +634,7 @@ export default function Popup({
                 Undock
               </button>
             )}
-            {mode !== 'panel' && !settings.persistentPanelEnabled && (
+            {mode !== 'panel' && !settings.persistentPanelEnabled && !isEmbedded && (
               <button
                 type="button"
                 onClick={() => togglePersistentPanel(true)}
@@ -682,6 +696,7 @@ export default function Popup({
             selectedChoiceId={displayedQuizSelectedChoiceId}
             hintVisible={quizHintVisible}
             submitting={quizSubmitting}
+            difficultyRating={quizDifficultySelfRating}
             autoAdvanceSecsLeft={quizAutoAdvanceSecsLeft}
             onSelectChoice={setQuizSelectedChoiceId}
             onToggleHint={() => setQuizHintVisible((current) => !current)}
@@ -689,6 +704,7 @@ export default function Popup({
             onGiveUp={() => void handleSubmitQuiz(null)}
             onMoreQuestions={() => void handleRequestQuizPrompt(activeQuizResult ? 'retry' : 'manual')}
             onOpenLearningWorkspace={openLearningWorkspace}
+            onRateDifficulty={handleRateQuizDifficulty}
             onClose={() => void handleCloseQuizTakeover()}
           />
         ) : null}
@@ -1170,6 +1186,7 @@ function QuizTakeoverCard({
   selectedChoiceId,
   hintVisible,
   submitting,
+  difficultyRating,
   autoAdvanceSecsLeft,
   onSelectChoice,
   onToggleHint,
@@ -1177,6 +1194,7 @@ function QuizTakeoverCard({
   onGiveUp,
   onMoreQuestions,
   onOpenLearningWorkspace,
+  onRateDifficulty,
   onClose,
 }: {
   mode: 'popup' | 'panel';
@@ -1186,6 +1204,7 @@ function QuizTakeoverCard({
   selectedChoiceId: string | null;
   hintVisible: boolean;
   submitting: boolean;
+  difficultyRating: import('../shared/types').QuizDifficultySelfRating | null;
   autoAdvanceSecsLeft: number | null;
   onSelectChoice: (choiceId: string) => void;
   onToggleHint: () => void;
@@ -1193,6 +1212,7 @@ function QuizTakeoverCard({
   onGiveUp: () => void;
   onMoreQuestions: () => void;
   onOpenLearningWorkspace: () => void;
+  onRateDifficulty: (rating: import('../shared/types').QuizDifficultySelfRating) => void;
   onClose: () => void;
 }): React.JSX.Element {
   const resolvedCorrectChoiceId = result?.correctChoiceId ?? prompt.correctChoiceId;
@@ -1218,7 +1238,7 @@ function QuizTakeoverCard({
               {prompt.topicLabel}
             </h2>
             <p className="mt-1 text-sm text-[var(--fg-muted)]">
-              {prompt.chapterTitle} · {prompt.pointsReward} pts · streak {result?.updatedStreak ?? prompt.streak}
+              Ch {prompt.chapterOrdinal}/{prompt.totalChapters} · {prompt.chapterTitle} · {prompt.pointsReward} pts · streak {result?.updatedStreak ?? prompt.streak}
             </p>
           </div>
           <button
@@ -1309,6 +1329,31 @@ function QuizTakeoverCard({
                   Next review {formatRelativeDueTime(result.nextDueAt)}.
                 </p>
               ) : null}
+              <div className="flex flex-wrap items-center gap-2 border-t border-[var(--fg-border)] pt-2">
+                <p className="text-[10px] font-medium uppercase tracking-wide text-[var(--fg-muted)]">
+                  How was this?
+                </p>
+                {(
+                  [
+                    { id: 'too_easy', label: 'Too easy' },
+                    { id: 'just_right', label: 'Just right' },
+                    { id: 'too_hard', label: 'Too hard' },
+                  ] as const
+                ).map(({ id, label }) => (
+                  <button
+                    key={id}
+                    type="button"
+                    onClick={() => onRateDifficulty(id)}
+                    className={`rounded-full border px-2.5 py-1 text-[10px] font-medium transition-colors ${
+                      difficultyRating === id
+                        ? 'border-[var(--fg-accent)] bg-[var(--fg-accent-soft)] text-[var(--fg-accent)]'
+                        : 'border-[var(--fg-border)] bg-white text-[var(--fg-muted)] hover:border-[var(--fg-accent)]/40'
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
             </div>
           ) : null}
 

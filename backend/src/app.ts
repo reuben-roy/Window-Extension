@@ -9,6 +9,9 @@ import {
   pickRandom,
   quizPointsForDifficulty,
   topicKeyFromLabel,
+  applyDifficultySelfRating,
+  evaluateChapterProgression,
+  type QuizDifficultySelfRating,
 } from './lib/learning.js';
 import {
   fetchGoogleUserProfile,
@@ -212,6 +215,11 @@ const submitQuizAnswerSchema = z.object({
   questionId: z.string().min(1),
   selectedChoiceId: z.string().nullable().optional(),
   sessionId: z.string().optional(),
+});
+
+const submitQuizRatingSchema = z.object({
+  questionId: z.string().min(1),
+  rating: z.enum(['too_easy', 'just_right', 'too_hard']),
 });
 
 const emptyAccountSnapshot = (): AccountSnapshotPayload => ({
@@ -1863,7 +1871,7 @@ export async function buildApp() {
     const question = await prisma.quizQuestion.findUnique({
       where: { id: body.questionId },
       include: {
-        chapter: true,
+        chapter: { select: { title: true, ordinal: true, documentId: true } },
         packVersion: {
           include: {
             pack: {
@@ -1936,12 +1944,30 @@ export async function buildApp() {
       },
     });
 
+    const answerChapterOrdinal = question.chapter?.ordinal ?? 1;
+    const answerTotalChapters = question.chapter
+      ? await prisma.learningChapter.count({ where: { documentId: question.chapter.documentId } })
+      : 1;
+
+    // Evaluate chapter progression on every answer submission (rating=null means auto-only, no subjective signal)
+    await evaluateChapterProgression(
+      prisma,
+      user.id,
+      question.packVersion.pack.topicId,
+      answerChapterOrdinal,
+      correct,
+      null,
+      answerTotalChapters,
+    );
+
     const prompt = toQuizPromptPayload(question, {
       sessionId: body.sessionId ?? `quiz-${question.id}-${Date.now()}`,
       progressId: progress.id,
       origin: 'manual',
       pointsReward: quizPointsForDifficulty(question.difficulty),
       streak: progress.correctStreak,
+      chapterOrdinal: answerChapterOrdinal,
+      totalChapters: answerTotalChapters,
     });
 
     return {
@@ -1960,6 +1986,66 @@ export async function buildApp() {
       }),
       reviewQueue: await loadLearningReviewQueue(user.id),
     };
+  });
+
+  app.post('/v1/learning/ratings', async (request, reply) => {
+    const user = await getUserOrReply(request, reply);
+    if (!user) return;
+
+    const body = submitQuizRatingSchema.parse(request.body);
+
+    const session = await prisma.quizSession.findFirst({
+      where: { userId: user.id, questionId: body.questionId },
+      orderBy: { createdAt: 'desc' },
+      include: {
+        question: {
+          include: {
+            chapter: { select: { ordinal: true, documentId: true } },
+            packVersion: { include: { pack: true } },
+          },
+        },
+      },
+    });
+
+    if (!session) {
+      return reply.code(404).send({ error: 'Session not found.' });
+    }
+
+    await prisma.quizSession.update({
+      where: { id: session.id },
+      data: { difficultySelfRating: body.rating },
+    });
+
+    const existingProgress = await prisma.userQuizProgress.findUnique({
+      where: { userId_questionId: { userId: user.id, questionId: body.questionId } },
+    });
+    if (existingProgress) {
+      const adjustedEase = applyDifficultySelfRating(existingProgress.ease, body.rating as QuizDifficultySelfRating);
+      if (adjustedEase !== existingProgress.ease) {
+        await prisma.userQuizProgress.update({
+          where: { id: existingProgress.id },
+          data: { ease: adjustedEase },
+        });
+      }
+    }
+
+    const topicId = session.question.packVersion.pack.topicId;
+    const chapterOrdinal = session.question.chapter?.ordinal ?? 1;
+    const totalChapters = session.question.chapter
+      ? await prisma.learningChapter.count({ where: { documentId: session.question.chapter.documentId } })
+      : 1;
+
+    await evaluateChapterProgression(
+      prisma,
+      user.id,
+      topicId,
+      chapterOrdinal,
+      session.correct,
+      body.rating as QuizDifficultySelfRating,
+      totalChapters,
+    );
+
+    return { ok: true };
   });
 
   app.setErrorHandler((error, _request, reply) => {
@@ -2134,13 +2220,14 @@ async function loadLearningPrompt(
       },
     },
   };
-  // Find all active pack versions for active topics
+  // Find all active pack versions for active topics (include topicId for chapter progress lookup)
   const activePackVersions = await prisma.quizPackVersion.findMany({
     where: {
       pack: activeTopicPackFilter,
     },
     select: {
       id: true,
+      pack: { select: { topicId: true } },
     },
   });
   const activePackVersionIds = activePackVersions.map((pv) => pv.id);
@@ -2148,6 +2235,20 @@ async function loadLearningPrompt(
   if (activePackVersionIds.length === 0) {
     return null;
   }
+
+  // Map packVersionId → topicId for chapter progress lookup
+  const packVersionToTopicId = new Map<string, string>(
+    activePackVersions.map((pv) => [pv.id, pv.pack.topicId]),
+  );
+
+  // Load chapter progress for all active topics
+  const chapterProgressRows = await prisma.userTopicChapterProgress.findMany({
+    where: { userId },
+    select: { topicId: true, currentChapterOrdinal: true },
+  });
+  const chapterProgressByTopicId = new Map<string, number>(
+    chapterProgressRows.map((row) => [row.topicId, row.currentChapterOrdinal]),
+  );
 
   // Fetch all correct answers for the user under active pack versions
   const correctAnswers = await prisma.userQuizProgress.findMany({
@@ -2183,7 +2284,7 @@ async function loadLearningPrompt(
     }
   }
 
-  // Construct unlocked filter for Prisma
+  // Construct unlocked filter for Prisma (difficulty + chapter progression)
   const unlockedFilter: Prisma.QuizQuestionWhereInput[] = activePackVersionIds.map((pvId) => {
     const counts = correctCounts[pvId] || { easy: 0, medium: 0 };
     const allowedDiffs: QuizDifficulty[] = ['easy'];
@@ -2193,9 +2294,15 @@ async function loadLearningPrompt(
     if (counts.easy >= 3 && counts.medium >= 3) {
       allowedDiffs.push('hard');
     }
+    const topicId = packVersionToTopicId.get(pvId);
+    const currentOrdinal = topicId ? (chapterProgressByTopicId.get(topicId) ?? 1) : 1;
     return {
       packVersionId: pvId,
       difficulty: { in: allowedDiffs },
+      OR: [
+        { chapterId: null },
+        { chapter: { ordinal: { lte: currentOrdinal } } },
+      ],
     };
   });
 
@@ -2215,7 +2322,7 @@ async function loadLearningPrompt(
     include: {
       question: {
         include: {
-          chapter: true,
+          chapter: { select: { title: true, ordinal: true, documentId: true } },
           packVersion: {
             include: {
               pack: {
@@ -2234,12 +2341,18 @@ async function loadLearningPrompt(
     dueCandidates.filter((row) => !excludeQuestionId || row.question.id !== excludeQuestionId),
   );
   if (dueProgress) {
+    const chapterOrdinal = dueProgress.question.chapter?.ordinal ?? 1;
+    const totalChapters = dueProgress.question.chapter
+      ? await prisma.learningChapter.count({ where: { documentId: dueProgress.question.chapter.documentId } })
+      : 1;
     return toQuizPromptPayload(dueProgress.question, {
       sessionId: `quiz-${dueProgress.question.id}-${Date.now()}`,
       progressId: dueProgress.id,
       origin,
       pointsReward: quizPointsForDifficulty(dueProgress.question.difficulty),
       streak: dueProgress.correctStreak,
+      chapterOrdinal,
+      totalChapters,
     });
   }
 
@@ -2265,7 +2378,7 @@ async function loadLearningPrompt(
     },
     take: 100,
     include: {
-      chapter: true,
+      chapter: { select: { title: true, ordinal: true, documentId: true } },
       packVersion: {
         include: {
           pack: {
@@ -2342,12 +2455,18 @@ async function loadLearningPrompt(
 
   if (!fallbackQuestion) return null;
 
+  const chapterOrdinal = fallbackQuestion.chapter?.ordinal ?? 1;
+  const totalChapters = fallbackQuestion.chapter
+    ? await prisma.learningChapter.count({ where: { documentId: fallbackQuestion.chapter.documentId } })
+    : 1;
   return toQuizPromptPayload(fallbackQuestion, {
     sessionId: `quiz-${fallbackQuestion.id}-${Date.now()}`,
     progressId: null,
     origin,
     pointsReward: quizPointsForDifficulty(fallbackQuestion.difficulty),
     streak: 0,
+    chapterOrdinal,
+    totalChapters,
   });
 }
 
