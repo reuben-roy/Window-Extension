@@ -7,7 +7,13 @@ import {
   isAccountSyncedStorageKey,
   normalizeAccountSnapshot,
 } from '../shared/account';
-import { DEFAULT_OPENCLAW_STATE, DEFAULT_WINDOW_BACKEND_URL } from '../shared/constants';
+import {
+  DEFAULT_OPENCLAW_STATE,
+  DEFAULT_WINDOW_BACKEND_URL,
+  TOPIC_HARD_BLOCK_COUNT,
+  TOPIC_DECAY_STEPS,
+  TOPIC_MASTERY_STREAK,
+} from '../shared/constants';
 import { mergeAnalyticsSnapshot } from '../shared/analytics';
 import {
   DEFAULT_LEARNING_TAXONOMY,
@@ -85,6 +91,7 @@ import type {
   QuizPackSummary,
   QuizPrompt,
   ReviewQueueItem,
+  TopicSession,
   UserLearningTopic,
   FocusSessionRecord,
   TagBreakdownItem,
@@ -1117,6 +1124,11 @@ export async function refreshLearningState(): Promise<LearningState> {
       activeQuizVisible:
         lockVisibleQuiz ||
         (preserveActiveQuiz && latestWithFreshTopics.activeQuizVisible),
+      topicSession: (lockVisibleQuiz || preserveActiveQuiz)
+        ? (latestWithFreshTopics.topicSession ?? null)
+        : (review?.prompt != null
+            ? { topicId: review.prompt.topicId, consecutiveCount: 1, correctStreak: 0 }
+            : null),
       syncing: false,
       lastSyncedAt: new Date().toISOString(),
       lastError: null,
@@ -1174,13 +1186,25 @@ export async function regenerateLearningPack(packId: string): Promise<LearningSt
   return refreshLearningState();
 }
 
+function shouldPreferCurrentTopic(session: TopicSession | null): boolean {
+  if (!session) return false;
+  if (session.correctStreak >= TOPIC_MASTERY_STREAK) return false;
+  if (session.consecutiveCount <= TOPIC_HARD_BLOCK_COUNT) return true;
+  const decayProgress = (session.consecutiveCount - TOPIC_HARD_BLOCK_COUNT) / TOPIC_DECAY_STEPS;
+  return Math.random() > decayProgress;
+}
+
 export async function getNextQuizPrompt(
   origin: 'scheduled' | 'manual' | 'retry' = 'manual',
   excludeQuestionId?: string,
 ): Promise<QuizPrompt | null> {
+  const current = await getLearningState();
   const params = new URLSearchParams({ origin });
   if (excludeQuestionId) {
     params.set('excludeQuestionId', excludeQuestionId);
+  }
+  if (origin === 'manual' && current.activeQuizPrompt && shouldPreferCurrentTopic(current.topicSession)) {
+    params.set('preferTopicId', current.activeQuizPrompt.topicId);
   }
   let review = await learningBackendRequest<LearningReviewResponse>(
     `/v1/learning/review/next?${params.toString()}`,
@@ -1194,7 +1218,6 @@ export async function getNextQuizPrompt(
       `/v1/learning/review/next?${params.toString()}`,
     );
   }
-  const current = await getLearningState();
   const repeatedPrompt = isRepeatedExcludedQuizPrompt(review.prompt, excludeQuestionId);
   const preserveCurrentPrompt =
     repeatedPrompt &&
@@ -1205,11 +1228,25 @@ export async function getNextQuizPrompt(
     preserveCurrentPrompt && shouldPreserveActiveQuizResult(current)
       ? current.activeQuizResult
       : null;
+
+  let topicSession: TopicSession | null = current.topicSession;
+  if (origin === 'scheduled') {
+    topicSession = null;
+  } else if (origin === 'manual' && activeQuizPrompt !== null && !preserveCurrentPrompt) {
+    const newTopicId = activeQuizPrompt.topicId;
+    if (current.topicSession?.topicId === newTopicId) {
+      topicSession = { ...current.topicSession, consecutiveCount: current.topicSession.consecutiveCount + 1 };
+    } else {
+      topicSession = { topicId: newTopicId, consecutiveCount: 1, correctStreak: 0 };
+    }
+  }
+
   await setLearningState({
     ...current,
     reviewQueue: review.reviewQueue,
     activeQuizPrompt,
     activeQuizResult,
+    topicSession,
     activeQuizVisible: preserveCurrentPrompt
       ? current.activeQuizVisible
       : origin === 'scheduled'
@@ -1245,11 +1282,31 @@ export async function submitQuizAnswer(input: {
     throw error;
   }
   const current = await getLearningState();
+  // The topic the user just answered on. Prefer the prompt that was on screen;
+  // fall back to the topic echoed back in the result.
+  const answeredTopicId = current.activeQuizPrompt?.topicId ?? response.result.prompt.topicId;
+  const prevSession = current.topicSession;
+  let topicSession: TopicSession;
+  if (prevSession && prevSession.topicId === answeredTopicId) {
+    topicSession = {
+      ...prevSession,
+      correctStreak: response.result.correct ? prevSession.correctStreak + 1 : 0,
+    };
+  } else {
+    // Establish (or repair) the session so the next manual question drills this
+    // topic — even if state was stale and topicSession was null.
+    topicSession = {
+      topicId: answeredTopicId,
+      consecutiveCount: 1,
+      correctStreak: response.result.correct ? 1 : 0,
+    };
+  }
   await setLearningState({
     ...current,
     reviewQueue: response.reviewQueue,
     activeQuizPrompt: response.result.prompt,
     activeQuizResult: response.result,
+    topicSession,
     activeQuizVisible: true,
     lastSyncedAt: new Date().toISOString(),
     lastError: null,

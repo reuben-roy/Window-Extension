@@ -13,6 +13,12 @@ import type {
   TaskTag,
 } from './types';
 
+// ─── Quiz topic session (manual drilling continuity) ─────────────────────────
+
+export const TOPIC_HARD_BLOCK_COUNT = 3;  // always same topic for first N manual questions
+export const TOPIC_DECAY_STEPS = 4;        // questions over which same-topic probability decays to 0
+export const TOPIC_MASTERY_STREAK = 3;     // consecutive correct answers → switch topic early
+
 // ─── Quiz panel re-open (used by DEFAULT_SETTINGS.learningSettings) ─────────
 
 /** Default minutes before auto-open surfaces the in-page panel again after the user closed it. */
@@ -267,6 +273,7 @@ export const DEFAULT_LEARNING_STATE: LearningState = {
   activeQuizPrompt: null,
   activeQuizResult: null,
   activeQuizVisible: false,
+  topicSession: null,
   syncing: false,
   lastSyncedAt: null,
   lastError: null,

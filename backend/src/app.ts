@@ -1848,14 +1848,31 @@ export async function buildApp() {
     const query = request.query as {
       origin?: 'scheduled' | 'manual' | 'retry';
       excludeQuestionId?: string;
+      preferTopicId?: string;
     };
     const origin = quizPromptOriginSchema.parse(query?.origin ?? 'manual');
     const excludeQuestionId =
       typeof query?.excludeQuestionId === 'string' && query.excludeQuestionId.trim().length > 0
         ? query.excludeQuestionId.trim()
         : undefined;
+    const preferTopicId =
+      typeof query?.preferTopicId === 'string' && query.preferTopicId.trim().length > 0
+        ? query.preferTopicId.trim()
+        : undefined;
     const reviewQueue = await loadLearningReviewQueue(user.id);
-    const prompt = await loadLearningPrompt(user.id, origin, { excludeQuestionId });
+    const prompt = await loadLearningPrompt(user.id, origin, { excludeQuestionId, preferTopicId });
+
+    request.log.info(
+      {
+        origin,
+        preferTopicId: preferTopicId ?? null,
+        excludeQuestionId: excludeQuestionId ?? null,
+        returnedTopicId: prompt?.topicId ?? null,
+        returnedTopicLabel: prompt?.topicLabel ?? null,
+        honored: preferTopicId ? prompt?.topicId === preferTopicId : null,
+      },
+      '[quiz] review/next',
+    );
 
     return {
       prompt,
@@ -2205,12 +2222,36 @@ async function loadLearningReviewQueue(userId: string): Promise<ReviewQueueItemP
 async function loadLearningPrompt(
   userId: string,
   origin: 'scheduled' | 'manual' | 'retry',
-  options?: { excludeQuestionId?: string },
+  options?: { excludeQuestionId?: string; preferTopicId?: string },
 ): Promise<QuizPromptPayload | null> {
   const excludeQuestionId = options?.excludeQuestionId;
+  const preferTopicId = options?.preferTopicId;
+  // When a topic is preferred (manual drilling), run the entire selection
+  // pipeline scoped to that single topic first. Only if it yields nothing
+  // (topic exhausted / no unlocked questions) do we fall back to the normal
+  // cross-topic selection. This keeps the user on the same topic for several
+  // questions instead of jumping to a due review from another topic.
+  if (preferTopicId) {
+    const scoped = await selectLearningPrompt(userId, origin, {
+      excludeQuestionId,
+      restrictToTopicId: preferTopicId,
+    });
+    if (scoped) return scoped;
+  }
+  return selectLearningPrompt(userId, origin, { excludeQuestionId });
+}
+
+async function selectLearningPrompt(
+  userId: string,
+  origin: 'scheduled' | 'manual' | 'retry',
+  options?: { excludeQuestionId?: string; restrictToTopicId?: string },
+): Promise<QuizPromptPayload | null> {
+  const excludeQuestionId = options?.excludeQuestionId;
+  const restrictToTopicId = options?.restrictToTopicId;
   const now = new Date();
   const activeTopicPackFilter = {
     status: 'ready' as const,
+    ...(restrictToTopicId ? { topicId: restrictToTopicId } : {}),
     topic: {
       userTopics: {
         some: {

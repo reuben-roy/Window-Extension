@@ -173,6 +173,12 @@ export interface QuizAnswerResult {
   updatedStreak: number;
 }
 
+export interface TopicSession {
+  topicId: string;
+  consecutiveCount: number;
+  correctStreak: number;
+}
+
 export interface LearningState {
   taxonomy: LearningSubject[];
   userTopics: UserLearningTopic[];
@@ -182,6 +188,7 @@ export interface LearningState {
   activeQuizPrompt: QuizPrompt | null;
   activeQuizResult: QuizAnswerResult | null;
   activeQuizVisible: boolean;
+  topicSession: TopicSession | null;
   syncing: boolean;
   lastSyncedAt: string | null;
   lastError: string | null;

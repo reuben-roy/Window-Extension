@@ -1004,6 +1004,8 @@ function normalizeQuizPrompt(prompt: Partial<QuizPrompt> | null | undefined): Qu
     topicLabel,
     packTitle,
     chapterTitle,
+    chapterOrdinal: typeof prompt.chapterOrdinal === 'number' ? prompt.chapterOrdinal : 1,
+    totalChapters: typeof prompt.totalChapters === 'number' ? prompt.totalChapters : 1,
     difficulty:
       prompt.difficulty === 'easy' || prompt.difficulty === 'medium' || prompt.difficulty === 'hard'
         ? prompt.difficulty
