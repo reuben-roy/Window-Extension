@@ -1126,9 +1126,7 @@ export async function refreshLearningState(): Promise<LearningState> {
         (preserveActiveQuiz && latestWithFreshTopics.activeQuizVisible),
       topicSession: (lockVisibleQuiz || preserveActiveQuiz)
         ? (latestWithFreshTopics.topicSession ?? null)
-        : (review?.prompt != null
-            ? { topicId: review.prompt.topicId, consecutiveCount: 1, correctStreak: 0 }
-            : null),
+        : null,
       syncing: false,
       lastSyncedAt: new Date().toISOString(),
       lastError: null,
@@ -1194,16 +1192,21 @@ function shouldPreferCurrentTopic(session: TopicSession | null): boolean {
   return Math.random() > decayProgress;
 }
 
+function isManualTopicSessionOrigin(origin: 'scheduled' | 'manual' | 'retry'): origin is 'manual' | 'retry' {
+  return origin === 'manual' || origin === 'retry';
+}
+
 export async function getNextQuizPrompt(
   origin: 'scheduled' | 'manual' | 'retry' = 'manual',
   excludeQuestionId?: string,
 ): Promise<QuizPrompt | null> {
   const current = await getLearningState();
+  const manualTopicSessionOrigin = isManualTopicSessionOrigin(origin);
   const params = new URLSearchParams({ origin });
   if (excludeQuestionId) {
     params.set('excludeQuestionId', excludeQuestionId);
   }
-  if (origin === 'manual' && current.activeQuizPrompt && shouldPreferCurrentTopic(current.topicSession)) {
+  if (manualTopicSessionOrigin && current.activeQuizPrompt && shouldPreferCurrentTopic(current.topicSession)) {
     params.set('preferTopicId', current.activeQuizPrompt.topicId);
   }
   let review = await learningBackendRequest<LearningReviewResponse>(
@@ -1232,7 +1235,7 @@ export async function getNextQuizPrompt(
   let topicSession: TopicSession | null = current.topicSession;
   if (origin === 'scheduled') {
     topicSession = null;
-  } else if (origin === 'manual' && activeQuizPrompt !== null && !preserveCurrentPrompt) {
+  } else if (manualTopicSessionOrigin && activeQuizPrompt !== null && !preserveCurrentPrompt) {
     const newTopicId = activeQuizPrompt.topicId;
     if (current.topicSession?.topicId === newTopicId) {
       topicSession = { ...current.topicSession, consecutiveCount: current.topicSession.consecutiveCount + 1 };

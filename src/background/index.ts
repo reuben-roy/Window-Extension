@@ -154,6 +154,7 @@ import {
   shouldDebounceQuizFabSurface,
   shouldReopenAutoQuizPanel,
   syncQuizFabToTabs,
+  updateSurfacedQuizFabPrompt,
 } from './quizFab';
 import {
   isBlockingFeatureEnabled,
@@ -702,9 +703,14 @@ async function handleGetNextQuizPrompt(message: Message): Promise<{
   const learningState = await getLearningState();
   const excludeQuestionId =
     payload.excludeQuestionId?.trim() || learningState.activeQuizPrompt?.questionId || undefined;
+  const prompt = await getNextQuizPrompt(payload.origin ?? 'manual', excludeQuestionId);
+  await updateSurfacedQuizFabPrompt({
+    topicLabel: prompt?.topicLabel ?? null,
+    questionId: prompt?.questionId ?? null,
+  });
   return {
     ok: true,
-    prompt: await getNextQuizPrompt(payload.origin ?? 'manual', excludeQuestionId),
+    prompt,
   };
 }
 

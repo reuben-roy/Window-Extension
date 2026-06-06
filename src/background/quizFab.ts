@@ -202,6 +202,32 @@ async function pushQuizFabSessionToTab(tabId: number, session: QuizFabSession): 
   }
 }
 
+export async function updateSurfacedQuizFabPrompt(input: {
+  topicLabel: string | null;
+  questionId: string | null;
+}): Promise<void> {
+  const current = await getQuizFabSession();
+  if (!current || (!current.visible && !current.panelVisible)) {
+    return;
+  }
+
+  if (current.topicLabel === input.topicLabel && current.questionId === input.questionId) {
+    return;
+  }
+
+  const next: QuizFabSession = {
+    ...current,
+    topicLabel: input.topicLabel,
+    questionId: input.questionId,
+  };
+  await setQuizFabSession(next);
+
+  const tabIds = await getTabIdsForQuizSessionPush(next.panelVisible);
+  for (const tabId of tabIds) {
+    await pushQuizFabSessionToTab(tabId, next);
+  }
+}
+
 export async function syncQuizFabToTabs(input: {
   visible: boolean;
   panelVisible: boolean;
@@ -336,6 +362,10 @@ export async function autoOpenQuizSurface(session: {
   questionId: string;
   intensity: LearningIntensity;
 }): Promise<void> {
+  // Mark the quiz as visible before mounting the embedded iframe. The panel
+  // refreshes learning state on mount and should preserve the current prompt
+  // instead of taking the scheduled/random selection path.
+  await setActiveQuizVisibility(true);
   await syncQuizFabToTabs({
     visible: true,
     panelVisible: true,
@@ -344,7 +374,6 @@ export async function autoOpenQuizSurface(session: {
     intensity: session.intensity,
     panelClosedAt: null,
   });
-  await setActiveQuizVisibility(true);
 }
 
 /** Toggle in-page quiz panel from the FAB on an http(s) tab. */
@@ -364,6 +393,12 @@ export async function toggleInPageQuizPanel(sender: chrome.runtime.MessageSender
   }
 
   const nextPanelVisible = current?.panelVisible !== true;
+  if (nextPanelVisible) {
+    // Preserve the current quiz prompt before the embedded panel mounts. The
+    // panel loads the shared Popup app, which refreshes learning state on
+    // mount and depends on activeQuizVisible already being true.
+    await setActiveQuizVisibility(true);
+  }
   await syncQuizFabToTabs({
     visible: true,
     panelVisible: nextPanelVisible,
@@ -372,7 +407,9 @@ export async function toggleInPageQuizPanel(sender: chrome.runtime.MessageSender
     intensity: settings.learningSettings.intensity,
     panelClosedAt: nextPanelVisible ? null : new Date().toISOString(),
   });
-  await setActiveQuizVisibility(true);
+  if (!nextPanelVisible) {
+    await setActiveQuizVisibility(true);
+  }
 }
 
 /** FAB / notification: in-page toggle on http(s) tabs, else Chrome side panel / popup. */
