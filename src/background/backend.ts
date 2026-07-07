@@ -4,12 +4,16 @@ import {
   applyAccountSnapshotToStorage,
   buildAccountSnapshotFromStorage,
   createDefaultAccountSyncState,
+  createEmptyAccountSnapshot,
   isAccountSyncedStorageKey,
   normalizeAccountSnapshot,
 } from '../shared/account';
 import {
+  DEFAULT_ANALYTICS_SNAPSHOT,
+  DEFAULT_LEARNING_STATE,
   DEFAULT_OPENCLAW_STATE,
   DEFAULT_WINDOW_BACKEND_URL,
+  QUIZ_FAB_SESSION_KEY,
   TOPIC_HARD_BLOCK_COUNT,
   TOPIC_DECAY_STEPS,
   TOPIC_MASTERY_STREAK,
@@ -355,6 +359,21 @@ export async function loginAccount(
   throw new Error('Only Google sign-in is enabled right now.');
 }
 
+/**
+ * Reset local state that belongs to (or is derived from) the signed-in
+ * account: study topics, quiz packs, review queue, analytics, and the idea
+ * inbox. Device-level preferences (settings, rules, routines) stay put — they
+ * are handled separately when a different account signs in.
+ */
+export async function clearUserScopedLocalState(): Promise<void> {
+  await Promise.all([
+    setLearningState({ ...DEFAULT_LEARNING_STATE }),
+    setAnalyticsSnapshot({ ...DEFAULT_ANALYTICS_SNAPSHOT }),
+    setIdeaRecords([]),
+    chrome.storage.local.remove(QUIZ_FAB_SESSION_KEY),
+  ]);
+}
+
 export async function signOutAccount(): Promise<void> {
   const session = await getBackendSession();
   if (session) {
@@ -369,6 +388,7 @@ export async function signOutAccount(): Promise<void> {
 
   await Promise.all([
     clearAssistantState(),
+    clearUserScopedLocalState(),
     setAccountUser(null),
     setAccountConflict(null),
     setAccountSyncState({
@@ -1379,9 +1399,22 @@ async function exchangeGoogleTokenForBackend(
   });
 }
 
+const LAST_ACCOUNT_USER_ID_KEY = 'lastAccountUserId';
+
 async function finalizeSignedInSession(
   response: AuthSessionResponse,
 ): Promise<void> {
+  // A different account signing in on this browser must not see — or upload
+  // into its own snapshot — the previous account's points, rules, routines,
+  // topics, or analytics.
+  const stored = await chrome.storage.local.get(LAST_ACCOUNT_USER_ID_KEY);
+  const lastUserId = stored[LAST_ACCOUNT_USER_ID_KEY];
+  if (typeof lastUserId === 'string' && lastUserId !== response.userId) {
+    await clearUserScopedLocalState();
+    await applyAccountSnapshotToStorage(createEmptyAccountSnapshot());
+  }
+  await chrome.storage.local.set({ [LAST_ACCOUNT_USER_ID_KEY]: response.userId });
+
   const session: BackendSession = {
     sessionToken: response.sessionToken,
     userId: response.userId,

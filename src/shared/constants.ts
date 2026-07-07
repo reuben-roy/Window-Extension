@@ -366,6 +366,8 @@ export const LEVEL_PERKS: ReadonlyArray<readonly [number, string]> = [
 // ─── Alarms ───────────────────────────────────────────────────────────────────
 
 export const QUIZ_FAB_SESSION_KEY = 'quizFabSession';
+/** User-chosen vertical FAB position, stored as percent of viewport height. */
+export const QUIZ_FAB_POSITION_KEY = 'quizFabTopPercent';
 export const QUIZ_FAB_SURFACE_COOLDOWN_MS = 60_000;
 export const QUIZ_PANEL_WIDTH_PX = 480;
 

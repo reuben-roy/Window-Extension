@@ -122,7 +122,7 @@ export default function AccountStatusControl({
             <div className="text-right">
               <p className="text-[11px] font-medium text-[var(--fg-text)]">Google Calendar</p>
               <p
-                className={`text-[10px] ${
+                className={`text-[11px] ${
                   calendarSection.tone === 'error'
                     ? 'text-rose-600'
                     : calendarSection.tone === 'connected'
@@ -205,7 +205,7 @@ export default function AccountStatusControl({
               <div>
                 <p className="text-xs font-medium text-[var(--fg-text)]">Google Calendar</p>
                 <p
-                  className={`text-[10px] ${
+                  className={`text-[11px] ${
                     calendarSection.tone === 'error'
                       ? 'text-rose-600'
                       : calendarSection.tone === 'connected'
@@ -224,7 +224,7 @@ export default function AccountStatusControl({
               />
             </div>
             {calendarSection.description && (
-              <p className="mt-1.5 text-[10px] leading-snug text-[var(--fg-muted)]">
+              <p className="mt-1.5 text-[11px] leading-snug text-[var(--fg-muted)]">
                 {calendarSection.description}
               </p>
             )}
@@ -233,7 +233,7 @@ export default function AccountStatusControl({
           {accountConflict && (
             <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-2.5">
               <p className="text-xs font-semibold text-amber-900">Choose which data to keep</p>
-              <p className="mt-0.5 text-[10px] leading-snug text-amber-800">
+              <p className="mt-0.5 text-[11px] leading-snug text-amber-800">
                 Both this browser and your account already have data.
               </p>
               <div className="mt-2 flex flex-wrap gap-1.5">
@@ -317,7 +317,7 @@ function CalendarServiceRow({
       <button
         onClick={onConnectCalendar}
         disabled={busyAction !== null}
-        className={compact ? 'text-[10px] font-medium text-rose-600 transition hover:text-rose-700' : 'fg-button-secondary'}
+        className={compact ? 'text-[11px] font-medium text-rose-600 transition hover:text-rose-700' : 'fg-button-secondary'}
       >
         {busyAction === 'calendar-connect' ? 'Reconnecting…' : 'Reconnect'}
       </button>
@@ -328,7 +328,7 @@ function CalendarServiceRow({
     <button
       onClick={onConnectCalendar}
       disabled={busyAction !== null}
-      className={compact ? 'text-[10px] font-medium text-[var(--fg-accent)] transition hover:opacity-80' : 'fg-button-secondary'}
+      className={compact ? 'text-[11px] font-medium text-[var(--fg-accent)] transition hover:opacity-80' : 'fg-button-secondary'}
     >
       {busyAction === 'calendar-connect' ? 'Connecting…' : 'Connect'}
     </button>

@@ -8,9 +8,8 @@ import type {
   EventContentArg,
   EventMountArg,
 } from '@fullcalendar/core';
-import { removeEventRule, removeKeywordRule, upsertEventRule, upsertKeywordRule } from '../shared/eventRules';
+import { removeEventRule, removeKeywordRule, upsertKeywordRule } from '../shared/eventRules';
 import { addToGlobalAllowlist, removeFromGlobalAllowlist } from '../shared/profiles';
-import { deriveDifficultyRank } from '../shared/analytics';
 import {
   formatBlockingPauseTimeLabel,
   isDailyBlockingPauseActive,
@@ -18,14 +17,47 @@ import {
 import {
   DEFAULT_LEARNING_TAXONOMY,
   isBlockingFeatureEnabled,
-  isLearningFeatureEnabled,
-  isRoutinesFeatureEnabled,
 } from '../shared/learning';
 import AccountStatusControl from '../shared/components/AccountStatusControl';
 import CompactSettingRow from '../shared/components/CompactSettingRow';
 import InfoTip from '../shared/components/InfoTip';
 import Toggle from '../shared/components/Toggle';
 import SettingsGroup from '../shared/components/SettingsGroup';
+import { EventRuleTooltip } from './components/EventRuleTooltip';
+import {
+  ExtendedTaskDragGrip,
+  ExtendedTaskLibraryCard,
+  ExtendedTaskListPreviewModal,
+} from './components/ExtendedTaskLibrary';
+import { CalendarEventChip } from './components/CalendarEventChip';
+import { KeywordRuleListItem, RuleListItem } from './components/RuleListItems';
+import { TagManager } from './components/TagManager';
+import { AnalyticsWorkspace } from './components/AnalyticsWorkspace';
+import { EmptyCard } from './components/EmptyCard';
+import { LearningWorkspace } from './components/LearningWorkspace';
+import {
+  areRectsEqual,
+  calendarEventAppearance,
+  chooseTooltipPosition,
+  clearExtendedTaskDropTargets,
+  createEmptyExtendedTaskSetDraftItem,
+  deriveTimeGridWindow,
+  formatEventRange,
+  moveDraftArrayItem,
+  resolveWorkspaceEvent,
+  safeId,
+  sendMessageAsync,
+  setExtendedTaskDropTargetState,
+  splitDomains,
+  uniqueElements,
+} from './lib';
+import type {
+  ExtendedTaskListPreview,
+  ExtendedTaskSetDraftItem,
+  ResolvedWorkspaceEvent,
+  TooltipMode,
+  TooltipPlacement,
+} from './lib';
 import {
   getAccountConflict,
   getAccountSyncState,
@@ -63,17 +95,10 @@ import {
   toExtendedTaskLibraryEntry,
 } from '../shared/extendedTaskLibrary';
 import { MODEL_PLACEHOLDER_OPTIONS } from '../shared/constants';
-import { isRedundantExactRuleCopy } from '../shared/ruleResolution';
-import {
-  findEventLaunchTarget,
-  removeEventLaunchTarget,
-  upsertEventLaunchTarget,
-} from '../shared/launchTargets';
+import { findEventLaunchTarget } from '../shared/launchTargets';
 import {
   ensureDefaultTaskTags,
   findTaskTag,
-  inferTaskTagKeyFromTitle,
-  inferTaskTagKeysFromText,
   normalizeTaskTag,
   slugifyTagKey,
 } from '../shared/tags';
@@ -86,7 +111,6 @@ import type {
   BreakDurationMinutes,
   CalendarEvent,
   CalendarState,
-  ConsumptionTimelinePoint,
   DifficultyRank,
   DownloadRedirectFallbackSeconds,
   ExtendedTaskAssignment,
@@ -94,15 +118,11 @@ import type {
   ExtendedTaskSet,
   EventLaunchTarget,
   EventRule,
-  FocusSessionRecord,
   KeywordRule,
-  LearningSubject,
   LearningState,
   OpenClawInstanceConnectionTest,
   OpenClawInstanceSettings,
   OpenClawState,
-  QuizPackSummary,
-  ReviewQueueItem,
   Settings,
   TaskNotificationMode,
   TaskTag,
@@ -110,20 +130,6 @@ import type {
 } from '../shared/types';
 
 type CalendarView = 'dayGridMonth' | 'timeGridWeek' | 'timeGridDay';
-type TooltipMode = 'anchored' | 'modal';
-type TooltipPlacement = 'top' | 'bottom';
-
-interface ResolvedWorkspaceEvent {
-  event: CalendarEvent;
-  source: 'event' | 'keyword' | 'none' | 'override';
-  ruleName: string | null;
-  domains: string[];
-  effectiveDomains: string[];
-  tagKey: string | null;
-  secondaryTagKeys: string[];
-  difficultyRank: DifficultyRank | null;
-  fallbackKeyword: string | null;
-}
 
 interface SelectedTooltipState {
   eventId: string;
@@ -131,18 +137,6 @@ interface SelectedTooltipState {
 }
 
 const OCCURRENCE_CHECKLIST_PREVIEW_COUNT = 5;
-
-interface ExtendedTaskListPreview {
-  title: string;
-  subtitle?: string;
-  rows: Array<{ id: string; label: string; url?: string }>;
-}
-
-interface ExtendedTaskSetDraftItem {
-  id: string;
-  label: string;
-  url: string;
-}
 
 interface DownloadRescueToggleConfig {
   key:
@@ -157,10 +151,6 @@ interface DownloadRescueToggleConfig {
   description: string;
 }
 
-/** Wide enough for two-column event editor (tags + allowlist | task set + launch). */
-const TOOLTIP_WIDTH = 720;
-const TOOLTIP_HEIGHT = 720;
-const TOOLTIP_MARGIN = 20;
 const DOWNLOAD_RESCUE_MAX_PATCH: Partial<Settings> = {
   downloadRedirectUseDownloadsApi: true,
   downloadRedirectFallbackPatternMatchEnabled: true,
@@ -179,13 +169,6 @@ const DOWNLOAD_RESCUE_BALANCED_PATCH: Partial<Settings> = {
   downloadRedirectAllowAcrossTabsEnabled: false,
   downloadRedirectProgrammaticDownloadEnabled: true,
 };
-const DEFAULT_TIME_GRID_START_MINUTES = 7 * 60;
-const DEFAULT_TIME_GRID_END_MINUTES = 21 * 60;
-const MIN_TIME_GRID_SPAN_MINUTES = 8 * 60;
-const TIME_GRID_ROUNDING_MINUTES = 30;
-const TIME_GRID_TOP_PADDING_MINUTES = 45;
-const TIME_GRID_BOTTOM_PADDING_MINUTES = 60;
-
 const TASK_NOTIFICATION_MODE_OPTIONS: Array<{
   value: TaskNotificationMode;
   label: string;
@@ -246,6 +229,8 @@ const DOWNLOAD_RESCUE_TOGGLES: DownloadRescueToggleConfig[] = [
   },
 ];
 
+type SurfaceTab = 'learning' | 'calendar' | 'analytics' | 'settings';
+
 export default function Options(): React.JSX.Element {
   const calendarRef = useRef<FullCalendar | null>(null);
   const tooltipRef = useRef<HTMLDivElement | null>(null);
@@ -277,9 +262,12 @@ export default function Options(): React.JSX.Element {
   const [extendedTaskAssignments, setExtendedTaskAssignmentsState] = useState<ExtendedTaskAssignment[]>([]);
   const [calendarView, setCalendarView] = useState<CalendarView>('timeGridWeek');
   const [calendarTitle, setCalendarTitle] = useState('');
-  const [surfaceTab, setSurfaceTab] = useState<'workspace' | 'learning' | 'analytics'>(() => {
+  const [surfaceTab, setSurfaceTab] = useState<SurfaceTab>(() => {
     const hash = window.location.hash.replace('#', '');
-    return hash === 'learning' || hash === 'analytics' ? hash : 'workspace';
+    if (hash === 'calendar' || hash === 'workspace') return 'calendar';
+    if (hash === 'analytics') return 'analytics';
+    if (hash === 'settings') return 'settings';
+    return 'learning';
   });
   const [selectedTooltip, setSelectedTooltip] = useState<SelectedTooltipState | null>(null);
   const [tooltipMode, setTooltipMode] = useState<TooltipMode>('anchored');
@@ -436,7 +424,7 @@ export default function Options(): React.JSX.Element {
   }, []);
 
   useEffect(() => {
-    const nextHash = surfaceTab === 'workspace' ? '' : `#${surfaceTab}`;
+    const nextHash = surfaceTab === 'learning' ? '' : `#${surfaceTab}`;
     if (window.location.hash !== nextHash) {
       window.history.replaceState(null, '', `${window.location.pathname}${nextHash}`);
     }
@@ -699,13 +687,6 @@ export default function Options(): React.JSX.Element {
     [activeExtendedTaskSets],
   );
   const occurrenceApplyButtonLabel = selectedResolvedEvent ? 'Apply to selected block' : 'Apply to current block';
-
-  const nextEvent = useMemo(() => {
-    const now = Date.now();
-    return todaysEvents
-      .filter((event) => new Date(event.start).getTime() > now)
-      .sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime())[0] ?? null;
-  }, [todaysEvents]);
 
   const quietHoursActive = settings ? isDailyBlockingPauseActive(new Date(), settings) : false;
   const downloadRescueRows = DOWNLOAD_RESCUE_TOGGLES.map((toggle) => ({
@@ -1360,25 +1341,18 @@ export default function Options(): React.JSX.Element {
           </div>
         </header>
 
-        <FeatureControlRail
-          settings={settings}
-          learningState={learningState}
-          onToggleFeature={updateFeatureFlag}
-          onOpenWorkspace={(tab) => setSurfaceTab(tab)}
-        />
-
         <div className="mb-5 inline-flex rounded-md border border-[var(--fg-border)] bg-white p-1 shadow-sm">
-          <button
-            onClick={() => setSurfaceTab('workspace')}
-            className={surfaceTab === 'workspace' ? 'fg-segment-active' : 'fg-segment'}
-          >
-            Workspace
-          </button>
           <button
             onClick={() => setSurfaceTab('learning')}
             className={surfaceTab === 'learning' ? 'fg-segment-active' : 'fg-segment'}
           >
-            Learning
+            Learn
+          </button>
+          <button
+            onClick={() => setSurfaceTab('calendar')}
+            className={surfaceTab === 'calendar' ? 'fg-segment-active' : 'fg-segment'}
+          >
+            Calendar
           </button>
           <button
             onClick={() => setSurfaceTab('analytics')}
@@ -1386,31 +1360,73 @@ export default function Options(): React.JSX.Element {
           >
             Analytics
           </button>
+          <button
+            onClick={() => setSurfaceTab('settings')}
+            className={surfaceTab === 'settings' ? 'fg-segment-active' : 'fg-segment'}
+          >
+            Settings
+          </button>
         </div>
 
-        {surfaceTab === 'workspace' ? (
-          <section className="mb-5 grid gap-4 xl:grid-cols-[minmax(0,1fr),340px]">
+        {surfaceTab === 'settings' ? (
+          <section className="mx-auto mb-5 w-full max-w-3xl space-y-4">
+            <div className="fg-card p-4">
+              <h2 className="text-sm font-semibold text-[var(--fg-text)]">Features</h2>
+              <p className="mt-1 text-xs text-[var(--fg-muted)]">
+                Turn Window's building blocks on or off. Saved rules and history stay intact while a feature is off.
+              </p>
+              <div className="mt-3 overflow-hidden rounded-lg border border-[var(--fg-border)] bg-[var(--fg-panel-soft)]/55">
+                <CompactSettingRow
+                  className="px-4"
+                  label="Blocking"
+                  meta="Restrict browsing around the current calendar block with allowlists, overrides, and quiet hours."
+                  control={
+                    <Toggle
+                      checked={settings.featureFlags.blocking}
+                      onChange={(checked) => void updateFeatureFlag('blocking', checked)}
+                    />
+                  }
+                />
+                <CompactSettingRow
+                  className="border-t border-[var(--fg-border)] px-4"
+                  label="Routines"
+                  meta="Auto-surface the right tabs, checklists, and long-range workflows when a calendar block starts."
+                  control={
+                    <Toggle
+                      checked={settings.featureFlags.routines}
+                      onChange={(checked) => void updateFeatureFlag('routines', checked)}
+                    />
+                  }
+                />
+                <CompactSettingRow
+                  className="border-t border-[var(--fg-border)] px-4"
+                  label="Learning"
+                  meta="Pick study topics, generate shared quiz packs, and run spaced review inside Window."
+                  control={
+                    <Toggle
+                      checked={settings.featureFlags.learning}
+                      onChange={(checked) => void updateFeatureFlag('learning', checked)}
+                    />
+                  }
+                />
+              </div>
+            </div>
+
             <div className="fg-card p-4">
               <div className="flex flex-wrap items-start justify-between gap-3">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h2 className="text-sm font-semibold text-[var(--fg-text)]">Focus controls</h2>
-                    <InfoTip text="These are the quickest settings to understand the extension at a glance." />
-                  </div>
-                </div>
+                <h2 className="text-sm font-semibold text-[var(--fg-text)]">Focus & blocking</h2>
                 <span className="rounded-full border border-[var(--fg-border)] bg-white px-3 py-1 text-[11px] font-medium text-[var(--fg-muted)]">
                   {isConnected ? 'Calendar connected' : 'Calendar disconnected'}
                 </span>
               </div>
 
               <div className="mt-4 overflow-hidden rounded-lg border border-[var(--fg-border)] bg-[var(--fg-panel-soft)]/55">
-                <div className="grid gap-0 md:grid-cols-2 xl:grid-cols-3">
                   <CompactSettingRow
                     className="px-4"
                     label="Blocking"
                     meta={
                       !isBlockingFeatureEnabled(settings)
-                        ? 'Turn the Blocking feature on from the master rail above to enforce restrictions.'
+                        ? 'Turn the Blocking feature on under Features above to enforce restrictions.'
                         : quietHoursActive
                         ? `Daily cutoff active after ${formatBlockingPauseTimeLabel(settings.dailyBlockingPauseStartTime)}`
                         : 'Turns restriction rules on or off instantly.'
@@ -1425,7 +1441,7 @@ export default function Options(): React.JSX.Element {
                   />
 
                   <CompactSettingRow
-                    className="border-t border-[var(--fg-border)] px-4 md:border-l md:border-t-0"
+                    className="border-t border-[var(--fg-border)] px-4"
                     label="Break duration"
                     control={
                       <select
@@ -1445,14 +1461,7 @@ export default function Options(): React.JSX.Element {
                   />
 
                   <CompactSettingRow
-                    className="border-t border-[var(--fg-border)] px-4 md:border-l-0 xl:border-l xl:border-t-0"
-                    label="Active event"
-                    value={activeEvent ? truncate(activeEvent.title, 30) : 'No focus block live'}
-                    meta={activeEvent ? formatEventRange(activeEvent) : 'Browsing is unrestricted until the next matching event.'}
-                  />
-
-                  <CompactSettingRow
-                    className="border-t border-[var(--fg-border)] px-4 md:border-l xl:border-l-0"
+                    className="border-t border-[var(--fg-border)] px-4"
                     label="Daily cutoff"
                     meta={
                       settings.dailyBlockingPauseEnabled
@@ -1485,14 +1494,7 @@ export default function Options(): React.JSX.Element {
                   />
 
                   <CompactSettingRow
-                    className="border-t border-[var(--fg-border)] px-4 xl:border-l"
-                    label="Next event"
-                    value={nextEvent ? truncate(nextEvent.title, 30) : 'Nothing upcoming'}
-                    meta={nextEvent ? formatEventRange(nextEvent) : 'Today looks clear.'}
-                  />
-
-                  <CompactSettingRow
-                    className="border-t border-[var(--fg-border)] px-4 md:border-l xl:border-l"
+                    className="border-t border-[var(--fg-border)] px-4"
                     label="Download fallback"
                     control={
                       <select
@@ -1512,31 +1514,11 @@ export default function Options(): React.JSX.Element {
                       </select>
                     }
                   />
-                </div>
               </div>
             </div>
 
-            <SettingsGroup
-              className="fg-card p-4"
-              title="Advanced"
-              subtitle="Secondary controls that support fallback matching and long-lived rules."
-              hint="Low-frequency settings are grouped here so the calendar remains the main focus."
-              collapsible
-              defaultOpen={false}
-            >
-              <CompactSettingRow
-                label="Keyword auto-match"
-                meta="Automatically checks your fallback keyword rules against unmatched events."
-                control={
-                  <Toggle
-                    checked={settings.keywordAutoMatchEnabled}
-                    onChange={(checked) => updateSettings({ keywordAutoMatchEnabled: checked })}
-                  />
-                }
-              />
-
               <SettingsGroup
-                className="rounded-lg border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-3 py-2.5"
+                className="fg-card p-4"
                 title="Global whitelist"
                 subtitle={`${globalAllowlist.length} domain${globalAllowlist.length === 1 ? '' : 's'} always allowed`}
                 hint="Domains here stay reachable even when an event-specific rule is active."
@@ -1590,7 +1572,7 @@ export default function Options(): React.JSX.Element {
               </SettingsGroup>
 
               <SettingsGroup
-                className="rounded-lg border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-3 py-2.5"
+                className="fg-card p-4"
                 title="Download rescue"
                 subtitle="Short-lived rules that help real downloads complete without opening browsing holes."
                 hint="Use the preset buttons for testing, then fine-tune the individual rescue paths if needed."
@@ -1633,7 +1615,7 @@ export default function Options(): React.JSX.Element {
               </SettingsGroup>
 
               <SettingsGroup
-                className="rounded-lg border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-3 py-2.5"
+                className="fg-card p-4"
                 title="Assistant settings"
                 subtitle="Configure the OpenClaw assistant and capture behaviors."
                 hint="These settings control how Window interacts with the backend assistant."
@@ -1871,7 +1853,7 @@ export default function Options(): React.JSX.Element {
               </SettingsGroup>
 
               <SettingsGroup
-                className="rounded-lg border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-3 py-2.5"
+                className="fg-card p-4"
                 title="Keyword rules"
                 subtitle={`${keywordRules.length} saved fallback rule${keywordRules.length === 1 ? '' : 's'}`}
                 hint="Longest keyword match wins. Exact Event Rules always override these fallbacks."
@@ -1879,6 +1861,16 @@ export default function Options(): React.JSX.Element {
                 defaultOpen={false}
                 bodyClassName="mt-3 space-y-3"
               >
+                <CompactSettingRow
+                  label="Keyword auto-match"
+                  meta="Automatically checks your fallback keyword rules against unmatched events."
+                  control={
+                    <Toggle
+                      checked={settings.keywordAutoMatchEnabled}
+                      onChange={(checked) => updateSettings({ keywordAutoMatchEnabled: checked })}
+                    />
+                  }
+                />
                 <div className="grid gap-3">
                   <input
                     type="text"
@@ -1938,11 +1930,10 @@ export default function Options(): React.JSX.Element {
                   )}
                 </div>
               </SettingsGroup>
-            </SettingsGroup>
           </section>
         ) : null}
 
-        {surfaceTab === 'workspace' ? (
+        {surfaceTab === 'calendar' ? (
           <>
             <section className="grid gap-4 xl:grid-cols-[minmax(0,1fr),340px]">
               <div className="fg-card relative overflow-hidden p-4">
@@ -2210,7 +2201,7 @@ export default function Options(): React.JSX.Element {
                                           );
                                         }
                                       }}
-                                      className={`mt-0.5 flex h-5 w-5 items-center justify-center rounded-full border text-[10px] font-semibold ${
+                                      className={`mt-0.5 flex h-5 w-5 items-center justify-center rounded-full border text-[11px] font-semibold ${
                                         completed
                                           ? 'border-emerald-500 bg-emerald-500 text-white'
                                           : 'border-[var(--fg-border)] text-[var(--fg-muted)]'
@@ -2296,7 +2287,7 @@ export default function Options(): React.JSX.Element {
                             Tap a roadmap to open its subgroup blocks. Both rows scroll horizontally.
                           </p>
                         </div>
-                        <span className="rounded-full border border-[var(--fg-border)] bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--fg-muted)]">
+                        <span className="rounded-full border border-[var(--fg-border)] bg-white px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--fg-muted)]">
                           {leetcodeSubgroupEntries.length} blocks
                         </span>
                       </div>
@@ -2323,7 +2314,7 @@ export default function Options(): React.JSX.Element {
                                       <p className="truncate text-sm font-medium text-[var(--fg-text)]">
                                         {leetcodeMasterEntry.title}
                                       </p>
-                                      <span className="rounded-full border border-[var(--fg-border)] bg-white px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--fg-muted)]">
+                                      <span className="rounded-full border border-[var(--fg-border)] bg-white px-2 py-0.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--fg-muted)]">
                                         Roadmap
                                       </span>
                                     </div>
@@ -2383,7 +2374,7 @@ export default function Options(): React.JSX.Element {
                                 <button
                                   type="button"
                                   title="Open full list of subgroup names"
-                                  className="fg-button-ghost px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em]"
+                                  className="fg-button-ghost px-2 py-1 text-[11px] font-semibold uppercase tracking-[0.12em]"
                                   onClick={() =>
                                     setExtendedTaskListPreview({
                                       title: `${leetcodeMasterEntry.title} — subgroup blocks`,
@@ -2473,7 +2464,7 @@ export default function Options(): React.JSX.Element {
                             Editable routines you have saved. This rail also scrolls horizontally.
                           </p>
                         </div>
-                        <span className="rounded-full border border-[var(--fg-border)] bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--fg-muted)]">
+                        <span className="rounded-full border border-[var(--fg-border)] bg-white px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--fg-muted)]">
                           {userExtendedTaskEntries.length} saved
                         </span>
                       </div>
@@ -2565,7 +2556,7 @@ export default function Options(): React.JSX.Element {
                             <div key={item.id} className="rounded-[18px] border border-[var(--fg-border)] bg-white px-3 py-3">
                               <div className="grid gap-2">
                                 <div className="flex items-center gap-2">
-                                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-[var(--fg-border)] text-[10px] font-semibold text-[var(--fg-muted)]">
+                                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-[var(--fg-border)] text-[11px] font-semibold text-[var(--fg-muted)]">
                                     {index + 1}
                                   </span>
                                   <input
@@ -2724,7 +2715,7 @@ export default function Options(): React.JSX.Element {
             onUpdateLearningSettings={updateLearningSettings}
             onRefresh={() => sendMessageAsync({ type: 'REFRESH_LEARNING_STATE' }).then(loadData)}
           />
-        ) : (
+        ) : surfaceTab === 'analytics' ? (
           <div className="space-y-4">
             <AnalyticsWorkspace
               analyticsSnapshot={analyticsSnapshot}
@@ -2741,7 +2732,7 @@ export default function Options(): React.JSX.Element {
               onDeleteTag={deleteTaskTagDefinition}
             />
           </div>
-        )}
+        ) : null}
       </div>
 
       {selectedResolvedEvent && selectedTooltip && (
@@ -2770,2590 +2761,6 @@ export default function Options(): React.JSX.Element {
   );
 }
 
-const EventRuleTooltip = React.forwardRef<HTMLDivElement, {
-  resolvedEvent: ResolvedWorkspaceEvent;
-  launchTarget: EventLaunchTarget | null;
-  extendedTaskAssignment: ExtendedTaskAssignment | null;
-  onRemoveExtendedTaskAssignment: (calendarEventId: string) => Promise<void>;
-  taskTags: TaskTag[];
-  anchorRect: DOMRect;
-  mode: TooltipMode;
-  placement: TooltipPlacement;
-  onClose: () => void;
-  onSaved: () => Promise<void>;
-  savingRule: boolean;
-  onSavingChange: (value: boolean) => void;
-}>(
-  (
-    {
-      resolvedEvent,
-      launchTarget,
-      extendedTaskAssignment,
-      onRemoveExtendedTaskAssignment,
-      taskTags,
-      anchorRect,
-      mode,
-      placement,
-      onClose,
-      onSaved,
-      savingRule,
-      onSavingChange,
-    },
-    ref,
-  ) => {
-    const exactRuleExists = resolvedEvent.source === 'event' || resolvedEvent.source === 'override';
-    const hasUnrestrictedOverride = resolvedEvent.source === 'override';
-    const keywordFallbackActive = resolvedEvent.source === 'keyword';
-    const startsInEditing = resolvedEvent.source === 'none';
-    const currentDomainsValue = exactRuleExists ? resolvedEvent.domains.join(', ') : '';
-    const currentEffectiveDomainsValue = resolvedEvent.effectiveDomains.join(', ');
-    const currentLaunchUrlValue = launchTarget?.launchUrl ?? '';
-    const displayedDomains = exactRuleExists ? resolvedEvent.domains : resolvedEvent.effectiveDomains;
-    const canCopyFallbackDomains = keywordFallbackActive && resolvedEvent.effectiveDomains.length > 0;
-    const [domainsInput, setDomainsInput] = useState(currentDomainsValue);
-    const [launchUrlInput, setLaunchUrlInput] = useState(currentLaunchUrlValue);
-    const [tagKey, setTagKey] = useState(resolvedEvent.tagKey ?? '');
-    const [secondaryTagKeys, setSecondaryTagKeys] = useState<string[]>(resolvedEvent.secondaryTagKeys);
-    const [difficultyRank, setDifficultyRank] = useState<string>(
-      resolvedEvent.difficultyRank ? String(resolvedEvent.difficultyRank) : '',
-    );
-    const [editing, setEditing] = useState(startsInEditing);
-    const [editingLaunchTarget, setEditingLaunchTarget] = useState(false);
-    const [error, setError] = useState('');
-    const [launchError, setLaunchError] = useState('');
-    const [savingLaunchTarget, setSavingLaunchTarget] = useState(false);
-    const [removingExtendedTask, setRemovingExtendedTask] = useState(false);
-    const previousEventIdRef = useRef(resolvedEvent.event.id);
-
-    // Only reset the draft when switching events. Background storage refreshes
-    // happen often enough that syncing on every prop change can wipe mid-typing edits.
-    useEffect(() => {
-      if (previousEventIdRef.current === resolvedEvent.event.id) {
-        return;
-      }
-      previousEventIdRef.current = resolvedEvent.event.id;
-      setDomainsInput(currentDomainsValue);
-      setLaunchUrlInput(currentLaunchUrlValue);
-      setTagKey(resolvedEvent.tagKey ?? '');
-      setSecondaryTagKeys(resolvedEvent.secondaryTagKeys);
-      setDifficultyRank(resolvedEvent.difficultyRank ? String(resolvedEvent.difficultyRank) : '');
-      setEditing(startsInEditing);
-      setError('');
-      setLaunchError('');
-      setEditingLaunchTarget(false);
-      setRemovingExtendedTask(false);
-    }, [currentDomainsValue, currentLaunchUrlValue, resolvedEvent.difficultyRank, resolvedEvent.event.id, resolvedEvent.secondaryTagKeys, resolvedEvent.tagKey, startsInEditing]);
-
-    const positioning = mode === 'modal'
-      ? {
-          top: '50%',
-          left: '50%',
-          transform: 'translate(-50%, -50%)',
-        }
-      : {
-          top:
-            placement === 'bottom'
-              ? `${Math.min(window.innerHeight - TOOLTIP_HEIGHT - TOOLTIP_MARGIN, anchorRect.bottom + 14)}px`
-              : `${Math.max(TOOLTIP_MARGIN, anchorRect.top - TOOLTIP_HEIGHT - 14)}px`,
-          left: `${clamp(anchorRect.left + anchorRect.width / 2 - TOOLTIP_WIDTH / 2, TOOLTIP_MARGIN, window.innerWidth - TOOLTIP_WIDTH - TOOLTIP_MARGIN)}px`,
-          transform: 'none',
-        };
-    const saveAsUnrestricted = splitDomains(domainsInput).length === 0;
-    const titleModeLabel =
-      resolvedEvent.source === 'event'
-        ? 'Exact Event Rule'
-        : resolvedEvent.source === 'keyword'
-          ? 'Keyword fallback'
-          : resolvedEvent.source === 'override'
-            ? 'Unrestricted override'
-            : 'Unrestricted';
-    const summaryTitle =
-      resolvedEvent.source === 'event'
-        ? `Using exact title rule “${resolvedEvent.ruleName}”`
-        : resolvedEvent.source === 'keyword'
-          ? `Using keyword fallback “${resolvedEvent.ruleName}”`
-          : resolvedEvent.source === 'override'
-            ? 'This title is explicitly unrestricted'
-            : 'No exact rule yet';
-    const summaryBody =
-      resolvedEvent.source === 'event'
-        ? 'Editing here updates the exact Event Rule used by every event with this title.'
-        : resolvedEvent.source === 'keyword'
-          ? 'These sites are coming from a keyword match. Create an exact rule only if this title should pin custom sites or stay unrestricted.'
-          : resolvedEvent.source === 'override'
-            ? resolvedEvent.fallbackKeyword
-              ? `Keyword fallback “${resolvedEvent.fallbackKeyword}” is currently suppressed for this exact title.`
-              : 'This exact-title override keeps the event unrestricted until you add allowed sites again.'
-            : 'Browsing stays unrestricted unless you save allowed sites for this event title.';
-    const saveButtonLabel = saveAsUnrestricted
-      ? resolvedEvent.source === 'none'
-        ? 'Keep Unrestricted'
-        : hasUnrestrictedOverride
-          ? 'Save Unrestricted Override'
-          : 'Create Unrestricted Override'
-      : exactRuleExists
-        ? 'Save Rule'
-        : 'Create Exact Rule';
-    const unrestrictedBadgeLabel = saveAsUnrestricted
-      ? resolvedEvent.source === 'none'
-        ? 'Keeps unrestricted'
-        : exactRuleExists
-          ? 'Saves as unrestricted override'
-          : 'Creates unrestricted override'
-      : null;
-    const editButtonLabel = exactRuleExists ? 'Edit' : keywordFallbackActive ? 'Create Rule' : 'Edit';
-    const hasLaunchTarget = launchTarget !== null;
-    const launchTargetHost = launchTarget ? safeHostname(launchTarget.launchUrl) : null;
-
-    return (
-      <>
-        {mode === 'modal' ? (
-          <div
-            className="fixed inset-0 z-40 bg-[rgba(9,14,30,0.12)] backdrop-blur-[2px]"
-            onClick={onClose}
-          />
-        ) : null}
-        <div
-          ref={ref}
-          className={`fixed z-50 w-[min(720px,calc(100vw-24px))] rounded-xl border border-white/80 bg-[rgba(255,255,255,0.98)] p-4 shadow-2xl ring-1 ring-[rgba(148,163,184,0.12)] ${
-            mode === 'modal' ? 'max-h-[min(720px,calc(100vh-40px))] overflow-auto' : 'max-h-[min(720px,calc(100vh-32px))] overflow-auto'
-          }`}
-          style={positioning}
-          role="dialog"
-          aria-modal="true"
-        >
-          <div className="mb-4 flex items-start justify-between gap-3">
-            <div className="space-y-2">
-              <div className="inline-flex items-center gap-2 rounded-full border border-[rgba(148,163,184,0.25)] bg-[rgba(241,245,249,0.78)] px-2.5 py-1 text-[11px] font-semibold text-[var(--fg-muted)]">
-                <span className={`h-2 w-2 rounded-full ${statusDot(resolvedEvent.source)}`} />
-                {titleModeLabel}
-              </div>
-              <h3 className="text-[1.9rem] font-semibold tracking-[-0.04em] text-[var(--fg-text)]">
-                {resolvedEvent.event.title}
-              </h3>
-              <p className="text-sm font-medium text-[var(--fg-muted)]">
-                {formatTooltipDate(resolvedEvent.event)}
-              </p>
-              {resolvedEvent.event.recurrenceHint && (
-                <p className="max-w-[30ch] text-xs leading-5 text-[var(--fg-muted)]">
-                  {resolvedEvent.event.recurrenceHint}. Changes here apply to all events with this exact title.
-                </p>
-              )}
-            </div>
-            <button
-              onClick={onClose}
-              className="rounded-full border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-3 py-1.5 text-sm font-medium text-[var(--fg-muted)] transition hover:bg-white hover:text-[var(--fg-text)]"
-              aria-label="Close event rule editor"
-            >
-              Close
-            </button>
-          </div>
-
-          <div className="mb-4 rounded-md border border-[rgba(148,163,184,0.18)] bg-[linear-gradient(180deg,rgba(248,250,252,0.96),rgba(241,245,249,0.9))] px-3 py-2.5.5">
-            <p className="text-sm font-medium text-[var(--fg-text)]">
-              {summaryTitle}
-            </p>
-            <p className="mt-1 text-xs leading-5 text-[var(--fg-muted)]">
-              {summaryBody}
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:items-start lg:gap-5">
-            <div className="space-y-4">
-            <div className="grid gap-3 md:grid-cols-2">
-              <div className="rounded-md border border-[rgba(148,163,184,0.16)] bg-[var(--fg-panel-soft)] px-3 py-2.5">
-                <p className="text-sm font-medium text-[var(--fg-text)]">Primary tag</p>
-                <select
-                  value={tagKey}
-                  onChange={(event) => setTagKey(event.target.value)}
-                  disabled={!editing}
-                  className="fg-select mt-2 w-full disabled:cursor-not-allowed disabled:bg-[rgba(248,250,252,0.92)] disabled:text-[var(--fg-muted)]"
-                >
-                  <option value="">No explicit tag</option>
-                  {getSelectableTaskTags(taskTags, [tagKey, ...secondaryTagKeys]).map((tag) => (
-                    <option key={tag.key} value={tag.key}>
-                      {tag.label}
-                    </option>
-                  ))}
-                </select>
-                <p className="text-xs text-[var(--fg-muted)]">
-                  Exact rules can pin a tag instead of relying on keyword inference.
-                </p>
-              </div>
-
-              <div className="rounded-md border border-[rgba(148,163,184,0.16)] bg-[var(--fg-panel-soft)] px-3 py-2.5">
-                <div className="flex items-center gap-2">
-                  <p className="text-sm font-medium text-[var(--fg-text)]">Secondary tags</p>
-                  <InfoTip text="Optional supporting tags for this exact title. Window stores them on the session, but the main charts still group by the primary tag." />
-                </div>
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {getSelectableTaskTags(taskTags, [tagKey, ...secondaryTagKeys])
-                    .filter((tag) => tag.key !== tagKey)
-                    .map((tag) => {
-                      const selected = secondaryTagKeys.includes(tag.key);
-                      return (
-                        <button
-                          key={tag.key}
-                          type="button"
-                          disabled={!editing && !selected}
-                          onClick={() =>
-                            setSecondaryTagKeys((current) =>
-                              selected
-                                ? current.filter((key) => key !== tag.key)
-                                : [...current, tag.key].slice(0, 2),
-                            )
-                          }
-                          className={`rounded-full border px-3 py-1.5 text-xs font-medium transition ${
-                            selected
-                              ? 'border-[var(--fg-accent)] bg-[var(--fg-accent-soft)] text-[var(--fg-accent)]'
-                              : 'border-[var(--fg-border)] bg-white text-[var(--fg-muted)]'
-                          } disabled:cursor-not-allowed disabled:opacity-70`}
-                        >
-                          {tag.label}
-                        </button>
-                      );
-                    })}
-                </div>
-                <p className="mt-2 text-xs text-[var(--fg-muted)]">
-                  Select up to two. Archived tags stay hidden unless already attached here.
-                </p>
-              </div>
-
-              <div className="rounded-md border border-[rgba(148,163,184,0.16)] bg-[var(--fg-panel-soft)] px-3 py-2.5">
-                <p className="text-sm font-medium text-[var(--fg-text)]">Difficulty</p>
-                <select
-                  value={difficultyRank}
-                  onChange={(event) => setDifficultyRank(event.target.value)}
-                  disabled={!editing}
-                  className="fg-select mt-2 w-full disabled:cursor-not-allowed disabled:bg-[rgba(248,250,252,0.92)] disabled:text-[var(--fg-muted)]"
-                >
-                  <option value="">Auto from tag and history</option>
-                  <option value="1">1 · Routine</option>
-                  <option value="2">2 · Light</option>
-                  <option value="3">3 · Standard</option>
-                  <option value="5">5 · Demanding</option>
-                  <option value="8">8 · Deep</option>
-                </select>
-                <p className="text-xs text-[var(--fg-muted)]">
-                  Use an exact override only when this block is consistently easier or harder than the tag default.
-                </p>
-              </div>
-            </div>
-
-            <div className="rounded-lg border border-[rgba(148,163,184,0.16)] bg-white px-4 py-4 shadow-sm">
-              <div className="mb-3 flex items-center justify-between gap-3">
-                <div>
-                  <p className="text-sm font-medium text-[var(--fg-text)]">Allowed sites</p>
-                  <p className="mt-1 text-xs leading-5 text-[var(--fg-muted)]">
-                    Leave this empty to keep this event unrestricted, even if a keyword fallback matches.
-                  </p>
-                </div>
-              {!editing && (
-                <button
-                  onClick={() => {
-                    setDomainsInput(currentDomainsValue);
-                    setError('');
-                    setEditing(true);
-                  }}
-                  className="fg-button-ghost"
-                >
-                  {editButtonLabel}
-                </button>
-              )}
-              </div>
-
-              {editing ? (
-                <>
-                {canCopyFallbackDomains ? (
-                  <div className="mb-3 rounded-md border border-[rgba(59,130,246,0.14)] bg-[rgba(239,246,255,0.78)] px-3.5 py-3">
-                    <div className="flex flex-wrap items-start justify-between gap-3">
-                      <div className="max-w-[22rem]">
-                        <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-sky-700">
-                          Current keyword fallback
-                        </p>
-                        <p className="mt-1 text-xs leading-5 text-[var(--fg-muted)]">
-                          These sites are active now through the keyword rule. Copy them only if you want to pin this exact title to the same list.
-                        </p>
-                      </div>
-                      <button
-                        onClick={() => setDomainsInput(currentEffectiveDomainsValue)}
-                        className="rounded-full border border-[rgba(59,130,246,0.18)] bg-white px-3 py-1.5 text-xs font-medium text-sky-700 transition hover:border-[rgba(59,130,246,0.26)] hover:bg-sky-50"
-                      >
-                        Copy current sites
-                      </button>
-                    </div>
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      {resolvedEvent.effectiveDomains.map((domain) => (
-                        <span
-                          key={domain}
-                          className="rounded-full border border-[rgba(148,163,184,0.2)] bg-white px-3 py-1.5 text-xs font-medium text-[var(--fg-text)]"
-                        >
-                          {domain}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                ) : null}
-                <textarea
-                  rows={4}
-                  value={domainsInput}
-                  onChange={(event) => setDomainsInput(event.target.value)}
-                  className="fg-input min-h-[132px] resize-none"
-                  placeholder="github.com, claude.ai, docs.google.com"
-                  autoFocus
-                />
-                <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-                  <p className="text-xs leading-5 text-[var(--fg-muted)]">
-                    Enter domains separated by commas. Subdomains are allowed automatically by the block rule.
-                  </p>
-                  {unrestrictedBadgeLabel ? (
-                    <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-emerald-700">
-                      {unrestrictedBadgeLabel}
-                    </span>
-                  ) : null}
-                </div>
-                {error && <p className="mt-3 text-xs text-rose-600">{error}</p>}
-                <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-                  <div className="flex gap-2">
-                    <button
-                      onClick={async () => {
-                        setError('');
-                        onSavingChange(true);
-                        const result = await upsertEventRule(
-                          resolvedEvent.event.title,
-                          splitDomains(domainsInput),
-                          {
-                            tagKey: tagKey || null,
-                            secondaryTagKeys,
-                            difficultyOverride: parseDifficultyRank(difficultyRank),
-                          },
-                        );
-                        onSavingChange(false);
-                        if (!result.ok) {
-                          setError(result.error ?? 'Unable to save Event Rule.');
-                          return;
-                        }
-                        setEditing(false);
-                        await onSaved();
-                      }}
-                      disabled={savingRule}
-                      className="fg-button-primary"
-                    >
-                      {savingRule ? 'Saving…' : saveButtonLabel}
-                    </button>
-                    <button
-                      onClick={() => {
-                        setDomainsInput(currentDomainsValue);
-                        setTagKey(resolvedEvent.tagKey ?? '');
-                        setSecondaryTagKeys(resolvedEvent.secondaryTagKeys);
-                        setDifficultyRank(resolvedEvent.difficultyRank ? String(resolvedEvent.difficultyRank) : '');
-                        setError('');
-                        setEditing(false);
-                      }}
-                      className="fg-button-secondary"
-                    >
-                      Cancel
-                    </button>
-                  </div>
-
-                  {exactRuleExists && (
-                    <button
-                      onClick={async () => {
-                        await removeEventRule(resolvedEvent.event.title);
-                        await onSaved();
-                      }}
-                      className="text-sm font-medium text-rose-600 transition hover:text-rose-700"
-                    >
-                      {hasUnrestrictedOverride ? 'Delete unrestricted override' : 'Remove exact rule'}
-                    </button>
-                  )}
-                </div>
-                </>
-              ) : (
-                <div>
-                  {displayedDomains.length > 0 ? (
-                    <>
-                    {keywordFallbackActive ? (
-                      <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--fg-muted)]">
-                        From keyword fallback
-                      </p>
-                    ) : null}
-                    <div className="flex flex-wrap gap-2">
-                      {displayedDomains.map((domain) => (
-                      <span
-                        key={domain}
-                        className="rounded-full border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-3 py-1.5 text-xs font-medium text-[var(--fg-text)]"
-                      >
-                        {domain}
-                      </span>
-                      ))}
-                    </div>
-                    {keywordFallbackActive ? (
-                      <p className="mt-3 text-xs leading-5 text-[var(--fg-muted)]">
-                        This title is still following the shared keyword rule. Create an exact rule only if you want this event title to stop inheriting those sites.
-                      </p>
-                    ) : null}
-                    </>
-                  ) : hasUnrestrictedOverride ? (
-                    <p className="text-sm leading-6 text-[var(--fg-muted)]">
-                      This exact-title override keeps the event unrestricted.
-                      {resolvedEvent.fallbackKeyword
-                        ? ` Keyword fallback "${resolvedEvent.fallbackKeyword}" will stay off until you delete the override.`
-                        : ''}
-                    </p>
-                  ) : (
-                    <p className="text-sm text-[var(--fg-muted)]">No domains saved yet.</p>
-                  )}
-                  {exactRuleExists ? (
-                    <button
-                      onClick={async () => {
-                        await removeEventRule(resolvedEvent.event.title);
-                        await onSaved();
-                      }}
-                      className="mt-4 text-sm font-medium text-rose-600 transition hover:text-rose-700"
-                    >
-                      {hasUnrestrictedOverride ? 'Delete unrestricted override' : 'Remove exact rule'}
-                    </button>
-                  ) : null}
-                </div>
-              )}
-            </div>
-
-            </div>
-
-            <div className="space-y-4">
-              <div className="rounded-lg border border-[rgba(148,163,184,0.16)] bg-white px-4 py-4 shadow-sm">
-                <div className="mb-3">
-                  <p className="text-sm font-medium text-[var(--fg-text)]">Routine</p>
-                  <p className="mt-1 text-xs leading-5 text-[var(--fg-muted)]">
-                    Occurrence checklist from Routines (right rail). This applies only to this calendar block, not every event with the same title.
-                  </p>
-                </div>
-                {extendedTaskAssignment ? (
-                  <div className="space-y-3">
-                    <div className="min-w-0">
-                      <p className="text-sm font-semibold text-[var(--fg-text)]">{extendedTaskAssignment.setTitle}</p>
-                      <p className="mt-0.5 text-xs text-[var(--fg-muted)]">
-                        {extendedTaskAssignment.items.length} linked step
-                        {extendedTaskAssignment.items.length === 1 ? '' : 's'}
-                      </p>
-                    </div>
-                    <div className="max-h-[220px] space-y-1.5 overflow-y-auto rounded-md border border-[rgba(148,163,184,0.14)] bg-[var(--fg-panel-soft)] px-2.5 py-2">
-                      {extendedTaskAssignment.items.slice(0, 12).map((item, index) => (
-                        <div key={item.id} className="flex items-start justify-between gap-2 text-[11px] leading-snug">
-                          <span
-                            className={`min-w-0 flex-1 ${
-                              item.completedAt !== null ? 'text-emerald-800 line-through' : 'text-[var(--fg-text)]'
-                            }`}
-                          >
-                            <span className="font-semibold text-[var(--fg-muted)]">{index + 1}.</span> {item.label}
-                          </span>
-                          <a
-                            href={item.url}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="flex-shrink-0 font-medium text-[var(--fg-accent)]"
-                          >
-                            Open
-                          </a>
-                        </div>
-                      ))}
-                      {extendedTaskAssignment.items.length > 12 ? (
-                        <p className="text-[10px] text-[var(--fg-muted)]">
-                          +{extendedTaskAssignment.items.length - 12} more steps — scroll or use the workspace rail for the full list.
-                        </p>
-                      ) : null}
-                    </div>
-                    <button
-                      type="button"
-                      disabled={removingExtendedTask}
-                      onClick={async () => {
-                        setRemovingExtendedTask(true);
-                        try {
-                          await onRemoveExtendedTaskAssignment(resolvedEvent.event.id);
-                          await onSaved();
-                        } finally {
-                          setRemovingExtendedTask(false);
-                        }
-                      }}
-                      className="w-full rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-[11px] font-semibold text-rose-700 transition hover:bg-rose-100 disabled:opacity-50"
-                    >
-                      {removingExtendedTask ? 'Removing…' : 'Remove routine from this occurrence'}
-                    </button>
-                  </div>
-                ) : (
-                  <p className="text-sm leading-6 text-[var(--fg-muted)]">
-                    No routine linked yet. Drag a routine card from <strong>Routines</strong> onto this event on the calendar.
-                  </p>
-                )}
-              </div>
-
-              <div className="rounded-lg border border-[rgba(148,163,184,0.16)] bg-white px-4 py-4 shadow-sm">
-              <div className="mb-3 flex items-center justify-between gap-3">
-                <div>
-                  <p className="text-sm font-medium text-[var(--fg-text)]">Launch page</p>
-                  <p className="mt-1 text-xs leading-5 text-[var(--fg-muted)]">
-                    Save one exact task URL for this calendar occurrence. Window can bring that page forward automatically when the block starts.
-                  </p>
-                </div>
-                {!editingLaunchTarget && (
-                  <button
-                    onClick={() => {
-                      setLaunchUrlInput(currentLaunchUrlValue);
-                      setLaunchError('');
-                      setEditingLaunchTarget(true);
-                    }}
-                    className="fg-button-ghost"
-                  >
-                    {hasLaunchTarget ? 'Edit' : 'Add'}
-                  </button>
-                )}
-              </div>
-
-              {editingLaunchTarget ? (
-                <>
-                  <input
-                    type="url"
-                    value={launchUrlInput}
-                    onChange={(event) => setLaunchUrlInput(event.target.value)}
-                    className="fg-input"
-                    placeholder="https://leetcode.com/problems/two-sum/"
-                    autoFocus={!editing}
-                  />
-                  <p className="mt-3 text-xs leading-5 text-[var(--fg-muted)]">
-                    Exact `http://` or `https://` only. This launch page is saved for this event occurrence only and does not create an exact Event Rule.
-                  </p>
-                  {launchError && <p className="mt-3 text-xs text-rose-600">{launchError}</p>}
-                  <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-                    <div className="flex gap-2">
-                      <button
-                        onClick={async () => {
-                          setLaunchError('');
-                          setSavingLaunchTarget(true);
-                          const result = await upsertEventLaunchTarget(
-                            resolvedEvent.event,
-                            launchUrlInput,
-                          );
-                          setSavingLaunchTarget(false);
-                          if (!result.ok) {
-                            setLaunchError(result.error ?? 'Unable to save launch page.');
-                            return;
-                          }
-                          setEditingLaunchTarget(false);
-                          await onSaved();
-                        }}
-                        disabled={savingLaunchTarget}
-                        className="fg-button-primary"
-                      >
-                        {savingLaunchTarget ? 'Saving…' : hasLaunchTarget ? 'Save launch page' : 'Add launch page'}
-                      </button>
-                      <button
-                        onClick={() => {
-                          setLaunchUrlInput(currentLaunchUrlValue);
-                          setLaunchError('');
-                          setEditingLaunchTarget(false);
-                        }}
-                        className="fg-button-secondary"
-                      >
-                        Cancel
-                      </button>
-                    </div>
-
-                    {hasLaunchTarget ? (
-                      <button
-                        onClick={async () => {
-                          await removeEventLaunchTarget(resolvedEvent.event.id);
-                          setLaunchError('');
-                          setEditingLaunchTarget(false);
-                          await onSaved();
-                        }}
-                        className="text-sm font-medium text-rose-600 transition hover:text-rose-700"
-                      >
-                        Remove launch page
-                      </button>
-                    ) : null}
-                  </div>
-                </>
-              ) : hasLaunchTarget ? (
-                <div className="space-y-3">
-                  <div className="rounded-md border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-3.5 py-3">
-                    <p className="truncate text-sm font-medium text-[var(--fg-text)]">
-                      {launchTargetHost}
-                    </p>
-                    <p className="mt-1 break-all text-xs leading-5 text-[var(--fg-muted)]">
-                      {launchTarget.launchUrl}
-                    </p>
-                  </div>
-                  <p className="text-xs leading-5 text-[var(--fg-muted)]">
-                    This launch page stays tied to this occurrence only. Saving it does not change the title-wide allowlist rule.
-                  </p>
-                </div>
-              ) : (
-                <p className="text-sm text-[var(--fg-muted)]">No launch page saved for this occurrence.</p>
-              )}
-              </div>
-
-            </div>
-
-          </div>
-        </div>
-      </>
-    );
-  },
-);
-
-EventRuleTooltip.displayName = 'EventRuleTooltip';
-
-function ExtendedTaskListPreviewModal({
-  preview,
-  onClose,
-}: {
-  preview: ExtendedTaskListPreview | null;
-  onClose: () => void;
-}): React.JSX.Element | null {
-  useEffect(() => {
-    if (!preview) return;
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose();
-    };
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
-  }, [preview, onClose]);
-
-  if (!preview) return null;
-
-  return (
-    <>
-      <div
-        className="fixed inset-0 z-[60] bg-[rgba(9,14,30,0.14)] backdrop-blur-[2px]"
-        onClick={onClose}
-        aria-hidden="true"
-      />
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="extended-task-list-preview-title"
-        className="fixed left-1/2 top-1/2 z-[70] w-[min(440px,calc(100vw-28px))] max-h-[min(520px,calc(100vh-40px))] -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-xl border border-white/80 bg-[rgba(255,255,255,0.98)] shadow-2xl ring-1 ring-[rgba(148,163,184,0.12)]"
-        onClick={(event) => event.stopPropagation()}
-      >
-        <div className="flex items-start justify-between gap-3 border-b border-[var(--fg-border)] px-4 py-3">
-          <div className="min-w-0">
-            <h3 id="extended-task-list-preview-title" className="text-sm font-semibold text-[var(--fg-text)]">
-              {preview.title}
-            </h3>
-            {preview.subtitle ? (
-              <p className="mt-0.5 text-xs text-[var(--fg-muted)]">{preview.subtitle}</p>
-            ) : null}
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="flex-shrink-0 rounded-full border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-3 py-1.5 text-xs font-medium text-[var(--fg-muted)] transition hover:bg-white hover:text-[var(--fg-text)]"
-          >
-            Close
-          </button>
-        </div>
-        <ul className="max-h-[min(420px,calc(100vh-120px))] space-y-0 overflow-y-auto px-2 py-2">
-          {preview.rows.map((row, index) => (
-            <li
-              key={row.id}
-              className="flex items-start justify-between gap-2 rounded-md px-2 py-1.5 text-xs leading-snug text-[var(--fg-text)] hover:bg-[var(--fg-panel-soft)]"
-            >
-              <span className="min-w-0 flex-1">
-                <span className="font-semibold text-[var(--fg-muted)]">{index + 1}.</span> {row.label}
-              </span>
-              {row.url ? (
-                <a
-                  href={row.url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="flex-shrink-0 font-medium text-[var(--fg-accent)]"
-                  onClick={(event) => event.stopPropagation()}
-                >
-                  Open
-                </a>
-              ) : null}
-            </li>
-          ))}
-        </ul>
-      </div>
-    </>
-  );
-}
-
-function ExtendedTaskDragGrip({
-  onDragStart,
-  onDragEnd,
-}: {
-  onDragStart: (event: React.DragEvent<HTMLElement>) => void;
-  onDragEnd: () => void;
-}): React.JSX.Element {
-  const dots = [
-    [3, 3],
-    [11, 3],
-    [3, 9],
-    [11, 9],
-    [3, 15],
-    [11, 15],
-  ] as const;
-  return (
-    <div
-      draggable
-      onDragStart={onDragStart}
-      onDragEnd={onDragEnd}
-      className="mt-0.5 inline-flex cursor-grab select-none items-center justify-center rounded-md p-1 text-[var(--fg-muted)] active:cursor-grabbing"
-      title="Drag onto a calendar occurrence"
-      aria-label="Drag onto a calendar occurrence"
-    >
-      <svg width="14" height="18" viewBox="0 0 14 18" aria-hidden="true">
-        {dots.map(([cx, cy], i) => (
-          <circle key={i} cx={cx} cy={cy} r="2" fill="currentColor" />
-        ))}
-      </svg>
-    </div>
-  );
-}
-
-function ExtendedTaskLibraryCard({
-  entry,
-  dragging,
-  canApply,
-  applyLabel,
-  className,
-  onApply,
-  onDragStart,
-  onDragEnd,
-  onDuplicate,
-  onEdit,
-  onDelete,
-  onPreviewAllItems,
-}: {
-  entry: ExtendedTaskLibraryEntry;
-  dragging: boolean;
-  canApply: boolean;
-  applyLabel: string;
-  className?: string;
-  onApply?: () => void;
-  onDragStart: (entry: ExtendedTaskLibraryEntry, event: React.DragEvent<HTMLElement>) => void;
-  onDragEnd: () => void;
-  onDuplicate?: () => void;
-  onEdit?: () => void;
-  onDelete?: () => void;
-  onPreviewAllItems?: (entry: ExtendedTaskLibraryEntry) => void;
-}): React.JSX.Element {
-  return (
-    <div
-      className={`${className ?? ''} rounded-md border px-3 py-2.5 transition ${
-        dragging
-          ? 'border-blue-300 bg-blue-50/70'
-          : 'border-[var(--fg-border)] bg-[var(--fg-panel-soft)] hover:border-blue-200'
-      }`}
-    >
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex min-w-0 items-start gap-3">
-          <ExtendedTaskDragGrip
-            onDragStart={(event) => onDragStart(entry, event)}
-            onDragEnd={onDragEnd}
-          />
-          <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-2">
-              <p className="truncate text-sm font-medium text-[var(--fg-text)]">{entry.title}</p>
-              <span className="rounded-full border border-[var(--fg-border)] bg-white px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--fg-muted)]">
-                {entry.source === 'built-in' ? 'Default' : 'Editable'}
-              </span>
-            </div>
-            <p className="mt-1 text-xs leading-5 text-[var(--fg-muted)]">
-              {entry.items.length} link{entry.items.length === 1 ? '' : 's'} · drag onto a calendar occurrence
-            </p>
-          </div>
-        </div>
-
-        <div className="flex flex-shrink-0 flex-wrap items-center justify-end gap-2">
-          {canApply && onApply ? (
-            <button onClick={onApply} className="fg-button-secondary px-3 py-1.5 text-[11px]">
-              {applyLabel}
-            </button>
-          ) : null}
-          {entry.source === 'built-in' && onDuplicate ? (
-            <button onClick={onDuplicate} className="fg-button-ghost px-3 py-1.5 text-[11px]">
-              Duplicate
-            </button>
-          ) : null}
-          {entry.source === 'user' && onEdit ? (
-            <button onClick={onEdit} className="fg-button-ghost px-3 py-1.5 text-[11px]">
-              Edit
-            </button>
-          ) : null}
-          {entry.source === 'user' && onDelete ? (
-            <button onClick={onDelete} className="fg-button-ghost px-3 py-1.5 text-[11px] text-rose-600">
-              Delete
-            </button>
-          ) : null}
-        </div>
-      </div>
-
-      <div className="mt-3 space-y-1">
-        {entry.items.slice(0, 3).map((item, index) => (
-          <p key={item.id} className="truncate text-xs text-[var(--fg-muted)]">
-            {index + 1}. {item.label}
-          </p>
-        ))}
-        {entry.items.length > 3 && onPreviewAllItems ? (
-          <button
-            type="button"
-            title="View full link list"
-            aria-label={`View all ${entry.items.length} links in this set`}
-            onClick={() => onPreviewAllItems(entry)}
-            className="text-left text-xs font-medium text-[var(--fg-accent)] underline decoration-[var(--fg-accent)]/40 underline-offset-2 transition hover:decoration-[var(--fg-accent)]"
-          >
-            +{entry.items.length - 3} more
-          </button>
-        ) : entry.items.length > 3 ? (
-          <p className="text-xs text-[var(--fg-muted)]">+{entry.items.length - 3} more</p>
-        ) : null}
-      </div>
-    </div>
-  );
-}
-
-function CalendarEventChip({
-  eventId,
-  title,
-  timeText,
-  backgroundColor,
-  foregroundColor,
-  onQuickOpen,
-}: {
-  eventId: string;
-  title: string;
-  timeText: string;
-  backgroundColor: string;
-  foregroundColor: string;
-  onQuickOpen: (eventId: string, element: HTMLElement) => void;
-}): React.JSX.Element {
-  return (
-    <div
-      className="fg-event-chip cursor-pointer transition duration-150 hover:brightness-[1.03]"
-      style={{ background: backgroundColor, color: foregroundColor }}
-      onPointerDownCapture={(event) => {
-        onQuickOpen(eventId, event.currentTarget as HTMLElement);
-      }}
-    >
-      {timeText && <span className="fg-event-time">{timeText}</span>}
-      <span className="fg-event-title">{title}</span>
-    </div>
-  );
-}
-
-function RuleListItem({
-  title,
-  subtitle,
-  domains,
-  tagLabel,
-  difficultyRank,
-  isUnrestrictedOverride = false,
-  onDelete,
-}: {
-  title: string;
-  subtitle: string;
-  domains: string[];
-  tagLabel?: string | null;
-  difficultyRank?: DifficultyRank | null;
-  isUnrestrictedOverride?: boolean;
-  onDelete: () => void;
-}): React.JSX.Element {
-  return (
-    <div className="rounded-md border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-3 py-2.5">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="text-sm font-medium text-[var(--fg-text)]">{title}</p>
-          <p className="text-xs text-[var(--fg-muted)]">{subtitle}</p>
-          {(tagLabel || difficultyRank) && (
-            <div className="mt-2 flex flex-wrap gap-2">
-              {tagLabel ? (
-                <span className="rounded-full border border-[var(--fg-border)] bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--fg-muted)]">
-                  {tagLabel}
-                </span>
-              ) : null}
-              {difficultyRank ? (
-                <span className="rounded-full border border-[var(--fg-border)] bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--fg-muted)]">
-                  D{difficultyRank}
-                </span>
-              ) : null}
-            </div>
-          )}
-        </div>
-        <button onClick={onDelete} className="text-sm font-medium text-rose-600 transition hover:text-rose-700">
-          Delete
-        </button>
-      </div>
-      <div className="mt-3 flex flex-wrap gap-2">
-        {domains.length > 0 ? (
-          domains.map((domain) => (
-            <span
-              key={domain}
-              className="rounded-full border border-[var(--fg-border)] bg-white px-2.5 py-1 text-xs font-medium text-[var(--fg-text)]"
-            >
-              {domain}
-            </span>
-          ))
-        ) : isUnrestrictedOverride ? (
-          <span className="text-xs text-[var(--fg-muted)]">Keeps this event title unrestricted.</span>
-        ) : (
-          <span className="text-xs text-[var(--fg-muted)]">No allowed domains configured.</span>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function KeywordRuleListItem({
-  rule,
-  taskTags,
-  onTagChange,
-  onDelete,
-}: {
-  rule: KeywordRule;
-  taskTags: TaskTag[];
-  onTagChange: (tagKey: string) => void;
-  onDelete: () => void;
-}): React.JSX.Element {
-  return (
-    <div className="rounded-md border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-3 py-2.5">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className="text-sm font-medium text-[var(--fg-text)]">{rule.keyword}</p>
-          <p className="text-xs text-[var(--fg-muted)]">Fallback keyword rule</p>
-        </div>
-        <button onClick={onDelete} className="text-sm font-medium text-rose-600 transition hover:text-rose-700">
-          Delete
-        </button>
-      </div>
-
-      <div className="mt-3 grid gap-3 md:grid-cols-[minmax(0,1fr),180px]">
-        <div className="flex flex-wrap gap-2">
-          {rule.domains.length > 0 ? (
-            rule.domains.map((domain) => (
-              <span
-                key={domain}
-                className="rounded-full border border-[var(--fg-border)] bg-white px-2.5 py-1 text-xs font-medium text-[var(--fg-text)]"
-              >
-                {domain}
-              </span>
-            ))
-          ) : (
-            <span className="text-xs text-[var(--fg-muted)]">No allowed domains configured.</span>
-          )}
-        </div>
-
-        <div>
-          <p className="mb-1 text-[11px] font-medium uppercase tracking-[0.12em] text-[var(--fg-muted)]">
-            Linked tag
-          </p>
-          <select
-            value={rule.tagKey ?? ''}
-            onChange={(event) => onTagChange(event.target.value)}
-            className="fg-select w-full"
-          >
-            <option value="">No linked tag</option>
-            {getSelectableTaskTags(taskTags, [rule.tagKey ?? '']).map((tag) => (
-              <option key={tag.key} value={tag.key}>
-                {tag.label}
-              </option>
-            ))}
-          </select>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function TagManager({
-  taskTags,
-  activeTaskTags,
-  tagReferenceKeys,
-  onSaveTag,
-  onToggleArchive,
-  onDeleteTag,
-}: {
-  taskTags: TaskTag[];
-  activeTaskTags: TaskTag[];
-  tagReferenceKeys: Set<string>;
-  onSaveTag: (input: {
-    existingKey?: string | null;
-    label: string;
-    color: string;
-    aliases: string[];
-    baselineDifficulty: DifficultyRank;
-    alignedDomains: string[];
-    supportiveDomains: string[];
-    archivedAt?: string | null;
-  }) => Promise<{ ok: boolean; error?: string }>;
-  onToggleArchive: (tagKey: string, archived: boolean) => Promise<void>;
-  onDeleteTag: (tagKey: string) => Promise<{ ok: boolean; error?: string }>;
-}): React.JSX.Element {
-  const [createOpen, setCreateOpen] = useState(false);
-  const [query, setQuery] = useState('');
-  const [showArchived, setShowArchived] = useState(false);
-  const [expandedKey, setExpandedKey] = useState<string | null>(null);
-  const [label, setLabel] = useState('');
-  const [color, setColor] = useState('#2563eb');
-  const [aliases, setAliases] = useState('');
-  const [baselineDifficulty, setBaselineDifficulty] = useState<string>('3');
-  const [alignedDomains, setAlignedDomains] = useState('');
-  const [supportiveDomains, setSupportiveDomains] = useState('');
-  const [error, setError] = useState('');
-
-  const filteredTags = useMemo(() => {
-    const normalizedQuery = query.trim().toLowerCase();
-    return [...taskTags]
-      .filter((tag) => (showArchived ? true : tag.archivedAt === null))
-      .filter((tag) => {
-        if (!normalizedQuery) return true;
-        const haystack = [
-          tag.label,
-          tag.key,
-          ...tag.aliases,
-          ...tag.alignedDomains,
-          ...tag.supportiveDomains,
-        ].join(' ').toLowerCase();
-        return haystack.includes(normalizedQuery);
-      })
-      .sort(
-        (left, right) =>
-          Number(Boolean(left.archivedAt)) - Number(Boolean(right.archivedAt)) ||
-          left.label.localeCompare(right.label),
-      );
-  }, [query, showArchived, taskTags]);
-
-  return (
-    <section className="fg-card p-4">
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <h2 className="text-lg font-semibold tracking-[-0.02em] text-[var(--fg-text)]">Tag Manager</h2>
-          <InfoTip text="Manage reusable task tags, their default difficulty, and the domains Window should treat as aligned or supportive." />
-        </div>
-        <div className="text-xs text-[var(--fg-muted)]">
-          Active tags: {activeTaskTags.length} · Archived tags: {taskTags.length - activeTaskTags.length}
-        </div>
-      </div>
-
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-1 flex-wrap items-center gap-2">
-          <input
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search tags, keys, domains…"
-            className="fg-input w-[min(420px,100%)]"
-          />
-          <button
-            className={`fg-button-secondary px-3 py-2 text-sm ${showArchived ? 'opacity-100' : 'opacity-80'}`}
-            onClick={() => setShowArchived((value) => !value)}
-          >
-            {showArchived ? 'Showing archived' : 'Hide archived'}
-          </button>
-        </div>
-        <button
-          className="fg-button-primary px-4 py-2.5 text-sm"
-          onClick={() => {
-            setCreateOpen((value) => !value);
-            setExpandedKey(null);
-          }}
-        >
-          {createOpen ? 'Close' : 'New tag'}
-        </button>
-      </div>
-
-      {createOpen ? (
-        <div className="mb-4 rounded-lg border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] p-3">
-          <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-[minmax(0,1.1fr),140px,160px]">
-            <input value={label} onChange={(event) => setLabel(event.target.value)} placeholder="Research ops" className="fg-input" />
-            <input value={color} onChange={(event) => setColor(event.target.value)} placeholder="#2563eb" className="fg-input" />
-            <select value={baselineDifficulty} onChange={(event) => setBaselineDifficulty(event.target.value)} className="fg-select">
-              <option value="1">1 · Routine</option>
-              <option value="2">2 · Light</option>
-              <option value="3">3 · Standard</option>
-              <option value="5">5 · Demanding</option>
-              <option value="8">8 · Deep</option>
-            </select>
-          </div>
-          <div className="mt-2 grid gap-2 md:grid-cols-3">
-            <input value={aliases} onChange={(event) => setAliases(event.target.value)} placeholder="aliases: research, analyze" className="fg-input" />
-            <input value={alignedDomains} onChange={(event) => setAlignedDomains(event.target.value)} placeholder="aligned: github.com, figma.com" className="fg-input" />
-            <input value={supportiveDomains} onChange={(event) => setSupportiveDomains(event.target.value)} placeholder="supportive: docs.google.com" className="fg-input" />
-          </div>
-          {error ? <p className="mt-2 text-xs text-rose-600">{error}</p> : null}
-          <div className="mt-2 flex justify-end">
-            <button
-              className="fg-button-primary px-4 py-2.5 text-sm"
-              onClick={async () => {
-                setError('');
-                const result = await onSaveTag({
-                  label,
-                  color,
-                  aliases: splitCommaList(aliases),
-                  baselineDifficulty: parseDifficultyRank(baselineDifficulty) ?? 3,
-                  alignedDomains: splitDomains(alignedDomains),
-                  supportiveDomains: splitDomains(supportiveDomains),
-                  archivedAt: null,
-                });
-                if (!result.ok) {
-                  setError(result.error ?? 'Unable to save tag.');
-                  return;
-                }
-                setLabel('');
-                setColor('#2563eb');
-                setAliases('');
-                setAlignedDomains('');
-                setSupportiveDomains('');
-                setBaselineDifficulty('3');
-                setCreateOpen(false);
-              }}
-            >
-              Create Tag
-            </button>
-          </div>
-        </div>
-      ) : null}
-
-      <div className="space-y-2">
-        {filteredTags.length === 0 ? (
-          <EmptyCard text="No matching tags." />
-        ) : (
-          filteredTags.map((tag) => (
-            <TagManagerRow
-              key={tag.key}
-              tag={tag}
-              isReferenced={tagReferenceKeys.has(tag.key)}
-              isExpanded={expandedKey === tag.key}
-              onToggleExpanded={() => setExpandedKey((value) => (value === tag.key ? null : tag.key))}
-              onSaveTag={onSaveTag}
-              onToggleArchive={onToggleArchive}
-              onDeleteTag={onDeleteTag}
-            />
-          ))
-        )}
-      </div>
-    </section>
-  );
-}
-
-function TagManagerRow({
-  tag,
-  isReferenced,
-  isExpanded,
-  onToggleExpanded,
-  onSaveTag,
-  onToggleArchive,
-  onDeleteTag,
-}: {
-  tag: TaskTag;
-  isReferenced: boolean;
-  isExpanded: boolean;
-  onToggleExpanded: () => void;
-  onSaveTag: (input: {
-    existingKey?: string | null;
-    label: string;
-    color: string;
-    aliases: string[];
-    baselineDifficulty: DifficultyRank;
-    alignedDomains: string[];
-    supportiveDomains: string[];
-    archivedAt?: string | null;
-  }) => Promise<{ ok: boolean; error?: string }>;
-  onToggleArchive: (tagKey: string, archived: boolean) => Promise<void>;
-  onDeleteTag: (tagKey: string) => Promise<{ ok: boolean; error?: string }>;
-}): React.JSX.Element {
-  const [label, setLabel] = useState(tag.label);
-  const [color, setColor] = useState(tag.color);
-  const [aliases, setAliases] = useState(tag.aliases.join(', '));
-  const [baselineDifficulty, setBaselineDifficulty] = useState<string>(String(tag.baselineDifficulty));
-  const [alignedDomains, setAlignedDomains] = useState(tag.alignedDomains.join(', '));
-  const [supportiveDomains, setSupportiveDomains] = useState(tag.supportiveDomains.join(', '));
-  const [error, setError] = useState('');
-
-  useEffect(() => {
-    setLabel(tag.label);
-    setColor(tag.color);
-    setAliases(tag.aliases.join(', '));
-    setBaselineDifficulty(String(tag.baselineDifficulty));
-    setAlignedDomains(tag.alignedDomains.join(', '));
-    setSupportiveDomains(tag.supportiveDomains.join(', '));
-    setError('');
-  }, [tag]);
-
-  return (
-    <div className="rounded-md border border-[var(--fg-border)] bg-[var(--fg-panel-soft)]">
-      <div className="grid grid-cols-[minmax(0,1fr),auto] items-center gap-3 px-3 py-2.5">
-        <button className="min-w-0 text-left" onClick={onToggleExpanded}>
-          <div className="flex items-center gap-2">
-            <span className="h-2.5 w-2.5 rounded-full" style={{ background: tag.color }} />
-            <p className="truncate text-sm font-medium text-[var(--fg-text)]">{tag.label}</p>
-            <span className="hidden text-xs text-[var(--fg-muted)] md:inline">
-              `{tag.key}` {tag.archivedAt ? '· Archived' : ''} {isReferenced ? '· In use' : ''}
-            </span>
-          </div>
-          <p className="mt-0.5 text-xs text-[var(--fg-muted)]">
-            Difficulty {tag.baselineDifficulty} · {tag.alignedDomains.length} aligned · {tag.supportiveDomains.length} supportive · {tag.aliases.length} alias{tag.aliases.length === 1 ? '' : 'es'}
-          </p>
-        </button>
-        <div className="flex flex-wrap items-center justify-end gap-2">
-          <button className="fg-button-secondary px-3 py-2 text-sm" onClick={onToggleExpanded}>
-            {isExpanded ? 'Close' : 'Edit'}
-          </button>
-          <button
-            className="fg-button-secondary px-3 py-2 text-sm"
-            onClick={() => onToggleArchive(tag.key, tag.archivedAt === null)}
-          >
-            {tag.archivedAt ? 'Unarchive' : 'Archive'}
-          </button>
-          <button
-            className="fg-button-ghost px-3 py-2 text-sm text-rose-600"
-            onClick={async () => {
-              const result = await onDeleteTag(tag.key);
-              if (!result.ok) {
-                setError(result.error ?? 'Unable to delete tag.');
-              }
-            }}
-          >
-            Delete
-          </button>
-        </div>
-      </div>
-
-      {isExpanded ? (
-        <div className="border-t border-[var(--fg-border)] px-3 py-3">
-          <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-[minmax(0,1.1fr),140px,160px]">
-            <input value={label} onChange={(event) => setLabel(event.target.value)} className="fg-input" />
-            <input value={color} onChange={(event) => setColor(event.target.value)} className="fg-input" />
-            <select value={baselineDifficulty} onChange={(event) => setBaselineDifficulty(event.target.value)} className="fg-select">
-              <option value="1">1 · Routine</option>
-              <option value="2">2 · Light</option>
-              <option value="3">3 · Standard</option>
-              <option value="5">5 · Demanding</option>
-              <option value="8">8 · Deep</option>
-            </select>
-          </div>
-          <div className="mt-2 grid gap-2 md:grid-cols-3">
-            <input value={aliases} onChange={(event) => setAliases(event.target.value)} className="fg-input" />
-            <input value={alignedDomains} onChange={(event) => setAlignedDomains(event.target.value)} className="fg-input" />
-            <input value={supportiveDomains} onChange={(event) => setSupportiveDomains(event.target.value)} className="fg-input" />
-          </div>
-          {error ? <p className="mt-2 text-xs text-rose-600">{error}</p> : null}
-          <div className="mt-2 flex justify-end">
-            <button
-              className="fg-button-primary px-4 py-2.5 text-sm"
-              onClick={async () => {
-                setError('');
-                const result = await onSaveTag({
-                  existingKey: tag.key,
-                  label,
-                  color,
-                  aliases: splitCommaList(aliases),
-                  baselineDifficulty: parseDifficultyRank(baselineDifficulty) ?? 3,
-                  alignedDomains: splitDomains(alignedDomains),
-                  supportiveDomains: splitDomains(supportiveDomains),
-                  archivedAt: tag.archivedAt,
-                });
-                if (!result.ok) {
-                  setError(result.error ?? 'Unable to save tag.');
-                }
-              }}
-            >
-              Save Tag
-            </button>
-          </div>
-        </div>
-      ) : null}
-    </div>
-  );
-}
-
-function AnalyticsWorkspace({
-  analyticsSnapshot,
-  taskTags,
-  onRefresh,
-  onSaveOverride,
-}: {
-  analyticsSnapshot: AnalyticsSnapshot;
-  taskTags: TaskTag[];
-  onRefresh: () => void;
-  onSaveOverride: (
-    focusSessionId: string,
-    tagKey: string | null,
-    difficultyRank: DifficultyRank | null,
-  ) => void;
-}): React.JSX.Element {
-  const [metricsRange, setMetricsRange] = useState<'7d' | '30d'>('7d');
-  const [consumptionRange, setConsumptionRange] = useState<'7d' | '30d' | '90d' | '365d'>('7d');
-
-  const summary = metricsRange === '30d' ? analyticsSnapshot.summary30d : analyticsSnapshot.summary7d;
-  const recentSessions = analyticsSnapshot.recentSessions.slice(0, 12);
-  const consumptionPoints = useMemo(() => {
-    if (consumptionRange === '30d') return analyticsSnapshot.consumptionTimeline30d;
-    if (consumptionRange === '90d') return analyticsSnapshot.consumptionTimeline90d;
-    if (consumptionRange === '365d') return analyticsSnapshot.consumptionTimeline365d;
-    return analyticsSnapshot.consumptionTimeline7d;
-  }, [analyticsSnapshot, consumptionRange]);
-
-  const domainBreakdown = useMemo(() => {
-    if (consumptionRange === '30d') return analyticsSnapshot.domainBreakdown30d;
-    if (consumptionRange === '90d') return analyticsSnapshot.domainBreakdown90d;
-    if (consumptionRange === '365d') return analyticsSnapshot.domainBreakdown365d;
-    return analyticsSnapshot.domainBreakdown7d;
-  }, [analyticsSnapshot, consumptionRange]);
-
-  return (
-    <div className="space-y-4">
-      <section className="fg-card p-4">
-        <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h2 className="text-lg font-semibold tracking-[-0.02em] text-[var(--fg-text)]">Analytics</h2>
-            <p className="mt-1 text-sm text-[var(--fg-muted)]">
-              Calendar-linked focus sessions, grouped by time quality, tags, and inferred difficulty.
-            </p>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="rounded-full border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] p-1">
-              <button
-                className={`rounded-full px-3 py-1 text-xs font-medium ${metricsRange === '7d' ? 'bg-white text-[var(--fg-text)]' : 'text-[var(--fg-muted)]'}`}
-                onClick={() => setMetricsRange('7d')}
-              >
-                7d
-              </button>
-              <button
-                className={`rounded-full px-3 py-1 text-xs font-medium ${metricsRange === '30d' ? 'bg-white text-[var(--fg-text)]' : 'text-[var(--fg-muted)]'}`}
-                onClick={() => setMetricsRange('30d')}
-              >
-                30d
-              </button>
-            </div>
-            <button onClick={onRefresh} className="fg-button-secondary px-3 py-2 text-sm">
-              Refresh Analytics
-            </button>
-          </div>
-        </div>
-
-        <div className="mb-3 grid gap-3 xl:grid-cols-[minmax(0,1.45fr),repeat(3,minmax(0,0.55fr))]">
-          <div className="rounded-md border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-3 py-2.5">
-            <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-[var(--fg-muted)]">
-              What We Track
-            </p>
-            <p className="mt-2 text-sm leading-6 text-[var(--fg-muted)]">
-              Window only scores time while a calendar event is active. Each minute is marked productive on allowed domains, supportive on helper domains, distracted on everything else, away when you go idle, and break while focus blocking is snoozed.
-            </p>
-          </div>
-          <AnalyticsMetricCard label="Sessions" value={String(summary.totalFocusSessions)} />
-          <AnalyticsMetricCard label="Break" value={formatMinutes(summary.breakMinutes)} />
-          <AnalyticsMetricCard label="Left early" value={String(summary.leftEarlyCount)} />
-        </div>
-
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-          <AnalyticsMetricCard label="Productive" value={formatMinutes(summary.productiveMinutes)} />
-          <AnalyticsMetricCard label="Supportive" value={formatMinutes(summary.supportiveMinutes)} />
-          <AnalyticsMetricCard label="Distracted" value={formatMinutes(summary.distractedMinutes)} />
-          <AnalyticsMetricCard label="Away" value={formatMinutes(summary.awayMinutes)} />
-        </div>
-      </section>
-
-      <section className="grid gap-4 xl:grid-cols-[minmax(0,1.08fr),minmax(0,0.92fr)]">
-        <div className="fg-card p-4">
-          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-            <div className="flex items-center gap-2">
-              <h3 className="text-sm font-semibold text-[var(--fg-text)]">Consumption graph</h3>
-              <InfoTip text="Daily lines built from recorded sites and pages during active focus blocks. Productive, supportive, and distracted time are shown separately." />
-            </div>
-            <div className="rounded-full border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] p-1">
-              {(['7d', '30d', '90d', '365d'] as const).map((range) => (
-                <button
-                  key={range}
-                  className={`rounded-full px-2.5 py-1 text-xs font-medium ${consumptionRange === range ? 'bg-white text-[var(--fg-text)]' : 'text-[var(--fg-muted)]'}`}
-                  onClick={() => setConsumptionRange(range)}
-                >
-                  {range}
-                </button>
-              ))}
-            </div>
-          </div>
-          <ConsumptionTimelineChart points={consumptionPoints} />
-        </div>
-
-        <div className="fg-card p-4">
-          <div className="mb-3 flex items-center gap-2">
-            <h3 className="text-sm font-semibold text-[var(--fg-text)]">Consumption map</h3>
-            <InfoTip text="Top domains come from local browsing telemetry during focus sessions. Domain breakdowns beyond 7 days are approximations built from compact daily rollups." />
-          </div>
-          <div className="space-y-3">
-            <ConsumptionBreakdownList items={domainBreakdown.slice(0, 8)} />
-            {consumptionRange === '7d' ? (
-              <div className="border-t border-[var(--fg-border)] pt-3">
-                <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-[var(--fg-muted)]">
-                  Domain tree
-                </p>
-                <div className="mt-2">
-                  <ConsumptionTreeView nodes={analyticsSnapshot.consumptionTree7d.slice(0, 8)} />
-                </div>
-              </div>
-            ) : (
-              <div className="rounded-md border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-3 py-2 text-xs text-[var(--fg-muted)]">
-                Domain tree is shown for 7d only (it requires full session-resolution domain history).
-              </div>
-            )}
-          </div>
-        </div>
-      </section>
-
-      <section className="grid gap-4 xl:grid-cols-[minmax(0,0.84fr),minmax(0,1.16fr)]">
-        <div className="space-y-4">
-          <div className="fg-card p-4">
-            <div className="mb-3 flex items-center gap-2">
-              <h3 className="text-sm font-semibold text-[var(--fg-text)]">Time by tag</h3>
-              <InfoTip text="Grouped by the primary task tag on each focus session so users can compare what categories actually get completed." />
-            </div>
-            <div className="space-y-2">
-              {analyticsSnapshot.tagBreakdown7d.length === 0 ? (
-                <EmptyCard text="No tagged focus sessions yet." />
-              ) : (
-                analyticsSnapshot.tagBreakdown7d.map((item) => (
-                  <div
-                    key={item.tagKey}
-                    className="rounded-[18px] border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-3.5 py-3"
-                  >
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="flex min-w-0 items-center gap-2">
-                        <span className="h-2.5 w-2.5 rounded-full" style={{ background: item.color }} />
-                        <p className="truncate text-sm font-medium text-[var(--fg-text)]">{item.label}</p>
-                      </div>
-                      <p className="text-xs text-[var(--fg-muted)]">{formatMinutes(item.productiveMinutes)}</p>
-                    </div>
-                    <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white">
-                      <div
-                        className="h-full rounded-full"
-                        style={{
-                          width: `${tagBreakdownWidth(item.productiveMinutes, analyticsSnapshot.tagBreakdown7d)}%`,
-                          background: item.color,
-                        }}
-                      />
-                    </div>
-                    <p className="mt-1 text-xs text-[var(--fg-muted)]">
-                      {item.sessions} session{item.sessions === 1 ? '' : 's'} · {formatMinutes(item.distractedMinutes)} distracted
-                    </p>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-
-          <div className="fg-card p-4">
-            <div className="mb-3 flex items-center gap-2">
-              <h3 className="text-sm font-semibold text-[var(--fg-text)]">Difficulty matrix</h3>
-              <InfoTip text="Difficulty is a five-rank scale. Focus score compares productive minutes against distracted and away time." />
-            </div>
-            <div className="space-y-2">
-              {analyticsSnapshot.difficultyBreakdown7d.length === 0 ? (
-                <EmptyCard text="No difficulty data yet." />
-              ) : (
-                analyticsSnapshot.difficultyBreakdown7d.map((item) => (
-                  <div
-                    key={item.difficultyRank}
-                    className="rounded-[18px] border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-3.5 py-3"
-                  >
-                    <div className="flex items-center justify-between gap-3">
-                      <p className="text-sm font-medium text-[var(--fg-text)]">Difficulty {item.difficultyRank}</p>
-                      <p className="text-xs text-[var(--fg-muted)]">{item.focusScore}% focus score</p>
-                    </div>
-                    <p className="mt-1 text-xs text-[var(--fg-muted)]">
-                      {formatMinutes(item.productiveMinutes)} productive · {formatMinutes(item.distractedMinutes)} distracted · {item.sessions} session{item.sessions === 1 ? '' : 's'}
-                    </p>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-        </div>
-
-        <div className="fg-card p-4">
-          <div className="mb-3 flex items-center gap-2">
-            <h3 className="text-sm font-semibold text-[var(--fg-text)]">Recent sessions</h3>
-            <InfoTip text="Override tag or difficulty here when Window inferred the wrong classification." />
-          </div>
-          <div className="space-y-3">
-            {recentSessions.length === 0 ? (
-              <EmptyCard text="No focus sessions recorded yet." />
-            ) : (
-              recentSessions.map((session) => (
-                <SessionAnalyticsRow
-                  key={session.id}
-                  session={session}
-                  taskTags={taskTags}
-                  onSaveOverride={onSaveOverride}
-                />
-              ))
-            )}
-          </div>
-        </div>
-      </section>
-    </div>
-  );
-}
-
-function AnalyticsMetricCard({
-  label,
-  value,
-}: {
-  label: string;
-  value: string;
-}): React.JSX.Element {
-  return (
-    <div className="rounded-[18px] border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-3.5 py-3">
-      <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-[var(--fg-muted)]">{label}</p>
-      <p className="mt-1.5 text-xl font-semibold tracking-[-0.03em] text-[var(--fg-text)]">{value}</p>
-    </div>
-  );
-}
-
-function ConsumptionTimelineChart({
-  points,
-}: {
-  points: ConsumptionTimelinePoint[];
-}): React.JSX.Element {
-  const containerRef = useRef<HTMLDivElement | null>(null);
-  const [hoverIndex, setHoverIndex] = useState<number | null>(null);
-  const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
-
-  const max = Math.max(
-    0,
-    ...points.map((point) =>
-      Math.max(point.productiveMinutes, point.supportiveMinutes, point.distractedMinutes),
-    ),
-  );
-
-  if (points.length === 0 || max <= 0) {
-    return <EmptyCard text="No page-level consumption has been recorded yet." />;
-  }
-
-  const chartWidth = 560;
-  const chartHeight = 180;
-  const paddingX = 14;
-  const paddingY = 18;
-  const effectiveIndex = hoverIndex ?? selectedIndex;
-  const effectivePoint = effectiveIndex == null ? null : points[effectiveIndex] ?? null;
-  const tickEvery = points.length <= 14 ? 1 : points.length <= 60 ? 7 : points.length <= 120 ? 14 : 30;
-
-  return (
-    <div className="space-y-3">
-      <div
-        ref={containerRef}
-        className="relative rounded-md border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-3 py-3"
-        onMouseLeave={() => setHoverIndex(null)}
-      >
-        <svg
-          viewBox={`0 0 ${chartWidth} ${chartHeight}`}
-          className="h-[180px] w-full"
-          onMouseMove={(event) => {
-            const rect = containerRef.current?.getBoundingClientRect();
-            if (!rect) return;
-            const x = event.clientX - rect.left;
-            const innerWidth = rect.width;
-            if (innerWidth <= 0) return;
-            const index = Math.round((x / innerWidth) * (points.length - 1));
-            setHoverIndex(Math.max(0, Math.min(points.length - 1, index)));
-          }}
-          onClick={() => {
-            if (hoverIndex == null) return;
-            setSelectedIndex(hoverIndex);
-          }}
-        >
-          {points.map((point, index) => {
-            const x = chartX(index, points.length, chartWidth, paddingX);
-            return (
-              <line
-                key={point.date}
-                x1={x}
-                x2={x}
-                y1={paddingY}
-                y2={chartHeight - paddingY}
-                stroke={index === points.length - 1 ? 'rgba(37,99,235,0.16)' : 'rgba(148,163,184,0.18)'}
-                strokeDasharray="3 6"
-              />
-            );
-          })}
-          {effectiveIndex != null ? (
-            <line
-              x1={chartX(effectiveIndex, points.length, chartWidth, paddingX)}
-              x2={chartX(effectiveIndex, points.length, chartWidth, paddingX)}
-              y1={paddingY}
-              y2={chartHeight - paddingY}
-              stroke="rgba(37,99,235,0.28)"
-              strokeWidth="2"
-            />
-          ) : null}
-          <path d={buildLinePath(points, (point) => point.productiveMinutes, max, chartWidth, chartHeight, paddingX, paddingY)} fill="none" stroke="#2563eb" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-          <path d={buildLinePath(points, (point) => point.supportiveMinutes, max, chartWidth, chartHeight, paddingX, paddingY)} fill="none" stroke="#0f766e" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-          <path d={buildLinePath(points, (point) => point.distractedMinutes, max, chartWidth, chartHeight, paddingX, paddingY)} fill="none" stroke="#dc2626" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-          {points.map((point, index) => (
-            <circle
-              key={`${point.date}-productive`}
-              cx={chartX(index, points.length, chartWidth, paddingX)}
-              cy={chartY(point.productiveMinutes, max, chartHeight, paddingY)}
-              r="3.5"
-              fill="#2563eb"
-            />
-          ))}
-        </svg>
-
-        {effectivePoint ? (
-          <div className="pointer-events-none absolute right-3 top-3 w-[240px] rounded-md border border-[var(--fg-border)] bg-white px-3 py-2 text-xs text-[var(--fg-text)] shadow-sm">
-            <p className="font-medium">
-              {new Date(effectivePoint.date).toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })}{' '}
-              <span className="font-normal text-[var(--fg-muted)]">· {formatMinutes(effectivePoint.totalMinutes)} total</span>
-            </p>
-            <div className="mt-1 space-y-0.5 text-[var(--fg-muted)]">
-              <div className="flex items-center justify-between gap-2">
-                <span className="flex items-center gap-2"><span className="h-2 w-2 rounded-full" style={{ background: '#2563eb' }} />Productive</span>
-                <span className="font-medium text-[var(--fg-text)]">{formatMinutes(effectivePoint.productiveMinutes)}</span>
-              </div>
-              <div className="flex items-center justify-between gap-2">
-                <span className="flex items-center gap-2"><span className="h-2 w-2 rounded-full" style={{ background: '#0f766e' }} />Supportive</span>
-                <span className="font-medium text-[var(--fg-text)]">{formatMinutes(effectivePoint.supportiveMinutes)}</span>
-              </div>
-              <div className="flex items-center justify-between gap-2">
-                <span className="flex items-center gap-2"><span className="h-2 w-2 rounded-full" style={{ background: '#dc2626' }} />Distracted</span>
-                <span className="font-medium text-[var(--fg-text)]">{formatMinutes(effectivePoint.distractedMinutes)}</span>
-              </div>
-            </div>
-          </div>
-        ) : null}
-      </div>
-
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap gap-3 text-xs text-[var(--fg-muted)]">
-          <ChartLegend color="#2563eb" label="Productive" />
-          <ChartLegend color="#0f766e" label="Supportive" />
-          <ChartLegend color="#dc2626" label="Distracted" />
-        </div>
-        <div className="flex flex-wrap gap-3 text-xs text-[var(--fg-muted)]">
-          {points.map((point, index) => {
-            if (index % tickEvery !== 0 && index !== points.length - 1) return null;
-            return (
-              <span key={point.date}>
-                {point.label} {formatMinutes(point.totalMinutes)}
-              </span>
-            );
-          })}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function ConsumptionBreakdownList({
-  items,
-}: {
-  items: AnalyticsSnapshot['domainBreakdown7d'];
-}): React.JSX.Element {
-  const max = Math.max(0, ...items.map((item) => item.totalMinutes));
-
-  if (items.length === 0) {
-    return <EmptyCard text="No domains have been tracked yet." />;
-  }
-
-  return (
-    <div className="space-y-2">
-      {items.map((item) => (
-        <div key={item.domain} className="rounded-[18px] border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-3.5 py-3">
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0">
-              <p className="truncate text-sm font-medium text-[var(--fg-text)]">{item.label}</p>
-              <p className="mt-1 text-xs text-[var(--fg-muted)]">
-                {item.visits} visit{item.visits === 1 ? '' : 's'} · {humanizeActivityClass(item.primaryActivityClass)}
-              </p>
-            </div>
-            <span className="text-xs font-medium text-[var(--fg-muted)]">{formatMinutes(item.totalMinutes)}</span>
-          </div>
-          <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white">
-            <div
-              className={`h-full rounded-full ${activityBarClass(item.primaryActivityClass)}`}
-              style={{ width: `${max > 0 ? (item.totalMinutes / max) * 100 : 0}%` }}
-            />
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function ConsumptionTreeView({
-  nodes,
-}: {
-  nodes: AnalyticsSnapshot['consumptionTree7d'];
-}): React.JSX.Element {
-  const max = Math.max(0, ...nodes.map((node) => node.totalMinutes));
-
-  if (nodes.length === 0) {
-    return <EmptyCard text="The domain tree will appear once page telemetry accumulates." />;
-  }
-
-  return (
-    <div className="space-y-1">
-      {nodes.map((node) => (
-        <ConsumptionTreeNodeRow key={node.id} node={node} max={max} />
-      ))}
-    </div>
-  );
-}
-
-function ConsumptionTreeNodeRow({
-  node,
-  max,
-}: {
-  node: AnalyticsSnapshot['consumptionTree7d'][number];
-  max: number;
-}): React.JSX.Element {
-  const activityClass = dominantTreeActivityClass(node);
-
-  return (
-    <div className="space-y-1">
-      <div
-        className="grid grid-cols-[minmax(0,1fr),84px] items-center gap-3 border-b border-[var(--fg-border)] py-2 last:border-b-0"
-        style={{ paddingLeft: `${node.depth * 14}px` }}
-      >
-        <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            <span className={`h-2 w-2 rounded-full ${activityBarClass(activityClass)}`} />
-            <p className="truncate text-sm font-medium text-[var(--fg-text)]">{node.label}</p>
-          </div>
-          <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-[var(--fg-panel-soft)]">
-            <div
-              className={`h-full rounded-full ${activityBarClass(activityClass)}`}
-              style={{ width: `${max > 0 ? (node.totalMinutes / max) * 100 : 0}%` }}
-            />
-          </div>
-        </div>
-        <span className="text-right text-xs text-[var(--fg-muted)]">{formatMinutes(node.totalMinutes)}</span>
-      </div>
-      {node.children.slice(0, 4).map((child) => (
-        <ConsumptionTreeNodeRow key={child.id} node={child} max={max} />
-      ))}
-    </div>
-  );
-}
-
-function ChartLegend({
-  color,
-  label,
-}: {
-  color: string;
-  label: string;
-}): React.JSX.Element {
-  return (
-    <span className="inline-flex items-center gap-1.5">
-      <span className="h-2.5 w-2.5 rounded-full" style={{ background: color }} />
-      {label}
-    </span>
-  );
-}
-
-function SessionAnalyticsRow({
-  session,
-  taskTags,
-  onSaveOverride,
-}: {
-  session: FocusSessionRecord;
-  taskTags: TaskTag[];
-  onSaveOverride: (
-    focusSessionId: string,
-    tagKey: string | null,
-    difficultyRank: DifficultyRank | null,
-  ) => void;
-}): React.JSX.Element {
-  const [tagKey, setTagKey] = useState(session.tagKey ?? '');
-  const [difficulty, setDifficulty] = useState(session.difficultyRank ? String(session.difficultyRank) : '');
-
-  useEffect(() => {
-    setTagKey(session.tagKey ?? '');
-    setDifficulty(session.difficultyRank ? String(session.difficultyRank) : '');
-  }, [session.difficultyRank, session.id, session.tagKey]);
-
-  return (
-    <div className="rounded-md border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-3 py-2.5">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <p className="text-sm font-medium text-[var(--fg-text)]">{session.eventTitle}</p>
-          <p className="mt-1 text-xs text-[var(--fg-muted)]">
-            {formatSessionRange(session)} · {formatMinutes(session.productiveMinutes)} productive · {formatMinutes(session.distractedMinutes)} distracted
-          </p>
-        </div>
-        {session.leftEarly ? (
-          <span className="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-amber-800">
-            Left early
-          </span>
-        ) : null}
-      </div>
-
-      <div className="mt-3 grid gap-3 md:grid-cols-[minmax(0,1fr),140px,120px]">
-        <select
-          value={tagKey}
-          onChange={(event) => setTagKey(event.target.value)}
-          className="fg-select"
-        >
-          <option value="">No tag</option>
-          {getSelectableTaskTags(taskTags, [tagKey]).map((tag) => (
-            <option key={tag.key} value={tag.key}>
-              {tag.label}
-            </option>
-          ))}
-        </select>
-
-        <select
-          value={difficulty}
-          onChange={(event) => setDifficulty(event.target.value)}
-          className="fg-select"
-        >
-          <option value="">Auto</option>
-          <option value="1">1</option>
-          <option value="2">2</option>
-          <option value="3">3</option>
-          <option value="5">5</option>
-          <option value="8">8</option>
-        </select>
-
-        <button
-          onClick={() => onSaveOverride(session.id, tagKey || null, parseDifficultyRank(difficulty))}
-          className="fg-button-secondary px-3 py-2 text-sm"
-        >
-          Save
-        </button>
-      </div>
-    </div>
-  );
-}
-
-function EmptyCard({ text }: { text: string }): React.JSX.Element {
-  return (
-    <div className="rounded-md border border-dashed border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-4 py-5 text-sm text-[var(--fg-muted)]">
-      {text}
-    </div>
-  );
-}
-
-function FeatureControlRail({
-  settings,
-  learningState,
-  onToggleFeature,
-  onOpenWorkspace,
-}: {
-  settings: Settings;
-  learningState: LearningState | null;
-  onToggleFeature: (key: keyof Settings['featureFlags'], enabled: boolean) => Promise<void>;
-  onOpenWorkspace: (tab: 'workspace' | 'learning' | 'analytics') => void;
-}): React.JSX.Element {
-  const readyLearningPacks = (learningState?.packs ?? []).filter((pack) => pack.status === 'ready').length;
-  const activeTopics = learningState?.userTopics.length ?? 0;
-  const dueReviews = (learningState?.reviewQueue ?? []).filter(
-    (item) => new Date(item.dueAt).getTime() <= Date.now(),
-  ).length;
-
-  const cards: Array<{
-    key: keyof Settings['featureFlags'];
-    title: string;
-    description: string;
-    accentClassName: string;
-    summary: string;
-    ctaLabel: string;
-    workspace: 'workspace' | 'learning' | 'analytics';
-  }> = [
-    {
-      key: 'blocking',
-      title: 'Blocking',
-      description: 'Restrict browsing around the current calendar block with allowlists, overrides, and quiet hours.',
-      accentClassName: 'from-rose-100 via-white to-white',
-      summary: isBlockingFeatureEnabled(settings)
-        ? settings.enableBlocking
-          ? 'Enforcement active when a matched focus block is live.'
-          : 'Feature armed, runtime blocker currently off.'
-        : 'Feature disabled. Rules stay saved, enforcement is off.',
-      ctaLabel: 'Open workspace',
-      workspace: 'workspace',
-    },
-    {
-      key: 'routines',
-      title: 'Routines',
-      description: 'Auto-surface the right tabs, checklists, and long-range workflows when the calendar block starts.',
-      accentClassName: 'from-amber-100 via-white to-white',
-      summary: isRoutinesFeatureEnabled(settings)
-        ? 'Event launch targets and checklist templates can run automatically.'
-        : 'Feature disabled. Saved routines remain intact.',
-      ctaLabel: 'Open workspace',
-      workspace: 'workspace',
-    },
-    {
-      key: 'learning',
-      title: 'Learning',
-      description: 'Pick study topics, generate shared quiz packs, and run spaced review inside Window.',
-      accentClassName: 'from-sky-100 via-white to-white',
-      summary: isLearningFeatureEnabled(settings)
-        ? activeTopics > 0
-          ? `${activeTopics} topic${activeTopics === 1 ? '' : 's'} selected · ${readyLearningPacks} pack${readyLearningPacks === 1 ? '' : 's'} ready · ${dueReviews} review${dueReviews === 1 ? '' : 's'} due`
-          : 'Feature enabled. Pick subjects to start building study packs.'
-        : 'Feature disabled. Study prompts and suggestions are paused.',
-      ctaLabel: 'Open learning',
-      workspace: 'learning',
-    },
-  ];
-
-  return (
-    <section className="mb-5 grid gap-3 lg:grid-cols-3">
-      {cards.map((card) => {
-        const enabled = settings.featureFlags[card.key];
-        return (
-          <div
-            key={card.key}
-            className={`fg-card overflow-hidden bg-gradient-to-br ${card.accentClassName} p-4`}
-          >
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-[var(--fg-muted)]">
-                  Feature
-                </p>
-                <h2 className="mt-1 text-lg font-semibold tracking-[-0.03em] text-[var(--fg-text)]">
-                  {card.title}
-                </h2>
-                <p className="mt-2 text-sm leading-6 text-[var(--fg-muted)]">{card.description}</p>
-              </div>
-              <Toggle
-                checked={enabled}
-                onChange={(nextEnabled) => {
-                  void onToggleFeature(card.key, nextEnabled);
-                }}
-              />
-            </div>
-
-            <div className="mt-4 flex items-center justify-between gap-3 rounded-lg border border-[var(--fg-border)] bg-white/80 px-3 py-2">
-              <div className="min-w-0">
-                <p className="text-[10px] font-medium uppercase tracking-wide text-[var(--fg-muted)]">
-                  {enabled ? 'Enabled' : 'Disabled'}
-                </p>
-                <p className="mt-0.5 text-xs leading-5 text-[var(--fg-muted)]">{card.summary}</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => onOpenWorkspace(card.workspace)}
-                className="fg-button-secondary shrink-0 px-3 py-2 text-xs"
-              >
-                {card.ctaLabel}
-              </button>
-            </div>
-          </div>
-        );
-      })}
-    </section>
-  );
-}
-
-function LearningWorkspace({
-  settings,
-  learningState,
-  allTaxonomy,
-  taxonomy,
-  selectedTopics,
-  selectedTopicKeys,
-  packs,
-  reviewQueue,
-  search,
-  customTopic,
-  learningActionBusy,
-  onSearchChange,
-  onCustomTopicChange,
-  onSaveTopics,
-  onCreateCustomTopic,
-  onRegeneratePack,
-  onUpdateLearningSettings,
-  onRefresh,
-}: {
-  settings: Settings;
-  learningState: LearningState | null;
-  allTaxonomy: LearningSubject[];
-  taxonomy: LearningSubject[];
-  selectedTopics: UserLearningTopic[];
-  selectedTopicKeys: Set<string>;
-  packs: QuizPackSummary[];
-  reviewQueue: ReviewQueueItem[];
-  search: string;
-  customTopic: string;
-  learningActionBusy: false | 'save' | 'custom' | string;
-  onSearchChange: (value: string) => void;
-  onCustomTopicChange: (value: string) => void;
-  onSaveTopics: (topics: UserLearningTopic[]) => Promise<void>;
-  onCreateCustomTopic: () => Promise<void>;
-  onRegeneratePack: (packId: string) => Promise<void>;
-  onUpdateLearningSettings: (patch: Partial<Settings['learningSettings']>) => Promise<void>;
-  onRefresh: () => Promise<void>;
-}): React.JSX.Element {
-  const learningEnabled = isLearningFeatureEnabled(settings);
-  const suggestions = learningState?.suggestions ?? [];
-  const selectedTopicKeyList = useMemo(
-    () => [...selectedTopicKeys].sort(),
-    [selectedTopicKeys],
-  );
-  const [draftTopicKeys, setDraftTopicKeys] = useState<string[]>(selectedTopicKeyList);
-  const previousSelectedSignatureRef = useRef(selectedTopicKeyList.join('|'));
-
-  const selectedSignature = selectedTopicKeyList.join('|');
-  const draftSignature = draftTopicKeys.join('|');
-
-  useEffect(() => {
-    setDraftTopicKeys((current) =>
-      current.join('|') === previousSelectedSignatureRef.current ? selectedTopicKeyList : current,
-    );
-    previousSelectedSignatureRef.current = selectedSignature;
-  }, [selectedSignature, selectedTopicKeyList]);
-
-  const hasTopicChanges = draftSignature !== selectedSignature;
-  const draftTopicKeySet = useMemo(() => new Set(draftTopicKeys), [draftTopicKeys]);
-  const existingTopicsByKey = useMemo(
-    () => new Map(selectedTopics.map((topic) => [topic.topicKey, topic])),
-    [selectedTopics],
-  );
-  const catalogTopicIndex = useMemo(() => {
-    const index = new Map<string, { label: string; subjectKey: string | null }>();
-    for (const subject of allTaxonomy) {
-      for (const topic of subject.topics) {
-        index.set(topic.key, {
-          label: topic.label,
-          subjectKey: subject.key,
-        });
-      }
-    }
-    return index;
-  }, [allTaxonomy]);
-  const suggestionsByKey = useMemo(
-    () => new Map(suggestions.map((suggestion) => [suggestion.topicKey, suggestion])),
-    [suggestions],
-  );
-  const readyPacks = packs.filter((pack) => pack.status === 'ready');
-  const queuedPacks = packs.filter((pack) => pack.status !== 'ready');
-  const dueReviewCount = reviewQueue.filter((item) => new Date(item.dueAt).getTime() <= Date.now()).length;
-  const nextReview = reviewQueue
-    .slice()
-    .sort((left, right) => new Date(left.dueAt).getTime() - new Date(right.dueAt).getTime())[0] ?? null;
-
-  const toggleTopicSelection = useCallback((topicKey: string) => {
-    setDraftTopicKeys((current) =>
-      current.includes(topicKey)
-        ? current.filter((key) => key !== topicKey)
-        : [...current, topicKey].sort(),
-    );
-  }, []);
-
-  const buildDraftTopics = useCallback((): UserLearningTopic[] => {
-    const nowIso = new Date().toISOString();
-    return [...draftTopicKeySet]
-      .map((topicKey) => {
-        const existing = existingTopicsByKey.get(topicKey);
-        if (existing) {
-          return existing;
-        }
-
-        const suggestion = suggestionsByKey.get(topicKey);
-        const catalogTopic = catalogTopicIndex.get(topicKey);
-        return {
-          id: `draft-${topicKey}`,
-          subjectKey: suggestion?.subjectKey ?? catalogTopic?.subjectKey ?? null,
-          topicKey,
-          label: suggestion?.label ?? catalogTopic?.label ?? humanizeLearningTopicKey(topicKey),
-          source: suggestion ? 'suggested' : 'catalog',
-          active: true,
-          createdAt: nowIso,
-          updatedAt: nowIso,
-        } satisfies UserLearningTopic;
-      })
-      .sort((left, right) => left.label.localeCompare(right.label));
-  }, [catalogTopicIndex, draftTopicKeySet, existingTopicsByKey, suggestionsByKey]);
-
-  const selectedTopicCards = buildDraftTopics();
-
-  return (
-    <section className="space-y-4">
-      {!learningEnabled ? (
-        <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-          Learning is currently disabled at the feature level. Your topics and generated packs stay saved, but Window will not suggest, schedule, or surface quizzes until you turn the feature back on from the rail above.
-        </div>
-      ) : null}
-
-      {learningState?.lastError ? (
-        <div className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
-          {learningState.lastError}
-        </div>
-      ) : null}
-
-      <div className="grid gap-4 xl:grid-cols-[320px,minmax(0,1fr),300px]">
-        <div className="space-y-4">
-          <section className="fg-card p-4">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-[var(--fg-muted)]">
-                  Study Topics
-                </p>
-                <h2 className="mt-1 text-base font-semibold tracking-[-0.03em] text-[var(--fg-text)]">
-                  Explicit-first topic selection
-                </h2>
-              </div>
-              <button
-                type="button"
-                onClick={() => {
-                  void onRefresh();
-                }}
-                className="fg-button-ghost px-2 py-1 text-[11px]"
-              >
-                {learningState?.syncing ? 'Syncing…' : 'Refresh'}
-              </button>
-            </div>
-
-            <div className="mt-4 space-y-3">
-              <label className="block">
-                <span className="text-[11px] font-medium uppercase tracking-wide text-[var(--fg-muted)]">
-                  Search subjects or topics
-                </span>
-                <input
-                  value={search}
-                  onChange={(event) => onSearchChange(event.target.value)}
-                  placeholder="AI, chemistry, thermodynamics…"
-                  className="fg-input mt-2"
-                  disabled={!learningEnabled}
-                />
-              </label>
-
-              <label className="block">
-                <span className="text-[11px] font-medium uppercase tracking-wide text-[var(--fg-muted)]">
-                  Custom topic
-                </span>
-                <div className="mt-2 flex gap-2">
-                  <input
-                    value={customTopic}
-                    onChange={(event) => onCustomTopicChange(event.target.value)}
-                    placeholder="Advanced optimization, redox chemistry…"
-                    className="fg-input"
-                    disabled={!learningEnabled}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => {
-                      void onCreateCustomTopic();
-                    }}
-                    disabled={!learningEnabled || learningActionBusy === 'custom' || !customTopic.trim()}
-                    className="fg-button-primary shrink-0 px-3 py-2 text-xs disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    {learningActionBusy === 'custom' ? 'Adding…' : 'Add'}
-                  </button>
-                </div>
-              </label>
-
-              <div className="rounded-lg border border-[var(--fg-border)] bg-[var(--fg-panel-soft)]/70 p-3">
-                <div className="flex items-center justify-between gap-2">
-                  <p className="text-[11px] font-medium uppercase tracking-wide text-[var(--fg-muted)]">
-                    Selected topics
-                  </p>
-                  <span className="text-[11px] text-[var(--fg-muted)]">
-                    {selectedTopicCards.length}
-                  </span>
-                </div>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {selectedTopicCards.length === 0 ? (
-                    <p className="text-sm text-[var(--fg-muted)]">
-                      Pick subjects from the catalog or add a custom topic to start.
-                    </p>
-                  ) : (
-                    selectedTopicCards.map((topic) => (
-                      <button
-                        key={topic.topicKey}
-                        type="button"
-                        onClick={() => toggleTopicSelection(topic.topicKey)}
-                        disabled={!learningEnabled}
-                        className="inline-flex items-center gap-2 rounded-full border border-[var(--fg-border)] bg-white px-3 py-1.5 text-xs font-medium text-[var(--fg-text)] transition hover:border-[var(--fg-accent)] disabled:cursor-not-allowed disabled:opacity-50"
-                      >
-                        <span>{topic.label}</span>
-                        <span className="text-[var(--fg-muted)]">Remove</span>
-                      </button>
-                    ))
-                  )}
-                </div>
-                <div className="mt-3 flex items-center justify-between gap-3">
-                  <p className="text-[11px] leading-5 text-[var(--fg-muted)]">
-                    Suggestions never auto-enroll. Save changes when the selected set looks right.
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      void onSaveTopics(buildDraftTopics());
-                    }}
-                    disabled={!learningEnabled || !hasTopicChanges || learningActionBusy === 'save'}
-                    className="fg-button-primary shrink-0 px-3 py-2 text-xs disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    {learningActionBusy === 'save' ? 'Saving…' : 'Save topics'}
-                  </button>
-                </div>
-              </div>
-            </div>
-          </section>
-
-          <section className="fg-card p-4">
-            <div className="flex items-center gap-2">
-              <h2 className="text-sm font-semibold text-[var(--fg-text)]">Suggested from activity</h2>
-              <InfoTip text="Window can inspect event titles, task tags, and recent study signals, but suggestions still require approval." />
-            </div>
-            <div className="mt-3 space-y-2">
-              {suggestions.length === 0 ? (
-                <EmptyCard text="No suggestions yet. Turn on activity suggestions or spend more time in the topics you care about." />
-              ) : (
-                suggestions.map((suggestion) => {
-                  const selected = draftTopicKeySet.has(suggestion.topicKey);
-                  return (
-                    <button
-                      key={suggestion.id}
-                      type="button"
-                      onClick={() => toggleTopicSelection(suggestion.topicKey)}
-                      disabled={!learningEnabled}
-                      className={`w-full rounded-lg border px-3 py-3 text-left transition ${
-                        selected
-                          ? 'border-[var(--fg-accent)] bg-[var(--fg-accent-soft)]'
-                          : 'border-[var(--fg-border)] bg-white hover:border-[var(--fg-accent)]/50'
-                      } disabled:cursor-not-allowed disabled:opacity-50`}
-                    >
-                      <div className="flex items-center justify-between gap-2">
-                        <p className="text-sm font-medium text-[var(--fg-text)]">{suggestion.label}</p>
-                        <span className="text-[10px] uppercase tracking-wide text-[var(--fg-muted)]">
-                          {selected ? 'Selected' : suggestion.source}
-                        </span>
-                      </div>
-                      <p className="mt-1 text-xs leading-5 text-[var(--fg-muted)]">{suggestion.reason}</p>
-                    </button>
-                  );
-                })
-              )}
-            </div>
-          </section>
-
-          <section className="fg-card p-4">
-            <div className="flex items-center justify-between gap-2">
-              <h2 className="text-sm font-semibold text-[var(--fg-text)]">Review queue</h2>
-              <span className="text-[11px] text-[var(--fg-muted)]">{reviewQueue.length} cards</span>
-            </div>
-            <div className="mt-3 space-y-2">
-              {reviewQueue.length === 0 ? (
-                <EmptyCard text="No review items due yet. Once packs are generated, spaced repetition cards will appear here." />
-              ) : (
-                reviewQueue.slice(0, 6).map((item) => (
-                  <div key={item.progressId} className="rounded-lg border border-[var(--fg-border)] bg-white px-3 py-3">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0">
-                        <p className="text-sm font-medium text-[var(--fg-text)]">{item.topicLabel}</p>
-                        <p className="mt-1 text-xs text-[var(--fg-muted)]">{item.chapterTitle}</p>
-                      </div>
-                      <span className="rounded-full bg-[var(--fg-accent-soft)] px-2 py-1 text-[10px] font-medium uppercase tracking-wide text-[var(--fg-accent)]">
-                        {item.difficulty}
-                      </span>
-                    </div>
-                    <div className="mt-2 flex items-center justify-between gap-2 text-[11px] text-[var(--fg-muted)]">
-                      <span>{formatLearningDueLabel(item.dueAt)}</span>
-                      <span>Seen {item.seenCount}x · streak {item.correctStreak}</span>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          </section>
-        </div>
-
-        <div className="space-y-4">
-          <section className="fg-card p-4">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-[var(--fg-muted)]">
-                  Subject Catalog
-                </p>
-                <h2 className="mt-1 text-base font-semibold tracking-[-0.03em] text-[var(--fg-text)]">
-                  Curated subjects and searchable subtopics
-                </h2>
-              </div>
-              <span className="rounded-full border border-[var(--fg-border)] bg-white px-3 py-1 text-[11px] font-medium text-[var(--fg-muted)]">
-                {taxonomy.reduce((count, subject) => count + subject.topics.length, 0)} topics shown
-              </span>
-            </div>
-            <div className="mt-4 grid gap-3 lg:grid-cols-2">
-              {taxonomy.length === 0 ? (
-                <div className="lg:col-span-2">
-                  <EmptyCard text="No subjects matched that search. Try a broader keyword or add a custom topic instead." />
-                </div>
-              ) : (
-                taxonomy.map((subject) => (
-                  <div key={subject.key} className="rounded-xl border border-[var(--fg-border)] bg-white p-4">
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <h3 className="text-sm font-semibold text-[var(--fg-text)]">{subject.label}</h3>
-                        <p className="mt-1 text-xs leading-5 text-[var(--fg-muted)]">{subject.description}</p>
-                      </div>
-                      <span className="text-[11px] text-[var(--fg-muted)]">{subject.topics.length}</span>
-                    </div>
-                    <div className="mt-4 space-y-2">
-                      {subject.topics.map((topic) => {
-                        const checked = draftTopicKeySet.has(topic.key);
-                        return (
-                          <label
-                            key={topic.key}
-                            className={`flex cursor-pointer items-start gap-3 rounded-lg border px-3 py-3 transition ${
-                              checked
-                                ? 'border-[var(--fg-accent)] bg-[var(--fg-accent-soft)]'
-                                : 'border-[var(--fg-border)] hover:border-[var(--fg-accent)]/40'
-                            } ${!learningEnabled ? 'cursor-not-allowed opacity-55' : ''}`}
-                          >
-                            <input
-                              type="checkbox"
-                              checked={checked}
-                              onChange={() => toggleTopicSelection(topic.key)}
-                              disabled={!learningEnabled}
-                              className="mt-1 h-4 w-4 rounded border-[var(--fg-border)] text-[var(--fg-accent)]"
-                            />
-                            <span className="min-w-0">
-                              <span className="block text-sm font-medium text-[var(--fg-text)]">{topic.label}</span>
-                              <span className="mt-1 block text-xs leading-5 text-[var(--fg-muted)]">
-                                {topic.description}
-                              </span>
-                            </span>
-                          </label>
-                        );
-                      })}
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          </section>
-
-          <section className="fg-card p-4">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-[var(--fg-muted)]">
-                  Quiz Pack Library
-                </p>
-                <h2 className="mt-1 text-base font-semibold tracking-[-0.03em] text-[var(--fg-text)]">
-                  Shared source packs and generated reviews
-                </h2>
-              </div>
-              <div className="flex gap-2 text-[11px] text-[var(--fg-muted)]">
-                <span>{readyPacks.length} ready</span>
-                <span>{queuedPacks.length} processing</span>
-              </div>
-            </div>
-
-            <div className="mt-4 space-y-3">
-              {packs.length === 0 ? (
-                <EmptyCard text="No quiz packs yet. Select topics and the worker will queue source discovery and pack generation." />
-              ) : (
-                packs.map((pack) => (
-                  <div key={pack.id} className="rounded-xl border border-[var(--fg-border)] bg-white p-4">
-                    <div className="flex flex-wrap items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <h3 className="text-sm font-semibold text-[var(--fg-text)]">{pack.title}</h3>
-                          <span className="rounded-full bg-[var(--fg-panel-soft)] px-2 py-1 text-[10px] font-medium uppercase tracking-wide text-[var(--fg-muted)]">
-                            {pack.sourceKind === 'paper-based' ? 'Paper-based' : 'Textbook'}
-                          </span>
-                          {pack.canonical ? (
-                            <span className="rounded-full bg-emerald-100 px-2 py-1 text-[10px] font-medium uppercase tracking-wide text-emerald-700">
-                              Canonical
-                            </span>
-                          ) : null}
-                        </div>
-                        <p className="mt-1 text-xs leading-5 text-[var(--fg-muted)]">
-                          {pack.topicLabel} · version {pack.versionNumber} · {pack.chapterCount} chapters · {pack.questionCount} questions
-                        </p>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          void onRegeneratePack(pack.id);
-                        }}
-                        disabled={!learningEnabled || learningActionBusy === pack.id}
-                        className="fg-button-secondary shrink-0 px-3 py-2 text-xs disabled:cursor-not-allowed disabled:opacity-50"
-                      >
-                        {learningActionBusy === pack.id ? 'Rebuilding…' : 'Regenerate'}
-                      </button>
-                    </div>
-
-                    <div className="mt-3 grid gap-2 md:grid-cols-3">
-                      <CompactSettingRow
-                        className="rounded-lg border border-[var(--fg-border)] bg-[var(--fg-panel-soft)]/65 px-3"
-                        label="Status"
-                        value={formatLearningPackStatus(pack.status)}
-                        meta={pack.generatedAt ? formatLearningTimestamp(pack.generatedAt) : 'Waiting for generation'}
-                      />
-                      <CompactSettingRow
-                        className="rounded-lg border border-[var(--fg-border)] bg-[var(--fg-panel-soft)]/65 px-3"
-                        label="License mode"
-                        value={pack.licenseMode === 'commercial_safe' ? 'Commercial safe' : 'Expanded OER'}
-                        meta="Shared canon is segmented by license mode."
-                      />
-                      <CompactSettingRow
-                        className="rounded-lg border border-[var(--fg-border)] bg-[var(--fg-panel-soft)]/65 px-3"
-                        label="Coverage"
-                        value={`${pack.chapterCount} chapters`}
-                        meta={`${pack.questionCount} review prompts generated`}
-                      />
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          </section>
-        </div>
-
-        <div className="space-y-4">
-          <section className="fg-card p-4">
-            <div className="flex items-center gap-2">
-              <h2 className="text-sm font-semibold text-[var(--fg-text)]">Learning controls</h2>
-              <InfoTip text="These settings govern how aggressively Window suggests topics, what licenses it will accept, and how often study prompts should surface." />
-            </div>
-
-            <div className="mt-4 space-y-3">
-              <CompactSettingRow
-                label="Activity suggestions"
-                meta="Use event titles, task tags, and recent study behavior to propose new topics for approval."
-                control={
-                  <Toggle
-                    checked={settings.learningSettings.suggestTopicsFromActivity}
-                    disabled={!learningEnabled}
-                    onChange={(checked) => {
-                      void onUpdateLearningSettings({ suggestTopicsFromActivity: checked });
-                    }}
-                  />
-                }
-                className="rounded-lg border border-[var(--fg-border)] bg-[var(--fg-panel-soft)]/65 px-3"
-              />
-
-              <CompactSettingRow
-                label="Auto-open quiz"
-                meta="Automatically open the quiz window when a new question is ready, instead of waiting for you to click the FAB."
-                control={
-                  <Toggle
-                    checked={settings.learningSettings.autoOpen}
-                    disabled={!learningEnabled}
-                    onChange={(checked) => {
-                      void onUpdateLearningSettings({ autoOpen: checked });
-                    }}
-                  />
-                }
-                className="rounded-lg border border-[var(--fg-border)] bg-[var(--fg-panel-soft)]/65 px-3"
-              />
-
-              <CompactSettingRow
-                label="Panel re-open delay"
-                meta="After you close the in-page quiz panel, auto-open will not show it again until this many minutes have passed. Only applies when Auto-open quiz is enabled."
-                control={
-                  <select
-                    value={settings.learningSettings.panelReopenCooldownMinutes}
-                    onChange={(event) => {
-                      void onUpdateLearningSettings({
-                        panelReopenCooldownMinutes: Number(event.target.value),
-                      });
-                    }}
-                    disabled={!learningEnabled || !settings.learningSettings.autoOpen}
-                    className="fg-select w-[136px] text-xs disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    <option value={1}>1 min</option>
-                    <option value={5}>5 min</option>
-                    <option value={10}>10 min</option>
-                    <option value={15}>15 min</option>
-                    <option value={20}>20 min</option>
-                    <option value={30}>30 min</option>
-                    <option value={45}>45 min</option>
-                    <option value={60}>60 min</option>
-                  </select>
-                }
-                className="rounded-lg border border-[var(--fg-border)] bg-[var(--fg-panel-soft)]/65 px-3"
-              />
-
-              <CompactSettingRow
-                label="Review intensity"
-                meta="Quiet surfaces fewer prompts, aggressive uses more of your breaks and idle time."
-                control={
-                  <select
-                    value={settings.learningSettings.intensity}
-                    onChange={(event) => {
-                      void onUpdateLearningSettings({
-                        intensity: event.target.value as Settings['learningSettings']['intensity'],
-                      });
-                    }}
-                    disabled={!learningEnabled}
-                    className="fg-select w-[136px] text-xs disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    <option value="quiet">Quiet</option>
-                    <option value="balanced">Balanced</option>
-                    <option value="aggressive">Aggressive</option>
-                  </select>
-                }
-                className="rounded-lg border border-[var(--fg-border)] bg-[var(--fg-panel-soft)]/65 px-3"
-              />
-
-              <CompactSettingRow
-                label="License mode"
-                meta="Commercial safe restricts packs to business-safe sources. Expanded OER allows broader open educational material."
-                control={
-                  <select
-                    value={settings.learningSettings.licenseMode}
-                    onChange={(event) => {
-                      void onUpdateLearningSettings({
-                        licenseMode: event.target.value as Settings['learningSettings']['licenseMode'],
-                      });
-                    }}
-                    disabled={!learningEnabled}
-                    className="fg-select w-[168px] text-xs disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    <option value="commercial_safe">Commercial safe</option>
-                    <option value="expanded_oer">Expanded OER</option>
-                  </select>
-                }
-                className="rounded-lg border border-[var(--fg-border)] bg-[var(--fg-panel-soft)]/65 px-3"
-              />
-            </div>
-          </section>
-
-          <section className="fg-card p-4">
-            <h2 className="text-sm font-semibold text-[var(--fg-text)]">Study health</h2>
-            <div className="mt-4 grid gap-3">
-              <CompactSettingRow
-                label="Selected topics"
-                value={selectedTopics.length.toString()}
-                meta={selectedTopics.length > 0 ? selectedTopics.map((topic) => topic.label).slice(0, 3).join(', ') : 'No active topics yet'}
-                className="rounded-lg border border-[var(--fg-border)] bg-white px-3"
-              />
-              <CompactSettingRow
-                label="Review queue"
-                value={`${dueReviewCount} due`}
-                meta={
-                  nextReview
-                    ? `${nextReview.topicLabel} · ${nextReview.chapterTitle} · ${formatLearningDueLabel(nextReview.dueAt)}`
-                    : 'No scheduled review cards yet'
-                }
-                className="rounded-lg border border-[var(--fg-border)] bg-white px-3"
-              />
-              <CompactSettingRow
-                label="Pack versions"
-                value={`${packs.length} tracked`}
-                meta={
-                  readyPacks.length > 0
-                    ? `${readyPacks.length} canonical/ready packs available for reuse`
-                    : 'The worker will generate shared canonical packs after sources are ingested'
-                }
-                className="rounded-lg border border-[var(--fg-border)] bg-white px-3"
-              />
-            </div>
-          </section>
-        </div>
-      </div>
-    </section>
-  );
-}
 
 function LegendDot({
   tone,
@@ -5370,560 +2777,3 @@ function LegendDot({
   );
 }
 
-function chooseTooltipPosition(anchorRect: DOMRect): {
-  mode: TooltipMode;
-  placement: TooltipPlacement;
-} {
-  const spaceBelow = window.innerHeight - anchorRect.bottom;
-  const spaceAbove = anchorRect.top;
-  const canAnchorHorizontally = window.innerWidth >= TOOLTIP_WIDTH + TOOLTIP_MARGIN * 2;
-  const canAnchorVertically = spaceBelow >= TOOLTIP_HEIGHT + 16 || spaceAbove >= TOOLTIP_HEIGHT + 16;
-
-  if (!canAnchorHorizontally || !canAnchorVertically || window.innerWidth < 760) {
-    return { mode: 'modal', placement: 'bottom' };
-  }
-
-  return {
-    mode: 'anchored',
-    placement: spaceBelow >= TOOLTIP_HEIGHT + 16 ? 'bottom' : 'top',
-  };
-}
-
-function clamp(value: number, min: number, max: number): number {
-  return Math.min(Math.max(value, min), max);
-}
-
-function areRectsEqual(a: DOMRect, b: DOMRect): boolean {
-  return (
-    Math.abs(a.top - b.top) < 0.5 &&
-    Math.abs(a.left - b.left) < 0.5 &&
-    Math.abs(a.width - b.width) < 0.5 &&
-    Math.abs(a.height - b.height) < 0.5
-  );
-}
-
-function splitDomains(value: string): string[] {
-  return value
-    .split(',')
-    .map((domain) => domain.trim())
-    .filter(Boolean);
-}
-
-function splitCommaList(value: string): string[] {
-  return value
-    .split(',')
-    .map((item) => item.trim())
-    .filter(Boolean);
-}
-
-function safeHostname(value: string): string | null {
-  try {
-    return new URL(value).hostname;
-  } catch {
-    return null;
-  }
-}
-
-function getSelectableTaskTags(taskTags: TaskTag[], selectedKeys: string[] = []): TaskTag[] {
-  const selected = new Set(selectedKeys.filter(Boolean));
-  return taskTags.filter((tag) => tag.archivedAt === null || selected.has(tag.key));
-}
-
-function resolveWorkspaceEvent(
-  event: CalendarEvent,
-  eventRules: EventRule[],
-  keywordRules: KeywordRule[],
-  taskTags: TaskTag[],
-  recentSessions: FocusSessionRecord[],
-  settings: Settings | null,
-): ResolvedWorkspaceEvent {
-  const exactRule = eventRules.find((rule) => rule.eventTitle === event.title);
-  const keywordRule = settings?.keywordAutoMatchEnabled
-    ? findBestKeywordRule(event.title, keywordRules)
-    : null;
-  const treatExactRuleAsFallback =
-    exactRule !== undefined &&
-    exactRule.domains.length > 0 &&
-    keywordRule !== null &&
-    isRedundantExactRuleCopy(exactRule, keywordRule);
-  const titleMatches = inferTaskTagKeysFromText(event.title, taskTags);
-  const descriptionMatches = inferTaskTagKeysFromText(event.description ?? '', taskTags, {
-    excludeKeys: titleMatches,
-  });
-  const attendeeMatches = inferTaskTagKeysFromText(event.attendees.join(' '), taskTags, {
-    excludeKeys: [...titleMatches, ...descriptionMatches],
-  });
-  const inferredTagKey =
-    exactRule?.tagKey ??
-    keywordRule?.tagKey ??
-    titleMatches[0] ??
-    descriptionMatches[0] ??
-    attendeeMatches[0] ??
-    inferTaskTagKeyFromTitle(event.title, taskTags);
-  const secondaryTagKeys = exactRule
-    ? exactRule.secondaryTagKeys
-    : [...new Set([...titleMatches, ...descriptionMatches, ...attendeeMatches])]
-        .filter((key) => key !== inferredTagKey)
-        .slice(0, 2);
-  const tag = findTaskTag(taskTags, inferredTagKey);
-  const difficultyRank = inferredTagKey
-    ? deriveDifficultyRank({
-        baselineDifficulty: tag?.baselineDifficulty ?? null,
-        scheduledStart: event.start,
-        scheduledEnd: event.end,
-        priorSessions: recentSessions.filter((session) => session.tagKey === inferredTagKey),
-        override: exactRule?.difficultyOverride ?? null,
-      })
-    : exactRule?.difficultyOverride ?? null;
-
-  if (exactRule && !treatExactRuleAsFallback) {
-    return {
-      event,
-      source: exactRule.domains.length > 0 ? 'event' : 'override',
-      ruleName: exactRule.eventTitle,
-      domains: exactRule.domains,
-      effectiveDomains: exactRule.domains,
-      tagKey: inferredTagKey,
-      secondaryTagKeys,
-      difficultyRank,
-      fallbackKeyword: keywordRule?.keyword ?? null,
-    };
-  }
-
-  if (keywordRule) {
-    return {
-      event,
-      source: 'keyword',
-      ruleName: keywordRule.keyword,
-      domains: [],
-      effectiveDomains: keywordRule.domains,
-      tagKey: inferredTagKey,
-      secondaryTagKeys,
-      difficultyRank,
-      fallbackKeyword: null,
-    };
-  }
-
-  return {
-    event,
-    source: 'none',
-    ruleName: null,
-    domains: [],
-    effectiveDomains: [],
-    tagKey: inferredTagKey,
-    secondaryTagKeys,
-    difficultyRank,
-    fallbackKeyword: null,
-  };
-}
-
-function findBestKeywordRule(eventTitle: string, rules: KeywordRule[]): KeywordRule | null {
-  const lower = eventTitle.toLowerCase();
-  const matches = rules.filter(
-    (rule) => rule.domains.length > 0 && lower.includes(rule.keyword.toLowerCase()),
-  );
-  if (matches.length === 0) return null;
-  return [...matches].sort((a, b) => {
-    const diff = b.keyword.length - a.keyword.length;
-    if (diff !== 0) return diff;
-    return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
-  })[0];
-}
-
-function statusDot(source: 'event' | 'keyword' | 'none' | 'override'): string {
-  if (source === 'event') return 'bg-emerald-500';
-  if (source === 'keyword') return 'bg-amber-500';
-  if (source === 'override') return 'bg-sky-500';
-  return 'bg-slate-400';
-}
-
-function calendarEventAppearance(event: CalendarEvent): {
-  backgroundColor: string;
-  borderColor: string;
-  textColor: string;
-} {
-  return {
-    backgroundColor: event.backgroundColor ?? '#64748b',
-    borderColor: event.backgroundColor ?? '#64748b',
-    textColor: event.foregroundColor ?? '#ffffff',
-  };
-}
-
-function deriveTimeGridWindow(events: CalendarEvent[]): {
-  slotMinTime: string;
-  slotMaxTime: string;
-  scrollTime: string;
-} {
-  const timedEvents = events.filter((event) => !event.isAllDay);
-
-  if (timedEvents.length === 0) {
-    return {
-      slotMinTime: minutesToTimeString(DEFAULT_TIME_GRID_START_MINUTES),
-      slotMaxTime: minutesToTimeString(DEFAULT_TIME_GRID_END_MINUTES),
-      scrollTime: minutesToTimeString(DEFAULT_TIME_GRID_START_MINUTES),
-    };
-  }
-
-  let earliestStart = Number.POSITIVE_INFINITY;
-  let latestEnd = Number.NEGATIVE_INFINITY;
-
-  for (const event of timedEvents) {
-    const startDate = new Date(event.start);
-    const endDate = new Date(event.end);
-
-    if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
-      continue;
-    }
-
-    const startMinutes = minutesIntoDay(startDate);
-    const spansMultipleDays =
-      startDate.getFullYear() !== endDate.getFullYear() ||
-      startDate.getMonth() !== endDate.getMonth() ||
-      startDate.getDate() !== endDate.getDate();
-    const endMinutes = spansMultipleDays ? 24 * 60 : minutesIntoDay(endDate);
-    const safeEndMinutes = Math.max(startMinutes + TIME_GRID_ROUNDING_MINUTES, endMinutes);
-
-    earliestStart = Math.min(earliestStart, startMinutes);
-    latestEnd = Math.max(latestEnd, safeEndMinutes);
-  }
-
-  if (!Number.isFinite(earliestStart) || !Number.isFinite(latestEnd)) {
-    return {
-      slotMinTime: minutesToTimeString(DEFAULT_TIME_GRID_START_MINUTES),
-      slotMaxTime: minutesToTimeString(DEFAULT_TIME_GRID_END_MINUTES),
-      scrollTime: minutesToTimeString(DEFAULT_TIME_GRID_START_MINUTES),
-    };
-  }
-
-  let minMinutes = roundMinutes(
-    earliestStart - TIME_GRID_TOP_PADDING_MINUTES,
-    TIME_GRID_ROUNDING_MINUTES,
-    'down',
-  );
-  let maxMinutes = roundMinutes(
-    latestEnd + TIME_GRID_BOTTOM_PADDING_MINUTES,
-    TIME_GRID_ROUNDING_MINUTES,
-    'up',
-  );
-
-  if (maxMinutes - minMinutes < MIN_TIME_GRID_SPAN_MINUTES) {
-    const deficit = MIN_TIME_GRID_SPAN_MINUTES - (maxMinutes - minMinutes);
-    minMinutes -= Math.floor(deficit / 2);
-    maxMinutes += Math.ceil(deficit / 2);
-  }
-
-  minMinutes = Math.max(0, minMinutes);
-  maxMinutes = Math.min(24 * 60, maxMinutes);
-
-  if (maxMinutes - minMinutes < TIME_GRID_ROUNDING_MINUTES) {
-    maxMinutes = Math.min(24 * 60, minMinutes + MIN_TIME_GRID_SPAN_MINUTES);
-  }
-
-  const scrollMinutes = Math.max(
-    minMinutes,
-    roundMinutes(earliestStart - TIME_GRID_ROUNDING_MINUTES, TIME_GRID_ROUNDING_MINUTES, 'down'),
-  );
-
-  return {
-    slotMinTime: minutesToTimeString(minMinutes),
-    slotMaxTime: minutesToTimeString(maxMinutes),
-    scrollTime: minutesToTimeString(scrollMinutes),
-  };
-}
-
-function minutesIntoDay(date: Date): number {
-  return date.getHours() * 60 + date.getMinutes();
-}
-
-function roundMinutes(
-  value: number,
-  increment: number,
-  direction: 'down' | 'up',
-): number {
-  if (direction === 'down') {
-    return Math.floor(value / increment) * increment;
-  }
-
-  return Math.ceil(value / increment) * increment;
-}
-
-function minutesToTimeString(totalMinutes: number): string {
-  const clampedMinutes = Math.max(0, Math.min(24 * 60, totalMinutes));
-  const hours = Math.floor(clampedMinutes / 60);
-  const minutes = clampedMinutes % 60;
-  return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:00`;
-}
-
-function formatTooltipDate(event: CalendarEvent): string {
-  const startDate = new Date(event.start);
-  const endDate = new Date(event.end);
-
-  if (event.isAllDay) {
-    const lastDay = new Date(endDate.getTime() - 86_400_000);
-    const startLabel = startDate.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' });
-    const endLabel = lastDay.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' });
-    return startLabel === endLabel ? `${startLabel} · All day` : `${startLabel} – ${endLabel} · All day`;
-  }
-
-  return `${startDate.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' })} · ${startDate.toLocaleTimeString([], {
-    hour: 'numeric',
-    minute: '2-digit',
-  })} – ${endDate.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`;
-}
-
-function formatEventRange(event: CalendarEvent): string {
-  if (event.isAllDay) {
-    const spanDays = Math.max(
-      1,
-      Math.round((new Date(event.end).getTime() - new Date(event.start).getTime()) / 86_400_000),
-    );
-    return spanDays > 1 ? `All day · ${spanDays} days` : 'All day';
-  }
-
-  return `${new Date(event.start).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })} – ${new Date(event.end).toLocaleTimeString([], {
-    hour: 'numeric',
-    minute: '2-digit',
-  })}`;
-}
-
-function formatSessionRange(session: FocusSessionRecord): string {
-  return `${new Date(session.scheduledStart).toLocaleDateString([], {
-    month: 'short',
-    day: 'numeric',
-  })} · ${new Date(session.scheduledStart).toLocaleTimeString([], {
-    hour: 'numeric',
-    minute: '2-digit',
-  })} – ${new Date(session.scheduledEnd).toLocaleTimeString([], {
-    hour: 'numeric',
-    minute: '2-digit',
-  })}`;
-}
-
-function chartX(
-  index: number,
-  count: number,
-  width: number,
-  paddingX: number,
-): number {
-  if (count <= 1) return width / 2;
-  const usableWidth = width - paddingX * 2;
-  return paddingX + (usableWidth / (count - 1)) * index;
-}
-
-function chartY(
-  value: number,
-  max: number,
-  height: number,
-  paddingY: number,
-): number {
-  const usableHeight = height - paddingY * 2;
-  if (max <= 0) return height - paddingY;
-  return height - paddingY - (value / max) * usableHeight;
-}
-
-function buildLinePath<T>(
-  points: T[],
-  getValue: (point: T) => number,
-  max: number,
-  width: number,
-  height: number,
-  paddingX: number,
-  paddingY: number,
-): string {
-  return points
-    .map((point, index) => {
-      const x = chartX(index, points.length, width, paddingX);
-      const y = chartY(getValue(point), max, height, paddingY);
-      return `${index === 0 ? 'M' : 'L'} ${x} ${y}`;
-    })
-    .join(' ');
-}
-
-function tagBreakdownWidth(
-  productiveMinutes: number,
-  items: AnalyticsSnapshot['tagBreakdown7d'],
-): number {
-  const max = Math.max(0, ...items.map((item) => item.productiveMinutes));
-  return max > 0 ? (productiveMinutes / max) * 100 : 0;
-}
-
-function humanizeActivityClass(value: 'aligned' | 'supportive' | 'distracted' | 'away' | 'break'): string {
-  if (value === 'aligned') return 'Mostly productive';
-  if (value === 'supportive') return 'Mostly supportive';
-  if (value === 'distracted') return 'Mostly distracted';
-  if (value === 'away') return 'Mostly away';
-  return 'Mostly on break';
-}
-
-function activityBarClass(value: 'aligned' | 'supportive' | 'distracted' | 'away' | 'break'): string {
-  if (value === 'aligned') return 'bg-blue-600';
-  if (value === 'supportive') return 'bg-emerald-600';
-  if (value === 'distracted') return 'bg-rose-500';
-  if (value === 'away') return 'bg-slate-400';
-  return 'bg-amber-500';
-}
-
-function dominantTreeActivityClass(
-  node: AnalyticsSnapshot['consumptionTree7d'][number],
-): 'aligned' | 'supportive' | 'distracted' | 'away' | 'break' {
-  const entries: Array<['aligned' | 'supportive' | 'distracted' | 'away' | 'break', number]> = [
-    ['aligned', node.productiveMinutes],
-    ['supportive', node.supportiveMinutes],
-    ['distracted', node.distractedMinutes],
-    ['away', node.awayMinutes],
-    ['break', node.breakMinutes],
-  ];
-  return entries.sort((a, b) => b[1] - a[1])[0][0];
-}
-
-function formatMinutes(value: number): string {
-  if (value <= 0) return '0m';
-  if (value >= 60) {
-    const hours = Math.floor(value / 60);
-    const minutes = value % 60;
-    return minutes > 0 ? `${hours}h ${minutes}m` : `${hours}h`;
-  }
-  return `${value}m`;
-}
-
-function parseDifficultyRank(value: string): DifficultyRank | null {
-  const next = Number(value);
-  if (next === 1 || next === 2 || next === 3 || next === 5 || next === 8) {
-    return next;
-  }
-
-  return null;
-}
-
-function humanizeLearningTopicKey(topicKey: string): string {
-  return topicKey
-    .split('-')
-    .filter(Boolean)
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(' ');
-}
-
-function formatLearningTimestamp(value: string): string {
-  const date = new Date(value);
-  const deltaMs = Date.now() - date.getTime();
-  if (Number.isNaN(date.getTime())) {
-    return 'Updated recently';
-  }
-
-  const minutes = Math.max(0, Math.round(deltaMs / 60_000));
-  if (minutes < 1) return 'Updated just now';
-  if (minutes < 60) return `Updated ${minutes} min ago`;
-
-  const hours = Math.round(minutes / 60);
-  if (hours < 24) return `Updated ${hours}h ago`;
-
-  const days = Math.round(hours / 24);
-  return `Updated ${days}d ago`;
-}
-
-function formatLearningDueLabel(value: string): string {
-  const date = new Date(value);
-  const deltaMs = date.getTime() - Date.now();
-  if (Number.isNaN(date.getTime())) {
-    return 'Due soon';
-  }
-
-  if (deltaMs <= 0) {
-    const overdueMinutes = Math.round(Math.abs(deltaMs) / 60_000);
-    if (overdueMinutes < 60) return overdueMinutes === 0 ? 'Due now' : `${overdueMinutes}m overdue`;
-    const overdueHours = Math.round(overdueMinutes / 60);
-    return `${overdueHours}h overdue`;
-  }
-
-  const minutes = Math.round(deltaMs / 60_000);
-  if (minutes < 60) return `Due in ${minutes}m`;
-  const hours = Math.round(minutes / 60);
-  if (hours < 24) return `Due in ${hours}h`;
-  const days = Math.round(hours / 24);
-  return `Due in ${days}d`;
-}
-
-function formatLearningPackStatus(status: QuizPackSummary['status']): string {
-  switch (status) {
-    case 'queued':
-      return 'Queued';
-    case 'processing':
-      return 'Processing';
-    case 'ready':
-      return 'Ready';
-    case 'failed':
-      return 'Needs retry';
-    default:
-      return status;
-  }
-}
-
-function truncate(value: string, length: number): string {
-  return value.length > length ? `${value.slice(0, length - 1)}…` : value;
-}
-
-function safeId(): string {
-  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
-    return crypto.randomUUID();
-  }
-
-  return `extended-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
-}
-
-function createEmptyExtendedTaskSetDraftItem(): ExtendedTaskSetDraftItem {
-  return {
-    id: safeId(),
-    label: '',
-    url: '',
-  };
-}
-
-function moveDraftArrayItem<T>(items: T[], fromIndex: number, toIndex: number): T[] {
-  if (toIndex < 0 || toIndex >= items.length || fromIndex === toIndex) {
-    return items;
-  }
-
-  const next = [...items];
-  const [moved] = next.splice(fromIndex, 1);
-  next.splice(toIndex, 0, moved);
-  return next;
-}
-
-function uniqueElements<T extends HTMLElement>(elements: Array<T | null | undefined>): T[] {
-  return [...new Set(elements.filter((element): element is T => element instanceof HTMLElement))];
-}
-
-function setExtendedTaskDropTargetState(elements: HTMLElement[], active: boolean): void {
-  for (const element of elements) {
-    if (active) {
-      element.dataset.windowDropTarget = 'true';
-      continue;
-    }
-
-    delete element.dataset.windowDropTarget;
-  }
-}
-
-function clearExtendedTaskDropTargets(): void {
-  document
-    .querySelectorAll<HTMLElement>('[data-window-drop-target="true"]')
-    .forEach((element) => delete element.dataset.windowDropTarget);
-}
-
-function sendMessageAsync<T = unknown>(message: { type: string; payload?: unknown }): Promise<T> {
-  return new Promise((resolve, reject) => {
-    chrome.runtime.sendMessage(message, (response: T & { error?: string }) => {
-      if (chrome.runtime.lastError) {
-        reject(new Error(chrome.runtime.lastError.message));
-        return;
-      }
-
-      if (response && typeof response === 'object' && 'error' in response && response.error) {
-        reject(new Error(String(response.error)));
-        return;
-      }
-
-      resolve(response);
-    });
-  });
-}

@@ -81,22 +81,22 @@ export default function TaskDetailModal({
 
         <div className="grid max-h-[calc(min(640px,92vh)-56px)] grid-cols-1 gap-0 overflow-y-auto md:grid-cols-2 md:divide-x md:divide-[var(--fg-border)]">
           <div className="space-y-3 p-4">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--fg-muted)]">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--fg-muted)]">
               Calendar block
             </p>
             <p className="text-sm font-semibold text-[var(--fg-text)]">{title}</p>
             <p className="text-xs leading-relaxed text-[var(--fg-muted)]">{formatEventRange(event)}</p>
             {selection.kind === 'task' ? (
               <div className="flex flex-wrap gap-2">
-                <span className="rounded-md border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-2 py-0.5 text-[10px] font-medium text-[var(--fg-text)]">
+                <span className="rounded-md border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-2 py-0.5 text-[11px] font-medium text-[var(--fg-text)]">
                   {selection.task.profile}
                 </span>
-                <span className="rounded-md border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-2 py-0.5 text-[10px] font-medium text-[var(--fg-text)]">
+                <span className="rounded-md border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-2 py-0.5 text-[11px] font-medium text-[var(--fg-text)]">
                   {selection.task.status === 'carryover' ? 'Carryover task' : 'Active task'}
                 </span>
               </div>
             ) : (
-              <span className="inline-flex rounded-md border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-2 py-0.5 text-[10px] font-medium text-[var(--fg-text)]">
+              <span className="inline-flex rounded-md border border-[var(--fg-border)] bg-[var(--fg-panel-soft)] px-2 py-0.5 text-[11px] font-medium text-[var(--fg-text)]">
                 Scheduled block
               </span>
             )}
@@ -116,7 +116,7 @@ export default function TaskDetailModal({
           </div>
 
           <div className="space-y-3 border-t border-[var(--fg-border)] p-4 md:border-t-0">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--fg-muted)]">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--fg-muted)]">
               Task set
             </p>
             {assignment ? (
@@ -132,7 +132,7 @@ export default function TaskDetailModal({
                     type="button"
                     disabled={removing}
                     onClick={() => void handleRemove()}
-                    className="flex-shrink-0 rounded-md border border-rose-200 bg-rose-50 px-2.5 py-1 text-[10px] font-semibold text-rose-700 hover:bg-rose-100 disabled:opacity-50"
+                    className="flex-shrink-0 rounded-md border border-rose-200 bg-rose-50 px-2.5 py-1 text-[11px] font-semibold text-rose-700 hover:bg-rose-100 disabled:opacity-50"
                   >
                     {removing ? 'Removing…' : 'Remove task set'}
                   </button>
@@ -168,7 +168,7 @@ export default function TaskDetailModal({
                           href={item.url}
                           target="_blank"
                           rel="noreferrer"
-                          className="flex-shrink-0 text-[10px] font-medium text-[var(--fg-accent)]"
+                          className="flex-shrink-0 text-[11px] font-medium text-[var(--fg-accent)]"
                         >
                           Open
                         </a>
@@ -180,7 +180,7 @@ export default function TaskDetailModal({
                   <button
                     type="button"
                     onClick={() => setStepsExpanded((v) => !v)}
-                    className="w-full rounded-md border border-[var(--fg-border)] bg-white py-1.5 text-[10px] font-medium text-[var(--fg-text)]"
+                    className="w-full rounded-md border border-[var(--fg-border)] bg-white py-1.5 text-[11px] font-medium text-[var(--fg-text)]"
                   >
                     {stepsExpanded ? 'Show fewer steps' : `Show all ${assignmentItems.length} steps`}
                   </button>

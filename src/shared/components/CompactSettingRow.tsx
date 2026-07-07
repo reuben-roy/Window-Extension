@@ -47,7 +47,7 @@ export default function CompactSettingRow({
             </p>
           ) : null}
           {hasMeta ? (
-            <p className="mt-0.5 text-[11px] leading-snug text-[var(--fg-muted)]">{meta}</p>
+            <p className="mt-0.5 text-xs leading-snug text-[var(--fg-muted)]">{meta}</p>
           ) : null}
         </div>
 

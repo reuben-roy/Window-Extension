@@ -196,7 +196,7 @@ chrome.notifications.onClicked.addListener((notificationId) => {
   if (notificationId !== 'learning-quiz-ready') {
     return;
   }
-  openQuizSurfaceFromUserGesture({});
+  void openQuizSurfaceFromUserGesture({});
 });
 registerBlockingListeners();
 registerDownloadListeners();

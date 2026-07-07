@@ -22,7 +22,7 @@ class PopupErrorBoundary extends React.Component<
       return (
         <div className="flex min-h-[420px] items-center justify-center bg-[var(--fg-bg)] p-4">
           <div className="fg-card w-full p-4">
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-rose-600">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-rose-600">
               Window popup error
             </p>
             <p className="mt-2 text-base font-semibold tracking-[-0.02em] text-[var(--fg-text)]">

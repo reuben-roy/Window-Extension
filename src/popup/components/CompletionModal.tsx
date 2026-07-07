@@ -101,7 +101,7 @@ export default function CompletionModal({ tasks, onClose, onDone }: Props): Reac
         {/* Anti-gaming warning */}
         {!eligibility.allowed && eligibility.reason && (
           <div className="mb-2 px-2.5 py-1.5 bg-amber-50 border border-amber-100 rounded-md">
-            <p className="text-[10px] text-amber-600">{eligibility.reason}</p>
+            <p className="text-[11px] text-amber-600">{eligibility.reason}</p>
           </div>
         )}
 
@@ -117,10 +117,10 @@ export default function CompletionModal({ tasks, onClose, onDone }: Props): Reac
             onKeyDown={handleKeyDown}
             disabled={submitting}
           />
-          <p className="text-[9px] text-gray-400 mb-2">
+          <p className="text-[10px] text-gray-400 mb-2">
             ⌘ Enter to submit · Esc to cancel
           </p>
-          {error && <p className="mb-2 text-[10px] text-rose-600">{error}</p>}
+          {error && <p className="mb-2 text-[11px] text-rose-600">{error}</p>}
 
           {/* Actions */}
           <div className="flex gap-1.5">

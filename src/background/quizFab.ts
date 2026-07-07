@@ -4,7 +4,6 @@ import {
   SIDE_PANEL_EXTENSION_PATH,
 } from '../shared/constants';
 import type { LearningIntensity, QuizFabSession, Settings } from '../shared/types';
-import { normalizeSettingsStored } from '../shared/storage';
 import { setActiveQuizVisibility } from './backend';
 import { getLearningState, getSettings } from '../shared/storage';
 
@@ -324,38 +323,6 @@ async function reapplyQuizFabToTab(tabId: number, url: string | undefined): Prom
   await pushQuizFabSessionToTab(tabId, session);
 }
 
-function openQuizSurfaceForTab(tabId: number, persistentPanelEnabled: boolean): void {
-  if (persistentPanelEnabled) {
-    chrome.sidePanel.open({ tabId });
-  } else {
-    const actionWithPopup = chrome.action as typeof chrome.action & {
-      openPopup?: (options?: { tabId?: number }) => Promise<void>;
-    };
-    if (typeof actionWithPopup.openPopup === 'function') {
-      void actionWithPopup.openPopup({ tabId }).catch(() => {
-        void chrome.windows.create({
-          url: chrome.runtime.getURL(SIDE_PANEL_EXTENSION_PATH),
-          type: 'popup',
-          width: 480,
-          height: 720,
-          focused: true,
-        });
-      });
-    } else {
-      void chrome.windows.create({
-        url: chrome.runtime.getURL(SIDE_PANEL_EXTENSION_PATH),
-        type: 'popup',
-        width: 480,
-        height: 720,
-        focused: true,
-      });
-    }
-  }
-
-  void setActiveQuizVisibility(true);
-  void hideQuizFab();
-}
-
 /** Opens in-page quiz panel from a background context (alarm, idle trigger). */
 export async function autoOpenQuizSurface(session: {
   topicLabel: string | null;
@@ -412,33 +379,46 @@ export async function toggleInPageQuizPanel(sender: chrome.runtime.MessageSender
   }
 }
 
-/** FAB / notification: in-page toggle on http(s) tabs, else Chrome side panel / popup. */
+/** FAB / notification: in-page toggle on http(s) tabs, else in-page panel on the best available tab. */
 export function handleOpenQuizSurface(sender: chrome.runtime.MessageSender): void {
   if (isInjectableTabUrl(sender.tab?.url)) {
     void toggleInPageQuizPanel(sender);
     return;
   }
-  openQuizSurfaceFromUserGesture(sender);
+  void openQuizSurfaceFromUserGesture(sender);
 }
 
-/** Opens quiz UI from a user gesture (notification, non-page context). */
-export function openQuizSurfaceFromUserGesture(sender: chrome.runtime.MessageSender): void {
-  const openForTabId = (tabId: number) => {
-    chrome.storage.sync.get(['settings'], (stored) => {
-      const settings = normalizeSettingsStored(stored.settings);
-      openQuizSurfaceForTab(tabId, settings.persistentPanelEnabled);
-    });
-  };
+/**
+ * Opens quiz UI from a user gesture (notification, non-page context). The
+ * in-page panel is the default quiz surface; a standalone quiz window is the
+ * fallback when no regular website tab exists to host the panel.
+ */
+export async function openQuizSurfaceFromUserGesture(
+  _sender: chrome.runtime.MessageSender,
+): Promise<void> {
+  const [learningState, settings, tabs] = await Promise.all([
+    getLearningState(),
+    getSettings(),
+    chrome.tabs.query({}),
+  ]);
+  const prompt = learningState.activeQuizPrompt;
+  const hasInjectableTab = tabs.some((tab) => isInjectableTabUrl(tab.url));
 
-  if (typeof sender.tab?.id === 'number') {
-    openForTabId(sender.tab.id);
+  if (prompt && hasInjectableTab) {
+    await autoOpenQuizSurface({
+      topicLabel: prompt.topicLabel,
+      questionId: prompt.questionId,
+      intensity: settings.learningSettings.intensity,
+    });
     return;
   }
 
-  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-    const tabId = tabs[0]?.id;
-    if (typeof tabId === 'number') {
-      openForTabId(tabId);
-    }
+  await setActiveQuizVisibility(true);
+  void chrome.windows.create({
+    url: `${chrome.runtime.getURL(SIDE_PANEL_EXTENSION_PATH)}?embedded=1`,
+    type: 'popup',
+    width: 520,
+    height: 720,
+    focused: true,
   });
 }

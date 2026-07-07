@@ -1,7 +1,18 @@
-import { QUIZ_FAB_SESSION_KEY, QUIZ_PANEL_WIDTH_PX } from '../shared/constants';
+import {
+  QUIZ_FAB_POSITION_KEY,
+  QUIZ_FAB_SESSION_KEY,
+  QUIZ_PANEL_WIDTH_PX,
+} from '../shared/constants';
 import type { QuizFabSession } from '../shared/types';
 
 const FAB_HOST_ID = 'window-quiz-fab-host';
+const FAB_TOP_DEFAULT_PERCENT = 15;
+const FAB_EDGE_MARGIN_PX = 8;
+/** Pointer travel before a press counts as a drag instead of a click. */
+const FAB_DRAG_THRESHOLD_PX = 4;
+
+let storedTopPercent: number | null = null;
+let activeFabButton: HTMLButtonElement | null = null;
 
 function isInjectablePage(): boolean {
   const { protocol } = window.location;
@@ -13,6 +24,77 @@ function fabLabel(session: QuizFabSession): string {
   if (!topic) return 'Quiz';
   const firstWord = topic.split(/\s+/)[0] ?? 'Quiz';
   return firstWord.length > 12 ? `${firstWord.slice(0, 11)}…` : firstWord;
+}
+
+function clampTopPx(topPx: number, fabHeight: number): number {
+  const maxTop = window.innerHeight - fabHeight - FAB_EDGE_MARGIN_PX;
+  return Math.min(Math.max(topPx, FAB_EDGE_MARGIN_PX), Math.max(FAB_EDGE_MARGIN_PX, maxTop));
+}
+
+function resolvedFabTopPx(fabHeight: number): number {
+  const percent = storedTopPercent ?? FAB_TOP_DEFAULT_PERCENT;
+  return clampTopPx((percent / 100) * window.innerHeight, fabHeight);
+}
+
+function applyStoredFabTop(): void {
+  if (!activeFabButton) return;
+  activeFabButton.style.top = `${resolvedFabTopPx(activeFabButton.offsetHeight || 44)}px`;
+}
+
+function attachDragBehavior(button: HTMLButtonElement): void {
+  let drag: {
+    pointerId: number;
+    startClientY: number;
+    startTopPx: number;
+    moved: boolean;
+  } | null = null;
+  let suppressNextClick = false;
+
+  button.addEventListener('pointerdown', (event) => {
+    if (event.button !== 0) return;
+    drag = {
+      pointerId: event.pointerId,
+      startClientY: event.clientY,
+      startTopPx: button.getBoundingClientRect().top,
+      moved: false,
+    };
+    button.setPointerCapture(event.pointerId);
+  });
+
+  button.addEventListener('pointermove', (event) => {
+    if (!drag || event.pointerId !== drag.pointerId) return;
+    const deltaY = event.clientY - drag.startClientY;
+    if (!drag.moved && Math.abs(deltaY) < FAB_DRAG_THRESHOLD_PX) return;
+    drag.moved = true;
+    button.style.top = `${clampTopPx(drag.startTopPx + deltaY, button.offsetHeight)}px`;
+    event.preventDefault();
+  });
+
+  const endDrag = (event: PointerEvent) => {
+    if (!drag || event.pointerId !== drag.pointerId) return;
+    const wasDragged = drag.moved;
+    drag = null;
+    if (!wasDragged) return;
+    suppressNextClick = true;
+    const topPx = button.getBoundingClientRect().top;
+    storedTopPercent = (topPx / window.innerHeight) * 100;
+    void chrome.storage.local.set({ [QUIZ_FAB_POSITION_KEY]: storedTopPercent });
+  };
+
+  button.addEventListener('pointerup', endDrag);
+  button.addEventListener('pointercancel', () => {
+    drag = null;
+  });
+
+  button.addEventListener('click', (event) => {
+    if (suppressNextClick) {
+      suppressNextClick = false;
+      event.stopImmediatePropagation();
+      event.preventDefault();
+      return;
+    }
+    chrome.runtime.sendMessage({ type: 'OPEN_QUIZ_SURFACE' });
+  });
 }
 
 function renderFab(session: QuizFabSession): void {
@@ -36,7 +118,7 @@ function renderFab(session: QuizFabSession): void {
     .fab {
       position: fixed;
       right: ${fabRight}px;
-      top: 15%;
+      top: ${FAB_TOP_DEFAULT_PERCENT}%;
       z-index: 2147483646;
       display: flex;
       align-items: center;
@@ -52,10 +134,10 @@ function renderFab(session: QuizFabSession): void {
       font: 700 14px/1.2 system-ui, -apple-system, sans-serif;
       cursor: pointer;
       letter-spacing: 0.01em;
-      transition: right 220ms cubic-bezier(0.22, 1, 0.36, 1), transform 120ms ease, box-shadow 120ms ease;
+      touch-action: none;
+      transition: right 220ms cubic-bezier(0.22, 1, 0.36, 1), box-shadow 120ms ease;
     }
     .fab:hover {
-      transform: translateX(-3px);
       box-shadow: -8px 12px 36px rgba(29, 78, 216, 0.55);
     }
     .fab:focus-visible {
@@ -87,11 +169,13 @@ function renderFab(session: QuizFabSession): void {
   button.className = `fab${session.intensity === 'quiet' ? ' quiet' : ''}`;
   const actionLabel = panelOpen ? 'Close quiz panel' : 'Open quiz panel';
   button.setAttribute('aria-label', actionLabel);
-  button.title = panelOpen
-    ? 'Close quiz panel'
-    : session.topicLabel
-      ? `Open quiz: ${session.topicLabel}`
-      : 'Open quiz panel';
+  button.title = `${
+    panelOpen
+      ? 'Close quiz panel'
+      : session.topicLabel
+        ? `Open quiz: ${session.topicLabel}`
+        : 'Open quiz panel'
+  } — drag to move`;
 
   const dot = document.createElement('span');
   dot.className = 'dot';
@@ -101,16 +185,17 @@ function renderFab(session: QuizFabSession): void {
   label.textContent = fabLabel(session);
 
   button.append(dot, label);
-  button.addEventListener('click', () => {
-    chrome.runtime.sendMessage({ type: 'OPEN_QUIZ_SURFACE' });
-  });
+  attachDragBehavior(button);
 
   shadow.append(style, button);
   document.documentElement.append(host);
+  activeFabButton = button;
+  applyStoredFabTop();
 }
 
 function removeFab(): void {
   document.getElementById(FAB_HOST_ID)?.remove();
+  activeFabButton = null;
 }
 
 function applySession(session: QuizFabSession | null | undefined): void {
@@ -121,15 +206,28 @@ function applySession(session: QuizFabSession | null | undefined): void {
   renderFab(session);
 }
 
-chrome.storage.local.get(QUIZ_FAB_SESSION_KEY, (stored) => {
+function normalizeStoredTopPercent(value: unknown): number | null {
+  return typeof value === 'number' && Number.isFinite(value)
+    ? Math.min(Math.max(value, 0), 100)
+    : null;
+}
+
+chrome.storage.local.get([QUIZ_FAB_SESSION_KEY, QUIZ_FAB_POSITION_KEY], (stored) => {
+  storedTopPercent = normalizeStoredTopPercent(stored[QUIZ_FAB_POSITION_KEY]);
   applySession(stored[QUIZ_FAB_SESSION_KEY] as QuizFabSession | undefined);
 });
 
 chrome.storage.onChanged.addListener((changes, areaName) => {
-  if (areaName !== 'local' || !changes[QUIZ_FAB_SESSION_KEY]) {
+  if (areaName !== 'local') {
     return;
   }
-  applySession(changes[QUIZ_FAB_SESSION_KEY].newValue as QuizFabSession | undefined);
+  if (changes[QUIZ_FAB_POSITION_KEY]) {
+    storedTopPercent = normalizeStoredTopPercent(changes[QUIZ_FAB_POSITION_KEY].newValue);
+    applyStoredFabTop();
+  }
+  if (changes[QUIZ_FAB_SESSION_KEY]) {
+    applySession(changes[QUIZ_FAB_SESSION_KEY].newValue as QuizFabSession | undefined);
+  }
 });
 
 chrome.runtime.onMessage.addListener((message) => {
@@ -137,3 +235,5 @@ chrome.runtime.onMessage.addListener((message) => {
     applySession(message.payload as QuizFabSession);
   }
 });
+
+window.addEventListener('resize', applyStoredFabTop);
