@@ -258,6 +258,14 @@ flowchart TD
   - `declarativeNetRequest`
   - `notifications`
   - `tabs`
+
+## Documentation
+
+Developer-facing docs live in [`docs/`](docs/README.md):
+
+- [`docs/developer-quickstart.md`](docs/developer-quickstart.md) for local setup, backend, worker, database, and checks
+- [`docs/architecture.md`](docs/architecture.md) for extension/backend/worker data flow
+- [`docs/customization.md`](docs/customization.md) for turning Window into a configurable product for more users
   - `webNavigation`
 
 ### Backend
