@@ -2,6 +2,10 @@ FROM node:22-bookworm-slim AS build
 
 WORKDIR /app
 
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends openssl \
+    && rm -rf /var/lib/apt/lists/*
+
 # Prisma client generation runs during npm's postinstall hook, so the schema
 # must be present before dependencies are installed.
 COPY package.json package-lock.json ./
