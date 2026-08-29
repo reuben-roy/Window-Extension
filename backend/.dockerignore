@@ -1,0 +1,12 @@
+node_modules
+dist
+.env
+.env.*
+*.log
+coverage
+data/learning/chapters
+data/learning/raw
+data/learning/raw-selected
+data/learning/quizzes
+data/learning/quality-reports
+data/learning/run-summary.json
