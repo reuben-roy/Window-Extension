@@ -121,10 +121,9 @@ When the API hostname changes, update `VITE_WINDOW_BACKEND_URL` in
 reload or redistribute the extension. The manifest permits API hosts through
 `<all_urls>`.
 
-The generated `sslip.io` hostname is suitable for this deployment smoke test,
-but it is not the final production endpoint: Coolify warns that Let's Encrypt
-issuance for this shared public domain can be rate limited. Use a domain you
-control with a valid HTTPS certificate before public distribution.
+The production extension targets `https://api.window.explosion.fun`. The DNS
+record points to the Coolify server, while Coolify owns TLS termination and
+routes that hostname to the API container's internal port.
 
 ## Attaching the fixed subdomain later
 
