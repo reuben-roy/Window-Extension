@@ -7,8 +7,8 @@ Window's server-side runtime is three services:
 3. A private worker that polls PostgreSQL and executes queued research,
    assistant, and learning jobs.
 
-The Chromium extension remains client-side. Build it with
-`VITE_WINDOW_BACKEND_URL=https://<api-hostname>` so it calls the deployed API.
+The Chromium extension remains client-side. Its production build reads
+`VITE_WINDOW_BACKEND_URL` from `.env.production` so it calls the deployed API.
 
 ## Prerequisites
 
@@ -109,14 +109,22 @@ for concurrency.
 
 ## 5. Extension build
 
-The backend URL is compiled into the extension. Rebuild and redistribute the
-extension after the API hostname is final:
+The backend URL is compiled into the extension. The repository's
+`.env.production` currently points at the active Coolify API. Build it with:
 
 ```bash
-VITE_WINDOW_BACKEND_URL=https://<api-hostname> npm run build
+npm run build
 ```
 
-The extension's manifest already permits HTTPS hosts through `<all_urls>`.
+When the API hostname changes, update `VITE_WINDOW_BACKEND_URL` in
+`.env.production`, run the production-backend configuration test, rebuild, and
+reload or redistribute the extension. The manifest permits API hosts through
+`<all_urls>`.
+
+The generated `sslip.io` hostname is suitable for this deployment smoke test,
+but it is not the final production endpoint: Coolify warns that Let's Encrypt
+issuance for this shared public domain can be rate limited. Use a domain you
+control with a valid HTTPS certificate before public distribution.
 
 ## Attaching the fixed subdomain later
 
