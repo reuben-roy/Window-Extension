@@ -7,6 +7,7 @@ import {
   resolveActiveState,
   resolveRuleForEvent,
 } from '../src/background/calendar';
+import { DEFAULT_SETTINGS as APP_DEFAULT_SETTINGS } from '../src/shared/constants';
 import type {
   CalendarEvent,
   ExtendedTaskAssignment,
@@ -61,27 +62,9 @@ function makeExtendedTaskAssignment(
 }
 
 const DEFAULT_SETTINGS: Settings = {
-  enableBlocking: true,
-  blockPage: 'custom',
-  carryoverMode: 'union',
-  taskTTLDays: 7,
-  monthlyResetEnabled: true,
+  ...APP_DEFAULT_SETTINGS,
   lastMonthlyReset: new Date().toISOString(),
-  minBlockDurationMinutes: 15,
-  breakDurationMinutes: 5,
-  keywordAutoMatchEnabled: false,
-  breakTelemetryEnabled: false,
   persistentPanelEnabled: false,
-  dailyBlockingPauseEnabled: false,
-  dailyBlockingPauseStartTime: '22:00',
-  downloadRedirectFallbackSeconds: 2,
-  downloadRedirectUseDownloadsApi: true,
-  downloadRedirectFallbackPatternMatchEnabled: true,
-  downloadRedirectFallbackSameHostEnabled: true,
-  downloadRedirectFallbackSameSiteEnabled: true,
-  downloadRedirectFallbackAnyAllowedRedirectEnabled: false,
-  downloadRedirectAllowAcrossTabsEnabled: false,
-  downloadRedirectProgrammaticDownloadEnabled: true,
 };
 
 const GLOBAL_ALLOWLIST = ['accounts.google.com'];

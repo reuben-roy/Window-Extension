@@ -7,41 +7,57 @@ function createStorageArea() {
     get: vi.fn(
       (
         key: string | string[] | null,
-        callback: (result: Record<string, unknown>) => void,
+        callback?: (result: Record<string, unknown>) => void,
       ) => {
-        if (key === null) {
-          callback({ ...state });
-          return;
-        }
+        let result: Record<string, unknown>;
 
-        if (Array.isArray(key)) {
-          callback(
-            key.reduce<Record<string, unknown>>((acc, item) => {
+        if (key === null) {
+          result = { ...state };
+        } else if (Array.isArray(key)) {
+          result = key.reduce<Record<string, unknown>>((acc, item) => {
               if (item in state) {
                 acc[item] = state[item];
               }
               return acc;
-            }, {}),
-          );
+            }, {});
+        } else {
+          result = key in state ? { [key]: state[key] } : {};
+        }
+
+        if (callback) {
+          callback(result);
           return;
         }
 
-        callback(key in state ? { [key]: state[key] } : {});
+        return Promise.resolve(result);
       },
     ),
     set: vi.fn((items: Record<string, unknown>, callback?: () => void) => {
       state = { ...state, ...items };
-      callback?.();
+      if (callback) {
+        callback();
+        return;
+      }
+      return Promise.resolve();
     }),
     remove: vi.fn((key: string | string[], callback?: () => void) => {
       const keys = Array.isArray(key) ? key : [key];
       for (const item of keys) {
         delete state[item];
       }
-      callback?.();
+      if (callback) {
+        callback();
+        return;
+      }
+      return Promise.resolve();
     }),
-    clear: vi.fn(() => {
+    clear: vi.fn((callback?: () => void) => {
       state = {};
+      if (callback) {
+        callback();
+        return;
+      }
+      return Promise.resolve();
     }),
   };
 }
@@ -61,6 +77,7 @@ const chromeMock = {
     sendMessage: vi.fn(),
     onMessage: { addListener: vi.fn() },
     onInstalled: { addListener: vi.fn() },
+    onStartup: { addListener: vi.fn() },
     getManifest: vi.fn(() => ({ version: '0.1.0' })),
     getURL: vi.fn((path: string) => `chrome-extension://fake-id/${path}`),
   },
