@@ -255,6 +255,12 @@ export async function buildApp() {
     }
   });
 
+  app.get('/', async () => ({
+    ok: true,
+    service: 'window-backend',
+    health: '/healthz',
+  }));
+
   app.get('/healthz', async () => ({
     ok: true,
     service: 'window-backend',

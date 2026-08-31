@@ -4,8 +4,7 @@ import { describe, expect, it } from 'vitest';
 
 import manifest from '../manifest.json';
 
-const DEPLOYED_BACKEND_URL =
-  'http://r2lnlt6gabc0mj6xoyrm1sa9.163.192.14.110.sslip.io';
+const DEPLOYED_BACKEND_URL = 'https://api.window.explosion.fun';
 
 describe('production backend configuration', () => {
   it('builds the extension against the deployed backend', () => {
