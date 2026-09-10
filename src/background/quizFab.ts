@@ -273,11 +273,7 @@ export async function syncQuizFabToTabs(input: {
     return;
   }
 
-  const needsInjection = visible || panelVisible;
   for (const tabId of tabIds) {
-    if (needsInjection) {
-      await ensureQuizFabContentScript(tabId);
-    }
     await pushQuizFabSessionToTab(tabId, session);
   }
 }

@@ -6,6 +6,8 @@ const PANEL_SLIDE_MS = 220;
 
 let panelHost: HTMLElement | null = null;
 let panelContainer: HTMLDivElement | null = null;
+let panelCloseGeneration = 0;
+let panelCloseTimeoutId: number | null = null;
 
 function isInjectablePage(): boolean {
   const { protocol } = window.location;
@@ -17,7 +19,16 @@ function isPanelMounted(): boolean {
 }
 
 function mountPanel(): void {
-  if (isPanelMounted() || !isInjectablePage()) return;
+  if (!isInjectablePage()) return;
+  if (isPanelMounted()) {
+    panelCloseGeneration += 1;
+    if (panelCloseTimeoutId !== null) {
+      window.clearTimeout(panelCloseTimeoutId);
+      panelCloseTimeoutId = null;
+    }
+    panelContainer?.classList.remove('closing');
+    return;
+  }
 
   const host = document.createElement('div');
   host.id = PANEL_HOST_ID;
@@ -77,12 +88,23 @@ function mountPanel(): void {
 function unmountPanel(): void {
   const host = panelHost ?? document.getElementById(PANEL_HOST_ID);
   if (!host) {
+    panelCloseGeneration += 1;
+    if (panelCloseTimeoutId !== null) {
+      window.clearTimeout(panelCloseTimeoutId);
+      panelCloseTimeoutId = null;
+    }
     panelHost = null;
     panelContainer = null;
     return;
   }
 
+  const closeGeneration = ++panelCloseGeneration;
   const finish = () => {
+    if (closeGeneration !== panelCloseGeneration) return;
+    if (panelCloseTimeoutId !== null) {
+      window.clearTimeout(panelCloseTimeoutId);
+      panelCloseTimeoutId = null;
+    }
     host.remove();
     panelHost = null;
     panelContainer = null;
@@ -91,7 +113,7 @@ function unmountPanel(): void {
   if (panelContainer) {
     panelContainer.classList.add('closing');
     panelContainer.addEventListener('transitionend', finish, { once: true });
-    window.setTimeout(finish, PANEL_SLIDE_MS + 50);
+    panelCloseTimeoutId = window.setTimeout(finish, PANEL_SLIDE_MS + 50);
     return;
   }
 

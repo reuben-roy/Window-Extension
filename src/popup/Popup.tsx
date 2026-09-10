@@ -25,6 +25,15 @@ const POPUP_WIDTH_PX = 460;
 const POPUP_WIDTH_DETAIL_PX = 620;
 const POPUP_MIN_HEIGHT_PX = 420;
 
+export function getPersistentPanelControl(
+  _mode: 'popup' | 'panel',
+  persistentPanelEnabled: boolean,
+  isEmbedded: boolean,
+): 'dock' | 'undock' | null {
+  if (isEmbedded) return null;
+  return persistentPanelEnabled ? 'undock' : 'dock';
+}
+
 export default function Popup({
   mode = 'popup',
   isEmbedded = false,
@@ -159,6 +168,11 @@ export default function Popup({
 
   const popupSurfaceWidthPx =
     mode === 'popup' ? (taskDetailSelection ? POPUP_WIDTH_DETAIL_PX : POPUP_WIDTH_PX) : undefined;
+  const persistentPanelControl = getPersistentPanelControl(
+    mode,
+    state?.settings.persistentPanelEnabled ?? false,
+    isEmbedded,
+  );
 
   const openLearningWorkspace = useCallback(() => {
     window.open(chrome.runtime.getURL('src/options/index.html#learning'), '_blank', 'noopener,noreferrer');
@@ -487,7 +501,7 @@ export default function Popup({
               title={allTimeStats.title}
               compact
             />
-            {mode === 'panel' && settings.persistentPanelEnabled && !isEmbedded && (
+            {persistentPanelControl === 'undock' && (
               <button
                 type="button"
                 onClick={() => togglePersistentPanel(false)}
@@ -496,7 +510,7 @@ export default function Popup({
                 Undock
               </button>
             )}
-            {mode !== 'panel' && !settings.persistentPanelEnabled && !isEmbedded && (
+            {persistentPanelControl === 'dock' && (
               <button
                 type="button"
                 onClick={() => togglePersistentPanel(true)}
