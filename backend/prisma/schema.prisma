@@ -619,6 +619,8 @@ model QuizQuestion {
   correctChoiceId        String
   hint                   String?
   explanation            String?
+  deepDive               String?
+  skillId                String?
   wrongAnswerExplanations Json
   artifactType           QuizArtifactType?
   artifactData           Json?

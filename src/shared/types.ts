@@ -154,6 +154,8 @@ export interface QuizPrompt {
   prompt: string;
   hint: string | null;
   explanation: string | null;
+  deepDive: string | null;
+  skillId: string | null;
   choices: QuizAnswerChoice[];
   correctChoiceId: string | null;
   wrongAnswerExplanations: Record<string, string>;
@@ -167,6 +169,7 @@ export interface QuizAnswerResult {
   selectedChoiceId: string | null;
   correctChoiceId: string | null;
   explanation: string | null;
+  deepDive: string | null;
   wrongAnswerExplanation: string | null;
   nextDueAt: string | null;
   pointsAwarded: number;

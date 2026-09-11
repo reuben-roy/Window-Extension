@@ -48,6 +48,11 @@ export function QuizCard({
     result?.wrongAnswerExplanation ??
     (selectedChoiceId ? prompt.wrongAnswerExplanations[selectedChoiceId] ?? null : null);
   const canSubmit = !submitting && selectedChoiceId !== null && result === null;
+  const deepDive = result?.deepDive ?? prompt.deepDive ?? null;
+  const [deepDiveVisible, setDeepDiveVisible] = React.useState(false);
+  React.useEffect(() => {
+    setDeepDiveVisible(false);
+  }, [prompt.questionId]);
 
   return (
     <section className={`fg-card overflow-hidden ${mode === 'panel' ? 'min-h-[56vh]' : 'min-h-[360px]'}`}>
@@ -152,6 +157,23 @@ export function QuizCard({
               <p className="text-sm leading-6 text-[var(--fg-text)]">
                 {result.explanation ?? prompt.explanation ?? 'Window will attach a short explainer here as packs mature.'}
               </p>
+              {deepDive ? (
+                <div>
+                  <button
+                    type="button"
+                    onClick={() => setDeepDiveVisible((visible) => !visible)}
+                    className="fg-button-ghost px-2 py-1 text-[11px]"
+                    aria-expanded={deepDiveVisible}
+                  >
+                    {deepDiveVisible ? 'Show less' : 'Tell me more'}
+                  </button>
+                  {deepDiveVisible ? (
+                    <p className="mt-2 rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-sm leading-6 text-sky-950">
+                      {deepDive}
+                    </p>
+                  ) : null}
+                </div>
+              ) : null}
               {result.nextDueAt ? (
                 <p className="text-[11px] text-[var(--fg-muted)]">
                   Next review {formatRelativeDueTime(result.nextDueAt)}.

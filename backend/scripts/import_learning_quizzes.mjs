@@ -202,6 +202,8 @@ async function importFile(filename, options) {
           correctChoiceId: question.correctChoiceId,
           hint: normalizeText(question.hint),
           explanation: normalizeText(question.explanation),
+          deepDive: normalizeText(question.deepDive ?? '') || null,
+          skillId: normalizeText(question.skillId ?? '') || null,
           wrongAnswerExplanations: question.wrongAnswerExplanations ?? {},
           artifactType: null,
           artifactData: null,
