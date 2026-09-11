@@ -73,9 +73,13 @@ async function validateFile(filename) {
 
   for (const difficulty of DIFFICULTIES) {
     const questions = payload.quizzes?.[difficulty] ?? [];
-    if (questions.length !== EXPECTED_PER_DIFFICULTY) {
+    if (questions.length === 0) {
       errors.push(
-        `${filename}: ${difficulty} has ${questions.length} questions (expected ${EXPECTED_PER_DIFFICULTY})`,
+        `${filename}: ${difficulty} has no questions (expected at least 1)`,
+      );
+    } else if (questions.length !== EXPECTED_PER_DIFFICULTY) {
+      console.log(
+        `NOTE ${filename}: ${difficulty} has ${questions.length} questions (legacy standard was ${EXPECTED_PER_DIFFICULTY}; curated banks vary by chapter)`,
       );
     }
     questions.forEach((question, index) => {

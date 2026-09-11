@@ -1019,6 +1019,13 @@ function normalizeQuizPrompt(prompt: Partial<QuizPrompt> | null | undefined): Qu
     prompt: body,
     hint: normalizeNullableString(prompt.hint),
     explanation: normalizeNullableString(prompt.explanation),
+    deepDive: normalizeNullableString(
+      (prompt as Partial<QuizPrompt>).deepDive ?? null,
+    ),
+    skillId:
+      typeof (prompt as Partial<QuizPrompt>).skillId === 'string'
+        ? ((prompt as Partial<QuizPrompt>).skillId as string).trim() || null
+        : null,
     choices: normalizeQuizAnswerChoices(prompt.choices),
     correctChoiceId: normalizeNullableString(prompt.correctChoiceId),
     wrongAnswerExplanations:
@@ -1048,6 +1055,9 @@ function normalizeQuizAnswerResult(
     selectedChoiceId: normalizeNullableString(result.selectedChoiceId),
     correctChoiceId: normalizeNullableString(result.correctChoiceId),
     explanation: normalizeNullableString(result.explanation),
+    deepDive: normalizeNullableString(
+      (result as Partial<QuizAnswerResult>).deepDive ?? result.prompt?.deepDive ?? null,
+    ),
     wrongAnswerExplanation: normalizeNullableString(result.wrongAnswerExplanation),
     nextDueAt: normalizeNullableString(result.nextDueAt),
     pointsAwarded: normalizeNumber(result.pointsAwarded),

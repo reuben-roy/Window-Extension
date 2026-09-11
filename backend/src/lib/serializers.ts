@@ -372,6 +372,8 @@ export function toQuizPromptPayload(question: {
   prompt: string;
   hint: string | null;
   explanation: string | null;
+  deepDive: string | null;
+  skillId: string | null;
   correctChoiceId: string;
   choices: unknown;
   wrongAnswerExplanations: unknown;
@@ -424,6 +426,8 @@ export function toQuizPromptPayload(question: {
     prompt: question.prompt,
     hint: question.hint,
     explanation: question.explanation,
+    deepDive: question.deepDive,
+    skillId: question.skillId,
     choices: Array.isArray(question.choices)
       ? question.choices.reduce<QuizPromptPayload['choices']>((acc, choice) => {
           if (!choice || typeof choice !== 'object') return acc;
@@ -473,6 +477,7 @@ export function toQuizAnswerResultPayload(input: {
   correct: boolean;
   selectedChoiceId: string | null;
   explanation: string | null;
+  deepDive: string | null;
   wrongAnswerExplanation: string | null;
   nextDueAt: Date | null;
   pointsAwarded: number;
@@ -484,6 +489,7 @@ export function toQuizAnswerResultPayload(input: {
     selectedChoiceId: input.selectedChoiceId,
     correctChoiceId: input.prompt.correctChoiceId,
     explanation: input.explanation,
+    deepDive: input.deepDive,
     wrongAnswerExplanation: input.wrongAnswerExplanation,
     nextDueAt: input.nextDueAt?.toISOString() ?? null,
     pointsAwarded: input.pointsAwarded,

@@ -1999,6 +1999,7 @@ export async function buildApp() {
         correct,
         selectedChoiceId: body.selectedChoiceId ?? null,
         explanation: question.explanation,
+        deepDive: question.deepDive,
         wrongAnswerExplanation:
           body.selectedChoiceId && typeof question.wrongAnswerExplanations === 'object'
             ? ((question.wrongAnswerExplanations as Record<string, unknown>)[body.selectedChoiceId] as string | undefined) ?? null
