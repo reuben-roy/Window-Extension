@@ -341,7 +341,9 @@ export async function signInWithProvider(
   }
 
   const response = await exchangeGoogleTokenForBackend(true);
-  await finalizeSignedInSession(response);
+  await applySuccessfulAuthResponse(response, { resetSyncState: true });
+  await initializeAccountSnapshotSync();
+  await refreshLearningState();
   return response.user;
 }
 
@@ -1406,17 +1408,33 @@ async function exchangeGoogleTokenForBackend(
 
 const LAST_ACCOUNT_USER_ID_KEY = 'lastAccountUserId';
 
-async function finalizeSignedInSession(
+async function applySuccessfulAuthResponse(
   response: AuthSessionResponse,
-): Promise<void> {
+  options: { resetSyncState?: boolean } = {},
+): Promise<{ session: BackendSession; identityChanged: boolean }> {
   // A different account signing in on this browser must not see — or upload
   // into its own snapshot — the previous account's points, rules, routines,
   // topics, or analytics.
-  const stored = await chrome.storage.local.get(LAST_ACCOUNT_USER_ID_KEY);
+  const [stored, currentSession, currentUser] = await Promise.all([
+    chrome.storage.local.get(LAST_ACCOUNT_USER_ID_KEY),
+    getBackendSession(),
+    getAccountUser(),
+  ]);
   const lastUserId = stored[LAST_ACCOUNT_USER_ID_KEY];
-  if (typeof lastUserId === 'string' && lastUserId !== response.userId) {
+  const knownUserIds = [
+    typeof lastUserId === 'string' ? lastUserId : null,
+    currentSession?.userId ?? null,
+    currentUser?.id ?? null,
+  ].filter((userId): userId is string => userId !== null);
+  const identityChanged = knownUserIds.some((userId) => userId !== response.userId);
+
+  if (identityChanged) {
+    if (accountSyncTimer) {
+      clearTimeout(accountSyncTimer);
+      accountSyncTimer = null;
+    }
     await clearUserScopedLocalState();
-    await applyAccountSnapshotToStorage(createEmptyAccountSnapshot());
+    await applyRemoteSnapshot(createEmptyAccountSnapshot());
   }
   await chrome.storage.local.set({ [LAST_ACCOUNT_USER_ID_KEY]: response.userId });
 
@@ -1427,25 +1445,32 @@ async function finalizeSignedInSession(
     connectedAt: new Date().toISOString(),
   };
 
-  await Promise.all([
+  const updates: Array<Promise<void>> = [
     setBackendSession(session),
     setAccountUser(response.user),
-    setAccountConflict(null),
-    setAccountSyncState({
-      ...createDefaultAccountSyncState(),
-      configured: true,
-      connected: true,
-    }),
-    setBackendSyncState({
-      configured: true,
-      connected: true,
-      syncing: false,
-      lastSyncedAt: new Date().toISOString(),
-      lastError: null,
-    }),
-  ]);
+  ];
 
-  await initializeAccountSnapshotSync();
+  if (identityChanged || options.resetSyncState) {
+    updates.push(
+      setAccountConflict(null),
+      setAccountSyncState({
+        ...createDefaultAccountSyncState(),
+        configured: true,
+        connected: true,
+      }),
+      setBackendSyncState({
+        configured: true,
+        connected: true,
+        syncing: false,
+        lastSyncedAt: new Date().toISOString(),
+        lastError: null,
+      }),
+    );
+  }
+
+  await Promise.all(updates);
+
+  return { session, identityChanged };
 }
 
 async function initializeAccountSnapshotSync(): Promise<void> {
@@ -1592,16 +1617,12 @@ async function ensureBackendSession(): Promise<BackendSession | null> {
 
   try {
     const response = await exchangeGoogleTokenForBackend(false);
-    await Promise.all([
-      setBackendSession({
-        sessionToken: response.sessionToken,
-        userId: response.userId,
-        expiresAt: response.expiresAt,
-        connectedAt: new Date().toISOString(),
-      }),
-      setAccountUser(response.user),
-    ]);
-    return getBackendSession();
+    const applied = await applySuccessfulAuthResponse(response);
+    if (applied.identityChanged) {
+      await initializeAccountSnapshotSync();
+      await refreshLearningState();
+    }
+    return applied.session;
   } catch (error) {
     await invalidateAccountSession(
       error instanceof Error ? error.message : 'Please sign in again.',
