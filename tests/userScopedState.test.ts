@@ -8,7 +8,11 @@ import {
   setIdeaRecords,
   setLearningState,
 } from '../src/shared/storage';
-import { clearUserScopedLocalState, signOutAccount } from '../src/background/backend';
+import {
+  clearUserScopedLocalState,
+  refreshLearningState,
+  signOutAccount,
+} from '../src/background/backend';
 import type { IdeaRecord, UserLearningTopic } from '../src/shared/types';
 
 const SAMPLE_TOPIC: UserLearningTopic = {
@@ -92,5 +96,47 @@ describe('per-user local state separation', () => {
     expect(analytics.summary7d.productiveMinutes).toBe(0);
 
     expect(await getIdeaRecords()).toEqual([]);
+  });
+
+  it('does not leave a cached quiz actionable when there is no backend session', async () => {
+    await setLearningState({
+      ...DEFAULT_LEARNING_STATE,
+      userTopics: [SAMPLE_TOPIC],
+      activeQuizPrompt: {
+        sessionId: 'session-1',
+        questionId: 'question-1',
+        progressId: 'progress-1',
+        packId: 'pack-1',
+        packVersionId: 'pack-version-1',
+        topicId: SAMPLE_TOPIC.id,
+        topicKey: SAMPLE_TOPIC.topicKey,
+        topicLabel: SAMPLE_TOPIC.label,
+        packTitle: 'Physics review',
+        chapterTitle: 'Thermodynamics',
+        chapterOrdinal: 1,
+        totalChapters: 3,
+        difficulty: 'easy',
+        origin: 'review',
+        pointsReward: 3,
+        streak: 0,
+        prompt: 'What is entropy?',
+        hint: null,
+        explanation: null,
+        deepDive: null,
+        skillId: null,
+        choices: [],
+        correctChoiceId: null,
+        wrongAnswerExplanations: {},
+        artifact: null,
+        surfacedAt: '2026-09-11T20:00:00.000Z',
+      },
+      activeQuizVisible: true,
+    });
+
+    const learning = await refreshLearningState();
+
+    expect(learning.activeQuizPrompt).toBeNull();
+    expect(learning.activeQuizVisible).toBe(false);
+    expect(learning.lastError).toBe('Sign in to review quiz questions.');
   });
 });

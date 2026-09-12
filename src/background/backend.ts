@@ -1097,8 +1097,13 @@ export async function refreshLearningState(): Promise<LearningState> {
       ...existing,
       taxonomy: DEFAULT_LEARNING_TAXONOMY,
       suggestions: fallbackSuggestions,
+      reviewQueue: [],
+      activeQuizPrompt: null,
+      activeQuizResult: null,
+      activeQuizVisible: false,
+      topicSession: null,
       syncing: false,
-      lastError: null,
+      lastError: 'Sign in to review quiz questions.',
     };
     await setLearningState(next);
     return next;
@@ -1606,10 +1611,21 @@ async function ensureBackendSession(): Promise<BackendSession | null> {
 }
 
 async function invalidateAccountSession(reason: string): Promise<void> {
+  const learningState = await getLearningState();
   await Promise.all([
     setBackendSession(null),
     setAccountUser(null),
     setAccountConflict(null),
+    setLearningState({
+      ...learningState,
+      reviewQueue: [],
+      activeQuizPrompt: null,
+      activeQuizResult: null,
+      activeQuizVisible: false,
+      topicSession: null,
+      syncing: false,
+      lastError: reason,
+    }),
     setAccountSyncState({
       ...createDefaultAccountSyncState(),
       configured: isBackendConfigured(),
@@ -1725,7 +1741,7 @@ async function executeBackendRequest<T>(
     if ((init.auth ?? 'required') === 'required') {
       const session = await getBackendSession();
       if (!session) {
-        throw new Error('No backend session available.');
+        throw new Error('Sign in to Window to continue.');
       }
       headers.Authorization = `Bearer ${session.sessionToken}`;
     }
