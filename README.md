@@ -699,7 +699,8 @@ window-extension/
 │   ├── prisma/schema.prisma
 │   ├── data/learning/quizzes-cleaned/   # Canonical quiz JSON banks
 │   └── scripts/                  # Quiz authoring, import, validation
-├── docs/                         # Specs, investor deck, textbook manifest
+├── docs/                         # Specs, investor deck, textbook manifest, deployment guides
+│   └── coolify-deployment.md     # Coolify Docker deployment guide
 ├── ops/oracle/                   # systemd units for production deploy
 └── promo-assets/                 # Marketing screenshots
 ```
@@ -767,6 +768,17 @@ cd backend
 npx prisma migrate dev
 npx prisma generate
 ```
+
+### Docker / Coolify Deployment
+
+The backend can be deployed via Docker (Dockerfile included at `backend/Dockerfile`). For a full deployment guide including Coolify configuration, see [`docs/coolify-deployment.md`](docs/coolify-deployment.md).
+
+| File | Purpose |
+|------|---------|
+| `backend/Dockerfile` | Production container build |
+| `backend/.dockerignore` | Ignore patterns for smaller builds |
+| `backend/.env.example` | Environment variable template |
+| `.env.production` | Runtime environment configuration |
 
 ---
 
