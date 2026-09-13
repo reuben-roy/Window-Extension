@@ -4229,7 +4229,7 @@
         "cleanedOrdinal": 43
       },
       {
-        "prompt": "The interval above (\u22120.7, 10.7) contains 0. What does that mean at \u03b1 = 0.05?",
+        "prompt": "A 95% CI for \u03bc1\u2212\u03bc2 is (\u22120.7, 10.7), which contains 0. What does that mean at \u03b1 = 0.05?",
         "choices": [
           {
             "id": "a",

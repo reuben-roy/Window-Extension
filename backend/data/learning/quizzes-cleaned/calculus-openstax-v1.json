@@ -6801,7 +6801,7 @@
         "cleanedOrdinal": 34
       },
       {
-        "prompt": "For the same f, what is lim(x->2+) f(x)?",
+        "prompt": "f(x) = {x+1 for x<2; 5 for x=2; 2x for x>2}. What is lim(x->2+) f(x)?",
         "choices": [
           {
             "id": "a",
@@ -6844,7 +6844,7 @@
         "cleanedOrdinal": 35
       },
       {
-        "prompt": "For the same f, what is lim(x->2) f(x)?",
+        "prompt": "f(x) = {x+1 for x<2; 5 for x=2; 2x for x>2}. What is lim(x->2) f(x)?",
         "choices": [
           {
             "id": "a",
