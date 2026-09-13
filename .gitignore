@@ -38,3 +38,7 @@ backend/data/learning/raw-selected/
 backend/data/learning/quizzes/
 backend/data/learning/quality-reports/
 backend/data/learning/run-summary.json
+
+# Local quiz-corpus working artifacts (canonical cleaned JSON is committed)
+backend/data/learning/quizzes-cleaned/*.bak-pre-curated
+backend/scripts/quiz_banks/gen_tr_*.py
