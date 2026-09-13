@@ -2889,7 +2889,7 @@
         "cleanedOrdinal": 21
       },
       {
-        "prompt": "Same 3-door game but the host opens a random remaining door (might reveal the car). Given he revealed a goat, P(switch wins) = ?",
+        "prompt": "You pick 1 of 3 doors (a car behind one). This host opens a random remaining door (might reveal the car). Given he revealed a goat, P(switch wins) = ?",
         "choices": [
           {
             "id": "a",
@@ -5170,7 +5170,7 @@
         "cleanedOrdinal": 14
       },
       {
-        "prompt": "Same test but prevalence is 20% instead of 1%. P(disease | +) becomes closest to\u2026",
+        "prompt": "A test has 99% sensitivity and 95% specificity. With prevalence 20% instead of 1%, P(disease | +) becomes closest to\u2026",
         "choices": [
           {
             "id": "a",

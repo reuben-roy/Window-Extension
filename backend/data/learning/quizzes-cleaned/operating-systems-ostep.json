@@ -15659,7 +15659,7 @@
         "cleanedOrdinal": 85
       },
       {
-        "prompt": "Same state Avail [2,1]. P0 requests [1,1]. Grant or deny?",
+        "prompt": "Avail [CPU 2, Disk 1]. Alloc P0[1,0] P1[1,1] P2[1,0]; Max P0[3,2] P1[2,2] P2[2,1]. P0 requests [1,1]. Grant or deny?",
         "choices": [
           {
             "id": "a",
