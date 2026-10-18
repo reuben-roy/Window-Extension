@@ -12,7 +12,7 @@ are in `docs/cloudflare-deployment-receipt.md`.
 | Public API | Worker `window-backend` at `https://api.window.explosion.fun` (custom domain on the `explosion.fun` zone). The unchanged Fastify app is hosted through the Workers `node:http` server shim (`cloudflare:node` `handleAsNodeRequest`). |
 | Background jobs | `JobProcessor` Durable Object (SQLite-backed), the single consumer of the research, assistant and learning queues. It runs on demand and re-arms an alarm only while work remains. |
 | Wake-ups | A successful enqueue request kicks the processor; a `*/15` cron trigger is a safety net that recovers missed kicks and fails interrupted jobs. |
-| Database | A dedicated PostgreSQL 17 managed by the existing Coolify on Oracle, restored from the archived Window database. Reached privately: Worker → Hyperdrive → Workers VPC TCP service → Cloudflare Tunnel → Postgres. No database port is exposed publicly. |
+| Database | Dedicated PostgreSQL 18 (`window-postgres`, Coolify resource `w2c1as5kuqogvg0mb4jilfvy`, database `window`, TLS on, no published port) on the existing Coolify server, restored from the archived Window database. Reached privately: Worker → Hyperdrive → Workers VPC TCP service → Cloudflare Tunnel `window-postgres-oracle` (connector container `window-postgres-tunnel` on the `coolify` Docker network) → Postgres. No database port is exposed publicly. |
 | ORM | Prisma 6.19 with `engineType = "client"` and the `@prisma/adapter-pg` driver adapter. One client is created per invocation (Workers cannot reuse sockets across requests). |
 | Auth | Unchanged: the extension signs in with Google, the API verifies the Google access token (`/v1/auth/google/exchange`) and issues its own 7-day bearer session token stored hashed in `BackendSession`. Window does not use Auth0. |
 | OpenClaw | **Mock staging.** See "OpenClaw" below. |
@@ -106,9 +106,10 @@ without a chosen target.
 - The archived dump from the retired deployment is private on Oracle:
   `/data/coolify/backups/retired-window-20261018T191206Z/` (root-only).
   Keep it.
-- The new Coolify database has scheduled backups configured in Coolify
-  (see the receipt for schedule and location). Coolify has no off-host S3
-  destination; copy dumps off the host periodically.
+- The new Coolify database has a scheduled backup (`v11ax0enmeoy105mbqlehj7n`):
+  daily `0 8 * * *` (UTC), `window` database only, local storage, 7 backups /
+  7 days retained. Coolify has no off-host S3 destination, so dumps live on the
+  same host as the database: copy them off the host periodically.
 - Manual logical backup (needs network access to the database):
   `backend/scripts/backup-postgres.sh` (`pg_dump --format=custom`).
 - Restore: create an empty database, `pg_restore --no-owner --dbname <url> <dump>`
