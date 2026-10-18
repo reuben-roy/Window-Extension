@@ -33,7 +33,7 @@ export default defineConfig({
       WORKER_POLL_INTERVAL_MS: bindings.text('5000'),
       CORS_ALLOWED_ORIGINS: bindings.text('chrome-extension://*'),
       HYPERDRIVE: bindings.hyperdrive({
-        id: process.env.WINDOW_HYPERDRIVE_ID ?? 'unset',
+        id: process.env.WINDOW_HYPERDRIVE_ID ?? '88be7b840568402db221293c9edf35a9',
         dev: { connectionString: process.env.WINDOW_LOCAL_DATABASE_URL },
       }),
       JOB_PROCESSOR: bindings.durableObject({

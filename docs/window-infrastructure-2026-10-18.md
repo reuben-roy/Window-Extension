@@ -43,8 +43,11 @@ Coolify's `DatabaseBackupJob` succeeded at 22:26:53 UTC. Execution ID `1`,
 1,079,525 bytes:
 `/data/coolify/backups/databases/root-team-0/window-postgres-w2c1as5kuqogvg0mb4jilfvy/pg-dump-window-1792362412.dmp`.
 Independent `pg_restore --list` validation found 35 table definitions and 35 table
-data entries. This validates archive structure; this new backup has not yet been
-restored into another database.
+data entries. The new backup was then restored successfully with
+`pg_restore --exit-on-error --no-owner --no-privileges` into a separate temporary
+database, `window_backup_verify_20261018`. Counts matched: 1 user, 18 packs and
+2,952 questions. That verification database was removed after the check; the
+live `window` database and backup file were retained.
 
 ## Restored data verification
 
@@ -60,6 +63,27 @@ Independent read-only PostgreSQL checks after Claude's restore confirmed:
 On Claude's existing worktree, backend `typecheck` and `typecheck:worker` passed.
 The targeted `cloudflareRuntime` and `jobProcessing` suites passed 22/22 tests.
 These checks do not establish a successful public deployment or Google login.
+
+## Independent public verification
+
+At 22:41:54–55 UTC, after the edge certificate became active, direct HTTPS
+requests to `https://api.window.explosion.fun` confirmed:
+
+- `/healthz`: HTTP 200, `ok=true`, service `window-backend`.
+- `/readyz`: HTTP 200, database reachable, latest migration applied, no failed
+  migrations and no queued or running jobs at that sample.
+- `/v1/auth/me` without a bearer session: HTTP 401.
+- A Chromium extension origin receives the matching CORS allow-origin header;
+  an unrelated HTTPS website receives no CORS allow-origin header.
+
+Cloudflare's CLI independently reported VPC service
+`01a15126-a025-73b3-85ff-93f7b918d114`, hostname `window-db.explosion.fun`, TCP
+5432 through tunnel `c52dfb9d-1eb1-4368-9817-9ec469427287`, with TLS mode
+`verify_full`. The database certificate issuer is Cloudflare Origin CA and its
+expiry is 2028-10-17 22:27 UTC. No TLS verification bypass was applied.
+
+See the main receipt for authenticated requests, background-job verification,
+final resources, restart recovery and the Google login verification limit.
 
 ## Coordination and access
 

@@ -12,7 +12,7 @@ are in `docs/cloudflare-deployment-receipt.md`.
 | Public API | Worker `window-backend` at `https://api.window.explosion.fun` (custom domain on the `explosion.fun` zone). The unchanged Fastify app is hosted through the Workers `node:http` server shim (`cloudflare:node` `handleAsNodeRequest`). |
 | Background jobs | `JobProcessor` Durable Object (SQLite-backed), the single consumer of the research, assistant and learning queues. It runs on demand and re-arms an alarm only while work remains. |
 | Wake-ups | A successful enqueue request kicks the processor; a `*/15` cron trigger is a safety net that recovers missed kicks and fails interrupted jobs. |
-| Database | Dedicated PostgreSQL 18 (`window-postgres`, Coolify resource `w2c1as5kuqogvg0mb4jilfvy`, database `window`, TLS on, no published port) on the existing Coolify server, restored from the archived Window database. Reached privately: Worker → Hyperdrive → Workers VPC TCP service → Cloudflare Tunnel `window-postgres-oracle` (connector container `window-postgres-tunnel` on the `coolify` Docker network) → Postgres. No database port is exposed publicly. |
+| Database | Dedicated PostgreSQL 18 (`window-postgres`, Coolify resource `w2c1as5kuqogvg0mb4jilfvy`, database `window`, TLS on, no published port) on the existing Coolify server, restored from the archived Window database. Reached privately: Worker → Hyperdrive → Workers VPC TCP service → Cloudflare Tunnel `window-postgres-oracle` (connector container `window-postgres-tunnel` on the `coolify` Docker network) → Postgres, with the VPC service verifying the certificate (`verify_full`). No database port is exposed publicly. |
 | ORM | Prisma 6.19 with `engineType = "client"` and the `@prisma/adapter-pg` driver adapter. One client is created per invocation (Workers cannot reuse sockets across requests). |
 | Auth | Unchanged: the extension signs in with Google, the API verifies the Google access token (`/v1/auth/google/exchange`) and issues its own 7-day bearer session token stored hashed in `BackendSession`. Window does not use Auth0. |
 | OpenClaw | **Mock staging.** See "OpenClaw" below. |
@@ -86,6 +86,33 @@ holds 18 packs / 2,952 questions. `npm run import:learning-quizzes` replaces
 canonical packs and resets spaced-repetition progress for them, and
 `--activate-user-email` changes a user's active topics: do not run either
 without a chosen target.
+
+## Private database connection (TLS)
+
+Workers VPC trusts publicly trusted CAs and Cloudflare Origin CA only, so the
+Coolify private-CA certificate cannot be verified. The database therefore serves a
+Cloudflare Origin CA certificate for `window-db.explosion.fun`, and the VPC
+service verifies it with `verify_full`. Never set `disabled`.
+
+- Certificate files: `/data/coolify/databases/w2c1as5kuqogvg0mb4jilfvy/ssl/server.{crt,key}`
+  (bind-mounted by Coolify), with a root-only copy in `/etc/window-db-tls/`.
+  `ops/oracle/window-db-tls.sh install|reinstall|status` is idempotent; it writes
+  files in place (Docker bind-mounts single files by inode) and reloads Postgres,
+  restarting the container only if its mount went stale.
+- Name resolution: a DNS-only A record `window-db.explosion.fun` → the database
+  container's private address, resolved by the tunnel through `1.1.1.1` (the Oracle
+  host resolver drops private answers). `ops/oracle/sync-window-db-dns.sh` updates
+  the record after the container address changes.
+- Connector: `ops/oracle/window-db-tunnel.sh` recreates the `cloudflared` container
+  (it does not depend on the database address).
+- Renewal: the Origin CA certificate expires 2028-10-17. Issue a new one
+  (`cf ssl origin-ca-certificates create` with a fresh CSR, validity 730 days),
+  then `window-db-tls.sh install <crt> <key>`.
+- After a **Coolify redeploy** of the database: Coolify rewrites the certificate
+  files from its own records. Until the Origin CA certificate is stored in those
+  records (`ops/oracle/window-db-coolify-cert.sh apply`, see the receipt's open
+  items), run `sudo window-db-tls.sh reinstall` and `sync-window-db-dns.sh`.
+  Symptom of a miss: `/readyz` returns 503.
 
 ## Health and operations
 
