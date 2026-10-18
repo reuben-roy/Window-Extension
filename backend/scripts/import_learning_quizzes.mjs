@@ -2,12 +2,15 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import process from 'node:process';
 import dotenv from 'dotenv';
+import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '@prisma/client';
 
 const repoRoot = path.resolve(path.dirname(new URL(import.meta.url).pathname), '../..');
 const inputDir = path.join(repoRoot, 'backend/data/learning/quizzes-cleaned');
 dotenv.config({ path: path.join(repoRoot, 'backend/.env') });
-const prisma = new PrismaClient();
+const prisma = new PrismaClient({
+  adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL }),
+});
 
 const SUBJECT_KEY_BY_LABEL = {
   'AI & Machine Learning': 'ai-ml',

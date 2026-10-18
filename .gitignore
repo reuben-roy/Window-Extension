@@ -2,6 +2,7 @@ node_modules/
 dist/
 backend/node_modules/
 backend/dist/
+backend/.cloudflare/
 
 .DS_Store
 Thumbs.db

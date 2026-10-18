@@ -1,8 +1,10 @@
-import Fastify, { type FastifyReply, type FastifyRequest } from 'fastify';
+import Fastify, { type FastifyReply, type FastifyRequest, type FastifyServerOptions } from 'fastify';
 import type { Prisma, QuizDifficulty } from '@prisma/client';
 import { z } from 'zod';
-import { env, getOpenClawAllowedHostSuffixes } from './env.js';
+import { env, getCorsAllowedOrigins, getOpenClawAllowedHostSuffixes } from './env.js';
+import { resolveCorsOrigin } from './lib/cors.js';
 import { prisma } from './lib/prisma.js';
+import { checkReadiness } from './lib/readiness.js';
 import {
   ensureLearningCatalogSeeded,
   computeNextReviewSchedule,
@@ -243,13 +245,23 @@ const emptyAccountSnapshot = (): AccountSnapshotPayload => ({
   globalAllowlist: ['accounts.google.com'],
 });
 
-export async function buildApp() {
+export interface BuildAppOptions {
+  logger?: FastifyServerOptions['logger'];
+  /** Skip Fastify's per-request log lines; the Cloudflare entrypoint logs requests itself. */
+  disableRequestLogging?: boolean;
+  /** Milliseconds Fastify waits for plugins to load; 0 disables the timer. */
+  pluginTimeout?: number;
+}
+
+export async function buildApp(options: BuildAppOptions = {}) {
   const app = Fastify({
-    logger: true,
+    logger: options.logger ?? true,
+    disableRequestLogging: options.disableRequestLogging ?? false,
+    ...(options.pluginTimeout === undefined ? {} : { pluginTimeout: options.pluginTimeout }),
   });
 
   app.addHook('onRequest', async (request, reply) => {
-    applyCors(reply);
+    applyCors(request, reply);
     if (request.method === 'OPTIONS') {
       reply.code(204).send();
     }
@@ -261,10 +273,26 @@ export async function buildApp() {
     health: '/healthz',
   }));
 
+  // Liveness only: the process is serving requests. Use /readyz for dependencies.
   app.get('/healthz', async () => ({
     ok: true,
     service: 'window-backend',
   }));
+
+  app.get('/readyz', async (request, reply) => {
+    try {
+      const report = await checkReadiness();
+      return reply.code(report.ok ? 200 : 503).send({ service: 'window-backend', ...report });
+    } catch (error) {
+      request.log.error({ err: error }, 'readiness check failed');
+      return reply.code(503).send({
+        ok: false,
+        service: 'window-backend',
+        database: false,
+        error: 'The database is not reachable.',
+      });
+    }
+  });
 
   app.post('/v1/auth/google/exchange', async (request) => {
     const body = googleExchangeSchema.parse(request.body);
@@ -2072,9 +2100,15 @@ export async function buildApp() {
     return { ok: true };
   });
 
-  app.setErrorHandler((error, _request, reply) => {
+  app.setErrorHandler((error, request, reply) => {
     const statusCode = inferStatusCode(error);
     const message = toPublicErrorMessage(error);
+    if (statusCode >= 500) {
+      request.log.error({ err: error, url: request.url }, 'request failed');
+    } else if (!(error instanceof z.ZodError) && statusCode !== 401 && statusCode !== 404) {
+      // Unclassified errors (for example database failures) default to 400.
+      request.log.warn({ err: error, url: request.url }, 'request rejected');
+    }
     reply.code(statusCode).send({
       error: message,
     });
@@ -2990,8 +3024,12 @@ async function resolveIdeaSession(
   });
 }
 
-function applyCors(reply: FastifyReply): void {
-  reply.header('Access-Control-Allow-Origin', '*');
+function applyCors(request: FastifyRequest, reply: FastifyReply): void {
+  const allowedOrigin = resolveCorsOrigin(request.headers.origin, getCorsAllowedOrigins());
+  reply.header('Vary', 'Origin');
+  if (!allowedOrigin) return;
+
+  reply.header('Access-Control-Allow-Origin', allowedOrigin);
   reply.header('Access-Control-Allow-Headers', 'Authorization, Content-Type');
   reply.header('Access-Control-Allow-Methods', 'GET,POST,PUT,OPTIONS');
 }

@@ -1,6 +1,6 @@
 import { env } from './env.js';
 import { prisma } from './lib/prisma.js';
-import { processAssistantTasksBatch, processLearningJobsBatch, processResearchJobsBatch } from './lib/jobs.js';
+import { runJobCycle } from './lib/jobs.js';
 
 let stopped = false;
 
@@ -14,10 +14,7 @@ process.on('SIGTERM', () => {
 
 while (!stopped) {
   try {
-    const processed =
-      (await processResearchJobsBatch()) +
-      (await processLearningJobsBatch()) +
-      (await processAssistantTasksBatch());
+    const { processed } = await runJobCycle();
     const delay = processed > 0 ? 500 : env.WORKER_POLL_INTERVAL_MS;
     await sleep(delay);
   } catch (error) {

@@ -1,3 +1,6 @@
+> **Retired 2026-10-18.** These Coolify applications were removed. The current
+> deployment is described in [cloudflare-deployment.md](cloudflare-deployment.md).
+
 # Coolify deployment
 
 Window's server-side runtime is three services:

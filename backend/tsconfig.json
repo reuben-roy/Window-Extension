@@ -13,5 +13,5 @@
     "types": ["node"]
   },
   "include": ["src", "prisma"],
-  "exclude": ["dist", "node_modules"]
+  "exclude": ["dist", "node_modules", "src/cloudflare/index.ts", "src/cloudflare/bootstrap.ts"]
 }

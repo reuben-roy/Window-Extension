@@ -1,4 +1,5 @@
 import type { Prisma } from '@prisma/client';
+import { env } from '../env.js';
 import { prisma } from './prisma.js';
 import {
   buildSampleQuestions,
@@ -183,6 +184,71 @@ export async function processLearningJobsBatch(maxJobs = 5): Promise<number> {
   }
 
   return processed;
+}
+
+export interface JobCycleResult {
+  processed: number;
+  failedStale: number;
+  /** Jobs still waiting to be claimed. */
+  queued: number;
+  /** Assistant tasks running remotely that need further status polls. */
+  polling: number;
+}
+
+/**
+ * One pass over every queue. Safe to call repeatedly; each job is claimed with a
+ * conditional update, so overlapping callers never process the same job twice.
+ */
+export async function runJobCycle(now = new Date()): Promise<JobCycleResult> {
+  const failedStale = await failStaleJobs(now);
+  const processed =
+    (await processResearchJobsBatch()) +
+    (await processLearningJobsBatch()) +
+    (await processAssistantTasksBatch());
+
+  return { processed, failedStale, ...(await countPendingJobs()) };
+}
+
+/**
+ * Research and learning jobs run inline in one cycle. A job still 'running'
+ * long after it started belongs to an interrupted process (for example an
+ * evicted Worker isolate), so fail it and let the user retry. Assistant jobs
+ * stay 'running' while the remote task executes and are handled by polling.
+ */
+export async function failStaleJobs(
+  now = new Date(),
+  staleAfterMs = env.JOB_STALE_AFTER_MS,
+): Promise<number> {
+  const cutoff = new Date(now.getTime() - staleAfterMs);
+  const message = 'Window stopped processing this job before it finished. Retry to run it again.';
+
+  const researchJobs = await prisma.researchJob.findMany({
+    where: { status: 'running', startedAt: { lt: cutoff } },
+    include: { idea: { include: { session: true } } },
+  });
+  for (const job of researchJobs) {
+    await markResearchJobFailed(job, message);
+  }
+
+  const learningJobs = await prisma.learningJob.findMany({
+    where: { status: 'running', startedAt: { lt: cutoff } },
+    include: { topic: true, pack: true, packVersion: true },
+  });
+  for (const job of learningJobs) {
+    await markLearningJobFailed(job, message);
+  }
+
+  return researchJobs.length + learningJobs.length;
+}
+
+export async function countPendingJobs(): Promise<{ queued: number; polling: number }> {
+  const [research, learning, assistantQueued, polling] = await Promise.all([
+    prisma.researchJob.count({ where: { status: 'queued' } }),
+    prisma.learningJob.count({ where: { status: 'queued' } }),
+    prisma.assistantTaskJob.count({ where: { status: 'queued' } }),
+    prisma.assistantTaskJob.count({ where: { status: 'running' } }),
+  ]);
+  return { queued: research + learning + assistantQueued, polling };
 }
 
 async function claimNextResearchJob(): Promise<ResearchJobWithIdea | null> {

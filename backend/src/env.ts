@@ -17,6 +17,10 @@ const envSchema = z.object({
   OPENCLAW_ALLOWED_HOST_SUFFIXES: z.string().default(''),
   OPENCLAW_MOCK_LATENCY_MS: z.coerce.number().default(2500),
   WORKER_POLL_INTERVAL_MS: z.coerce.number().default(5000),
+  /** Research and learning jobs left 'running' longer than this are failed so they can be retried. */
+  JOB_STALE_AFTER_MS: z.coerce.number().default(10 * 60 * 1000),
+  /** Comma-separated CORS origins; supports `<scheme>://*`. Empty allows any origin. */
+  CORS_ALLOWED_ORIGINS: z.string().default(''),
 });
 
 export const env = envSchema.parse(process.env);
@@ -27,4 +31,10 @@ export function getOpenClawAllowedHostSuffixes(): string[] {
   return env.OPENCLAW_ALLOWED_HOST_SUFFIXES.split(',')
     .map((suffix) => suffix.trim())
     .filter((suffix) => suffix.length > 0);
+}
+
+export function getCorsAllowedOrigins(): string[] {
+  return env.CORS_ALLOWED_ORIGINS.split(',')
+    .map((origin) => origin.trim())
+    .filter((origin) => origin.length > 0);
 }

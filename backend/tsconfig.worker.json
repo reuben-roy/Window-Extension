@@ -1,0 +1,9 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "allowImportingTsExtensions": true
+  },
+  "include": ["src", "cloudflare.config.ts", ".cloudflare/types"],
+  "exclude": ["dist", "node_modules"]
+}
