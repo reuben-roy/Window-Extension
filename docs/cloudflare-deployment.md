@@ -108,11 +108,18 @@ service verifies it with `verify_full`. Never set `disabled`.
 - Renewal: the Origin CA certificate expires 2028-10-17. Issue a new one
   (`cf ssl origin-ca-certificates create` with a fresh CSR, validity 730 days),
   then `window-db-tls.sh install <crt> <key>`.
-- After a **Coolify redeploy** of the database: Coolify rewrites the certificate
-  files from its own records. Until the Origin CA certificate is stored in those
-  records (`ops/oracle/window-db-coolify-cert.sh apply`, see the receipt's open
-  items), run `sudo window-db-tls.sh reinstall` and `sync-window-db-dns.sh`.
-  Symptom of a miss: `/readyz` returns 503.
+- Coolify's own records: the certificate and key are also stored in the
+  database's `SslCertificate` row and in the `LocalFileVolume` rows for
+  `server.crt`/`server.key`, so Coolify regenerates files from the Origin CA
+  certificate. `ops/oracle/window-db-coolify-cert.sh inspect` shows the stored
+  fingerprints (read-only); `apply` (root) writes `/etc/window-db-tls/origin.{crt,key}`
+  into those records through the Coolify models, touching only this database.
+  Re-run `apply` after every certificate renewal.
+- After a **Coolify restart/redeploy** (tested with `RestartDatabase`, the dashboard
+  Restart action; `ops/oracle/coolify-restart-window-db.php`): the certificate stays
+  correct. If the container address changed, run `ops/oracle/sync-window-db-dns.sh`.
+  If `/readyz` returns 503 anyway, run `sudo window-db-tls.sh status`, then
+  `reinstall`, and `sync-window-db-dns.sh --dry-run`.
 
 ## Health and operations
 

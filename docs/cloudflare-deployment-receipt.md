@@ -1,6 +1,6 @@
 # Cloudflare deployment receipt
 
-**Status: DEPLOYED and verified through `https://api.window.explosion.fun` on 2026-10-18, as _mock staging_ for OpenClaw. One hardening step is pending approval (see "Open items"). Google sign-in itself is not verified (needs a human).**
+**Status: DEPLOYED and verified through `https://api.window.explosion.fun` on 2026-10-18, as _mock staging_ for OpenClaw (owner-selected scope). Certificate persistence and a real Coolify redeploy were verified. Google sign-in itself is not verified (needs a human).**
 No secret values appear in this file. Companion: `docs/window-infrastructure-2026-10-18.md` (Coolify/database checkpoints), `docs/cloudflare-deployment.md` (architecture and runbook).
 
 ## Architecture and resources
@@ -43,6 +43,16 @@ Worker `window-backend` (Fastify via `node:http` shim) → Hyperdrive → Worker
 | Cleanup | The synthetic user and everything it created were deleted in one transaction; counts afterwards: 1 user, 6 sessions, 12 user topics, 18 packs, 2,952 questions (unchanged from the restore). The global "Primary OpenClaw" mock connector row created by the API on first use remains (it is required by the app). |
 | Local tests | `tsc` and `tsc -p tsconfig.worker.json` clean; `tests/cloudflareRuntime.test.ts`, `tests/jobProcessing.test.ts`, `backendRootRoute`, `productionBackendConfig`: 24 passed |
 
+## Coolify certificate persistence and redeploy test
+
+Approved by the owner in the Window chat ("Approve certificate update and redeploy test"). Only resource `w2c1as5kuqogvg0mb4jilfvy` was touched; the server CA and sibling resources were not.
+
+- **Records updated through Coolify's models** (`ops/oracle/coolify-window-db-cert.php`, run by `window-db-coolify-cert.sh apply` via `php artisan tinker`): `SslCertificate` id 2 now holds the Origin CA certificate and key (encrypted casts), `common_name = window-db.explosion.fun`, `subject_alternative_names = ["DNS:window-db.explosion.fun"]`, `valid_until = 2028-10-17 22:27:00`; `LocalFileVolume` ids 22 (`server.crt`) and 23 (`server.key`) hold the same content and were written in place with `saveStorageOnServer()`.
+- **Fingerprints agree** (sha256 `114a6204…f1f6a9`) across the `SslCertificate` record, the `LocalFileVolume` record, the host file `ssl/server.crt`, the root-only store `/etc/window-db-tls/origin.crt`, and the certificate served on port 5432 (issuer Cloudflare Origin CA, SAN `window-db.explosion.fun`, TLS 1.3).
+- **Real Coolify redeploy** (`App\Actions\Database\RestartDatabase`, the dashboard Restart code path: stop, remove container, start): container recreated (id `a616edfa…` → `cb39004c…`, created 23:08:22Z), healthy within 10 s, same address `10.0.2.5` (so `sync-window-db-dns.sh --dry-run` reported no change), no published ports. Coolify did not rewrite the certificate files on this path (inode and mtime unchanged); they and the records already matched, so the served certificate stayed correct.
+- **After recovery, through the public hostname:** `/readyz` 200 (`database: true`, `latestApplied: true`, `failed: []`); no-token request 401; synthetic bearer session 200 on `/v1/auth/me`; a research job created and `completed` with a report within 3 s (mock transport); `/v1/learning/taxonomy` 200; restored data intact (2,952 questions). The VPC service still reports `cert_verification_mode = verify_full`. The synthetic user was deleted afterwards (counts: 1 user, 6 sessions, 0 ideas, 12 user topics, 18 packs, 2,952 questions).
+- **Limits of this test:** it proves the certificate survives Coolify's restart/redeploy action, not that Coolify's start path would regenerate files from these records if the files were deleted (not tested; the records now carry the correct content, so such a regeneration would produce the Origin CA files). Coolify's own scheduled certificate renewal acts near `valid_until` (2028); renew before then.
+
 ## Notable decisions and findings
 
 - **TLS:** the Coolify private-CA certificate cannot be verified by Workers VPC, and disabling verification was rejected by the auto-mode review. Instead a Cloudflare Origin CA certificate (trusted by Workers VPC) for `window-db.explosion.fun` was issued through `cf ssl origin-ca-certificates create` and the VPC service uses `verify_full`. Validity options are 7/30/90/365/730/1095/5475 days; 730 was chosen.
@@ -54,7 +64,7 @@ Worker `window-backend` (Fastify via `node:http` shim) → Hyperdrive → Worker
 
 ## Open items
 
-1. **Persist the Origin CA certificate in Coolify's own records (pending approval).** Verified rewrite path: `StartPostgresql` reuses the database's first `SslCertificate` and writes `server.crt`/`server.key` from the encrypted `LocalFileVolume` contents (ids 22, 23) on every Coolify start/redeploy. Today the Origin CA files are installed on disk only, so a Coolify-initiated redeploy would restore the Coolify-CA certificate and `/readyz` would fail until `sudo window-db-tls.sh reinstall` is run. The model-based fix is written (`ops/oracle/coolify-window-db-cert.php` + `window-db-coolify-cert.sh apply`, using `SslCertificate` and `LocalFileVolume::saveStorageOnServer`, touching only this database's rows); running it via `php artisan tinker` was denied by the auto-mode review ("Remote Shell Writes") and was not retried. Read-only `inspect` mode ran successfully. To finish: owner approves (or runs on Oracle) `sudo ~/.window-deploy/stage/window-db-coolify-cert.sh apply`, then a Coolify redeploy test.
+1. ~~Persist the Origin CA certificate in Coolify's own records.~~ **Resolved 2026-10-18** with the owner's explicit approval; see "Coolify certificate persistence and redeploy test" below.
 2. Coolify's scheduled certificate renewal regenerates certificates shortly before `valid_until`; renew the Origin CA certificate (same scripts) before 2028-10-17.
 3. After any recreation of the database container, run `ops/oracle/sync-window-db-dns.sh` (updates the DNS-only record to the container address); a database restart that keeps the address needs nothing.
 4. OpenClaw is mock staging by owner decision; the real integration (an `/api/window/*` adapter and secured route) is unresolved.

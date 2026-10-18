@@ -13,7 +13,7 @@ STORE="${WINDOW_DB_TLS_STORE:-/etc/window-db-tls}"
 PHP_FILE="$(dirname "$(readlink -f "$0")")/coolify-window-db-cert.php"
 
 docker cp "$PHP_FILE" coolify:/tmp/coolify-window-db-cert.php
-trap 'docker exec coolify rm -f /tmp/coolify-window-db-cert.php' EXIT
+trap 'docker exec -u root coolify rm -f /tmp/coolify-window-db-cert.php' EXIT
 
 if [[ "$MODE" == "apply" ]]; then
   [[ $EUID -eq 0 ]] || { echo "error: apply must run as root (reads ${STORE})" >&2; exit 1; }

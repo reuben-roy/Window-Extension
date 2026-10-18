@@ -26,11 +26,14 @@ $volumes = $db->fileStorages()->get();
 if ($mode === 'inspect') {
     echo "database: {$db->name} ({$db->uuid}) ssl_mode={$db->ssl_mode} enable_ssl=".json_encode($db->enable_ssl)."\n";
     echo $sslCertificate
-        ? "ssl certificate: id={$sslCertificate->id} cn={$sslCertificate->common_name} sans=".json_encode($sslCertificate->subject_alternative_names)." valid_until={$sslCertificate->valid_until}\n"
+        ? "ssl certificate: id={$sslCertificate->id} cn={$sslCertificate->common_name} sans=".json_encode($sslCertificate->subject_alternative_names)." valid_until={$sslCertificate->valid_until} sha256=".openssl_x509_fingerprint($sslCertificate->ssl_certificate, 'sha256')."\n"
         : "ssl certificate: none\n";
     foreach ($volumes as $volume) {
         $isSslFile = in_array(basename($volume->mount_path), ['server.crt', 'server.key', 'server.pem'], true);
-        echo "file volume: id={$volume->id} fs_path={$volume->fs_path} mount_path={$volume->mount_path}".($isSslFile ? ' [ssl]' : '')."\n";
+        $fingerprint = $isSslFile && str_ends_with($volume->mount_path, '.crt') && $volume->content
+            ? ' sha256='.openssl_x509_fingerprint($volume->content, 'sha256')
+            : '';
+        echo "file volume: id={$volume->id} fs_path={$volume->fs_path} mount_path={$volume->mount_path}".($isSslFile ? ' [ssl]' : '').$fingerprint."\n";
     }
     return;
 }
@@ -49,8 +52,9 @@ $parsed = openssl_x509_parse($crt);
 if (! $parsed || ! openssl_x509_check_private_key($crt, $key)) {
     throw new RuntimeException('certificate is unreadable or does not match the private key');
 }
+// Same format Coolify stores for its own certificates: ["DNS:name", "IP:address"].
 $sans = collect(explode(',', $parsed['extensions']['subjectAltName'] ?? ''))
-    ->map(fn ($san) => trim(str_replace('DNS:', '', $san)))
+    ->map(fn ($san) => trim($san))
     ->filter()
     ->values()
     ->all();
@@ -58,7 +62,7 @@ $sans = collect(explode(',', $parsed['extensions']['subjectAltName'] ?? ''))
 $sslCertificate->update([
     'ssl_certificate' => $crt,
     'ssl_private_key' => $key,
-    'common_name' => $sans[0] ?? $sslCertificate->common_name,
+    'common_name' => str_replace('DNS:', '', $sans[0] ?? $sslCertificate->common_name),
     'subject_alternative_names' => $sans,
     'valid_until' => \Carbon\Carbon::createFromTimestampUTC($parsed['validTo_time_t']),
 ]);

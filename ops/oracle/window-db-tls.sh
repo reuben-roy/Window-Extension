@@ -73,7 +73,9 @@ case "${1:-status}" in
       [[ -f "$f" ]] || { echo "$f: missing"; continue; }
       echo "$f: $(openssl x509 -in "$f" -noout -issuer -enddate | tr '\n' ' ')"
     done
-    cmp -s "${SSL_DIR}/server.crt" "${STORE}/origin.crt" && echo "active certificate is the Origin CA certificate" \
+    fp() { openssl x509 -in "$1" -noout -fingerprint -sha256; }
+    [[ "$(fp "${SSL_DIR}/server.crt")" == "$(fp "${STORE}/origin.crt")" ]] \
+      && echo "active certificate is the stored Origin CA certificate" \
       || echo "active certificate differs from the stored Origin CA certificate (run: reinstall)"
     ;;
   *) die "usage: $0 install <crt> <key> | reinstall | status" ;;
