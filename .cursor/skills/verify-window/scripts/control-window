@@ -1,0 +1,163 @@
+#!/bin/sh
+# control-window: launch / doctor / drive / cleanup for the Window verification skill.
+# Zero dependencies beyond node and Google Chrome. All state lives under
+# VERIFY_PROFILE (default /tmp/window-verify-profile); proof artifacts go to
+# --out dirs and are never touched by cleanup.
+#
+#   VERIFY_PORT=19222 VERIFY_PROFILE=/tmp/window-verify-profile \
+#     control-window launch        # prints KEY=VALUE lines; eval them to export
+#   control-window doctor [--backend]
+#   control-window drive snapshot popup --out "$VERIFY_OUT/status"
+#   control-window drive state --out "$VERIFY_OUT/status"
+#   control-window drive break --out "$VERIFY_OUT/break"
+#   control-window drive spend --out "$VERIFY_OUT/unlock"
+#   control-window drive end-break
+#   control-window cleanup
+set -eu
+
+SKILL_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+REPO_DIR="$(cd "$SKILL_DIR/../../.." && pwd)"
+DRIVE="$SKILL_DIR/scripts/cdp-drive.mjs"
+VERIFY_PORT="${VERIFY_PORT:-19222}"
+VERIFY_PROFILE="${VERIFY_PROFILE:-/tmp/window-verify-profile}"
+CHROME_BIN="${CHROME_BIN:-/Applications/Google Chrome.app/Contents/MacOS/Google Chrome}"
+BACKEND_URL="${BACKEND_URL:-http://127.0.0.1:8787}"
+
+usage() {
+  echo "usage: control-window {launch|doctor [--backend]|drive ...|cleanup}" >&2
+  exit 1
+}
+
+chrome_alive() {
+  [ -f "$VERIFY_PROFILE/chrome.pid" ] && kill -0 "$(cat "$VERIFY_PROFILE/chrome.pid")" 2>/dev/null
+}
+
+port_answers() {
+  node -e "fetch('http://127.0.0.1:$VERIFY_PORT/json/version').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))" 2>/dev/null
+}
+
+resolve_ext_id() {
+  node "$DRIVE" --port "$VERIFY_PORT" --ext-id probe resolve 2>/dev/null || true
+}
+
+# Extension IDs are random per profile, so read the installed ID out of the
+# profile Preferences (no hardcoding, no guessing).
+ext_id_from_prefs() {
+  node -e "
+    const fs = require('fs');
+    try {
+      const prefs = JSON.parse(fs.readFileSync('$VERIFY_PROFILE/Default/Preferences', 'utf8'));
+      const settings = (prefs.extensions && prefs.extensions.settings) || {};
+      for (const [id, entry] of Object.entries(settings)) {
+        const name = entry && entry.manifest && entry.manifest.name;
+        if (name === 'Window') { console.log(id); break; }
+      }
+    } catch (e) { process.exit(1); }
+  " 2>/dev/null || true
+}
+
+cmd_launch() {
+  if [ ! -d "$REPO_DIR/dist/src/popup" ]; then
+    echo "FAIL: $REPO_DIR/dist is missing; run 'npm run build' in the repo root first." >&2
+    exit 1
+  fi
+  if [ ! -x "$CHROME_BIN" ] && [ ! -f "$CHROME_BIN" ]; then
+    echo "FAIL: Chrome not found at $CHROME_BIN (set CHROME_BIN)." >&2
+    exit 1
+  fi
+  if chrome_alive; then
+    echo "FAIL: a verification Chrome is already running (pid $(cat "$VERIFY_PROFILE/chrome.pid")). Refusing to double-drive; run 'control-window cleanup' first." >&2
+    exit 1
+  fi
+  mkdir -p "$VERIFY_PROFILE"
+  "$CHROME_BIN" --headless=new --disable-gpu --no-first-run --no-default-browser-check \
+    --user-data-dir="$VERIFY_PROFILE" --remote-debugging-port="$VERIFY_PORT" \
+    --load-extension="$REPO_DIR/dist" --hide-scrollbars \
+    about:blank >/dev/null 2>&1 &
+  echo "$!" > "$VERIFY_PROFILE/chrome.pid"
+  # Wait for the debugger port, then for the Window extension ID.
+  i=0
+  while [ "$i" -lt 30 ]; do
+    port_answers && break
+    i=$((i + 1)); sleep 1
+  done
+  port_answers || { echo "FAIL: Chrome debugger port $VERIFY_PORT never answered." >&2; exit 1; }
+  EXT_ID=""
+  i=0
+  while [ "$i" -lt 60 ]; do
+    EXT_ID="$(resolve_ext_id)"
+    if [ -z "$EXT_ID" ]; then
+      EXT_ID="$(ext_id_from_prefs)"
+      if [ -n "$EXT_ID" ]; then
+        # Prefs know the ID but the worker may be asleep; opening the popup wakes it.
+        node "$DRIVE" --port "$VERIFY_PORT" --ext-id "$EXT_ID" snapshot popup --out "$VERIFY_PROFILE/warmup" >/dev/null 2>&1 || true
+        EXT_ID="$(resolve_ext_id)"
+      fi
+    fi
+    [ -n "$EXT_ID" ] && break
+    i=$((i + 1)); sleep 1
+  done
+  if [ -z "$EXT_ID" ]; then
+    echo "FAIL: Window service worker not found on port $VERIFY_PORT." >&2
+    exit 1
+  fi
+  echo "export WINDOW_EXT_ID=$EXT_ID"
+  echo "export VERIFY_PORT=$VERIFY_PORT"
+  echo "export VERIFY_PROFILE=$VERIFY_PROFILE"
+}
+
+cmd_doctor() {
+  WANT_BACKEND=0
+  [ "${1:-}" = "--backend" ] && WANT_BACKEND=1
+  chrome_alive || { echo "FAIL: no verification Chrome owned by this run (missing/stale $VERIFY_PROFILE/chrome.pid)." >&2; exit 1; }
+  port_answers || { echo "FAIL: debugger port $VERIFY_PORT does not answer; Chrome pid $(cat "$VERIFY_PROFILE/chrome.pid") may be wedged." >&2; exit 1; }
+  if [ -z "${WINDOW_EXT_ID:-}" ]; then
+    echo "FAIL: WINDOW_EXT_ID is not set; run 'eval \"\$(control-window launch)\"' first (never hardcode an ID)." >&2
+    exit 1
+  fi
+  FOUND="$(resolve_ext_id)"
+  [ "$FOUND" = "$WINDOW_EXT_ID" ] || { echo "FAIL: extension $WINDOW_EXT_ID not serving on port $VERIFY_PORT (found '${FOUND:-none}'). Wrong instance?" >&2; exit 1; }
+  if [ "$WANT_BACKEND" -eq 1 ]; then
+    node -e "fetch('$BACKEND_URL/api/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))" 2>/dev/null \
+      || { echo "FAIL: backend at $BACKEND_URL not healthy." >&2; exit 1; }
+  fi
+  echo "doctor ok: chrome pid $(cat "$VERIFY_PROFILE/chrome.pid"), ext $WINDOW_EXT_ID, port $VERIFY_PORT"
+}
+
+cmd_drive() {
+  if [ -z "${WINDOW_EXT_ID:-}" ]; then
+    echo "FAIL: WINDOW_EXT_ID is not set; run 'eval \"\$(control-window launch)\"' first." >&2
+    exit 1
+  fi
+  sub="${1:-}"; shift || true
+  case "$sub" in
+    snapshot|state|click|end-break)
+      node "$DRIVE" --port "$VERIFY_PORT" --ext-id "$WINDOW_EXT_ID" "$sub" "$@" ;;
+    break)
+      # Popup "Take a break" button, waits for the countdown state.
+      node "$DRIVE" --port "$VERIFY_PORT" --ext-id "$WINDOW_EXT_ID" click popup --button "Take a break" --expect "Break active" "$@" ;;
+    spend)
+      # Blocked-page unlock purchase; button reads "Spend <N> points".
+      node "$DRIVE" --port "$VERIFY_PORT" --ext-id "$WINDOW_EXT_ID" click "blocked?blocked=example.com" --button "Spend" --expect "Unlock purchased" "$@" ;;
+    *) echo "FAIL: unknown drive command '$sub' (want snapshot|state|click|break|spend|end-break)." >&2; exit 1 ;;
+  esac
+}
+
+cmd_cleanup() {
+  if [ -f "$VERIFY_PROFILE/chrome.pid" ]; then
+    PID="$(cat "$VERIFY_PROFILE/chrome.pid")"
+    if kill -0 "$PID" 2>/dev/null; then kill "$PID" 2>/dev/null || true; fi
+    rm -f "$VERIFY_PROFILE/chrome.pid"
+  fi
+  rm -rf "$VERIFY_PROFILE/warmup"
+  echo "cleanup ok (evidence dirs untouched)"
+}
+
+cmd="${1:-}"; shift || true
+case "$cmd" in
+  launch) cmd_launch "$@" ;;
+  doctor) cmd_doctor "$@" ;;
+  drive) cmd_drive "$@" ;;
+  cleanup) cmd_cleanup "$@" ;;
+  *) usage ;;
+esac
